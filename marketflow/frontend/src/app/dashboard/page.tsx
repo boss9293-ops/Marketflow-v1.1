@@ -20,7 +20,7 @@ import type { AlertEvidenceContext } from '@/components/AlertDetailDrawer'
 import { readCacheJson } from '@/lib/readCacheJson'
 import { accentColorFromLevel, getRiskSecondaryAccents, riskLevelToToken } from '@/lib/riskPalette'
 
-// ?�?� Cache types ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+// ── Cache types ───────────────────────────────────────────────────
 
 type SnapshotItem = {
   date: string
@@ -114,7 +114,7 @@ type MacroStateChip = {
   tone?: 'green' | 'amber' | 'red' | 'blue' | 'neutral'
 }
 
-// ?�?� Palette ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+// ── Palette ────────────────────────────────────────────────────────
 
 const C = {
   bull:       '#00C853',
@@ -124,7 +124,7 @@ const C = {
   neutral:    '#D8E6F5',
 } as const
 
-// ?�?� Helpers ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+// ── Helpers ────────────────────────────────────────────────────────
 
 function phaseColor(phase?: string | null) {
   if (phase === 'BULL')    return C.bull
@@ -175,7 +175,7 @@ function fmtPct(v?: number | null, digits = 2) {
 }
 
 function fmtCompact(v?: number | null) {
-  if (typeof v !== 'number' || Number.isNaN(v)) return '??
+  if (typeof v !== 'number' || Number.isNaN(v)) return '--'
   const abs = Math.abs(v)
   if (abs >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 })
   if (abs >= 100) return v.toFixed(1)
@@ -251,7 +251,7 @@ const SMART_FLOW_FALLBACK: SmartMoneyCache = {
   rerun_hint: 'python backend/scripts/build_smart_money.py',
 }
 
-// ?�?� Page ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+// ── Page ──────────────────────────────────────────────────────────
 
 export default async function Dashboard() {
   const [snapshotsData, alertsData, overviewHome, dailyBriefing, healthcheck, healthSnapshot, actionSnapshot, marketTape, smartMoney, sectorRotation] = await Promise.all([
@@ -314,10 +314,10 @@ export default async function Dashboard() {
     ? 'Defend'
     : 'Rebalance'
   const strategySub = primaryActionLabel === 'Increase'
-    ? { ko: '변?�성 ?�축 구간 분할 ?��?', en: 'Scale into volatility compression' }
+    ? { ko: '변동성 압축 구간 분할 진입', en: 'Scale into volatility compression' }
     : primaryActionLabel === 'Decrease'
-    ? { ko: '리스??방어 ?�선', en: 'Prioritize capital defense' }
-    : { ko: '리밸?�싱 중심 ?�??, en: 'Rebalance and wait for confirmation' }
+    ? { ko: '리스크 방어 우선시', en: 'Prioritize capital defense' }
+    : { ko: '리밸런싱 중심 대기', en: 'Rebalance and wait for confirmation' }
   const actionProgress = primaryActionBand?.match(/(\d+)\D+(\d+)/)
     ? Math.min(100, Math.max(8, Math.round((Number(primaryActionBand.match(/(\d+)\D+(\d+)/)?.[2] || 0)))))
     : 55
@@ -326,10 +326,10 @@ export default async function Dashboard() {
     .map((sym) => Array.isArray(marketTape.items) ? marketTape.items.find((i) => i?.symbol === sym) : null)
     .filter((x): x is TapeItem => !!x)
   const actionLineKo = primaryActionLabel === 'Increase'
-    ? `?�출??${actionBand} 구간?�로 ?�계?�으�??��?`
+    ? `노출 ${actionBand} 구간으로 점진적으로`
     : primaryActionLabel === 'Decrease'
-    ? '?�금 ?�보 ?�선, ?�규 ?�버리�? 진입?� 보류'
-    : '관�?리밸?�싱 중심?�로 ?�?? 급등 추격?� 보류'
+    ? '자금 안보 개선, 신규 레버리지 진입은 보류'
+    : '리밸런싱 중심으로 대기, 급등 추격은 보류'
   const actionLineEn = primaryActionLabel === 'Increase'
     ? `Scale exposure gradually toward ${actionBand}`
     : primaryActionLabel === 'Decrease'
@@ -371,8 +371,8 @@ export default async function Dashboard() {
   const tailSkewLabel = (riskProxy ?? 0) >= 75 ? 'Elevated Skew' : (riskProxy ?? 0) >= 45 ? 'Moderate Skew' : 'Benign Skew'
   const tqqqScore = Math.max(10, Math.min(95, Math.round((distPct ?? 1.8) * 9 + 55 - (riskProxy ?? 25) * 0.35)))
   const soxlScore = Math.max(10, Math.min(95, Math.round((distPct ?? 0.8) * 7 + 52 - (riskProxy ?? 25) * 0.25)))
-  const tqqqMode = tqqqScore >= 65 ? { badge: 'CLEAR', color: '#22C55E', line: 'Bullish Trend', lineKo: '?�승 추세 ?�위' } : tqqqScore >= 45 ? { badge: 'WATCH', color: '#FACC15', line: 'Mixed Trend', lineKo: '?�조 추세' } : { badge: 'RISK', color: '#F97316', line: 'Gap Risk', lineKo: '�?리스??주의' }
-  const soxlMode = soxlScore >= 62 ? { badge: 'CLEAR', color: '#22C55E', line: 'Strong Beta', lineKo: '고베?� ?�호' } : soxlScore >= 42 ? { badge: 'CHOPPY', color: '#FACC15', line: 'High Beta', lineKo: '변?�성 ?��?' } : { badge: 'RISK', color: '#F97316', line: 'Wide Swings', lineKo: '급등??주의' }
+  const tqqqMode = tqqqScore >= 65 ? { badge: 'CLEAR', color: '#22C55E', line: 'Bullish Trend', lineKo: '상승 추세 유지' } : tqqqScore >= 45 ? { badge: 'WATCH', color: '#FACC15', line: 'Mixed Trend', lineKo: '혼조 추세' } : { badge: 'RISK', color: '#F97316', line: 'Gap Risk', lineKo: '갭 리스크 주의' }
+  const soxlMode = soxlScore >= 62 ? { badge: 'CLEAR', color: '#22C55E', line: 'Strong Beta', lineKo: '고베타 강세' } : soxlScore >= 42 ? { badge: 'CHOPPY', color: '#FACC15', line: 'High Beta', lineKo: '변동성 높음' } : { badge: 'RISK', color: '#F97316', line: 'Wide Swings', lineKo: '급등락 주의' }
   const weeklyLeverageForecast = [
     { day: 'Monday', level: (riskProxy ?? 0) > 70 ? 'Medium Risk' : 'Low Risk' },
     { day: 'Tuesday', level: (riskProxy ?? 0) > 65 ? 'Medium Risk' : 'Low Risk' },
@@ -391,29 +391,29 @@ export default async function Dashboard() {
     shockProb30d,
   })
   const riskSummaryPills = [
-    { label: 'Shock% / ?�크', value: shockProb30d != null ? `${shockProb30d}%` : '--', tone: accentColorFromLevel(riskAccents.shockStress) },
+    { label: 'Shock% / 쇼크', value: shockProb30d != null ? `${shockProb30d}%` : '--', tone: accentColorFromLevel(riskAccents.shockStress) },
     { label: 'Defensive / 방어', value: defensiveTriggerOn ? 'ON' : 'OFF', tone: defensiveTriggerOn ? riskToken.colorVar : 'var(--risk-accent-cooling)' },
-    { label: 'Phase / �?��', value: phaseTransitionText, tone: riskToken.colorVar },
-    { label: 'Tail Sigma / ?�일', value: tailSigma != null ? tailSigma.toFixed(1) : '--', tone: accentColorFromLevel(riskAccents.tailStress) },
+    { label: 'Phase / 국면', value: phaseTransitionText, tone: riskToken.colorVar },
+    { label: 'Tail Sigma / 테일', value: tailSigma != null ? tailSigma.toFixed(1) : '--', tone: accentColorFromLevel(riskAccents.tailStress) },
   ]
 
   const volState = volRatio == null && vixChg == null
-    ? { ko: '?�인 ?�요', en: 'Needs verification', tone: 'neutral' as const }
+    ? { ko: '확인 필요', en: 'Needs verification', tone: 'neutral' as const }
     : (volRatio != null && volRatio < 0.95) || (typeof vixChg === 'number' && vixChg < 2)
-    ? { ko: '?�정/?�축', en: 'compressing', tone: 'green' as const }
+    ? { ko: '안정/압축', en: 'compressing', tone: 'green' as const }
     : (volRatio != null && volRatio > 1.1) || (typeof vixChg === 'number' && vixChg > 5)
-    ? { ko: '?��?/경계', en: 'expanding', tone: 'amber' as const }
-    : { ko: '?�합', en: 'mixed', tone: 'blue' as const }
+    ? { ko: '확장/경계', en: 'expanding', tone: 'amber' as const }
+    : { ko: '혼합', en: 'mixed', tone: 'blue' as const }
   const liqStateMap = liquidityState === 'High'
-    ? { ko: '?�호', en: 'healthy', tone: 'green' as const }
+    ? { ko: '양호', en: 'healthy', tone: 'green' as const }
     : liquidityState === 'Mid'
     ? { ko: '보통', en: 'mixed', tone: 'amber' as const }
-    : { ko: '?�?�트', en: 'tight', tone: 'red' as const }
+    : { ko: '타이트', en: 'tight', tone: 'red' as const }
   const breadthStateMap = breadthState === 'Strong'
     ? { ko: '강함', en: 'strong', tone: 'green' as const }
     : breadthState === 'Neutral'
-    ? { ko: '?�합', en: 'mixed', tone: 'amber' as const }
-    : { ko: '?�함', en: 'weak', tone: 'red' as const }
+    ? { ko: '혼합', en: 'mixed', tone: 'amber' as const }
+    : { ko: '약함', en: 'weak', tone: 'red' as const }
   const ratesState =
     typeof latestSnapshot?.gate_delta_5d === 'number'
       ? latestSnapshot.gate_delta_5d > 3
@@ -460,20 +460,20 @@ export default async function Dashboard() {
   const mixedNarrative = !riskHighNarrative && ((riskProxy ?? 0) >= 45 || latestSnapshot?.phase_shift_flag === 1)
   const narrativeKo = riskHighNarrative
     ? [
-        '리스???�호가 ?�선?�는 구간?�며, ?�기 변???��? 가?�성???�두?????�요가 ?�습?�다.',
-        '변?�성 ?�승�??�한 ?��? 체력???�께 ?��??�면 ?�익 추구보다 ?�실 관리�? ??중요?�집?�다.',
-        '?�인 ?�호가 ?�이�??�까지???�규 ?�버리�? 진입??보수?�으�?보는 ?�이 ?�리?�입?�다.',
+        '리스크 보호가 개선되는 구간이며, 단기 변동성 가능성은 염두에 둘 필요가 있습니다.',
+        '변동성 상승과 함께 할 경우 수익 추구보다 손실 관리가 더욱 중요해집니다.',
+        '확인 신호가 이어지기까지는 신규 레버리지 진입은 보수적으로 보는 것이 합리적입니다.',
       ]
     : mixedNarrative
     ? [
-        '?�재 �?��?� 방향?�이 ?�전???�리?��? ?��? ?�합 ?�호 구간?�니??',
-        '변?�성�?리스??지?�는 관�?가?�하지�? ?��????�도 조절???�요???��??�니??',
-        '브레?�스?� 게이??조건??개선?�기 ?�까지??분할 ?�근?????�리?�니??',
+        '현재 국면의 방향이 확정되지 않은 상황에서 혼합 신호 구간입니다.',
+        '변동성과 리스크 지속은 관리가 필요하지만 속도 조절이 중요한 상황입니다.',
+        '브레이크스루 게이트 조건이 개선되기까지는 분할 접근이 합리적입니다.',
       ]
     : [
-        '추세???�직 ?�호?�이지�? ?��? ?�산??Breadth)???�한 ?�일 ???�습?�다.',
-        '변?�성?� ?�장보다???�정 쪽에 가까워 ?�진??리스???�이 가?�한 구간?�니??',
-        '?�만 ?�동?�이 ?�?�트?�면 추격 매수보다 분할 ?��?가 ???�리?�입?�다.',
+        '추세가 아직 지지되지만 내부 지표(Breadth)에 한해 약화 신호가 있습니다.',
+        '변동성은 상승보다는 안정 쪽에 가까워져 진입 리스크가 낮아진 구간입니다.',
+        '단, 급등이 타이트하면 추격 매수보다 분할 전략이 합리적입니다.',
       ]
   const narrativeEn = riskHighNarrative
     ? [
@@ -493,27 +493,27 @@ export default async function Dashboard() {
         'Liquidity is still tight, so we prefer scaling in rather than chasing.',
       ]
   const regimeKoMap: Record<string, string> = {
-    BULL: '?�승',
-    BEAR: '?�락',
+    BULL: '상승',
+    BEAR: '하락',
     DEFENSIVE: '방어',
-    TRANSITION: '?�환',
+    TRANSITION: '전환',
     NEUTRAL: '중립',
   }
   const phaseKoMap: Record<string, string> = {
-    RECOV: '?�복',
-    EXPAN: '?�장',
-    SLOW: '?�화',
-    CONTR: '?�축',
+    RECOV: '회복',
+    EXPAN: '확장',
+    SLOW: '둔화',
+    CONTR: '수축',
   }
   const actionKoMap: Record<string, string> = {
     Accumulate: '축적',
     Defend: '방어',
-    Rebalance: '리밸?�스',
+    Rebalance: '리밸런스',
   }
   const regimeKo = regimeKoMap[String(regimeNow || 'TRANSITION')] || String(regimeNow || 'TRANSITION')
   const phaseKo = phaseKoMap[phaseCycle] || phaseCycle
   const actionLabelKo = actionKoMap[strategyHeadline] || strategyHeadline
-  const narrativeActionKo = `?�늘???�션: ${actionLineKo}`
+  const narrativeActionKo = `오늘의 액션: ${actionLineKo}`
   const narrativeActionEn = `Action: ${actionLineEn}`
   const briefLinesKo = [narrativeKo[0], narrativeKo[1], narrativeActionKo]
   const briefLinesEn = [narrativeEn[0], narrativeEn[1], narrativeActionEn]
@@ -555,18 +555,18 @@ export default async function Dashboard() {
       ? 'Leaders Thin · Breadth Weak · Vol Sensitive'
       : 'Leaders Mixed · Breadth Mixed · Vol Balanced'
   const narrativeChips = [
-    { ko: `변?�성: ${volState.ko}`, en: `Vol: ${volState.en}`, tone: volState.tone },
-    { ko: `?�동?? ${liqStateMap.ko}`, en: `Liquidity: ${liqStateMap.en}`, tone: liqStateMap.tone },
-    { ko: `?�장 ?�산: ${breadthStateMap.ko}`, en: `Breadth: ${breadthStateMap.en}`, tone: breadthStateMap.tone },
+    { ko: `변동성: ${volState.ko}`, en: `Vol: ${volState.en}`, tone: volState.tone },
+    { ko: `유동성: ${liqStateMap.ko}`, en: `Liquidity: ${liqStateMap.en}`, tone: liqStateMap.tone },
+    { ko: `시장 확산: ${breadthStateMap.ko}`, en: `Breadth: ${breadthStateMap.en}`, tone: breadthStateMap.tone },
   ]
   const narrativeExplainRows = [
-    { keyLabel: 'risk_trend / ?????', value: latestSnapshot?.risk_trend || '?? },
-    { keyLabel: 'gate_score / ???', value: latestSnapshot?.gate_score != null ? latestSnapshot.gate_score.toFixed(1) : '?? },
-    { keyLabel: 'phase_shift_flag / ?????', value: latestSnapshot?.phase_shift_flag != null ? String(latestSnapshot.phase_shift_flag) : '?? },
-    { keyLabel: 'VaR95 (1d) / VaR95', value: var95_1d != null ? `${var95_1d.toFixed(2)}%` : '?? },
-    { keyLabel: 'CVaR95 (1d) / CVaR95', value: cvar95_1d != null ? `${cvar95_1d.toFixed(2)}%` : '?? },
-    { keyLabel: 'VolRatio / ???', value: volRatio != null ? volRatio.toFixed(2) : '?? },
-    { keyLabel: 'VIX tone / VIX ?', value: riskAccents.vixPulse || 'neutral' },
+    { keyLabel: 'risk_trend / 리스크 추세', value: latestSnapshot?.risk_trend || '--' },
+    { keyLabel: 'gate_score / 게이트 점수', value: latestSnapshot?.gate_score != null ? latestSnapshot.gate_score.toFixed(1) : '--' },
+    { keyLabel: 'phase_shift_flag / 국면 전환', value: latestSnapshot?.phase_shift_flag != null ? String(latestSnapshot.phase_shift_flag) : '--' },
+    { keyLabel: 'VaR95 (1d) / VaR95', value: var95_1d != null ? `${var95_1d.toFixed(2)}%` : '--' },
+    { keyLabel: 'CVaR95 (1d) / CVaR95', value: cvar95_1d != null ? `${cvar95_1d.toFixed(2)}%` : '--' },
+    { keyLabel: 'VolRatio / 변동비율', value: volRatio != null ? volRatio.toFixed(2) : '--' },
+    { keyLabel: 'VIX tone / VIX 색조', value: riskAccents.vixPulse || 'neutral' },
   ]
 
   // Healthcheck indicator
@@ -579,12 +579,44 @@ export default async function Dashboard() {
     ? 'Cache OK'
     : `${hcOk ? 'Cache OK (warnings)' : 'Cache FAILED'} ??${[...healthcheck.missing_files || [], ...healthcheck.schema_errors || []].join(', ') || hcWarnings.join(', ')}`
 
+  // ── Portal Simplify: new derived variables ──
+  const riskModeLabel =
+    (defensiveTriggerOn && (riskProxy ?? 0) >= 75) ? 'SHOCK' :
+    (defensiveTriggerOn || (latestSnapshot?.risk_level || '').toUpperCase() === 'HIGH') ? 'RED' :
+    ((latestSnapshot?.risk_level || '').toUpperCase() === 'MEDIUM' || (riskProxy ?? 0) >= 45) ? 'YELLOW' :
+    'GREEN'
+  const riskModeColor =
+    riskModeLabel === 'SHOCK' ? '#D32F2F' :
+    riskModeLabel === 'RED' ? '#FF7043' :
+    riskModeLabel === 'YELLOW' ? '#FFB300' :
+    '#00C853'
+  const sectorTop3 = sectorBars.slice(0, 3)
+  const sectorBottom3 = sectorBars.length >= 3 ? [...sectorBars].reverse().slice(0, 3) : []
+  const rotationPositiveCount = sectorBars.filter(s => s.v > 0).length
+  const rotationInterpretation =
+    rotationPositiveCount >= 8 ? 'Broad Strength' :
+    rotationPositiveCount >= 5 ? 'Selective / Mixed' :
+    'Defensive Tilt'
+  const rotationToneColor =
+    rotationPositiveCount >= 8 ? '#22C55E' :
+    rotationPositiveCount >= 5 ? '#FACC15' :
+    '#F87171'
+  const riskSummaryPillsCompressed = riskSummaryPills.map(p => ({
+    ...p,
+    value:
+      p.label.startsWith('Shock%')
+        ? ((shockProb30d ?? 0) >= 60 ? 'HIGH' : (shockProb30d ?? 0) >= 30 ? 'MED' : 'LOW')
+        : p.label.startsWith('Tail')
+        ? ((tailSigma ?? 0) >= 3 ? 'ELEVATED' : (tailSigma ?? 0) >= 2 ? 'MODERATE' : 'BENIGN')
+        : p.value,
+  }))
+
   return (
-    // Dashboard narrative: Market State ??Action ??Evidence ??Risk Engine ??Hot ??History
     <div
       className="mf-dashboard-root px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:pb-12"
       style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', overflowX: 'hidden' }}
     >
+      {/* ────────────────── PORTAL CARD ────────────────── */}
       <section
         style={{
           background: '#06090D',
@@ -597,6 +629,7 @@ export default async function Dashboard() {
           fontFamily: 'var(--font-ui-sans)',
         }}
       >
+        {/* Nav row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, background: '#D7FF37', color: '#0b0f14', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: '0.78rem', boxShadow: '0 0 0 1px rgba(215,255,55,0.25)' }}>C</div>
@@ -608,10 +641,10 @@ export default async function Dashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {[
-              { ko: '?�장 ?�태', en: 'Market State', active: true },
-              { ko: '리스???�진', en: 'Risk Engine' },
-              { ko: '?�??, en: 'Retirement' },
-              { ko: '?�버리�?', en: 'Leverage' },
+              { ko: '시장 상태', en: 'Market State', active: true },
+              { ko: '리스크 엔진', en: 'Risk Engine' },
+              { ko: '은퇴', en: 'Retirement' },
+              { ko: '레버리지', en: 'Leverage' },
             ].map((tab) => (
               <span
                 key={tab.en}
@@ -621,7 +654,6 @@ export default async function Dashboard() {
                   background: tab.active ? '#D7FF37' : 'rgba(255,255,255,0.02)',
                   padding: '4px 11px',
                   color: tab.active ? '#0B0F14' : '#D8E6F5',
-                  ['--text-secondary' as any]: tab.active ? '#0B0F14' : '#D8E6F5',
                 }}
               >
                 <BilLabel ko={tab.ko} en={tab.en} variant="micro" />
@@ -629,12 +661,9 @@ export default async function Dashboard() {
             ))}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
               <div style={{ width: 280, maxWidth: '40vw', height: 42, borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', padding: '0 12px', display: 'flex', alignItems: 'center', color: '#D8E6F5', fontSize: '0.9rem' }}>
-                <span style={{ marginRight: 8 }}>??/span>
+                <span style={{ marginRight: 8 }}>&#128269;</span>
                 <span>Search ticker, risk factor...</span>
               </div>
-              {['??, '??].map((ico, idx) => (
-                <span key={idx} style={{ width: 38, height: 38, borderRadius: 999, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', display: 'grid', placeItems: 'center', color: '#D8E6F5', fontSize: '0.9rem' }}>{ico}</span>
-              ))}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.05 }}>
                   <span style={{ color: '#F8FAFC', fontWeight: 800, fontSize: '0.95rem' }}>Alexander V.</span>
@@ -646,11 +675,12 @@ export default async function Dashboard() {
           </div>
         </div>
 
+        {/* Title row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
             <div style={{ color: '#F8FAFC', fontSize: 'clamp(1.9rem, 3vw, 2.35rem)', fontWeight: 800, lineHeight: 1.02, letterSpacing: '-0.02em' }}>Market State</div>
             <div style={{ color: '#D8E6F5', fontSize: '0.82rem', marginTop: 5 }}>
-              <BilLabel ko="?�재 �?�� 분석�??�략 ?��??�닝" en="Current Regime Analysis & Strategic Posture" variant="micro" />
+              <BilLabel ko="현재 레지먼 분석과 전략 포지셔닝" en="Current Regime Analysis & Strategic Posture" variant="micro" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -661,303 +691,137 @@ export default async function Dashboard() {
                 maxStreak={maxStreak}
                 evidence={alertsEvidence}
               />
-              <MarketHistoryStrip rows={recent5Market} emptyText="No snapshot data ??run pipeline" />
+              <MarketHistoryStrip rows={recent5Market} emptyText="No snapshot data -- run pipeline" />
               <RiskPanel />
               <StructurePanel />
             </AdvancedMetricsDrawer>
             <span style={{ borderRadius: 999, background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.24)', padding: '2px 8px', color: '#22C55E' }}>
-              <BilLabel ko="?�시�??�이?? en="LIVE DATA" variant="micro" />
+              <BilLabel ko="실시간 데이터" en="LIVE DATA" variant="micro" />
             </span>
             <span style={{ color: '#D8E6F5', fontSize: '0.76rem' }}>
-              {actionSnapshot.data_date || healthSnapshot.data_date || latestSnapshot?.date || '??}
+              {actionSnapshot.data_date || healthSnapshot.data_date || latestSnapshot?.date || '--'}
             </span>
             <span title={hcTitle} style={{ width: 8, height: 8, borderRadius: 999, background: hcColor, border: '1px solid rgba(255,255,255,0.15)' }} />
           </div>
         </div>
 
-        <TodaySnapshotBar summaryKo={snapshotSummaryKo} summaryEn={snapshotSummaryEn} riskToken={ssot.globalRiskToken} explainRows={narrativeExplainRows} />
-        <CrossAssetStripCompact items={Array.isArray(marketTape.items) ? marketTape.items : []} />
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-4" style={{ minWidth: 0, alignItems: 'stretch' }}>
-          <AIMarketBrief linesKo={briefLinesKo} linesEn={briefLinesEn} environmentFit={environmentFit} explainRows={narrativeExplainRows} />
-          <ActionGuidanceCard
-            headline={`${actionLabelKo} / ${ssot.actionGuidance.label}`}
-            band={ssot.actionGuidance.band}
-            subKo={ssot.actionGuidance.subKo}
-            subEn={ssot.actionGuidance.subEn}
-            progress={ssot.actionGuidance.progress}
-            speedLine={actionLineEn}
-          />
-        </section>
-      </section>
-
-      {false && pulseTiles.length > 0 && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-primary)' }}>
-              <span style={{ width: 4, height: 26, borderRadius: 4, background: '#2563EB' }} />
-              <div style={{ color: '#F8FAFC', fontSize: '2rem', fontWeight: 800, lineHeight: 1 }}>
-                Market Pulse
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {['Indices', 'Sectors', 'Commodities'].map((tab, i) => (
-                <span
-                  key={tab}
-                  style={{
-                    borderRadius: 10,
-                    border: `1px solid ${i === 0 ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                    background: i === 0 ? 'rgba(37,99,235,0.10)' : 'rgba(255,255,255,0.02)',
-                    color: i === 0 ? '#F8FAFC' : '#D8E6F5',
-                    padding: '0.45rem 0.8rem',
-                    fontSize: '0.95rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {tab}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3" style={{ minWidth: 0 }}>
-            {pulseTiles.map((item) => {
-              const chg = typeof item.chg_pct === 'number' ? item.chg_pct : null
-              const up = (chg ?? 0) >= 0
-              const col = chg == null ? 'var(--text-secondary)' : up ? 'var(--state-bull)' : 'var(--state-defensive)'
-              const spark = miniSparkPath(item.spark_1d)
-              return (
-                <div
-                  key={String(item.symbol)}
-                  style={{
-                    background: 'var(--bg-panel)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: 12,
-                    padding: '0.55rem 0.65rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    minWidth: 0,
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: '#F8FAFC', fontSize: '0.96rem', fontWeight: 800, lineHeight: 1.1 }}>{item.symbol || '??}</div>
-                    <div style={{ color: 'var(--text-primary)', fontSize: '0.98rem', fontWeight: 800, lineHeight: 1.05, marginTop: 6 }}>{typeof item.last === 'number' ? item.last.toFixed(2) : '??}</div>
-                    {chg != null && (
-                      <div style={{ marginTop: 3 }}>
-                        <span style={{ color: col, background: `${col}14`, border: `1px solid ${col}22`, borderRadius: 6, fontSize: '0.75rem', fontWeight: 800, padding: '1px 5px', display: 'inline-flex' }}>
-                          {fmtPct(chg, 1)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ width: 50, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                    {spark ? (
-                      <svg width="50" height="22" viewBox="0 0 42 14" style={{ overflow: 'visible' }}>
-                        <polyline points={spark} fill="none" stroke={col as string} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : null}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {false && (
-      <section className="grid grid-cols-1 xl:grid-cols-[1.02fr_0.98fr] gap-4" style={{ minWidth: 0 }}>
-        <section
-          style={{
-            background: '#070B10',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 14,
-            padding: '0.95rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.8rem',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 4, height: 24, borderRadius: 4, background: '#A855F7' }} />
-              <div style={{ color: '#F8FAFC', fontSize: '1.65rem', fontWeight: 800, lineHeight: 1 }}>
-                Leverage Weather
-              </div>
-            </div>
-            <span style={{ borderRadius: 8, background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)', color: '#C084FC', padding: '0.25rem 0.55rem' }}>
-              <BilLabel ko="ETF 변?�성" en="ETF VOLATILITY" variant="micro" />
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { sym: 'TQQQ', score: tqqqScore, mode: tqqqMode, labelKo: '?�망', labelEn: 'Outlook' },
-              { sym: 'SOXL', score: soxlScore, mode: soxlMode, labelKo: '변?�성 모드', labelEn: 'Volatility Mode' },
-            ].map((m) => (
-              <div key={m.sym} style={{ background: '#0E131A', border: '1px solid rgba(59,130,246,0.14)', borderRadius: 12, padding: '0.95rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ color: '#F8FAFC', fontSize: '1.05rem', fontWeight: 900 }}>{m.sym}</div>
-                  <span style={{ borderRadius: 6, background: `${m.mode.color}18`, border: `1px solid ${m.mode.color}30`, color: m.mode.color, padding: '0.2rem 0.5rem', fontWeight: 800, fontSize: '0.78rem' }}>{m.mode.badge}</span>
-                </div>
-                <div style={{ color: '#D8E6F5' }}>
-                  <BilLabel ko={m.labelKo} en={m.labelEn} variant="micro" />
-                </div>
-                <div style={{ color: m.mode.color, fontSize: '1.15rem', fontWeight: 800, lineHeight: 1.15 }}>
-                  <BilLabel ko={m.mode.lineKo} en={m.mode.line} variant="label" />
-                </div>
-                <div style={{ marginTop: 'auto', height: 6, borderRadius: 999, background: 'rgba(59,130,246,0.12)', overflow: 'hidden' }}>
-                  <div style={{ width: `${m.score}%`, height: '100%', background: m.mode.color }} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ color: '#D8E6F5', marginTop: 4 }}>
-            <BilLabel ko="5???�버리�? 리스???�캐?�트" en="5-Day Risk Forecast" variant="micro" />
-          </div>
-          <div style={{ background: '#070B10', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.8rem 0.9rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {weeklyLeverageForecast.map((row) => {
-                const isHigh = /High/.test(row.level)
-                const isMed = /Medium/.test(row.level)
-                const col = isHigh ? '#F97316' : isMed ? '#FACC15' : '#22C55E'
-                return (
-                  <div key={row.day} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
-                    <div style={{ color: '#D8E6F5', fontSize: '1.02rem', lineHeight: 1.2 }}>{row.day}</div>
-                    <div style={{ color: col, fontWeight: 800, fontSize: '0.95rem' }}>{row.level}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-        </section>
-        <section
-          style={{
-            background: '#070B10',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 14,
-            padding: '0.95rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.8rem',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 4, height: 24, borderRadius: 4, background: '#D7FF37' }} />
-              <div style={{ color: '#F8FAFC', fontSize: '1.65rem', fontWeight: 800, lineHeight: 1 }}>
-                Retirement Lens
-              </div>
-            </div>
-            <span style={{ borderRadius: 8, background: 'rgba(215,255,55,0.10)', border: '1px solid rgba(215,255,55,0.25)', color: '#D7FF37', padding: '0.25rem 0.55rem' }}>
-              <BilLabel ko="?�본 ?�존" en="CAPITAL SURVIVAL" variant="micro" />
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', background: '#0E131A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 6 }}>
-            {[
-              { ko: '40?� 모드', en: '40s Mode', active: true },
-              { ko: '50?� 모드', en: '50s Mode' },
-              { ko: '60+ 보호', en: '60+ Protection' },
-            ].map((tab) => (
-              <span key={tab.en} style={{ borderRadius: 10, padding: '0.45rem 0.8rem', background: tab.active ? '#D7FF37' : 'transparent', color: tab.active ? '#0B0F14' : '#E2E8F0', border: tab.active ? '1px solid rgba(215,255,55,0.5)' : '1px solid transparent' }}>
-                <BilLabel ko={tab.ko} en={tab.en} variant="micro" />
+        {/* PORTAL BLOCK 1: Structural State Badge Strip */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', paddingTop: '0.05rem' }}>
+          {macroState.map((chip) => {
+            const tc =
+              chip.tone === 'green' ? '#22C55E' :
+              chip.tone === 'red'   ? '#F87171' :
+              chip.tone === 'amber' ? '#FACC15' :
+              chip.tone === 'blue'  ? '#60A5FA' : '#94A3B8'
+            return (
+              <span
+                key={chip.label}
+                style={{ borderRadius: 999, border: `1px solid ${tc}44`, background: `${tc}14`, color: tc, padding: '3px 10px', fontSize: '0.72rem', fontWeight: 700 }}
+              >
+                {chip.label}:{chip.value}
               </span>
-            ))}
-          </div>
+            )
+          })}
+          <Link href="/macro" style={{ marginLeft: 'auto', color: '#7DD3FC', fontSize: '0.71rem', fontWeight: 700, textDecoration: 'none' }}>
+            Market Health &#8594;
+          </Link>
+          <span style={{ borderRadius: 999, border: `1px solid ${ssot.globalRiskToken.borderVar}`, background: ssot.globalRiskToken.bgVar, color: ssot.globalRiskToken.colorVar, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 800 }}>
+            {ssot.globalRiskToken.key}
+          </span>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-4" style={{ minWidth: 0 }}>
-            <div style={{ background: '#0E131A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.95rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ color: '#D8E6F5' }}>
-                <BilLabel ko="목표 ?�산 배분" en="TARGET ALLOCATION" variant="micro" />
-              </div>
-              <div style={{ color: '#F8FAFC', fontSize: 'clamp(2.4rem,4vw,3.2rem)', fontWeight: 900, lineHeight: 1 }}>
-                {retirementAllocation.eq}/{retirementAllocation.safe}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#D8E6F5', fontSize: '0.92rem' }}>
-                    <span>Growth (Equities)</span><span style={{ color: '#F8FAFC', fontWeight: 700 }}>{retirementAllocation.eq}%</span>
-                  </div>
-                  <div style={{ marginTop: 5, height: 5, borderRadius: 999, background: 'rgba(59,130,246,0.12)', overflow: 'hidden' }}>
-                    <div style={{ width: `${retirementAllocation.eq}%`, height: '100%', background: '#3B82F6' }} />
-                  </div>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#D8E6F5', fontSize: '0.92rem' }}>
-                    <span>Preservation (Bonds/Cash)</span><span style={{ color: '#F8FAFC', fontWeight: 700 }}>{retirementAllocation.safe}%</span>
-                  </div>
-                  <div style={{ marginTop: 5, height: 5, borderRadius: 999, background: 'rgba(215,255,55,0.09)', overflow: 'hidden' }}>
-                    <div style={{ width: `${retirementAllocation.safe}%`, height: '100%', background: '#D7FF37' }} />
-                  </div>
-                </div>
-              </div>
+        {/* PORTAL BLOCK 2: Cross-Asset Strip */}
+        <CrossAssetStripCompact items={Array.isArray(marketTape.items) ? marketTape.items : []} />
+
+        {/* PORTAL BLOCK 3 + 4: AI Brief | Decision Panel */}
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-4" style={{ minWidth: 0, alignItems: 'stretch' }}>
+          <AIMarketBrief
+            linesKo={briefLinesKo}
+            linesEn={briefLinesEn}
+            environmentFit={environmentFit}
+            explainRows={narrativeExplainRows}
+          />
+
+          {/* Decision Panel - Risk Mode + Exposure Range only */}
+          <section
+            style={{
+              background: '#0B0F14',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 14,
+              padding: '1rem 1.1rem',
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.9rem',
+              justifyContent: 'center',
+            }}
+          >
+            <div style={{ color: '#94A3B8', fontSize: '0.68rem', letterSpacing: '0.07em', fontWeight: 700 }}>
+              <BilLabel ko="포지셔닝 결론" en="DECISION PANEL" variant="micro" />
             </div>
 
-            <div style={{ background: '#07110A', border: `1px solid ${withdrawalSafe ? 'rgba(34,197,94,0.35)' : 'rgba(245,158,11,0.30)'}`, borderRadius: 12, padding: '0.95rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, textAlign: 'center' }}>
-              <div style={{ width: 62, height: 62, borderRadius: 999, background: withdrawalSafe ? '#22C55E' : '#F59E0B', color: '#0B0F14', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: '1.8rem' }}>
-                {withdrawalSafe ? '?? : '!'}
-              </div>
-              <div style={{ color: '#F8FAFC', fontSize: '1.15rem', fontWeight: 800, lineHeight: 1.15 }}>
-                <BilLabel ko={withdrawalSafe ? '?�출 ?�정 구간' : '방어 ?��? 구간'} en={withdrawalSafe ? 'Withdrawal Safe' : 'Review Withdrawal Risk'} variant="label" />
-              </div>
-              <div style={{ color: '#D8E6F5', lineHeight: 1.45 }}>
-                <BilLabel
-                  ko={withdrawalSafe ? '?�재 ?�장 조건?�서??4% �??�출 ?��? 가?�성???�습?�다.' : '?�금 비중�??�출 ?�도�??�점검???�본 ?�손 ?�험??줄이?�요.'}
-                  en={withdrawalSafe ? 'Current market conditions support 4% rule withdrawals with lower capital erosion risk.' : 'Recheck cash weight and withdrawal pace to reduce capital erosion risk.'}
-                  variant="micro"
-                />
-              </div>
+            {/* Risk Mode */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ color: '#94A3B8', fontSize: '0.8rem', fontWeight: 600, minWidth: 90 }}>
+                <BilLabel ko="리스크 모드" en="Risk Mode" variant="micro" />
+              </span>
+              <span
+                style={{
+                  borderRadius: 8,
+                  background: `${riskModeColor}22`,
+                  border: `1px solid ${riskModeColor}44`,
+                  color: riskModeColor,
+                  padding: '5px 16px',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {riskModeLabel}
+              </span>
             </div>
-          </div>
 
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', marginTop: 2 }} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ color: '#F8FAFC', fontSize: '1.05rem', fontWeight: 800 }}>
-              Action Plan for 40s
+            {/* Exposure Range */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ color: '#94A3B8', fontSize: '0.8rem', fontWeight: 600, minWidth: 90 }}>
+                <BilLabel ko="노출 범위" en="Exposure" variant="micro" />
+              </span>
+              <span style={{ color: '#D7FF37', fontWeight: 900, fontSize: '1.25rem', lineHeight: 1 }}>
+                {actionBand}
+              </span>
             </div>
-            {[
-              'Maximize equity exposure during current expansion phase.',
-              'Rotate from defensive sectors to cyclical growth.',
-            ].map((line) => (
-              <div key={line} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <span style={{ width: 14, height: 14, marginTop: 3, borderRadius: 999, background: '#D7FF37', color: '#0B0F14', display: 'grid', placeItems: 'center', fontSize: '0.6rem', fontWeight: 900 }}>??/span>
-                <div style={{ color: '#E5EEF8', fontSize: '0.98rem', lineHeight: 1.35 }}>{line}</div>
-              </div>
-            ))}
-          </div>
+
+            {/* 1-line structural note */}
+            <div
+              style={{
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                paddingTop: '0.55rem',
+                color: '#94A3B8',
+                fontSize: '0.76rem',
+                lineHeight: 1.4,
+              }}
+            >
+              <BilLabel ko={actionLineKo} en={actionLineEn} variant="micro" />
+            </div>
+          </section>
         </section>
       </section>
-      )}
 
+      {/* ────── MARKET STRUCTURE (collapsed) ────── */}
       <details
         style={{
           background: '#070B10',
           border: '1px solid rgba(255,255,255,0.06)',
           borderRadius: 14,
           padding: '0.75rem 0.85rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.6rem',
         }}
       >
-        <summary
-          style={{
-            listStyle: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            flexWrap: 'wrap',
-          }}
-        >
+        <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ width: 4, height: 24, borderRadius: 4, background: '#2563EB' }} />
           <div style={{ color: '#F8FAFC' }}>
-            <BilLabel ko="마켓 ?�트??��" en="Market Structure" variant="label" />
+            <BilLabel ko="시장 구조" en="Market Structure" variant="label" />
           </div>
-          <span style={{ color: '#D8E6F5', fontSize: '0.72rem' }}>근거 ?�용 / Evidence only</span>
+          <span style={{ color: '#D8E6F5', fontSize: '0.72rem' }}>근거 열기 / Evidence only</span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
             {[
               { label: 'Liquidity', value: liquidityState },
@@ -992,16 +856,14 @@ export default async function Dashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ color: '#D8E6F5', fontSize: '0.88rem', letterSpacing: '0.04em' }}>STRUCTURE CONFIDENCE</div>
                   <span
-                    title="Structure Confidence???�장 ?�짐, 변?�성, ?�산 ?�태, 그리�?리더 집단???�름??종합?�여 ?�재 구조 ?�뢰?��? ?��??�는 참고 지?�입?�다. 종목 추천???�닌 ?�경 ?�합?��? ?��??�니??"
+                    title="시장 레지먼/변동성/확산 상태와 리더 흐름을 종합한 구조 신뢰도 상참 지표. 종목 추천이 아닌 매크로 구조 판단에만 사용합니다."
                     style={{ color: '#94A3B8', fontSize: '0.8rem', cursor: 'help' }}
                   >
-                    ?�️
+                    &#8505;&#65039;
                   </span>
                   <div style={{ marginLeft: 'auto', color: '#F8FAFC', fontSize: '0.95rem', fontWeight: 800 }}>{structureConfidence}</div>
                 </div>
-                <div style={{ marginTop: 6, color: '#94A3B8', fontSize: '0.78rem' }}>
-                  {confidenceSubline}
-                </div>
+                <div style={{ marginTop: 6, color: '#94A3B8', fontSize: '0.78rem' }}>{confidenceSubline}</div>
                 <details style={{ marginTop: 8 }}>
                   <summary style={{ listStyle: 'none', cursor: 'pointer', color: '#93C5FD', fontSize: '0.76rem', fontWeight: 700 }}>
                     View Components
@@ -1019,6 +881,8 @@ export default async function Dashboard() {
                 </details>
               </div>
             </div>
+
+            {/* Sector Rotation - top 3 / bottom 3 */}
             <div
               style={{
                 background: '#0E131A',
@@ -1030,115 +894,187 @@ export default async function Dashboard() {
                 gap: '0.65rem',
               }}
             >
-              <div style={{ color: '#D8E6F5' }}>
-                <BilLabel ko="?? ???? (1W)" en="SECTOR ROTATION (1W)" variant="micro" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div style={{ color: '#D8E6F5' }}>
+                  <BilLabel ko="섹터 로테이션 (1W)" en="SECTOR ROTATION (1W)" variant="micro" />
+                </div>
+                <span style={{ color: rotationToneColor, fontSize: '0.78rem', fontWeight: 700 }}>
+                  {rotationInterpretation}
+                </span>
               </div>
-              <div style={{ position: 'relative', height: 210, borderRadius: 8, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', padding: '10px 10px 18px' }}>
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} style={{ position: 'absolute', left: 10, right: 10, top: 20 + i * 44, borderTop: '1px solid rgba(148,163,184,0.14)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {sectorTop3.map((s) => (
+                  <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', borderRadius: 7, background: 'rgba(74,222,128,0.06)' }}>
+                    <span style={{ color: '#D8E6F5', fontSize: '0.82rem' }}>{s.key}</span>
+                    <span style={{ color: '#86EFAC', fontWeight: 700, fontSize: '0.82rem' }}>{fmtPct(s.v, 2)}</span>
+                  </div>
                 ))}
-                {(() => {
-                  const maxAbs = Math.max(1, ...sectorBars.map((b) => Math.abs(b.v)))
-                  const zeroY = 104
-                  const usable = 72
-                  return (
-                    <>
-                      <div style={{ position: 'absolute', left: 10, right: 10, top: zeroY, borderTop: '1px solid rgba(148,163,184,0.28)' }} />
-                      <div style={{ position: 'absolute', inset: '12px 12px 26px 12px', display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, sectorBars.length)},1fr)`, gap: 10 }}>
-                        {sectorBars.map((b) => {
-                          const pos = b.v >= 0
-                          const h = Math.max(10, Math.round((Math.abs(b.v) / maxAbs) * usable))
-                          return (
-                            <div key={b.key} style={{ position: 'relative', minHeight: 0 }}>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  top: pos ? zeroY - h - 28 : zeroY + h - 2,
-                                  color: pos ? '#86EFAC' : '#FCA5A5',
-                                  fontSize: '0.68rem',
-                                  fontWeight: 800,
-                                  whiteSpace: 'nowrap',
-                                  lineHeight: 1,
-                                }}
-                              >
-                                {fmtPct(b.v, 2)}
-                              </div>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  left: '22%',
-                                  width: '56%',
-                                  top: pos ? zeroY - h - 12 : zeroY - 12,
-                                  height: h,
-                                  background: pos ? '#4ADE80' : '#F87171',
-                                  borderRadius: 2,
-                                  opacity: 0.95,
-                                }}
-                              />
-                              <div style={{ position: 'absolute', left: '50%', bottom: -2, transform: 'translateX(-50%) rotate(24deg)', transformOrigin: 'left center', color: '#D8E6F5', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
-                                {b.key}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )
-                })()}
+                {sectorTop3.length > 0 && sectorBottom3.length > 0 && (
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0' }} />
+                )}
+                {sectorBottom3.map((s) => (
+                  <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', borderRadius: 7, background: 'rgba(248,113,113,0.06)' }}>
+                    <span style={{ color: '#D8E6F5', fontSize: '0.82rem' }}>{s.key}</span>
+                    <span style={{ color: '#FCA5A5', fontWeight: 700, fontSize: '0.82rem' }}>{fmtPct(s.v, 2)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </details>
 
-      <RiskEngineSummaryBar pills={riskSummaryPills} riskToken={ssot.globalRiskToken} />
+      {/* ────── MACRO PRESSURE (collapsed) ────── */}
+      <details
+        style={{
+          background: '#070B10',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 14,
+          padding: '0.75rem 0.85rem',
+        }}
+      >
+        <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ width: 4, height: 24, borderRadius: 4, background: '#F59E0B' }} />
+          <div style={{ color: '#F8FAFC' }}>
+            <BilLabel ko="매크로 압력" en="Macro Pressure" variant="label" />
+          </div>
+          <span style={{ color: '#D8E6F5', fontSize: '0.72rem' }}>근거 열기 / Evidence</span>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Rates', value: ratesState.en, tone: ratesState.tone },
+              { label: 'Liquidity', value: liqStateMap.en, tone: liqStateMap.tone },
+              { label: 'Vol', value: volState.en, tone: volState.tone },
+            ].map((chip) => {
+              const tc = chip.tone === 'green' ? '#22C55E' : chip.tone === 'red' ? '#F87171' : chip.tone === 'amber' ? '#FACC15' : '#60A5FA'
+              return (
+                <span key={chip.label} style={{ borderRadius: 999, border: `1px solid ${tc}33`, background: `${tc}10`, color: tc, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>
+                  {chip.label}:{chip.value}
+                </span>
+              )
+            })}
+          </span>
+        </summary>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ marginTop: 10 }}>
+          <div style={{ background: '#0E131A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ color: '#94A3B8', fontSize: '0.75rem', letterSpacing: '0.04em', fontWeight: 700 }}>RATES PRESSURE</div>
+            <div style={{ color: ratesState.tone === 'green' ? '#22C55E' : ratesState.tone === 'red' ? '#F87171' : '#60A5FA', fontSize: '1rem', fontWeight: 800 }}>{ratesState.en}</div>
+            <div style={{ color: '#94A3B8', fontSize: '0.72rem' }}>
+              {ratesState.en === 'easing' ? 'Rate conditions loosening' : ratesState.en === 'tight' ? 'Rate conditions restrictive' : 'Rate conditions stable'}
+            </div>
+          </div>
+          <div style={{ background: '#0E131A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ color: '#94A3B8', fontSize: '0.75rem', letterSpacing: '0.04em', fontWeight: 700 }}>USD / CREDIT PRESSURE</div>
+            <div style={{ color: volState.tone === 'green' ? '#22C55E' : volState.tone === 'amber' ? '#FACC15' : '#60A5FA', fontSize: '1rem', fontWeight: 800 }}>{volState.en}</div>
+            <div style={{ color: '#94A3B8', fontSize: '0.72rem' }}>
+              {volState.en === 'compressing' ? 'Vol compression -- credit supportive' : volState.en === 'expanding' ? 'Vol expansion -- credit stress' : 'Vol mixed -- monitor USD levels'}
+            </div>
+          </div>
+          <div style={{ background: '#0E131A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ color: '#94A3B8', fontSize: '0.75rem', letterSpacing: '0.04em', fontWeight: 700 }}>LIQUIDITY PRESSURE</div>
+            <div style={{ color: liqStateMap.tone === 'green' ? '#22C55E' : liqStateMap.tone === 'red' ? '#F87171' : '#FACC15', fontSize: '1rem', fontWeight: 800 }}>{liqStateMap.en}</div>
+            <div style={{ color: '#94A3B8', fontSize: '0.72rem' }}>
+              {liquidityState === 'High' ? 'Liquidity conditions healthy' : liquidityState === 'Mid' ? 'Mixed liquidity -- watch flow' : 'Tight liquidity -- speed control'}
+            </div>
+          </div>
+        </div>
+      </details>
+
+      {/* ────── RISK ENGINE (collapsed, numbers hidden) ────── */}
+      <details
+        style={{
+          background: '#070B10',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 14,
+          padding: '0.75rem 0.85rem',
+        }}
+      >
+        <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ width: 6, height: 26, borderRadius: 999, background: ssot.globalRiskToken.colorVar }} />
+          <div style={{ color: '#F8FAFC' }}>
+            <BilLabel ko="리스크 엔진" en="Risk Engine" variant="label" />
+          </div>
+          <span style={{ borderRadius: 999, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#F87171', padding: '0.2rem 0.55rem', fontSize: '0.68rem', fontWeight: 700 }}>
+            <BilLabel ko="독점 지표" en="Proprietary" variant="micro" />
+          </span>
+          <span style={{ marginLeft: 'auto', color: '#D8E6F5', fontSize: '0.72rem', fontWeight: 700 }}>
+            Defensive: {defensiveTriggerOn ? 'ON' : 'OFF'} &middot; Phase: {phaseTransitionText}
+          </span>
+          <Link href="/risk-engine" style={{ color: '#93C5FD', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none' }}>
+            <BilLabel ko="상세 &#8594;" en="Open &#8594;" variant="micro" />
+          </Link>
+        </summary>
+        <div style={{ marginTop: 10 }}>
+          <RiskEngineSummaryBar pills={riskSummaryPillsCompressed} riskToken={ssot.globalRiskToken} />
+        </div>
+      </details>
+
+      {/* ────── MY CONTEXT ────── */}
       <section style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <div style={{ color: '#E2E8F0' }}>
-          <BilLabel ko="??컨텍?�트" en="My Context" variant="micro" />
+          <BilLabel ko="나의 콘텍스트" en="My Context" variant="micro" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ minWidth: 0 }}>
-          <section style={{ ...card({ padding: '0.78rem 0.88rem', background: '#070B10', borderRadius: 12 }), minWidth: 0 }}>
-            <div style={{ color: '#D8E6F5' }}>
-              <BilLabel ko="?�버리�? ?�약" en="Leverage Summary" variant="micro" />
+          <section style={{ background: '#070B10', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.78rem 0.88rem', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: '#94A3B8', fontSize: '0.7rem', letterSpacing: '0.05em', fontWeight: 700 }}>
+              <BilLabel ko="레버리지" en="LEVERAGE" variant="micro" />
             </div>
-            <div style={{ marginTop: 6, color: '#F8FAFC', fontSize: '1rem', fontWeight: 800 }}>
-              ?�버리�? / Leverage: {tqqqMode.badge}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ borderRadius: 6, background: `${tqqqMode.color}18`, border: `1px solid ${tqqqMode.color}30`, color: tqqqMode.color, padding: '3px 12px', fontWeight: 800, fontSize: '0.88rem' }}>
+                {tqqqMode.badge}
+              </span>
+              <span style={{ color: '#D8E6F5', fontSize: '0.82rem' }}>{tqqqMode.line}</span>
             </div>
-            <div style={{ marginTop: 4, color: '#D8E6F5', fontSize: '0.78rem' }}>
-              모드 / Mode: {tqqqMode.line}
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <Link href="/etf" style={{ color: '#7DD3FC', fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none' }}>
-                ?�버리�? ???�기 / Open ->
-              </Link>
-            </div>
+            <Link href="/etf" style={{ color: '#7DD3FC', fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none' }}>
+              <BilLabel ko="레버리지 상세 &#8594;" en="Open Leverage &#8594;" variant="micro" />
+            </Link>
           </section>
-          <section style={{ ...card({ padding: '0.78rem 0.88rem', background: '#070B10', borderRadius: 12 }), minWidth: 0 }}>
-            <div style={{ color: '#D8E6F5' }}>
-              <BilLabel ko="?�???�약" en="Retirement Summary" variant="micro" />
+          <section style={{ background: '#070B10', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '0.78rem 0.88rem', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: '#94A3B8', fontSize: '0.7rem', letterSpacing: '0.05em', fontWeight: 700 }}>
+              <BilLabel ko="은퇴 포트폴리오" en="RETIREMENT" variant="micro" />
             </div>
-            <div style={{ marginTop: 6, color: '#F8FAFC', fontSize: '1rem', fontWeight: 800 }}>
-              배분 / Allocation: {retirementAllocation.eq}/{retirementAllocation.safe}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span
+                style={{
+                  borderRadius: 6,
+                  background: withdrawalSafe ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)',
+                  border: `1px solid ${withdrawalSafe ? 'rgba(34,197,94,0.30)' : 'rgba(245,158,11,0.30)'}`,
+                  color: withdrawalSafe ? '#22C55E' : '#F59E0B',
+                  padding: '3px 12px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                }}
+              >
+                {withdrawalSafe ? 'STABLE' : 'WATCH'}
+              </span>
+              <span style={{ color: '#D8E6F5', fontSize: '0.82rem' }}>{retirementAllocation.eq}/{retirementAllocation.safe}</span>
             </div>
-            <div style={{ marginTop: 4, color: '#D8E6F5', fontSize: '0.78rem' }}>
-              출금 / Withdrawal: {withdrawalSafe ? 'SAFE' : 'REVIEW'}
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <Link href="/retirement" style={{ color: '#A7F3D0', fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none' }}>
-                ?�???�이지 / Open ->
-              </Link>
-            </div>
+            <Link href="/retirement" style={{ color: '#A7F3D0', fontSize: '0.78rem', fontWeight: 700, textDecoration: 'none' }}>
+              <BilLabel ko="은퇴 상세 &#8594;" en="Open Retirement &#8594;" variant="micro" />
+            </Link>
           </section>
         </div>
       </section>
-      <section style={{ minWidth: 0 }}>
-        <div style={{ color: '#D8E6F5', marginBottom: 8 }}>
-          <BilLabel ko="?�스커버�? en="Discovery" variant="micro" />
+
+      {/* ────── INTEL / DISCOVERY (collapsed) ────── */}
+      <details
+        style={{
+          background: '#070B10',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 14,
+          padding: '0.75rem 0.85rem',
+        }}
+      >
+        <summary style={{ listStyle: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 4, height: 24, borderRadius: 4, background: '#EC4899' }} />
+          <div style={{ color: '#F8FAFC' }}>
+            <BilLabel ko="인텔 / 발굴" en="Intel / Discovery" variant="label" />
+          </div>
+          <span style={{ color: '#D8E6F5', fontSize: '0.72rem', marginLeft: 6 }}>열기 / Open</span>
+        </summary>
+        <div style={{ marginTop: 10, minWidth: 0 }}>
+          <HotPanel data={overviewHome} />
         </div>
-        <HotPanel data={overviewHome} />
-      </section>
+      </details>
 
       {/* Disclaimer */}
       <div
@@ -1151,9 +1087,9 @@ export default async function Dashboard() {
           lineHeight: 1.45,
         }}
       >
-        <div>?�자 조언???�니�?교육 목적?�니?? 과거 ?�과??미래�?보장?��? ?�습?�다.</div>
+        <div>본 자료는 교육 목적으로만 제공됩니다. 실제 투자 결과를 보장하지 않습니다.</div>
         <div>Not financial advice. Educational purposes only. Past performance does not guarantee future results.</div>
-        <div>?�출 가?�던?�는 ?�률?�이�?개인??리스???�용?��? ?�께 ?�단?�야 ?�니??</div>
+        <div>노출 가이던스는 확률적이며 개인의 리스크 허용 범위에 따라 평가해야 합니다.</div>
         <div>Exposure guidance is probabilistic and must be evaluated against your personal risk tolerance.</div>
       </div>
     </div>
