@@ -114,29 +114,50 @@ export default function ValidationRoom() {
   }))
 
   const metrics = summary.metrics
-  const windows = ['2020', '2022', '2024', '2025', 'baseline'] as const
+  const windows = ['2020', '2022', '2024', '2025', '2026', 'baseline'] as const
   const windowLabel = (w: (typeof windows)[number]) => {
     if (w === '2020') return '2020 Crisis'
     if (w === '2022') return '2022 Tightening'
     if (w === '2024') return '2024 엔캐리'
     if (w === '2025') return '2025 관세'
+    if (w === '2026') return '2026 리얼타임'
     return 'Baseline (2017-19)'
   }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Window Selector */}
-      <div className="flex items-center gap-3 bg-[#1a1a1a] p-1 rounded-xl border border-[#2a2a2a] w-fit">
-        {windows.map((w) => (
-          <button
-            key={w}
-            onClick={() => setSelectedWindow(w)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${selectedWindow === w ? 'bg-white/10 text-white border border-white/10' : 'text-slate-400 hover:text-white'
+      <div className="flex items-center gap-2 bg-[#1a1a1a] p-1 rounded-xl border border-[#2a2a2a] w-fit flex-wrap">
+        {windows.map((w) => {
+          const isLive = w === '2026'
+          const isActive = selectedWindow === w
+          return (
+            <button
+              key={w}
+              onClick={() => setSelectedWindow(w)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                isActive
+                  ? isLive
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-white/10 text-white border border-white/10'
+                  : isLive
+                  ? 'text-emerald-500/60 hover:text-emerald-300'
+                  : 'text-slate-400 hover:text-white'
               }`}
-          >
-            {windowLabel(w)}
-          </button>
-        ))}
+            >
+              {isLive && (
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              )}
+              {windowLabel(w)}
+              {isLive && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">LIVE</span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Summary Cards */}
@@ -174,7 +195,16 @@ export default function ValidationRoom() {
       <div className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2a2a2a]">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            Historical Playback Timeline <span className="text-xs font-normal text-slate-500">(MPS vs VIX vs QQQ vs TQQQ)</span>
+            {selectedWindow === '2026' ? (
+              <>
+                2026 Real-time Timeline
+                <span className="text-xs font-normal text-emerald-500/70">(YTD · updated daily)</span>
+              </>
+            ) : (
+              <>
+                Historical Playback Timeline <span className="text-xs font-normal text-slate-500">(MPS vs VIX vs QQQ vs TQQQ)</span>
+              </>
+            )}
           </h3>
           <div className="flex gap-4 text-[10px] text-slate-400">
             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500/20 rounded-sm"></div> MPS {'>'}= 70</div>
