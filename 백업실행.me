@@ -1,0 +1,36 @@
+
+
+사이드바 건드리기 전
+.\dev_safety_backup.ps1 -Reason "before_sidebar_edit"
+layout.tsx 건드리기 전
+.\dev_safety_backup.ps1 -Reason "before_layout_edit"
+dashboard/page.tsx 대수술 전
+.\dev_safety_backup.ps1 -Reason "before_dashboard_refactor" -DoGitCommit
+
+
+>>>백업만 할 때
+
+[VS Code 터미널에서 실행]
+
+.\dev_safety_backup.ps1 -Reason "before_sidebar_edit"
+백업 + Git 커밋까지 같이 할 때
+
+[VS Code 터미널에서 실행]
+
+.\dev_safety_backup.ps1 -Reason "before_layout_refactor" -DoGitCommit
+
+실행하면 이런 구조가 생깁니다.
+
+us_market_complete
+├ _backup
+│  ├ frontend_2026-03-15_104501_before_sidebar_edit
+│  ├ frontend_2026-03-15_141210_before_layout_refactor
+│
+├ logs
+│  └ backup_history.log
+
+로그 파일에는 이런 식으로 남습니다.
+
+[2026-03-15_104501] BACKUP_CREATED | reason=before_sidebar_edit | path=D:\...\_backup\frontend_2026-03-15_104501_before_sidebar_edit
+[2026-03-15_141210] BACKUP_CREATED | reason=before_layout_refactor | path=D:\...\_backup\frontend_2026-03-15_141210_before_layout_refactor
+[2026-03-15_141210] GIT_COMMIT | message=backup: frontend 2026-03-15_141210 [before_layout_refactor]

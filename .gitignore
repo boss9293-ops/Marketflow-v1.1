@@ -49,3 +49,26 @@ Thumbs.db
 marketflow/backend/config/google_sa.json
 .env
 .env.local
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# virtual env
+.venv/
+
+# logs
+logs/
+
+# output
+output/
+
+# local data
+data/
+
+# vscode
+.vscode/
+
+# claude
+.claude/
