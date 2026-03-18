@@ -1,26 +1,66 @@
 """
 Calculates portfolio risk metrics.
 Output: output/risk_metrics.json
+Data: ohlcv_daily DB (primary) → yfinance (fallback)
 """
-import yfinance as yf
 import pandas as pd
 import numpy as np
-import json, os
-from datetime import datetime
+import json, os, sqlite3
+from datetime import datetime, timedelta
+
+
+PORTFOLIO = ['SPY', 'QQQ', 'IWM', 'TLT', 'GLD']
+
+
+def get_ohlcv_db() -> str:
+    base = os.path.dirname(__file__)
+    for p in [os.path.join(base, '..', '..', 'data', 'marketflow.db'),
+              os.path.join(base, '..', 'data', 'marketflow.db')]:
+        n = os.path.normpath(p)
+        if os.path.exists(n):
+            return n
+    return ''
+
+
+def load_close_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | None:
+    db = get_ohlcv_db()
+    if not db:
+        return None
+    cutoff = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
+    try:
+        conn = sqlite3.connect(db)
+        df = pd.read_sql_query(
+            "SELECT date, close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
+            conn, params=(symbol, cutoff))
+        conn.close()
+        if df.empty or len(df) < 50:
+            return None
+        df['date'] = pd.to_datetime(df['date'])
+        return df.set_index('date')['close']
+    except Exception as e:
+        print(f"  DB load error {symbol}: {e}")
+        return None
+
 
 def calculate_risk_metrics():
-    portfolio = ['SPY', 'QQQ', 'IWM', 'TLT', 'GLD']
-
     data = {}
-    for ticker in portfolio:
-        try:
-            hist = yf.Ticker(ticker).history(period='1y')
-        except Exception:
-            hist = None
-        if hist is None or hist.empty:
-            print(f"Warning: No data for {ticker}")
-            continue
-        data[ticker] = hist['Close']
+    for ticker in PORTFOLIO:
+        series = load_close_from_db(ticker)
+        if series is not None:
+            data[ticker] = series
+            print(f"  {ticker}: {len(series)} rows from DB ({series.index[-1].date()})")
+        else:
+            # fallback yfinance
+            try:
+                import yfinance as yf
+                hist = yf.Ticker(ticker).history(period='1y')
+                if hist is not None and not hist.empty:
+                    data[ticker] = hist['Close']
+                    print(f"  {ticker}: {len(hist)} rows from yfinance")
+                else:
+                    print(f"Warning: No data for {ticker}")
+            except Exception:
+                print(f"Warning: No data for {ticker}")
 
     if len(data) < 2:
         print("Warning: Insufficient data. Using fallback.")
@@ -39,27 +79,20 @@ def calculate_risk_metrics():
 
     df = pd.DataFrame(data).dropna()
     returns = df.pct_change().dropna()
+    available = [t for t in PORTFOLIO if t in returns.columns]
 
-    var_95 = {}
-    var_99 = {}
-    for ticker in portfolio:
-        var_95[ticker] = round(float(np.percentile(returns[ticker], 5) * 100), 2)
-        var_99[ticker] = round(float(np.percentile(returns[ticker], 1) * 100), 2)
+    var_95, var_99, max_dd, sharpe = {}, {}, {}, {}
+    for ticker in available:
+        var_95[ticker]  = round(float(np.percentile(returns[ticker], 5) * 100), 2)
+        var_99[ticker]  = round(float(np.percentile(returns[ticker], 1) * 100), 2)
+        cum = (1 + returns[ticker]).cumprod()
+        dd  = (cum / cum.cummax()) - 1
+        max_dd[ticker]  = round(float(dd.min() * 100), 2)
+        mu  = returns[ticker].mean() * 252
+        sig = returns[ticker].std() * np.sqrt(252)
+        sharpe[ticker]  = round(float(mu / sig) if sig > 0 else 0, 2)
 
-    corr_matrix = returns.corr().round(3).to_dict()
-
-    max_dd = {}
-    for ticker in portfolio:
-        cum_returns = (1 + returns[ticker]).cumprod()
-        running_max = cum_returns.cummax()
-        drawdown = (cum_returns / running_max) - 1
-        max_dd[ticker] = round(float(drawdown.min() * 100), 2)
-
-    sharpe = {}
-    for ticker in portfolio:
-        mean_ret = returns[ticker].mean() * 252
-        std_ret = returns[ticker].std() * np.sqrt(252)
-        sharpe[ticker] = round(float(mean_ret / std_ret) if std_ret > 0 else 0, 2)
+    corr_matrix = returns[available].corr().round(3).to_dict()
 
     result = {
         'timestamp': datetime.now().isoformat(),
@@ -68,7 +101,7 @@ def calculate_risk_metrics():
         'correlation_matrix': corr_matrix,
         'max_drawdown': max_dd,
         'sharpe_ratio': sharpe,
-        'portfolio_volatility': round(float(returns.mean(axis=1).std() * np.sqrt(252) * 100), 2)
+        'portfolio_volatility': round(float(returns[available].mean(axis=1).std() * np.sqrt(252) * 100), 2)
     }
 
     output_path = os.path.join(os.path.dirname(__file__), '..', 'output', 'risk_metrics.json')
@@ -76,7 +109,7 @@ def calculate_risk_metrics():
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    print("Risk metrics calculated")
+    print(f"Risk metrics calculated: VaR95={list(var_95.values())[:3]} Sharpe={list(sharpe.values())[:3]}")
 
 if __name__ == '__main__':
     calculate_risk_metrics()

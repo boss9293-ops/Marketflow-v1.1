@@ -14,6 +14,10 @@ import ActionGuidanceCard from '@/components/dashboard/ActionGuidanceCard'
 import TodaySnapshotBar from '@/components/dashboard/TodaySnapshotBar'
 import CrossAssetStripCompact from '@/components/dashboard/CrossAssetStripCompact'
 import RiskEngineSummaryBar from '@/components/dashboard/RiskEngineSummaryBar'
+import MonitoredTopicsWidget from '@/components/dashboard/MonitoredTopicsWidget'
+import UnifiedPriorityStrip  from '@/components/priority/UnifiedPriorityStrip'
+import DailyDigestPanel       from '@/components/digest/DailyDigestPanel'
+import VrValidationTriggerPanel from '@/components/validation/VrValidationTriggerPanel'
 import type { SmartMoneyCache } from '@/components/SmartMoneyView'
 import type { OverviewHomeData } from '@/components/HotPanel'
 import type { AlertEvidenceContext } from '@/components/AlertDetailDrawer'
@@ -865,6 +869,11 @@ export default async function Dashboard() {
       </section>
 
       {/* ────── MARKET STRUCTURE (collapsed) ────── */}
+      {/* ────── PRIORITY MONITOR ────── */}
+      <UnifiedPriorityStrip />
+      <DailyDigestPanel />
+      <VrValidationTriggerPanel />
+
       <details
         style={{
           background: '#070B10',
@@ -1132,6 +1141,9 @@ export default async function Dashboard() {
           <HotPanel data={overviewHome} />
         </div>
       </details>
+
+      {/* ────── RESEARCH MONITOR ────── */}
+      <MonitoredTopicsWidget />
 
       {/* Disclaimer */}
       <div

@@ -3491,6 +3491,16 @@ def main() -> None:
         else:
             events_merged.append((start, end))
 
+    # Manual end-date overrides for events where the algorithmic end is too early
+    EVENT_END_OVERRIDES: dict[str, pd.Timestamp] = {
+        '2024-07': pd.Timestamp('2024-10-25'),
+    }
+    events_merged = [
+        (start, max(end, EVENT_END_OVERRIDES[start.strftime('%Y-%m')])
+         if start.strftime('%Y-%m') in EVENT_END_OVERRIDES else end)
+        for start, end in events_merged
+    ]
+
     KNOWN_NAMES = {
         (2000, 5): "2000-05 Risk Event",
         (2008, 1): "2008-01 Risk Event",
@@ -3552,7 +3562,7 @@ def main() -> None:
         )
 
         # Playback window
-        pre_idx = max(0, start_idx - 85)
+        pre_idx = max(0, start_idx - 350)  # 350d pre-window: MA250 valid from event start
         post_idx = min(len(all_dates) - 1, end_idx + 60)
         win_df = df.iloc[pre_idx : post_idx + 1].copy()
 

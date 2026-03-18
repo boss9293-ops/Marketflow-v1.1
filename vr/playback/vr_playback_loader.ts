@@ -93,6 +93,8 @@ export type VRPlaybackEventView = {
     ma200_n: number | null
     qqq_dd: number | null
     tqqq_dd: number | null
+    score: number | null
+    level: number | null
     in_event: boolean
   }>
   leveraged_stress: {
@@ -171,11 +173,11 @@ const CURATED_PLAYBACK_SUITE: Array<{
     note: 'Gap risk and rapid leverage-stress test around the China shock.',
   },
   {
-    suite_id: '2024-04-ai-correction',
-    event_id: '2024-04',
-    display_name: '2024-04 AI Correction',
-    group: 'Corrections',
-    note: 'AI-led correction benchmark for modern seasonal correction behavior.',
+    suite_id: '2024-07-yen-carry-unwind',
+    event_id: '2024-07',
+    display_name: '2024-07 Yen Carry Unwind',
+    group: 'Leverage Stress',
+    note: 'FX carry unwind and global leverage repositioning stress.',
   },
   {
     suite_id: '2021-12-liquidity-shift',
@@ -190,6 +192,13 @@ const CURATED_PLAYBACK_SUITE: Array<{
     display_name: '2019-05 Trade War Dip',
     group: 'Corrections',
     note: 'Trade-war correction benchmark for controlled dip and recovery response.',
+  },
+  {
+    suite_id: '2025-03-tariff-shock',
+    event_id: '2025-01',
+    display_name: '2025-03 Tariff Shock',
+    group: 'Corrections',
+    note: 'Trade policy shock and tariff escalation volatility episode.',
   },
 ]
 
@@ -331,10 +340,18 @@ function inferDetectorInput(
   } as const
 }
 
+export type VRPlaybackEventOverrides = {
+  event_id: string
+  simulation_start_date?: string
+  initial_capital?: number
+  stock_allocation_pct?: number
+}
+
 export function buildVRPlaybackView(input: {
   standardArchive: RawStandardPlaybackArchive | null
   survivalArchive: RawVRSurvivalPlaybackArchive | null
   rootDir: string
+  eventOverrides?: VRPlaybackEventOverrides
 }): VRPlaybackView | null {
   if (!input.standardArchive?.events?.length) return null
 
@@ -351,6 +368,8 @@ export function buildVRPlaybackView(input: {
       ma200_n: point.ma200_n,
       qqq_dd: point.dd,
       tqqq_dd: syntheticProxy ? syntheticTqqq?.[index]?.tqqq_dd ?? null : point.tqqq_dd,
+      score: typeof point.score === 'number' ? point.score : null,
+      level: typeof point.level === 'number' ? point.level : null,
       in_event: point.in_ev,
     }))
     const qqqDrawdownPct = chartData.reduce((min, point) => {
@@ -384,11 +403,18 @@ export function buildVRPlaybackView(input: {
       reboundStrengthPct,
     })
     const eventId = event.start.slice(0, 7)
+    const ov = input.eventOverrides?.event_id === eventId ? input.eventOverrides : undefined
     const cycleStart = initializeEventState({
       rootDir: input.rootDir,
       eventId,
       eventStartDate: event.start,
       eventEndDate: event.end,
+      overrides: ov ? {
+        simulation_start_date: ov.simulation_start_date,
+        initial_capital: ov.initial_capital,
+        stock_allocation_pct: ov.stock_allocation_pct != null ? ov.stock_allocation_pct / 100 : undefined,
+        pool_allocation_pct: ov.stock_allocation_pct != null ? 1 - ov.stock_allocation_pct / 100 : undefined,
+      } : undefined,
     })
 
     const placeholderMessages =
@@ -461,7 +487,7 @@ export function buildVRPlaybackView(input: {
       suite_group: suite.group,
       suite_note: suite.note,
     }
-  }).filter((event): event is VRPlaybackEventView => Boolean(event))
+  }).filter(Boolean) as VRPlaybackEventView[]
 
   return { events: curatedEvents, archive_event_count: input.standardArchive.events.length }
 }

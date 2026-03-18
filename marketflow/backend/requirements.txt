@@ -14,3 +14,4 @@ openai
 python-dotenv
 apscheduler
 pytest
+anthropic

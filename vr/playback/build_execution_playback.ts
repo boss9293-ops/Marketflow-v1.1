@@ -13,7 +13,8 @@ import type {
   VRExecutionSummary,
 } from '../types/execution_playback'
 
-type ExecutionPlaybackSource = {
+export type ExecutionPlaybackSource = {
+  name?: string
   start: string
   end: string
   chart_data: Array<{
@@ -23,6 +24,9 @@ type ExecutionPlaybackSource = {
     ma50_n: number | null
     ma200_n: number | null
     qqq_dd?: number | null
+    tqqq_dd?: number | null
+    score?: number | null
+    level?: number | null
     in_event: boolean
   }>
   cycle_start: {
@@ -97,24 +101,31 @@ function buildMarketStructurePlayback(event: ExecutionPlaybackSource): MarketStr
   const normalizedBase = event.chart_data.find((point) => typeof point.tqqq_n === 'number' && point.tqqq_n > 0)?.tqqq_n ?? 100
   // Compute TQQQ-specific rolling MA directly from TQQQ price series
   const tqqqPrices = event.chart_data.map((point) => rebaseNormalizedValue(point.tqqq_n, normalizedBase, actualBasePrice))
+  // Pre-build rows so breach_points can reuse computed ma200 (avoids re-running rollingMean twice)
+  const rows = event.chart_data.map((point, i) => ({
+    date: point.date,
+    tqqq_price: tqqqPrices[i],
+    ma50: rollingMean(tqqqPrices, i, 50),
+    // Use DB pre-computed MA200 (from source chart_data.ma200_n) to avoid 200-day local warmup.
+    // DB value is QQQ MA200 normalized to the same base as tqqq_n, so rebaseNormalizedValue gives
+    // a comparable scale: when qqq_n == ma200_n the lines meet, signaling the MA200 breach threshold.
+    ma200: typeof point.ma200_n === 'number' && point.ma200_n > 0
+      ? rebaseNormalizedValue(point.ma200_n, normalizedBase, actualBasePrice)
+      : rollingMean(tqqqPrices, i, 200),
+  }))
   return {
-    rows: event.chart_data.map((point, i) => ({
-      date: point.date,
-      tqqq_price: tqqqPrices[i],
-      ma50: rollingMean(tqqqPrices, i, 50),
-      ma200: rollingMean(tqqqPrices, i, 200),
+    rows,
+    tqqq_price_series: rows.map((row) => ({
+      date: row.date,
+      value: row.tqqq_price,
     })),
-    tqqq_price_series: event.chart_data.map((point, i) => ({
-      date: point.date,
-      value: tqqqPrices[i],
+    ma50_series: rows.map((row) => ({
+      date: row.date,
+      value: row.ma50,
     })),
-    ma50_series: event.chart_data.map((_, i) => ({
-      date: event.chart_data[i].date,
-      value: rollingMean(tqqqPrices, i, 50),
-    })),
-    ma200_series: event.chart_data.map((_, i) => ({
-      date: event.chart_data[i].date,
-      value: rollingMean(tqqqPrices, i, 200),
+    ma200_series: rows.map((row) => ({
+      date: row.date,
+      value: row.ma200,
     })),
     cycle_boundaries: event.cycle_framework.cycles.map((cycle) => ({
       date: cycle.cycle_start_date,
@@ -124,12 +135,19 @@ function buildMarketStructurePlayback(event: ExecutionPlaybackSource): MarketStr
       start_date: event.start,
       end_date: event.end,
     },
-    breach_points: event.chart_data
-      .filter((point) => typeof point.qqq_n === 'number' && typeof point.ma200_n === 'number' && point.qqq_n < point.ma200_n)
-      .map((point) => ({
-        date: point.date,
+    // Breach detection uses DB QQQ vs QQQ MA200 (source of truth), not locally-computed TQQQ MA200.
+    // qqq_n and ma200_n are on the same normalized scale — breach = qqq_n < ma200_n.
+    breach_points: rows
+      .map((row, i) => ({ row, point: event.chart_data[i] }))
+      .filter(({ row, point }) =>
+        typeof point.qqq_n === 'number' && typeof point.ma200_n === 'number'
+          ? point.qqq_n < point.ma200_n
+          : typeof row.ma200 === 'number' && row.tqqq_price < row.ma200
+      )
+      .map(({ row }) => ({
+        date: row.date,
         title: 'MA200 Breach',
-        value: rebaseNormalizedValue(point.tqqq_n, normalizedBase, actualBasePrice),
+        value: row.tqqq_price,
       })),
     recovery_markers: event.chart_data
       .filter((point) => typeof point.qqq_dd === 'number' && point.qqq_dd >= -5 && point.in_event)
@@ -339,6 +357,7 @@ function buildVariant(
   let cumulativePoolSpent = 0
   let currentCycleNo: number | null = null
   let cyclePoolUsed = 0
+  let cycleStartPoolCash = poolCash
   let blockedBuyCount = 0
   let deferredBuyCount = 0
   let executedBuyCount = 0
@@ -348,6 +367,7 @@ function buildVariant(
   let sellLevelState = new Set<string>()
   let defenseTriggered = false
   let nextBuyLevelNo = 1
+  let buyReferenceShares = initialState.initial_share_count
   let cycleBasePortfolio = initialCapital
   let cycleBaseEvaluation = initialState.initial_share_count * basePrice
   let cycleBasePrice = basePrice
@@ -381,6 +401,7 @@ function buildVariant(
       currentCycleNo = cycle?.cycle_no ?? null
       dayInCycle = 1
       cyclePoolUsed = 0
+      cycleStartPoolCash = poolCash
       buyLevelState = new Set<string>()
       sellLevelState = new Set<string>()
       defenseTriggered = false
@@ -393,6 +414,7 @@ function buildVariant(
         cycleBasePortfolio = shares * assetPrice + poolCash
         cycleBaseEvaluation = shares * assetPrice
         cycleBasePrice = assetPrice
+        buyReferenceShares = shares
       }
     }
     else {
@@ -400,7 +422,7 @@ function buildVariant(
     }
 
     const cycleCapAmount =
-      mode === 'original' || capOption.pct == null ? Number.POSITIVE_INFINITY : initialPoolCash * (capOption.pct / 100)
+      capOption.pct == null ? Number.POSITIVE_INFINITY : cycleStartPoolCash * (capOption.pct / 100)
     const sellLevels = buildRepresentativePriceLevels(Math.max(avgCost, cycleBasePrice), 'sell')
     let tradeReason: string | null = null
     let stateAfterTrade = 'hold'
@@ -415,20 +437,35 @@ function buildVariant(
     const preTradeVmaxEval = Number((cycleBaseEvaluation * 1.15).toFixed(2))
     const sellGateOpen = preTradeEvaluationValue >= preTradeVmaxEval
 
-    // Dynamic buy logic: buy_base_price = vmin_eval / current_shares, buy_level_n = buy_base_price - n
+    // Dynamic buy logic:
+    //   L1 (first buy in cycle): triggers directly on evaluation <= Vmin breach.
+    //     This fixes the split-adjusted low-price regime problem where the fixed -$1
+    //     offset caused trigger miss even when evaluation was clearly below Vmin.
+    //   L2+ (subsequent buys): use price-based ladder step-down logic.
     // Scenario VR pauses buys during defense regime (MA200 breach)
     const buysAllowed = mode === 'original' || !defenseTriggered
-    const preTradeBuyBasePrice = shares > 0 ? preTradeVminEval / shares : 0
-    const preBuyLevelPrice = preTradeBuyBasePrice > 0 ? Number((preTradeBuyBasePrice - nextBuyLevelNo).toFixed(2)) : null
-    const buySignal = buysAllowed && preBuyLevelPrice != null && assetPrice <= preBuyLevelPrice && poolCash > 0
+    const isFirstBuyLevel = nextBuyLevelNo === 1
+    const preTradeBuyBasePrice = buyReferenceShares > 0 ? preTradeVminEval / buyReferenceShares : 0
+    // L1 signal: evaluation breach. L2+ signal: price ladder.
+    const preBuyLevelPrice = isFirstBuyLevel
+      ? null  // L1 uses evaluation trigger, not price ladder
+      : preTradeBuyBasePrice > 0 ? Number((preTradeBuyBasePrice - nextBuyLevelNo).toFixed(2)) : null
+    const buySignal = buysAllowed && poolCash > 0 && (
+      isFirstBuyLevel
+        ? preTradeEvaluationValue <= preTradeVminEval  // L1: eval breach
+        : preBuyLevelPrice != null && assetPrice <= preBuyLevelPrice  // L2+: price ladder
+    )
 
     // Execute buys: loop to handle multiple level triggers if price drops far in one day
     let buyAttempts = 0
     while (buysAllowed && poolCash > 0 && shares > 0 && buyAttempts < 10) {
       const vminNow = cycleBaseEvaluation * 0.85
-      const buyBasePriceNow = vminNow / shares
+      const isFirstLevel = nextBuyLevelNo === 1
+      const evalValue = shares * assetPrice
+      const buyBasePriceNow = buyReferenceShares > 0 ? vminNow / buyReferenceShares : 0
       const nextLevelPrice = Number((buyBasePriceNow - nextBuyLevelNo).toFixed(2))
-      if (assetPrice > nextLevelPrice) break
+      // L1: trigger on evaluation breach; L2+: trigger on price ladder
+      if (isFirstLevel ? evalValue > vminNow : assetPrice > nextLevelPrice) break
 
       const remainingCycleCap = Math.max(0, cycleCapAmount - cyclePoolUsed)
       const desiredSpend = Number((initialPoolCash * 0.20).toFixed(2))
@@ -439,6 +476,7 @@ function buildVariant(
         if (newShares > 0) {
           const totalCost = shares * avgCost + newShares * assetPrice
           shares += newShares
+          buyReferenceShares = shares
           avgCost = shares > 0 ? Number((totalCost / shares).toFixed(2)) : avgCost
           poolCash = Number((poolCash - newShares * assetPrice).toFixed(2))
           cyclePoolUsed = Number((cyclePoolUsed + newShares * assetPrice).toFixed(2))
@@ -558,14 +596,12 @@ function buildVariant(
       })
     }
 
-    // Sell ladder only fires when evaluation is above Vmax (sellGateOpen) — prevents misfires near Vmin
-    const sellSignal = mode === 'original' && sellGateOpen && sellLevels.some((level) => {
-      const key = `${currentCycleNo}-sell-${level.level_no}`
-      return !sellLevelState.has(key) && assetPrice >= level.price && shares > 0
-    })
+    // [TEST] Original VR sell execution disabled to isolate and validate the buy formula cleanly.
+    // Sell markers are suppressed for mode=original in this test phase.
+    const sellSignal = false
     for (const level of sellLevels) {
       const key = `${currentCycleNo}-sell-${level.level_no}`
-      if (mode !== 'original' || !sellGateOpen || sellLevelState.has(key) || assetPrice < level.price || shares <= 0) continue
+      if (true) continue // [TEST] Original sell execution disabled
       const sharesToSell = Math.max(1, Math.floor(shares * Math.min(0.2, level.weight)))
       shares -= sharesToSell
       poolCash = Number((poolCash + sharesToSell * assetPrice).toFixed(2))
@@ -668,6 +704,7 @@ function buildVariant(
       buy_blocked_by_cycle_cap: buyBlockedByCycleCap,
       trade_reason: tradeReason,
       state_after_trade: stateAfterTrade,
+      structural_state: 'NONE',
     })
     const cyclePoolUsedPct = initialPoolCash > 0 ? Number(((cyclePoolUsed / initialPoolCash) * 100).toFixed(2)) : 0
     if (currentCycleNo === activeCycleNo) {
@@ -785,28 +822,819 @@ function buildVariant(
   }
 }
 
-export function buildExecutionPlayback(event: ExecutionPlaybackSource): ExecutionPlaybackCollection {
+
+// vFinal Crash Engine — DD5/DD10 crash detection, MA250 armed sell, ATH-based Vmin ladder, MA200 mop-up
+function buildVariantVFinal(
+  event: ExecutionPlaybackSource,
+  capOption: { key: CyclePoolCapOption; pct: number | null; label: string }
+): ExecutionPlaybackVariant {
+  const initialState = event.cycle_start.initial_state
+  const marketChart = buildMarketStructurePlayback(event)
+
+  if (!initialState) {
+    return {
+      cap_option: capOption.key,
+      cap_label: capOption.label,
+      sell_policy: { vmax_visual_only: false, sell_only_on_defense: false, allow_first_cycle_sell: true },
+      points: [],
+      buy_markers: [],
+      sell_markers: [],
+      defense_markers: [],
+      avg_cost_line: [],
+      pool_cap_flags: [],
+      vmin_recovery_attempt_zones: [],
+      failed_recovery_zones: [],
+      scenario_phase_zones: [],
+      pool_usage_summary: {
+        initial_pool_cash: 0,
+        cycle_pool_cap_pct: capOption.pct,
+        cycle_pool_used_pct: 0,
+        active_cycle_pool_used_pct: 0,
+        pool_cash_remaining: 0,
+        cumulative_pool_spent: 0,
+        blocked_buy_count: 0,
+        deferred_buy_count: 0,
+        executed_buy_count: 0,
+        executed_sell_count: 0,
+        executed_defense_count: 0,
+        active_cycle_no: null,
+        active_cycle_blocked_buy_count: 0,
+        last_trade_date: null,
+      },
+      trade_log: [],
+      validation_summary: {
+        has_buy_execution: false,
+        has_sell_execution: false,
+        has_defense_execution: false,
+        avg_cost_changed: false,
+        shares_changed: false,
+        pool_cash_changed: false,
+        blocked_by_cap_observed: false,
+        executed_buy_count: 0,
+        executed_sell_count: 0,
+        executed_defense_count: 0,
+        blocked_buy_count: 0,
+      },
+      market_chart: marketChart,
+      cycle_summaries: [],
+      focus_window: null,
+    }
+  }
+
+  const normalizedBase = event.chart_data.find((p) => typeof p.tqqq_n === 'number' && p.tqqq_n > 0)?.tqqq_n ?? 100
+  const basePrice = initialState.start_price > 0 ? initialState.start_price : normalizedBase
+  const initialCapital = initialState.initial_capital
+
+  // Pre-compute price series for vFinal signals
+  const tqqqPrices = event.chart_data.map((p) => rebaseNormalizedValue(p.tqqq_n, normalizedBase, basePrice))
+  const ma200Series = tqqqPrices.map((_, i) => rollingMean(tqqqPrices, i, 200))
+  const ma250Series = tqqqPrices.map((_, i) => rollingMean(tqqqPrices, i, 250))
+  const dd5Series = tqqqPrices.map((p, i) => i >= 5 && tqqqPrices[i - 5] > 0 ? (p / tqqqPrices[i - 5]) - 1 : 0)
+  const dd10Series = tqqqPrices.map((p, i) => i >= 10 && tqqqPrices[i - 10] > 0 ? (p / tqqqPrices[i - 10]) - 1 : 0)
+  const athSeries: number[] = []
+  let athPeak = 0
+  for (let i = 0; i < tqqqPrices.length; i++) {
+    if (tqqqPrices[i] > 0) athPeak = Math.max(athPeak, tqqqPrices[i])
+    athSeries.push(athPeak)
+  }
+
+  // Portfolio state (starts with event initial_state positions)
+  let shares = initialState.initial_share_count
+  let avgCost = initialState.initial_average_price
+  let poolCash = initialState.initial_pool_cash
+
+  // vFinal state machine
+  type VFState = 'NORMAL' | 'ARMED' | 'EXIT_DONE'
+  let vfState: VFState = 'NORMAL'
+  let armedDays = 0
+  let crashCooldown = 0
+  // Re-entry flags — reset on each crash episode
+  let vmin1Done = false  // price <= ATH * 0.60
+  let vmin2Done = false  // price <= ATH * 0.50
+  let vmin3Done = false  // price <= ATH * 0.40
+  let ma200Done = false
+  let postExitCooldown = 0  // min days between exit and re-entry buys
+
+  // Structural track (Track B) -- independent of event crash
+  type StructuralState = 'NONE' | 'STRUCTURAL_WATCH' | 'STRUCTURAL_STRESS' | 'STRUCTURAL_CRASH'
+  let structuralState: StructuralState = 'NONE'
+  let stressStartDate: string | null = null  // when STRESS was entered
+  let crashEpisodeStartDate: string | null = null
+  let crashEpisodeDays = 0
+  let sustainedImprovementDays = 0  // days of continuous structural improvement (for downgrade)
+
+  // Cycle-based V-band reference (portfolio value at cycle start)
+  let cycleBasePortfolio = initialCapital
+  let dayInCycle = 0
+
+  // Counters
+  let executedBuyCount = 0
+  let executedSellCount = 0
+  let cumulativePoolSpent = 0
+  let lastTradeDate: string | null = null
+  let currentCycleNo: number | null = null
+  let previousState = 'initialized'
+
+  // vFinal ARMED debug counters
+  let dbg_armedEnterCount = 0
+  let dbg_cancelByRecovery = 0
+  let dbg_cancelByTimeout = 0
+  let dbg_ma250RetestWhileArmed = 0
+  let dbg_armedDaysAccum = 0
+  let dbg_armedExitCount = 0
+  // Pool / crash debug
+  let dbg_crashTriggerDates: string[] = []
+  let dbg_normalVminBuys: Array<{date:string; level:number; price:number}> = []
+  let dbg_normalVminBlocked = 0  // crash active when price hit level
+  let dbg_structuralTransitions: Array<{
+    date: string; from: string; to: string; episode_day: number;
+    macro_score: number; internal_score: number; persistence_score: number;
+    ai_assessment: string; ath_dd_pct: number; dd10_pct: number;
+  }> = []
+
+  const points: ExecutionPoint[] = []
+  const buyMarkers: ExecutionMarker[] = []
+  const sellMarkers: ExecutionMarker[] = []
+  const defenseMarkers: ExecutionMarker[] = []
+  const poolCapFlags: ExecutionMarker[] = []
+  const avgCostLine: Array<{ date: string; value: number }> = []
+  const tradeLog: ExecutionPlaybackVariant['trade_log'] = []
+  const activeCycleNo = event.cycle_framework.cycles.find((c) => c.is_active_cycle)?.cycle_no ?? null
+
+  event.chart_data.forEach((point, i) => {
+    const assetPrice = rebaseNormalizedValue(point.tqqq_n, normalizedBase, basePrice)
+    const sharesBefore = shares
+    const avgCostBefore = avgCost
+    const poolCashBefore = poolCash
+    const stateBefore = previousState
+    const cycle = findCycle(event.cycle_framework.cycles, point.date)
+    if (cycle?.cycle_no !== currentCycleNo) {
+      currentCycleNo = cycle?.cycle_no ?? null
+      dayInCycle = 1
+      if (cycle) {
+        // Portfolio value at cycle start = V-band reference
+        cycleBasePortfolio = Number((shares * assetPrice + poolCash).toFixed(2))
+      }
+    } else {
+      dayInCycle += 1
+    }
+
+    const ma200 = ma200Series[i]
+    const ma250 = ma250Series[i]
+    const dd5 = dd5Series[i]
+    const dd10 = dd10Series[i]
+    const ath = athSeries[i]
+    const TRANCHE = Number((initialCapital * 0.20).toFixed(2))
+
+    let tradeReason: string | null = null
+    let stateAfterTrade = 'hold'
+    let tradeExecuted = false
+    let tradeType: 'buy' | 'sell' | 'defense' | 'blocked_buy' | null = null
+    let tradePrice: number | null = null
+    let triggerSource: 'evaluation_vmax_gate' | 'representative_sell_ladder' | 'defense_reduction' | 'buy_vmin_recovery' | 'cycle_cap_block' | null = null
+    let ladderLevelHit: number | null = null
+    const buySignal = false
+    const sellSignal = false
+    const defenseSignal = false
+
+    if (crashCooldown > 0) crashCooldown -= 1
+    if (postExitCooldown > 0) postExitCooldown -= 1
+
+    // ── NORMAL: crash detection ──
+    if (vfState === 'NORMAL' && crashCooldown === 0) {
+      const ma200Gate = ma200 != null && assetPrice <= ma200 * 1.05
+      const crashTrigger = dd5 <= -0.10 && dd10 <= -0.18 && ma200Gate
+      if (crashTrigger) {
+        dbg_crashTriggerDates.push(point.date)
+        if (crashEpisodeStartDate === null) {
+          crashEpisodeStartDate = point.date
+          crashEpisodeDays = 0
+        }
+        const ma250Retest = ma250 != null && assetPrice >= ma250 * 0.995
+        if (ma250Retest) {
+          // Immediate sell — price at or above MA250
+          if (shares > 0) {
+            const sharesToSell = shares
+            const evalAtSell = Number((sharesToSell * assetPrice).toFixed(2))
+            const cashAdded = Number((sharesToSell * assetPrice).toFixed(2))
+            poolCash = Number((poolCash + cashAdded).toFixed(2))
+            shares = 0
+            avgCost = 0
+            vfState = 'EXIT_DONE'
+            postExitCooldown = 5
+            ma200Done = false
+            tradeReason = 'vFinal crash exit — MA250 retest immediate'
+            stateAfterTrade = 'sell_executed'
+            tradeExecuted = true
+            tradeType = 'sell'
+            tradePrice = assetPrice
+            triggerSource = 'representative_sell_ladder'
+            executedSellCount += 1
+            lastTradeDate = point.date
+            sellMarkers.push({
+              date: point.date,
+              price: assetPrice,
+              normalized_value: normalizeValue(assetPrice, basePrice),
+              cycle_no: currentCycleNo ?? 0,
+              title: 'Crash Exit',
+              reason: 'vFinal: DD5/DD10 crash + MA250 retest — 100% sell',
+              marker_type: 'sell',
+              trigger_source: 'representative_sell_ladder',
+              ladder_level_hit: 1,
+              sell_gate_open: true,
+              share_delta: -sharesToSell,
+              shares_after_trade: shares,
+              avg_cost_after_trade: 0,
+              pool_cash_after_trade: Number(poolCash.toFixed(2)),
+              total_portfolio_value: Number((poolCash).toFixed(2)),
+              cycle_pool_used_pct: 0,
+              evaluation_value: evalAtSell,
+              vref_eval: 0,
+              vmin_eval: 0,
+              vmax_eval: 0,
+              state_after_trade: stateAfterTrade,
+            })
+          } else {
+            vfState = 'EXIT_DONE'
+            ma200Done = false
+          }
+        } else {
+          // ARMED — wait for MA250 retest
+          vfState = 'ARMED'
+          armedDays = 0
+          dbg_armedEnterCount += 1
+        }
+      }
+
+      // Opportunistic Vmin pool deployment in NORMAL state (ATH-fraction ladder)
+      // Shared vmin flags with EXIT_DONE prevent double-buying
+      if (vfState === 'NORMAL' && poolCash >= 1) {
+        const vminLevels = [
+          { done: vmin1Done, fraction: 0.60, label: 'Vmin -40% ATH', levelNo: 1 },
+          { done: vmin2Done, fraction: 0.50, label: 'Vmin -50% ATH', levelNo: 2 },
+          { done: vmin3Done, fraction: 0.40, label: 'Vmin -60% ATH', levelNo: 3 },
+        ]
+        for (const lvl of vminLevels) {
+          if (!lvl.done && ath > 0 && assetPrice <= ath * lvl.fraction && poolCash >= 1) {
+            const spend = Math.min(poolCash, TRANCHE)
+            const newShares = Math.floor(spend / assetPrice)
+            if (newShares > 0) {
+              const totalCost = shares * avgCost + newShares * assetPrice
+              shares += newShares
+              avgCost = Number((totalCost / shares).toFixed(2))
+              poolCash = Number((poolCash - newShares * assetPrice).toFixed(2))
+              cumulativePoolSpent = Number((cumulativePoolSpent + newShares * assetPrice).toFixed(2))
+              if (lvl.levelNo === 1) vmin1Done = true
+              else if (lvl.levelNo === 2) vmin2Done = true
+              else vmin3Done = true
+              dbg_normalVminBuys.push({ date: point.date, level: lvl.levelNo, price: assetPrice })
+              tradeReason = lvl.label
+              stateAfterTrade = 'buy_executed'
+              tradeExecuted = true
+              tradeType = 'buy'
+              tradePrice = assetPrice
+              triggerSource = 'buy_vmin_recovery'
+              ladderLevelHit = lvl.levelNo
+              executedBuyCount += 1
+              lastTradeDate = point.date
+              buyMarkers.push({
+                date: point.date,
+                price: assetPrice,
+                normalized_value: normalizeValue(assetPrice, basePrice),
+                cycle_no: currentCycleNo ?? 0,
+                title: lvl.label,
+                reason: lvl.label,
+                marker_type: 'buy',
+                trigger_source: 'buy_vmin_recovery',
+                ladder_level_hit: lvl.levelNo,
+                share_delta: newShares,
+                shares_after_trade: shares,
+                avg_cost_after_trade: Number(avgCost.toFixed(2)),
+                pool_cash_after_trade: Number(poolCash.toFixed(2)),
+                total_portfolio_value: Number((shares * assetPrice + poolCash).toFixed(2)),
+                cycle_pool_used_pct: initialCapital > 0
+                  ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
+                  : 0,
+                evaluation_value: Number((shares * assetPrice).toFixed(2)),
+                vref_eval: 0,
+                vmin_eval: 0,
+                vmax_eval: 0,
+                state_after_trade: stateAfterTrade,
+              })
+              break // one tranche per day
+            }
+          }
+        }
+      }
+    }
+
+    // ── ARMED: short-validity crash sell signal (15 trading days) ──
+    // Sell only on weak-rebound MA250 retest while crash signal is still active.
+    // Cancel (no sell) if crash eases (recovery confirmation) or signal times out.
+    else if (vfState === 'ARMED') {
+      armedDays += 1
+      dbg_armedDaysAccum += 1
+
+      // Recovery confirmation → both dd5 AND dd10 must recover (AND, not OR)
+      const crashRecovered = dd5 > -0.05 && dd10 > -0.10
+      // Timeout → stale signal → expire silently, no forced sell (15d)
+      const signalExpired = armedDays >= 15
+
+      if (crashRecovered || signalExpired) {
+        // Signal expired — return to NORMAL without any trade
+        if (crashRecovered) dbg_cancelByRecovery += 1
+        else dbg_cancelByTimeout += 1
+        dbg_armedExitCount += 1
+        vfState = 'NORMAL'
+        armedDays = 0
+        crashEpisodeStartDate = null
+        crashEpisodeDays = 0
+        structuralState = 'NONE'
+        stressStartDate = null
+      } else {
+        // MA250 retest: close retest OR high proxy (+3% of close, TQQQ intraday range)
+        const closeRetest = ma250 != null && assetPrice >= ma250 * 0.995
+        const highProxyRetest = ma250 != null && assetPrice >= ma250 * 0.97
+        const ma250Retest = closeRetest || highProxyRetest
+        if (ma250Retest) dbg_ma250RetestWhileArmed += 1
+        if (ma250Retest && armedDays >= 2) {
+          if (shares > 0) {
+            const sharesToSell = shares
+            const evalAtSell = Number((sharesToSell * assetPrice).toFixed(2))
+            const cashAdded = Number((sharesToSell * assetPrice).toFixed(2))
+            poolCash = Number((poolCash + cashAdded).toFixed(2))
+            shares = 0
+            avgCost = 0
+            tradeReason = 'vFinal armed sell — MA250 retest (weak rebound)'
+            stateAfterTrade = 'sell_executed'
+            tradeExecuted = true
+            tradeType = 'sell'
+            tradePrice = assetPrice
+            triggerSource = 'representative_sell_ladder'
+            executedSellCount += 1
+            lastTradeDate = point.date
+            sellMarkers.push({
+              date: point.date,
+              price: assetPrice,
+              normalized_value: normalizeValue(assetPrice, basePrice),
+              cycle_no: currentCycleNo ?? 0,
+              title: 'Crash Exit (Armed)',
+              reason: tradeReason ?? '',
+              marker_type: 'sell',
+              trigger_source: 'representative_sell_ladder',
+              ladder_level_hit: 1,
+              sell_gate_open: true,
+              share_delta: -sharesToSell,
+              shares_after_trade: shares,
+              avg_cost_after_trade: 0,
+              pool_cash_after_trade: Number(poolCash.toFixed(2)),
+              total_portfolio_value: Number((poolCash).toFixed(2)),
+              cycle_pool_used_pct: 0,
+              evaluation_value: evalAtSell,
+              vref_eval: 0,
+              vmin_eval: 0,
+              vmax_eval: 0,
+              state_after_trade: stateAfterTrade,
+            })
+          }
+          vfState = 'EXIT_DONE'
+          postExitCooldown = 5
+          ma200Done = false
+        }
+      }
+    }
+
+    // ── EXIT_DONE: Vmin ATH ladder then MA200 mop-up ──
+    else if (vfState === 'EXIT_DONE' && postExitCooldown === 0) {
+      // Layer 1 — three Vmin tranches at ATH fractions
+      const vminLevels = [
+        { done: vmin1Done, fraction: 0.60, label: 'Vmin -40% ATH', levelNo: 1 },
+        { done: vmin2Done, fraction: 0.50, label: 'Vmin -50% ATH', levelNo: 2 },
+        { done: vmin3Done, fraction: 0.40, label: 'Vmin -60% ATH', levelNo: 3 },
+      ]
+      for (const lvl of vminLevels) {
+        if (!lvl.done && ath > 0 && assetPrice <= ath * lvl.fraction && poolCash >= 1) {
+          const spend = Math.min(poolCash, TRANCHE)
+          const newShares = Math.floor(spend / assetPrice)
+          if (newShares > 0) {
+            const totalCost = shares * avgCost + newShares * assetPrice
+            shares += newShares
+            avgCost = Number((totalCost / shares).toFixed(2))
+            poolCash = Number((poolCash - newShares * assetPrice).toFixed(2))
+            cumulativePoolSpent = Number((cumulativePoolSpent + newShares * assetPrice).toFixed(2))
+            if (lvl.levelNo === 1) vmin1Done = true
+            else if (lvl.levelNo === 2) vmin2Done = true
+            else vmin3Done = true
+            tradeReason = lvl.label
+            stateAfterTrade = 'buy_executed'
+            tradeExecuted = true
+            tradeType = 'buy'
+            tradePrice = assetPrice
+            triggerSource = 'buy_vmin_recovery'
+            ladderLevelHit = lvl.levelNo
+            executedBuyCount += 1
+            lastTradeDate = point.date
+            buyMarkers.push({
+              date: point.date,
+              price: assetPrice,
+              normalized_value: normalizeValue(assetPrice, basePrice),
+              cycle_no: currentCycleNo ?? 0,
+              title: lvl.label,
+              reason: lvl.label,
+              marker_type: 'buy',
+              trigger_source: 'buy_vmin_recovery',
+              ladder_level_hit: lvl.levelNo,
+              share_delta: newShares,
+              shares_after_trade: shares,
+              avg_cost_after_trade: Number(avgCost.toFixed(2)),
+              pool_cash_after_trade: Number(poolCash.toFixed(2)),
+              total_portfolio_value: Number((shares * assetPrice + poolCash).toFixed(2)),
+              cycle_pool_used_pct: initialCapital > 0
+                ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
+                : 0,
+              evaluation_value: Number((shares * assetPrice).toFixed(2)),
+              vref_eval: 0,
+              vmin_eval: 0,
+              vmax_eval: 0,
+              state_after_trade: stateAfterTrade,
+            })
+          }
+        }
+      }
+
+      // Layer 3 — MA200 mop-up (buy all remaining cash when price recovers above MA200)
+      if (!ma200Done && ma200 != null && assetPrice >= ma200 && poolCash >= 1) {
+        const spend = poolCash
+        const newShares = Math.floor(spend / assetPrice)
+        if (newShares > 0) {
+          const totalCost = shares * avgCost + newShares * assetPrice
+          shares += newShares
+          avgCost = Number((totalCost / shares).toFixed(2))
+          poolCash = Number((poolCash - newShares * assetPrice).toFixed(2))
+          cumulativePoolSpent = Number((cumulativePoolSpent + newShares * assetPrice).toFixed(2))
+          ma200Done = true
+          vfState = 'NORMAL'
+          crashCooldown = 10
+          crashEpisodeStartDate = null
+          crashEpisodeDays = 0
+          structuralState = 'NONE'
+          stressStartDate = null
+          tradeReason = 'vFinal MA200 mop-up — full re-entry'
+          stateAfterTrade = 'buy_executed'
+          tradeExecuted = true
+          tradeType = 'buy'
+          tradePrice = assetPrice
+          triggerSource = 'buy_vmin_recovery'
+          ladderLevelHit = 4
+          executedBuyCount += 1
+          lastTradeDate = point.date
+          buyMarkers.push({
+            date: point.date,
+            price: assetPrice,
+            normalized_value: normalizeValue(assetPrice, basePrice),
+            cycle_no: currentCycleNo ?? 0,
+            title: 'MA200 Re-entry',
+            reason: 'vFinal: price crosses MA200 — buy all remaining cash',
+            marker_type: 'buy',
+            trigger_source: 'buy_vmin_recovery',
+            ladder_level_hit: 4,
+            share_delta: newShares,
+            shares_after_trade: shares,
+            avg_cost_after_trade: Number(avgCost.toFixed(2)),
+            pool_cash_after_trade: Number(poolCash.toFixed(2)),
+            total_portfolio_value: Number((shares * assetPrice + poolCash).toFixed(2)),
+            cycle_pool_used_pct: initialCapital > 0
+              ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
+              : 0,
+            evaluation_value: Number((shares * assetPrice).toFixed(2)),
+            vref_eval: 0,
+            vmin_eval: 0,
+            vmax_eval: 0,
+            state_after_trade: stateAfterTrade,
+          })
+        }
+      }
+    }
+
+    // Track B: Structural state update (WO60-B hybrid macro+internal+persistence+AI scoring)
+    {
+      // ── Macro flags (from MSS score + QQQ trend signals) ──
+      const mssScore = typeof point.score === 'number' ? point.score : 100
+      const mssLevel = typeof point.level === 'number' ? point.level : 0
+      const qqqN   = typeof point.qqq_n   === 'number' ? point.qqq_n   : 100
+      const ma50N  = typeof point.ma50_n  === 'number' ? point.ma50_n  : 100
+      const ma200N = typeof point.ma200_n === 'number' ? point.ma200_n : 100
+      const tqqqDd = typeof point.tqqq_dd === 'number' ? point.tqqq_dd : 0
+      const liquidityTightening    = mssScore < 95
+      const creditStress           = mssScore < 88
+      const financialConditionsTight = mssScore < 84
+      const growthScare            = mssLevel >= 3
+      const policyPressure         = ma50N > 0 && qqqN < ma50N
+      const macroScore =
+        Number(liquidityTightening) + Number(creditStress) +
+        Number(financialConditionsTight) + Number(growthScare) + Number(policyPressure)
+
+      // ── Internal flags ──
+      const breadthWeak        = ma200N > 0 && qqqN < ma200N
+      const reboundFailure     = crashEpisodeDays > 30
+      const trendBroken        = ma200N > 0 && qqqN < ma200N * 0.97
+      const volPersistent      = tqqqDd < -15
+      const leverageWeakness   = tqqqDd < -30
+      const internalScore =
+        Number(breadthWeak) + Number(reboundFailure) +
+        Number(trendBroken) + Number(volPersistent) + Number(leverageWeakness)
+
+      // ── Persistence score ──
+      // Note: persistenceScore >= 3 requires ep > 20d (gates premature escalation)
+      //       persistenceScore >= 4 requires ep > 40d (gates CRASH entry)
+      const persistenceScore =
+        Number(crashEpisodeStartDate !== null) +
+        Number(crashEpisodeDays > 20) +
+        Number(crashEpisodeDays > 40) +
+        Number(crashEpisodeDays > 60) +
+        Number(dd10 < -0.08)
+
+      // ── AI assessment (rule-based simulation — no live API call in playback loop) ──
+      const totalScore = macroScore + internalScore + persistenceScore
+      const aiAssessment: string =
+        totalScore >= 12 || (macroScore >= 4 && internalScore >= 4) ? 'structural_crash_candidate' :
+        totalScore >= 8  || (macroScore >= 3 && internalScore >= 3) ? 'structural_deterioration'   :
+        totalScore >= 5  || persistenceScore >= 3                   ? 'persistent_stress'          :
+                                                                       'temporary_shock'
+
+      const athDD = ath > 0 ? (assetPrice / ath) - 1 : 0
+      const severeDamage = dd10 < -0.30 || athDD < -0.30
+      const prevStructural = structuralState
+
+      // ── Upgrade transitions (episode-driven; elif prevents same-day multi-level jumps) ──
+      if (crashEpisodeStartDate !== null) {
+        crashEpisodeDays += 1
+
+        // NONE -> STRUCTURAL_WATCH (requires persistenceScore >= 3, i.e. ep > 20d)
+        if (structuralState === 'NONE') {
+          if (
+            persistenceScore >= 3 &&
+            (macroScore >= 2 || internalScore >= 3 || aiAssessment === 'persistent_stress')
+          ) {
+            structuralState = 'STRUCTURAL_WATCH'
+            sustainedImprovementDays = 0
+          }
+        // STRUCTURAL_WATCH -> STRUCTURAL_STRESS (elif: no same-day jump from NONE->WATCH->STRESS)
+        } else if (structuralState === 'STRUCTURAL_WATCH') {
+          if (
+            persistenceScore >= 3 &&
+            (
+              (macroScore >= 3 && internalScore >= 3) ||
+              (aiAssessment === 'structural_deterioration' && macroScore >= 3)
+            )
+          ) {
+            structuralState = 'STRUCTURAL_STRESS'
+            stressStartDate = point.date
+            sustainedImprovementDays = 0
+          }
+        // STRUCTURAL_STRESS -> STRUCTURAL_CRASH (requires ep > 40d via persistenceScore >= 4)
+        } else if (structuralState === 'STRUCTURAL_STRESS' && severeDamage) {
+          if (
+            persistenceScore >= 4 &&
+            (
+              (macroScore >= 4 && internalScore >= 3) ||
+              (aiAssessment === 'structural_crash_candidate' && macroScore >= 4)
+            )
+          ) {
+            structuralState = 'STRUCTURAL_CRASH'
+            sustainedImprovementDays = 0
+          }
+        }
+      }
+
+      // ── Downgrade logic: sustained improvement window (15 days) ──
+      const structuralImproving =
+        macroScore <= 1 &&
+        internalScore <= 2 &&
+        crashEpisodeStartDate === null &&
+        (aiAssessment === 'temporary_shock' || aiAssessment === 'persistent_stress')
+      if (structuralImproving && structuralState !== 'NONE') {
+        sustainedImprovementDays += 1
+        if (sustainedImprovementDays >= 15) {
+          if      (structuralState === 'STRUCTURAL_CRASH')  structuralState = 'STRUCTURAL_STRESS'
+          else if (structuralState === 'STRUCTURAL_STRESS') structuralState = 'STRUCTURAL_WATCH'
+          else if (structuralState === 'STRUCTURAL_WATCH')  structuralState = 'NONE'
+          sustainedImprovementDays = 0
+        }
+      } else if (!structuralImproving && crashEpisodeStartDate === null) {
+        sustainedImprovementDays = 0
+      }
+
+      // ── Log state transitions ──
+      if (structuralState !== prevStructural) {
+        dbg_structuralTransitions.push({
+          date: point.date,
+          from: prevStructural,
+          to: structuralState,
+          episode_day: crashEpisodeDays,
+          macro_score: macroScore,
+          internal_score: internalScore,
+          persistence_score: persistenceScore,
+          ai_assessment: aiAssessment,
+          ath_dd_pct: Math.round(athDD * 1000) / 10,
+          dd10_pct: Math.round(dd10 * 1000) / 10,
+        })
+      }
+    }
+
+    const evaluationValue = Number((shares * assetPrice).toFixed(2))
+    const portfolioValue = Number((evaluationValue + poolCash).toFixed(2))
+    const poolUsedPct = initialCapital > 0
+      ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
+      : 0
+    // V-band: portfolio-based reference from cycle start
+    const vrefEval = Number(cycleBasePortfolio.toFixed(2))
+    const vminEval = Number((cycleBasePortfolio * 0.85).toFixed(2))
+    const vmaxEval = Number((cycleBasePortfolio * 1.15).toFixed(2))
+    const vrefLine = normalizeValue(cycleBasePortfolio, initialCapital)
+    const vminLine = Number((vrefLine * 0.85).toFixed(2))
+    const vmaxLine = Number((vrefLine * 1.15).toFixed(2))
+
+    avgCostLine.push({ date: point.date, value: normalizeValue(avgCost, basePrice) })
+    points.push({
+      date: point.date,
+      in_event: point.in_event,
+      cycle_no: currentCycleNo,
+      day_in_cycle: dayInCycle,
+      asset_price: Number(assetPrice.toFixed(2)),
+      evaluation_value_before_trade: Number((sharesBefore * assetPrice).toFixed(2)),
+      evaluation_value: evaluationValue,
+      evaluation_normalized: normalizeValue(evaluationValue, initialCapital),
+      tqqq_price_normalized: normalizeValue(assetPrice, basePrice),
+      portfolio_value_before_trade: Number((sharesBefore * assetPrice + poolCashBefore).toFixed(2)),
+      portfolio_value: portfolioValue,
+      portfolio_normalized: normalizeValue(portfolioValue, initialCapital),
+      vref_eval: vrefEval,
+      vmin_eval: vminEval,
+      vmax_eval: vmaxEval,
+      vref_line: vrefLine,
+      vmin_line: vminLine,
+      vmax_line: vmaxLine,
+      vref_price: shares > 0 ? Number((vrefEval / shares).toFixed(2)) : null,
+      vmin_price: shares > 0 ? Number((vminEval / shares).toFixed(2)) : null,
+      vmax_price: shares > 0 ? Number((vmaxEval / shares).toFixed(2)) : null,
+      avg_cost_after_trade: Number(avgCost.toFixed(2)),
+      avg_cost_normalized: normalizeValue(avgCost, basePrice),
+      shares_before_trade: sharesBefore,
+      shares_after_trade: shares,
+      pool_cash_before_trade: Number(poolCashBefore.toFixed(2)),
+      pool_cash_after_trade: Number(poolCash.toFixed(2)),
+      cycle_pool_used_pct: poolUsedPct,
+      cycle_pool_cap_pct: capOption.pct,
+      cumulative_pool_spent: cumulativePoolSpent,
+      buy_blocked_by_cycle_cap: false,
+      trade_reason: tradeReason,
+      state_after_trade: stateAfterTrade,
+      structural_state: structuralState,
+    })
+
+    tradeLog.push({
+      replay_date: point.date,
+      cycle_no: currentCycleNo,
+      state_before: stateBefore,
+      buy_signal: buySignal,
+      sell_signal: sellSignal,
+      defense_signal: defenseSignal,
+      trade_executed: tradeExecuted,
+      trade_type: tradeType,
+      trigger_source: triggerSource,
+      ladder_level_hit: ladderLevelHit,
+      trade_price: tradePrice,
+      stock_evaluation_value: Number((sharesBefore * assetPrice).toFixed(2)),
+      vref_eval: 0,
+      vmax_eval: 0,
+      sell_gate_open: false,
+      shares_before: sharesBefore,
+      shares_after: shares,
+      avg_cost_before: Number(avgCostBefore.toFixed(2)),
+      avg_cost_after: Number(avgCost.toFixed(2)),
+      pool_cash_before: Number(poolCashBefore.toFixed(2)),
+      pool_cash_after: Number(poolCash.toFixed(2)),
+      cycle_pool_used_pct: poolUsedPct,
+      blocked_by_cap: false,
+      state_after: stateAfterTrade,
+    })
+    previousState = stateAfterTrade
+  })
+
+  // ── vFinal ARMED debug log ──
+  const avgArmedDays = dbg_armedExitCount > 0
+    ? Number((dbg_armedDaysAccum / dbg_armedExitCount).toFixed(1))
+    : dbg_armedDaysAccum
+  const poolUsedPct = initialCapital > 0
+    ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(1))
+    : 0
+  console.log(
+    '[vFinal ARMED]',
+    'event:', event.name,
+    '| armedEnterCount:', dbg_armedEnterCount,
+    '| cancel_by_recovery:', dbg_cancelByRecovery,
+    '| cancel_by_timeout:', dbg_cancelByTimeout,
+    '| ma250RetestWhileArmedCount:', dbg_ma250RetestWhileArmed,
+    '| sellExecutionCount:', executedSellCount,
+    '| buyExecutionCount:', executedBuyCount,
+    '| avgArmedDays:', avgArmedDays,
+    '| poolUsed%:', poolUsedPct,
+    '| normalVminBuys:', dbg_normalVminBuys.length,
+    '| crashTriggerDates:', dbg_crashTriggerDates,
+    '| normalVminBuyDates:', dbg_normalVminBuys,
+    '| structuralTransitions:', dbg_structuralTransitions,
+  )
+
+  return {
+    cap_option: capOption.key,
+    cap_label: capOption.label,
+    sell_policy: { vmax_visual_only: false, sell_only_on_defense: false, allow_first_cycle_sell: true },
+    points,
+    buy_markers: buyMarkers,
+    sell_markers: sellMarkers,
+    defense_markers: defenseMarkers,
+    avg_cost_line: avgCostLine,
+    pool_cap_flags: poolCapFlags,
+    vmin_recovery_attempt_zones: [],
+    failed_recovery_zones: [],
+    scenario_phase_zones: [],
+    pool_usage_summary: {
+      initial_pool_cash: initialCapital,
+      cycle_pool_cap_pct: capOption.pct,
+      cycle_pool_used_pct: initialCapital > 0
+        ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
+        : 0,
+      active_cycle_pool_used_pct: 0,
+      pool_cash_remaining: points[points.length - 1]?.pool_cash_after_trade ?? 0,
+      cumulative_pool_spent: cumulativePoolSpent,
+      blocked_buy_count: 0,
+      deferred_buy_count: 0,
+      executed_buy_count: executedBuyCount,
+      executed_sell_count: executedSellCount,
+      executed_defense_count: 0,
+      active_cycle_no: activeCycleNo,
+      active_cycle_blocked_buy_count: 0,
+      last_trade_date: lastTradeDate,
+    },
+    trade_log: tradeLog,
+    validation_summary: {
+      has_buy_execution: executedBuyCount > 0,
+      has_sell_execution: executedSellCount > 0,
+      has_defense_execution: false,
+      avg_cost_changed: tradeLog.some((item) => item.avg_cost_after !== item.avg_cost_before),
+      shares_changed: tradeLog.some((item) => item.shares_after !== item.shares_before),
+      pool_cash_changed: tradeLog.some((item) => item.pool_cash_after !== item.pool_cash_before),
+      blocked_by_cap_observed: false,
+      executed_buy_count: executedBuyCount,
+      executed_sell_count: executedSellCount,
+      executed_defense_count: 0,
+      blocked_buy_count: 0,
+    },
+    market_chart: marketChart,
+    cycle_summaries: buildCycleExecutionSummaries({
+      points,
+      buy_markers: buyMarkers,
+      sell_markers: sellMarkers,
+      defense_markers: defenseMarkers,
+      pool_cap_flags: poolCapFlags,
+      initial_pool_cash: initialCapital,
+      cycles: event.cycle_framework.cycles,
+    }),
+    focus_window: buildExecutionFocusWindow({ points, trade_log: tradeLog }),
+  }
+}
+
+export function buildExecutionPlayback(
+  event: ExecutionPlaybackSource,
+  selectedCap: CyclePoolCapOption = '50',
+): ExecutionPlaybackCollection {
   const originalVr = buildVariant(
     event,
     { key: 'unlimited', pct: null, label: 'Original VR' },
     'original'
   )
-  const variants = CAP_OPTIONS.reduce((acc, option) => {
-    acc[option.key] = buildVariant(event, option, 'scenario')
-    return acc
-  }, {} as Record<CyclePoolCapOption, ExecutionPlaybackVariant>)
-
-  const comparisonByCap = CAP_OPTIONS.reduce((acc, option) => {
-    acc[option.key] = buildComparisonView(originalVr, variants[option.key])
-    return acc
-  }, {} as Record<CyclePoolCapOption, VRComparisonView>)
+  const capOption = CAP_OPTIONS.find((o) => o.key === selectedCap) ?? CAP_OPTIONS[2]
+  const variant = buildVariantVFinal(event, capOption)
+  const comparison = buildComparisonView(originalVr, variant)
 
   return {
-    default_cap_option: '50',
+    default_cap_option: selectedCap,
     original_vr: originalVr,
-    variants,
-    comparison_by_cap: comparisonByCap,
+    variants: { [selectedCap]: variant },
+    comparison_by_cap: { [selectedCap]: comparison },
   }
+}
+
+/** Lazily build a single cap variant + comparison (for client-side on-demand compute). */
+export function buildVariantForCap(
+  event: ExecutionPlaybackSource,
+  cap: CyclePoolCapOption,
+): { variant: ExecutionPlaybackVariant; comparison: VRComparisonView } {
+  const originalVr = buildVariant(event, { key: 'unlimited', pct: null, label: 'Original VR' }, 'original')
+  const capOption = CAP_OPTIONS.find((o) => o.key === cap) ?? CAP_OPTIONS[2]
+  const variant = buildVariantVFinal(event, capOption)
+  return { variant, comparison: buildComparisonView(originalVr, variant) }
 }
 
 function summarizeVariant(variant: ExecutionPlaybackVariant): VRExecutionSummary {
@@ -848,7 +1676,7 @@ function formatDelta(delta: number, suffix = '') {
   return `${sign}${rounded}${suffix}`
 }
 
-function buildComparisonView(originalVr: ExecutionPlaybackVariant, scenarioVr: ExecutionPlaybackVariant): VRComparisonView {
+export function buildComparisonView(originalVr: ExecutionPlaybackVariant, scenarioVr: ExecutionPlaybackVariant): VRComparisonView {
   const originalSummary = summarizeVariant(originalVr)
   const scenarioSummary = summarizeVariant(scenarioVr)
 
@@ -857,8 +1685,8 @@ function buildComparisonView(originalVr: ExecutionPlaybackVariant, scenarioVr: E
     const originalPoint = originalMap.get(point.date) ?? originalVr.points[0]
     return {
       date: point.date,
-      original_evaluation_value: originalPoint?.evaluation_value ?? 0,
-      scenario_evaluation_value: point.evaluation_value,
+      original_evaluation_value: originalPoint?.portfolio_value ?? 0,
+      scenario_evaluation_value: point.portfolio_value,
       original_portfolio_value: originalPoint?.portfolio_value ?? 0,
       scenario_portfolio_value: point.portfolio_value,
       original_pool_remaining: originalPoint?.pool_cash_after_trade ?? 0,
@@ -870,37 +1698,37 @@ function buildComparisonView(originalVr: ExecutionPlaybackVariant, scenarioVr: E
     {
       label: 'Buy Logic',
       original_value: 'Mechanical cycle-grid deployment',
-      scenario_value: 'Cap-aware overlay with slower early deployment',
-    },
-    {
-      label: 'Pool Usage',
-      original_value: 'Faster pool consumption',
-      scenario_value: 'Pool preservation by cycle cap',
+      scenario_value: 'vFinal: ATH-based Vmin ladder (−40/−50/−60%) + MA200 full re-entry',
     },
     {
       label: 'Sell Logic',
-      original_value: 'Representative sell ladder can trim into strength',
-      scenario_value: 'No profit-harvest sells; reductions occur only through defense logic',
+      original_value: 'Representative sell ladder (not active in current test)',
+      scenario_value: 'vFinal: 100% sell at MA250 on crash trigger (DD5≤−10% AND DD10≤−18%)',
     },
     {
       label: 'Crash Response',
-      original_value: 'No explicit defense reduction',
-      scenario_value: 'Defense overlay is the only allowed reduction path',
+      original_value: 'No explicit crash detection or exit',
+      scenario_value: 'vFinal: immediate exit on MA250 retest; ARMED wait up to 60 days if below MA250',
     },
     {
-      label: 'Avg Cost Behavior',
-      original_value: 'Faster basis improvement when buys trigger',
-      scenario_value: 'Slower basis improvement with preserved cash',
+      label: 'Re-entry Logic',
+      original_value: 'Cycle-grid re-enters incrementally',
+      scenario_value: 'vFinal: 20% each at ATH×0.60/0.50/0.40, then remaining cash at MA200 cross',
+    },
+    {
+      label: 'Pool Usage',
+      original_value: 'Deploys throughout cycle at grid levels',
+      scenario_value: 'vFinal: holds 100% cash until ATH-fraction price targets or MA200 recovery',
     },
     {
       label: 'Objective',
-      original_value: 'Cost-basis improvement',
-      scenario_value: 'Survival and late-stage optionality',
+      original_value: 'Cost-basis improvement via cycle-grid',
+      scenario_value: 'Crash survival: full exit on signal, staged ATH-based re-entry, MA200 mop-up',
     },
     {
-      label: 'Late-Stage Optionality',
-      original_value: 'Weaker after deeper deployment',
-      scenario_value: 'Stronger if pool remains available',
+      label: 'Avg Cost Behavior',
+      original_value: 'Gradually improves through grid buys',
+      scenario_value: 'vFinal: resets to 0 on crash exit, rebuilds from deep Vmin levels',
     },
   ]
 
@@ -958,13 +1786,13 @@ function buildComparisonView(originalVr: ExecutionPlaybackVariant, scenarioVr: E
     behavior_rows: behaviorRows,
     interpretation: {
       headline:
-        scenarioSummary.total_pool_spent <= originalSummary.total_pool_spent
-          ? 'Scenario VR preserved more pool capacity while original VR deployed faster.'
-          : 'Scenario VR stayed closer to original VR deployment during this replay.',
+        scenarioSummary.sell_count > 0
+          ? 'Scenario VR (vFinal) executed a crash exit and staged re-entry via ATH-based Vmin ladder.'
+          : 'Scenario VR (vFinal) held position — no crash trigger fired during this replay.',
       subline:
-        scenarioSummary.defense_count > 0
-          ? 'The overlay adds defense reductions and slower capital usage, trading early basis improvement for later optionality.'
-          : 'The overlay mainly changed the pace of deployment and preserved more flexibility into later stages of the event.',
+        scenarioSummary.sell_count > 0
+          ? 'vFinal exits 100% at MA250 on DD5/DD10 crash signal, then re-enters at ATH×0.60/0.50/0.40 and MA200 recovery.'
+          : 'Original VR uses mechanical cycle-grid deployment; vFinal waits for crash trigger before deploying crash-survival logic.',
     },
   }
 }

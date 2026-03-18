@@ -2219,7 +2219,7 @@ function OverviewTab({ data }: { data: RiskV1Data }) {
                         {stage}<span style={{ fontSize: '0.75rem', color: stageWarn ? '#f97316' : '#4ade80', marginLeft: 3 }}>{stageLabel.split(' ')[0]}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', lineHeight: 1.45, marginTop: 4 }}>
-                        Equity -> loans -> credit -> finance. Panic is stage 6.
+                        Equity {"->"} loans {"->"} credit {"->"} finance. Panic is stage 6.
                       </div>
                     </div>
 

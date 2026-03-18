@@ -3,7 +3,7 @@ import type {
   RawVRSurvivalPlaybackArchive,
 } from '../playback/vr_playback_loader'
 
-type StrategyKey = 'buy_hold' | 'ma200_risk_control' | 'fixed_stop_loss' | 'vr_engine'
+type StrategyKey = 'buy_hold' | 'ma200_risk_control' | 'fixed_stop_loss' | 'adaptive_exposure' | 'original_vr_scaled'
 
 type StandardPlaybackPoint = RawStandardPlaybackArchive['events'][number]['playback'][number]
 type SurvivalPlaybackPoint = RawVRSurvivalPlaybackArchive['events'][number]['playback'][number]
@@ -22,22 +22,25 @@ export type StrategyArenaEventView = {
   playback_event_id: string
   start: string
   end: string
-  vr_source: 'survival_archive' | 'level_proxy'
-  metrics: Record<StrategyKey, StrategyArenaMetric>
+  vr_source: 'survival_archive' | null
+  metrics: Partial<Record<StrategyKey, StrategyArenaMetric>>
   chart_data: Array<{
     date: string
     buy_hold_equity: number
     ma200_risk_control_equity: number
     fixed_stop_loss_equity: number
-    vr_engine_equity: number
+    adaptive_exposure_equity: number | null
+    original_vr_scaled_equity: number | null
     buy_hold_drawdown: number
     ma200_risk_control_drawdown: number
     fixed_stop_loss_drawdown: number
-    vr_engine_drawdown: number
+    adaptive_exposure_drawdown: number | null
+    original_vr_scaled_drawdown: number | null
     buy_hold_exposure: number
     ma200_risk_control_exposure: number
     fixed_stop_loss_exposure: number
-    vr_engine_exposure: number
+    adaptive_exposure_exposure: number | null
+    original_vr_scaled_exposure: number | null
   }>
 }
 
@@ -56,17 +59,9 @@ const ARENA_TARGETS = [
   { id: '2018-volmageddon', label: '2018 Volmageddon', standard_event_name: '2018-02 Risk Event' },
   { id: '2020-covid-crash', label: '2020 COVID Crash', standard_event_name: '2020-02 Risk Event' },
   { id: '2022-bear-market', label: '2022 Bear Market', standard_event_name: '2021-12 Risk Event' },
-  { id: '2024-correction', label: '2024 Correction', standard_event_name: '2024-04 Risk Event' },
-  { id: '2026-risk-event', label: '2026 Risk Event', standard_event_name: '2026-02 Risk Event' },
+  { id: '2024-yen-carry', label: '2024 Yen Carry', standard_event_name: '2024-07 Risk Event' },
+  { id: '2025-tariff', label: '2025 Tariff Crisis', standard_event_name: '2025 Tariff Event' },
 ] as const
-
-const VR_PROXY_EXPOSURE_BY_LEVEL: Record<number, number> = {
-  0: 100,
-  1: 75,
-  2: 50,
-  3: 25,
-  4: 0,
-}
 
 function toDateValue(value: string) {
   return new Date(`${value}T00:00:00Z`).getTime()
@@ -260,36 +255,65 @@ function buildFixedStopCurve(assetSeries: Array<{ date: string; asset_n: number;
   return normalizeCurve(points)
 }
 
-function buildVRProxyCurve(
-  assetSeries: Array<{ date: string; asset_n: number; level: number }>,
-  survivalEvent: RawVRSurvivalPlaybackArchive['events'][number] | null
-) {
-  if (survivalEvent?.playback?.length) {
-    const first = survivalEvent.playback[0]?.vr_10k ?? 10000
-    return normalizeCurve(
-      survivalEvent.playback.map((point) => ({
-        date: point.d,
-        value: (point.vr_10k / first) * 100,
-        exposure: point.exposure_pct,
-      }))
-    )
-  }
+// Adaptive Exposure: VR engine's exposure decisions applied to TQQQ returns
+// Same instrument as all other Backtest curves; exposure_pct from survival archive
+function buildAdaptiveExposureCurve(
+  survivalEvent: RawVRSurvivalPlaybackArchive['events'][number] | null,
+  assetSeries: Array<{ date: string; asset_n: number }>
+): ReturnType<typeof normalizeCurve> | null {
+  if (!survivalEvent?.playback?.length) return null
+
+  const vrByDate = new Map(survivalEvent.playback.map((point) => [point.d, point.exposure_pct]))
 
   let equity = 100
-  let exposure = VR_PROXY_EXPOSURE_BY_LEVEL[assetSeries[0]?.level ?? 0] ?? 100
-  const points: Array<{ date: string; value: number; exposure: number }> = [
-    { date: assetSeries[0]?.date ?? '', value: equity, exposure },
-  ]
+  const points: Array<{ date: string; value: number; exposure: number }> = []
 
-  for (let index = 1; index < assetSeries.length; index += 1) {
-    const prev = assetSeries[index - 1]
-    const current = assetSeries[index]
-    const assetReturn = prev.asset_n > 0 ? (current.asset_n - prev.asset_n) / prev.asset_n : 0
-    equity *= 1 + assetReturn * (exposure / 100)
-    exposure = VR_PROXY_EXPOSURE_BY_LEVEL[current.level] ?? 100
-    points.push({ date: current.date, value: equity, exposure })
+  for (let index = 0; index < assetSeries.length; index++) {
+    const { date, asset_n } = assetSeries[index]
+    const exposure = vrByDate.get(date)
+    if (exposure == null) continue
+
+    if (points.length > 0) {
+      const prevAssetN = assetSeries[index - 1]?.asset_n
+      if (typeof prevAssetN === 'number' && prevAssetN > 0) {
+        const assetReturn = (asset_n - prevAssetN) / prevAssetN
+        equity *= 1 + assetReturn * (exposure / 100)
+      }
+    }
+
+    points.push({ date, value: equity, exposure })
   }
 
+  if (points.length < 2) return null
+  return normalizeCurve(points)
+}
+
+// Original VR (Scaled): pre-computed vr_10k from survival archive, scaled to TQQQ magnitude
+// Formula: TQQQ_BH[t] × (vr_10k[t] / bh_10k[t])
+// This preserves the VR engine's QQQ-space alpha while placing the curve on the same
+// TQQQ scale as all other Backtest curves — making divergence from Adaptive Exposure visible.
+function buildOriginalVRCurve(
+  survivalEvent: RawVRSurvivalPlaybackArchive['events'][number] | null,
+  assetSeries: Array<{ date: string; asset_n: number }>
+): ReturnType<typeof normalizeCurve> | null {
+  if (!survivalEvent?.playback?.length) return null
+
+  const vrByDate = new Map(survivalEvent.playback.map((point) => [point.d, point]))
+  const firstAsset = assetSeries[0]?.asset_n ?? 0
+  if (firstAsset <= 0) return null
+
+  const points: Array<{ date: string; value: number; exposure: number }> = []
+
+  for (const { date, asset_n } of assetSeries) {
+    const vrPoint = vrByDate.get(date)
+    if (!vrPoint || vrPoint.bh_10k <= 0) continue
+
+    const tqqqBH = (asset_n / firstAsset) * 100          // TQQQ B&H normalized to 100
+    const vrEfficiency = vrPoint.vr_10k / vrPoint.bh_10k // VR vs B&H ratio in QQQ space
+    points.push({ date, value: tqqqBH * vrEfficiency, exposure: vrPoint.exposure_pct })
+  }
+
+  if (points.length < 2) return null
   return normalizeCurve(points)
 }
 
@@ -297,23 +321,32 @@ function zipChartData(input: {
   buyHold: ReturnType<typeof buildBuyHoldCurve>
   ma200: ReturnType<typeof buildMA200Curve>
   fixedStop: ReturnType<typeof buildFixedStopCurve>
-  vrEngine: ReturnType<typeof buildVRProxyCurve>
+  adaptiveExposure: ReturnType<typeof buildAdaptiveExposureCurve>
+  originalVR: ReturnType<typeof buildOriginalVRCurve>
 }) {
-  const length = Math.min(input.buyHold.length, input.ma200.length, input.fixedStop.length, input.vrEngine.length)
+  const baseLength = Math.min(input.buyHold.length, input.ma200.length, input.fixedStop.length)
+  const length = [
+    baseLength,
+    ...(input.adaptiveExposure ? [input.adaptiveExposure.length] : []),
+    ...(input.originalVR ? [input.originalVR.length] : []),
+  ].reduce((a, b) => Math.min(a, b))
   return Array.from({ length }, (_, index) => ({
     date: input.buyHold[index].date,
     buy_hold_equity: input.buyHold[index].equity,
     ma200_risk_control_equity: input.ma200[index].equity,
     fixed_stop_loss_equity: input.fixedStop[index].equity,
-    vr_engine_equity: input.vrEngine[index].equity,
+    adaptive_exposure_equity: input.adaptiveExposure ? input.adaptiveExposure[index].equity : null,
+    original_vr_scaled_equity: input.originalVR ? input.originalVR[index]?.equity ?? null : null,
     buy_hold_drawdown: input.buyHold[index].drawdown,
     ma200_risk_control_drawdown: input.ma200[index].drawdown,
     fixed_stop_loss_drawdown: input.fixedStop[index].drawdown,
-    vr_engine_drawdown: input.vrEngine[index].drawdown,
+    adaptive_exposure_drawdown: input.adaptiveExposure ? input.adaptiveExposure[index].drawdown : null,
+    original_vr_scaled_drawdown: input.originalVR ? input.originalVR[index]?.drawdown ?? null : null,
     buy_hold_exposure: input.buyHold[index].exposure,
     ma200_risk_control_exposure: input.ma200[index].exposure,
     fixed_stop_loss_exposure: input.fixedStop[index].exposure,
-    vr_engine_exposure: input.vrEngine[index].exposure,
+    adaptive_exposure_exposure: input.adaptiveExposure ? input.adaptiveExposure[index].exposure : null,
+    original_vr_scaled_exposure: input.originalVR ? input.originalVR[index]?.exposure ?? null : null,
   }))
 }
 
@@ -368,7 +401,8 @@ export function buildStrategyArena(input: {
     const buyHold = buildBuyHoldCurve(assetSeries)
     const ma200 = buildMA200Curve(assetSeries)
     const fixedStop = buildFixedStopCurve(assetSeries)
-    const vrEngine = buildVRProxyCurve(assetSeries, survivalEvent)
+    const adaptiveExposure = buildAdaptiveExposureCurve(survivalEvent, assetSeries)
+    const originalVR = buildOriginalVRCurve(survivalEvent, assetSeries)
 
     return {
       id: target.id,
@@ -377,23 +411,46 @@ export function buildStrategyArena(input: {
       playback_event_id: standardEvent.start.slice(0, 7),
       start: assetSeries[0].date,
       end: assetSeries[assetSeries.length - 1].date,
-      vr_source: survivalEvent ? 'survival_archive' : 'level_proxy',
+      vr_source: survivalEvent ? 'survival_archive' as const : null,
       metrics: {
         buy_hold: computeMetric(buyHold),
         ma200_risk_control: computeMetric(ma200),
         fixed_stop_loss: computeMetric(fixedStop),
-        vr_engine: computeMetric(vrEngine),
+        ...(adaptiveExposure ? { adaptive_exposure: computeMetric(adaptiveExposure) } : {}),
+        ...(originalVR ? { original_vr_scaled: computeMetric(originalVR) } : {}),
       },
-      chart_data: zipChartData({ buyHold, ma200, fixedStop, vrEngine }),
+      chart_data: zipChartData({ buyHold, ma200, fixedStop, adaptiveExposure, originalVR }),
     }
-  }).filter((event): event is StrategyArenaEventView => Boolean(event))
+  })
+  // Validation log — verify all curves start at 100 and share same TQQQ baseline
+  .map((event) => {
+    if (!event) return null
+    const cd = event.chart_data
+    const startDate = cd[0]?.date ?? 'n/a'
+    const first5 = (vals: (number | null | undefined)[]) => JSON.stringify(vals.filter(v => v != null).slice(0, 5).map(v => +(v as number).toFixed(2)))
+    const curves: Array<[string, (number | null)[] | undefined]> = [
+      ['Buy & Hold', cd.map(p => p.buy_hold_equity)],
+      ['MA200 Risk Control', cd.map(p => p.ma200_risk_control_equity)],
+      ['Fixed Stop Loss', cd.map(p => p.fixed_stop_loss_equity)],
+      ['Adaptive Exposure', cd.map(p => p.adaptive_exposure_equity)],
+      ['Original VR (Scaled)', cd.map(p => p.original_vr_scaled_equity)],
+    ]
+    curves.forEach(([name, vals]) => {
+      if (!vals?.length) return
+      const first = vals.find(v => v != null)
+      const warn = (first != null && Math.abs(first - 100) > 0.5) ? ' ⚠ DOES NOT START AT 100' : ''
+      console.log(`Arena ${event.label} | ${name} | asset=TQQQ | start=${startDate} | first5=${first5(vals)}${warn}`)
+    })
+    return event
+  })
+  .filter((event) => event !== null) as StrategyArenaEventView[]
 
   return {
     events,
     methodology: {
       fixed_stop_loss_rule: 'Exit after a 12% instrument drawdown from entry peak. Re-enter on MA50 reclaim with improving price.',
       ma200_rule: 'Stay fully invested above MA200 and move to cash below MA200.',
-      vr_source_priority: 'Use survival archive when available. Otherwise use standard event levels mapped to VR exposure caps.',
+      vr_source_priority: 'Adaptive Exposure applies VR exposure_pct decisions to TQQQ returns (daily fractional model, asset=TQQQ). Original VR (Scaled) applies the archive efficiency ratio (vr_10k/bh_10k) to the TQQQ B&H curve — it is a scaled reference, not a TQQQ re-execution of the VR engine. Both require a survival archive.',
     },
   }
 }

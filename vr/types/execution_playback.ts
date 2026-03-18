@@ -65,6 +65,7 @@ export type ExecutionPoint = {
   buy_blocked_by_cycle_cap: boolean
   trade_reason: string | null
   state_after_trade: string
+  structural_state: 'NONE' | 'STRUCTURAL_WATCH' | 'STRUCTURAL_STRESS' | 'STRUCTURAL_CRASH'
 }
 
 export type PoolUsageSummary = {
@@ -260,6 +261,6 @@ export type VRComparisonView = {
 export type ExecutionPlaybackCollection = {
   default_cap_option: CyclePoolCapOption
   original_vr: ExecutionPlaybackVariant
-  variants: Record<CyclePoolCapOption, ExecutionPlaybackVariant>
-  comparison_by_cap: Record<CyclePoolCapOption, VRComparisonView>
+  variants: Partial<Record<CyclePoolCapOption, ExecutionPlaybackVariant>>
+  comparison_by_cap: Partial<Record<CyclePoolCapOption, VRComparisonView>>
 }

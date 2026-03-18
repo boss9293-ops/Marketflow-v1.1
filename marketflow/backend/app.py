@@ -9,6 +9,8 @@ import tempfile
 from datetime import datetime, timedelta
 import hashlib
 from ai import gpt_client, gemini_client
+from api.analyze_srs import srs_bp
+from api.analyze_integrated import integrated_bp
 # -- In-memory TTL cache (10s) ------------------------------------------
 import time as _time
 from validation_engine import ValidationEngine
@@ -48,6 +50,8 @@ def load_json_or_none_cached(filename: str):
 
 app = Flask(__name__)
 CORS(app)
+app.register_blueprint(srs_bp)
+app.register_blueprint(integrated_bp)
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
 VALIDATION_SNAPSHOT_DIR = os.path.join(os.path.dirname(__file__), 'storage', 'validation_snapshots')

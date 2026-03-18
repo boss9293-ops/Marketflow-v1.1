@@ -2,13 +2,15 @@
 RRG (Relative Rotation Graph) Data Generator
 주간 데이터 기반 JdK RS-Ratio & RS-Momentum 계산
 Output: output/rrg_data.json
+
+Data source: ohlcv_daily DB (primary) → yfinance (fallback)
 """
-import yfinance as yf
 import pandas as pd
 import numpy as np
 import json
 import os
-from datetime import datetime
+import sqlite3
+from datetime import datetime, timedelta
 
 SECTORS = {
     'XLK':  'Technology',
@@ -25,23 +27,75 @@ SECTORS = {
 }
 BENCHMARK = 'SPY'
 WEEKS = 10        # RS-Ratio SMA 기간
-TRAIL_POINTS = 52 # 저장할 최대 트레일 포인트 수 (프론트에서 슬라이더로 제어)
+TRAIL_POINTS = 52 # 저장할 최대 트레일 포인트 수
 
 
-def calculate_rrg(symbol, bench_close, weeks=WEEKS):
+def get_db_path() -> str:
+    base = os.path.dirname(__file__)
+    candidates = [
+        os.path.join(base, '..', '..', 'data', 'marketflow.db'),
+        os.path.join(base, '..', 'data', 'marketflow.db'),
+    ]
+    for p in candidates:
+        norm = os.path.normpath(p)
+        if os.path.exists(norm):
+            return norm
+    return os.path.normpath(candidates[0])
+
+
+def load_weekly_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | None:
+    """Load daily close from DB and resample to weekly (Friday)."""
+    db = get_db_path()
+    if not os.path.exists(db):
+        return None
+    cutoff = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
     try:
-        stock = yf.download(symbol, period='1y', interval='1wk',
-                            auto_adjust=True, progress=False)
-        if stock.empty:
+        conn = sqlite3.connect(db)
+        df = pd.read_sql_query(
+            "SELECT date, close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
+            conn, params=(symbol, cutoff),
+        )
+        conn.close()
+        if df.empty or len(df) < 50:
             return None
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.set_index('date')['close']
+        # Resample to weekly (Friday)
+        weekly = df.resample('W-FRI').last().dropna()
+        return weekly
+    except Exception as e:
+        print(f"  DB load error {symbol}: {e}")
+        return None
 
-        # MultiIndex 처리
-        close = stock['Close']
+
+def load_weekly(symbol: str) -> pd.Series | None:
+    """Try DB first, fall back to yfinance."""
+    series = load_weekly_from_db(symbol)
+    if series is not None and len(series) >= 15:
+        return series
+    # fallback
+    try:
+        import yfinance as yf
+        raw = yf.download(symbol, period='1y', interval='1wk',
+                          auto_adjust=True, progress=False)
+        if raw.empty:
+            return None
+        close = raw['Close']
         if isinstance(close, pd.DataFrame):
             close = close.iloc[:, 0]
-        close = close.dropna()
+        return close.dropna()
+    except Exception as e:
+        print(f"  yfinance fallback error {symbol}: {e}")
+        return None
 
-        # 공통 인덱스 맞추기
+
+def calculate_rrg(symbol: str, bench_close: pd.Series, weeks: int = WEEKS):
+    try:
+        close = load_weekly(symbol)
+        if close is None:
+            return None
+
+        # Align to common index
         common = close.index.intersection(bench_close.index)
         if len(common) < weeks + 3:
             return None
@@ -51,11 +105,11 @@ def calculate_rrg(symbol, bench_close, weeks=WEEKS):
         # Relative Strength
         rs = close / bench
 
-        # RS-Ratio: rs / rs의 rolling SMA * 100
+        # RS-Ratio: rs / rolling SMA * 100
         rs_sma = rs.rolling(window=weeks).mean()
         rs_ratio = (rs / rs_sma) * 100
 
-        # RS-Momentum: ratio의 1주 ROC + 100 (표준 JdK 근사)
+        # RS-Momentum: 1-week ROC + 100 (JdK approximation)
         rs_momentum = rs_ratio.pct_change(1) * 100 + 100
 
         rs_ratio = rs_ratio.dropna()
@@ -67,7 +121,6 @@ def calculate_rrg(symbol, bench_close, weeks=WEEKS):
         rs_ratio = rs_ratio[common2]
         rs_momentum = rs_momentum[common2]
 
-        # Trail: 최근 TRAIL_POINTS 포인트 (현재 제외)
         trail = []
         for i in range(-TRAIL_POINTS - 1, -1):
             if abs(i) > len(rs_ratio):
@@ -82,9 +135,8 @@ def calculate_rrg(symbol, bench_close, weeks=WEEKS):
             'momentum': round(float(rs_momentum.iloc[-1]), 4),
         }
 
-        price_change = float(
-            ((close.iloc[-1] / close.iloc[-TRAIL_POINTS]) - 1) * 100
-        )
+        n = min(TRAIL_POINTS, len(close))
+        price_change = float(((close.iloc[-1] / close.iloc[-n]) - 1) * 100)
 
         return {
             'current':  current,
@@ -99,17 +151,13 @@ def calculate_rrg(symbol, bench_close, weeks=WEEKS):
 
 
 def generate_rrg_data():
-    print("Downloading benchmark (SPY)...")
-    bench_raw = yf.download(BENCHMARK, period='1y', interval='1wk',
-                            auto_adjust=True, progress=False)
-    if bench_raw.empty:
-        print("Failed to download SPY")
+    print(f"Loading benchmark ({BENCHMARK}) from DB...")
+    bench_close = load_weekly(BENCHMARK)
+    if bench_close is None or len(bench_close) < 15:
+        print(f"Failed to load {BENCHMARK} data")
         return
 
-    bench_close = bench_raw['Close']
-    if isinstance(bench_close, pd.DataFrame):
-        bench_close = bench_close.iloc[:, 0]
-    bench_close = bench_close.dropna()
+    print(f"  {BENCHMARK}: {len(bench_close)} weekly bars ({bench_close.index[0].date()} -> {bench_close.index[-1].date()})")
 
     rrg_data = {
         'timestamp': datetime.now().isoformat(),
@@ -136,7 +184,7 @@ def generate_rrg_data():
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(rrg_data, f, indent=2, ensure_ascii=False)
 
-    print(f"RRG data saved: {len(rrg_data['sectors'])} sectors → {output_path}")
+    print(f"RRG data saved: {len(rrg_data['sectors'])} sectors -> {output_path}")
 
 
 if __name__ == '__main__':

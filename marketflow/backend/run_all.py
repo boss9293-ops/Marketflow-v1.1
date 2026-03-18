@@ -35,6 +35,10 @@ SCRIPT_TIMEOUTS: dict[str, int] = {
     "predictor_ml.py":       600,   # 10 min — ML inference
     "build_snapshots_120d.py": 600, # 10 min — 120-day rolling series
     "backfill_macro_snapshots.py": 3600, # 60 min bootstrap on cold start
+    "build_risk_alert.py":         600,  # 10 min — historical crash event scan
+    "build_navigator_full_snapshots.py": 600, # 10 min — 2Y/5Y snapshot series
+    "rrg_calculator.py":           120,  #  2 min — RRG via yfinance
+    "build_tqqq_dca.py":           120,  #  2 min — DCA backtest compute
 }
 
 
@@ -57,9 +61,11 @@ SCRIPTS = [
     ("update_market_daily.py", "Update Market Daily (QQQ/SPY/VIX/rates/FX/commodities)"),
     ("collect_macro_cache.py", "Collect Macro Cache (SQLite)"),
     ("sector_performance.py", "Sector Performance"),
+    ("rrg_calculator.py", "Build RRG Sector Rotation Data"),
     ("update_indicators.py", "Update Indicators Daily"),
     ("build_daily_snapshot.py", "Build Daily Snapshot"),
     ("update_snapshot_alerts.py", "Update Snapshot Alerts"),
+    ("update_snapshot_trends.py", "Update Snapshot Trend Fields (DB)"),
     ("build_hot_zone.py", "Build HOT ZONE Cache"),
     ("build_sector_rotation_cache.py", "Build Sector Rotation Cache"),
     ("build_ml_prediction.py", "Build ML Prediction v2 Cache"),
@@ -69,6 +75,7 @@ SCRIPTS = [
     ("build_etf_room.py", "Build ETF Room Cache"),
     ("build_cache_json.py", "Build Dashboard Cache JSON"),
     ("build_snapshots_120d.py", "Build 120-Day Snapshot Series"),
+    ("build_navigator_full_snapshots.py", "Build Navigator Full Snapshots (2Y/5Y)"),
     ("build_overview.py", "Build Overview Summary"),
     ("build_market_state.py", "Build Market State Pills"),
     ("build_market_tape.py", "Build Market Tape Cache"),
@@ -79,9 +86,11 @@ SCRIPTS = [
     ("build_market_health.py", "Build Market Health 4-Score"),
     ("risk_engine.py",       "Compute Risk Engine Metrics"),
     ("build_risk_v1.py",     "Build Risk v1 (Standard Risk System)"),
+    ("build_risk_alert.py",  "Build Risk Alert System (Crash Engine)"),
     ("build_current_90d.py",  "Build Current 90-Day Playback (cur90)"),
     ("build_macro_snapshot.py", "Build Macro Layer v2 Snapshot"),
     ("build_validation_snapshot.py", "Build Macro Validation Auto-Guard Snapshot"),
+    ("build_tqqq_dca.py",   "Build TQQQ DCA Backtest Cache"),
     ("validate_cache.py",   "Validate Cache & Write healthcheck.json"),
 ]
 

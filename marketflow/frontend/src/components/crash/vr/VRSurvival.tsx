@@ -16,8 +16,14 @@ import {
   YAxis,
 } from 'recharts'
 import HistoricalAnalogPanel, { type HistoricalAnalogSummary } from './HistoricalAnalogPanel'
+import { StrategyLabTab, type LabEvent } from './StrategyLabTab'
 import ScenarioEnginePanel from './ScenarioEnginePanel'
 import SuggestedPostureStrip, { type VRPostureMessage } from './SuggestedPostureStrip'
+import {
+  buildVariantForCap,
+  type ExecutionPlaybackSource,
+} from '../../../../../../vr/playback/build_execution_playback'
+import CycleSummaryCard from '../../vr/CycleSummaryCard'
 
 export type VRSurvivalData = {
   run_id: string
@@ -30,6 +36,7 @@ export type VRSurvivalData = {
     exposure_pct: number
     survival_active: boolean
     explain: string
+    structural_state: string
     shock_cooldown: number
     days_below_ma200: number
     price: number
@@ -274,6 +281,8 @@ type VRPlaybackEventView = {
         cycle_no: number
         cycle_start_date: string
         cycle_end_date: string
+        representative_buy_grid: Array<{ level_no: number; price: number; weight: number; status: string; touched: boolean; executed: boolean; note: string }>
+        representative_sell_grid: Array<{ level_no: number; price: number; weight: number; status: string; touched: boolean; executed: boolean; note: string }>
       } | null
       previous_cycle: {
         cycle_no: number
@@ -394,11 +403,43 @@ type VRPlaybackEventView = {
         trade_reason: string | null
         state_after_trade: string
       }>
-      buy_markers: Array<unknown>
-      sell_markers: Array<unknown>
-      defense_markers: Array<unknown>
+      buy_markers: Array<{
+        date: string; price: number; normalized_value: number; cycle_no: number;
+        title: string; reason: string; marker_type: 'buy' | 'sell' | 'defense' | 'cap_block';
+        trigger_source?: string; ladder_level_hit?: number | null; sell_gate_open?: boolean;
+        share_delta?: number; blocked_level_no?: number; shares_after_trade: number;
+        avg_cost_after_trade: number; pool_cash_after_trade: number; total_portfolio_value?: number;
+        cycle_pool_used_pct: number; evaluation_value?: number;
+        vref_eval?: number; vmin_eval?: number; vmax_eval?: number; state_after_trade?: string;
+      }>
+      sell_markers: Array<{
+        date: string; price: number; normalized_value: number; cycle_no: number;
+        title: string; reason: string; marker_type: 'buy' | 'sell' | 'defense' | 'cap_block';
+        trigger_source?: string; ladder_level_hit?: number | null; sell_gate_open?: boolean;
+        share_delta?: number; blocked_level_no?: number; shares_after_trade: number;
+        avg_cost_after_trade: number; pool_cash_after_trade: number; total_portfolio_value?: number;
+        cycle_pool_used_pct: number; evaluation_value?: number;
+        vref_eval?: number; vmin_eval?: number; vmax_eval?: number; state_after_trade?: string;
+      }>
+      defense_markers: Array<{
+        date: string; price: number; normalized_value: number; cycle_no: number;
+        title: string; reason: string; marker_type: 'buy' | 'sell' | 'defense' | 'cap_block';
+        trigger_source?: string; ladder_level_hit?: number | null; sell_gate_open?: boolean;
+        share_delta?: number; blocked_level_no?: number; shares_after_trade: number;
+        avg_cost_after_trade: number; pool_cash_after_trade: number; total_portfolio_value?: number;
+        cycle_pool_used_pct: number; evaluation_value?: number;
+        vref_eval?: number; vmin_eval?: number; vmax_eval?: number; state_after_trade?: string;
+      }>
       avg_cost_line: Array<{ date: string; value: number }>
-      pool_cap_flags: Array<unknown>
+      pool_cap_flags: Array<{
+        date: string; price: number; normalized_value: number; cycle_no: number;
+        title: string; reason: string; marker_type: 'buy' | 'sell' | 'defense' | 'cap_block';
+        trigger_source?: string; ladder_level_hit?: number | null; sell_gate_open?: boolean;
+        share_delta?: number; blocked_level_no?: number; shares_after_trade: number;
+        avg_cost_after_trade: number; pool_cash_after_trade: number; total_portfolio_value?: number;
+        cycle_pool_used_pct: number; evaluation_value?: number;
+        vref_eval?: number; vmin_eval?: number; vmax_eval?: number; state_after_trade?: string;
+      }>
       vmin_recovery_attempt_zones: Array<{ start_date: string; end_date: string; label: string }>
       failed_recovery_zones: Array<{ start_date: string; end_date: string; label: string }>
       scenario_phase_zones: Array<{ start_date: string; end_date: string; label: string }>
@@ -418,7 +459,14 @@ type VRPlaybackEventView = {
         active_cycle_blocked_buy_count: number
         last_trade_date: string | null
       }
-      trade_log: Array<unknown>
+      trade_log: Array<{
+        replay_date: string; cycle_no: number | null; state_before: string; buy_signal: boolean; sell_signal: boolean;
+        defense_signal: boolean; trade_executed: boolean; trade_type: 'buy' | 'sell' | 'defense' | 'blocked_buy' | null;
+        trigger_source: string | null; ladder_level_hit: number | null; trade_price: number | null;
+        stock_evaluation_value: number; vref_eval: number | null; vmax_eval: number | null; sell_gate_open: boolean;
+        shares_before: number; shares_after: number; avg_cost_before: number; avg_cost_after: number;
+        pool_cash_before: number; pool_cash_after: number; cycle_pool_used_pct: number; blocked_by_cap: boolean; state_after: string;
+      }>
       validation_summary: {
         has_buy_execution: boolean
         has_sell_execution: boolean
@@ -448,6 +496,9 @@ type VRPlaybackEventView = {
         start_date: string
         end_date: string
         in_event: boolean
+        vref_eval: number
+        vmin_eval: number
+        vmax_eval: number
         start_evaluation_value: number
         avg_evaluation_value: number
         end_evaluation_value: number
@@ -481,7 +532,7 @@ type VRPlaybackEventView = {
         event_low_date: string | null
       } | null
     }
-    variants: Record<
+    variants: Partial<Record<
       '30' | '40' | '50' | 'unlimited',
       {
         cap_option: '30' | '40' | '50' | 'unlimited'
@@ -529,6 +580,9 @@ type VRPlaybackEventView = {
           title: string
           reason: string
           marker_type: 'buy' | 'sell' | 'defense' | 'cap_block'
+          trigger_source?: string
+          ladder_level_hit?: number | null
+          sell_gate_open?: boolean
           share_delta?: number
           blocked_level_no?: number
           shares_after_trade: number
@@ -550,6 +604,9 @@ type VRPlaybackEventView = {
           title: string
           reason: string
           marker_type: 'buy' | 'sell' | 'defense' | 'cap_block'
+          trigger_source?: string
+          ladder_level_hit?: number | null
+          sell_gate_open?: boolean
           share_delta?: number
           blocked_level_no?: number
           shares_after_trade: number
@@ -571,6 +628,9 @@ type VRPlaybackEventView = {
           title: string
           reason: string
           marker_type: 'buy' | 'sell' | 'defense' | 'cap_block'
+          trigger_source?: string
+          ladder_level_hit?: number | null
+          sell_gate_open?: boolean
           share_delta?: number
           blocked_level_no?: number
           shares_after_trade: number
@@ -593,6 +653,9 @@ type VRPlaybackEventView = {
           title: string
           reason: string
           marker_type: 'buy' | 'sell' | 'defense' | 'cap_block'
+          trigger_source?: string
+          ladder_level_hit?: number | null
+          sell_gate_open?: boolean
           share_delta?: number
           blocked_level_no?: number
           shares_after_trade: number
@@ -696,6 +759,9 @@ type VRPlaybackEventView = {
           start_date: string
           end_date: string
           in_event: boolean
+          vref_eval: number
+          vmin_eval: number
+          vmax_eval: number
           start_evaluation_value: number
           avg_evaluation_value: number
           end_evaluation_value: number
@@ -729,8 +795,8 @@ type VRPlaybackEventView = {
           event_low_date: string | null
         } | null
       }
-    >
-    comparison_by_cap: Record<
+    >>
+    comparison_by_cap: Partial<Record<
       '30' | '40' | '50' | 'unlimited',
       {
         chart_rows: Array<{
@@ -786,7 +852,7 @@ type VRPlaybackEventView = {
           subline: string
         }
       }
-    >
+    >>
   }
 }
 
@@ -805,8 +871,8 @@ type StrategyArenaView = {
     playback_event_id: string
     start: string
     end: string
-    vr_source: 'survival_archive' | 'level_proxy'
-    metrics: {
+    vr_source: 'survival_archive' | null
+    metrics: Partial<{
       buy_hold: {
         final_return_pct: number
         max_drawdown_pct: number
@@ -825,27 +891,36 @@ type StrategyArenaView = {
         recovery_time_days: number | null
         exposure_stability_pct: number
       }
-      vr_engine: {
+      adaptive_exposure: {
         final_return_pct: number
         max_drawdown_pct: number
         recovery_time_days: number | null
         exposure_stability_pct: number
       }
-    }
+      original_vr_scaled: {
+        final_return_pct: number
+        max_drawdown_pct: number
+        recovery_time_days: number | null
+        exposure_stability_pct: number
+      }
+    }>
     chart_data: Array<{
       date: string
       buy_hold_equity: number
       ma200_risk_control_equity: number
       fixed_stop_loss_equity: number
-      vr_engine_equity: number
+      adaptive_exposure_equity: number | null
+      original_vr_scaled_equity: number | null
       buy_hold_drawdown: number
       ma200_risk_control_drawdown: number
       fixed_stop_loss_drawdown: number
-      vr_engine_drawdown: number
+      adaptive_exposure_drawdown: number | null
+      original_vr_scaled_drawdown: number | null
       buy_hold_exposure: number
       ma200_risk_control_exposure: number
       fixed_stop_loss_exposure: number
-      vr_engine_exposure: number
+      adaptive_exposure_exposure: number | null
+      original_vr_scaled_exposure: number | null
     }>
   }>
   methodology: {
@@ -855,23 +930,25 @@ type StrategyArenaView = {
   }
 }
 
-const TABS = ['Overview', 'Playback', 'Backtest', 'Pool Logic', 'Options Overlay', 'Philosophy'] as const
+const TABS = ['Overview', 'Strategy Lab', 'Crash Analysis', 'Backtest', 'Playback', 'Pool Logic', 'Options Overlay', 'Philosophy'] as const
 const HEATMAP_SYMBOLS = ['TQQQ', 'SOXL', 'TECL', 'SPXL', 'UPRO', 'LABU'] as const
 export type Tab = (typeof TABS)[number]
 type HeatmapState = 'Stable' | 'Weak' | 'Fragile' | 'Breakdown Risk' | 'No Data'
 
 const STRATEGY_LABELS = {
-  buy_hold: 'Buy and Hold',
+  buy_hold: 'Buy & Hold',
   ma200_risk_control: 'MA200 Risk Control',
   fixed_stop_loss: 'Fixed Stop Loss',
-  vr_engine: 'VR Engine',
+  adaptive_exposure: 'Adaptive Exposure',
+  original_vr_scaled: 'Original VR (Scaled)',
 } as const
 
 const STRATEGY_COLORS = {
   buy_hold: '#60a5fa',
   ma200_risk_control: '#f59e0b',
   fixed_stop_loss: '#f97316',
-  vr_engine: '#34d399',
+  adaptive_exposure: '#34d399',
+  original_vr_scaled: '#818cf8',
 } as const
 
 function panelStyle(extra?: CSSProperties): CSSProperties {
@@ -962,7 +1039,7 @@ function PlaceholderCard({
     >
       <div
         style={{
-          fontSize: '0.75rem',
+          fontSize: '0.71rem',
           color: '#94a3b8',
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
@@ -1014,8 +1091,24 @@ function formatRecoveryDays(value: number | null) {
   return value == null ? 'Not Recovered' : `${value}d`
 }
 
-function CycleStartPanel({ cycleStart }: { cycleStart: VRPlaybackEventView['cycle_start'] }) {
+function CycleStartPanel({
+  cycleStart,
+  eventId,
+  eventStart,
+  eventEnd,
+  chartData,
+  onApply,
+}: {
+  cycleStart: VRPlaybackEventView['cycle_start']
+  eventId: string
+  eventStart: string
+  eventEnd: string
+  chartData: VRPlaybackEventView['chart_data']
+  onApply?: (data: { cycle_start: VRPlaybackEventView['cycle_start']; execution_playback: VRPlaybackEventView['execution_playback'] }) => void
+}) {
   const [mode, setMode] = useState<'basic' | 'advanced'>('basic')
+  const [applying, setApplying] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
   const [initialCapital, setInitialCapital] = useState(cycleStart.initial_state?.initial_capital ?? 10000)
   const [stockAllocationPct, setStockAllocationPct] = useState(Math.round((cycleStart.initial_state?.stock_allocation_pct ?? 0.8) * 100))
   const [poolAllocationPct, setPoolAllocationPct] = useState(Math.round((cycleStart.initial_state?.pool_allocation_pct ?? 0.2) * 100))
@@ -1234,6 +1327,37 @@ function CycleStartPanel({ cycleStart }: { cycleStart: VRPlaybackEventView['cycl
           text="Vref / Vmin / Vmax"
           detail={`cycle_no ${cycleStart.cycle_placeholders.cycle_no ?? 'pending'} | cycle_start ${cycleStart.cycle_placeholders.cycle_start_date ?? 'pending'} | cycle_end ${cycleStart.cycle_placeholders.cycle_end_date ?? 'pending'}`}
         />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
+        <button
+          type="button"
+          disabled={applying}
+          onClick={() => {
+            setApplying(true)
+            const base = window.location.pathname
+            const params = new URLSearchParams(window.location.search)
+            params.set('sim_event', eventId)
+            params.set('event', eventId)
+            params.set('sim_start', simulationStartDate || '')
+            params.set('sim_capital', String(initialCapital))
+            params.set('sim_stock_pct', String(stockAllocationPct))
+            params.set('tab', 'Playback')
+            window.location.href = base + '?' + params.toString()
+          }}
+          style={{
+            padding: '0.55rem 1.4rem',
+            borderRadius: 10,
+            background: applying ? 'rgba(99,102,241,0.45)' : 'rgba(99,102,241,0.85)',
+            color: '#fff',
+            border: 'none',
+            cursor: applying ? 'not-allowed' : 'pointer',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+          }}
+        >
+          {applying ? 'Running...' : 'Apply & Re-run'}
+        </button>
       </div>
     </div>
   )
@@ -1609,7 +1733,7 @@ function PlaybackChartTooltip({
   payload?: Array<{ name?: string; value?: number | null; color?: string; payload?: Record<string, unknown> }>
   label?: string | number
   resolveByDate?: (date?: string | number) => Record<string, unknown> | null
-  variant?: 'execution' | 'market' | 'portfolio_compare' | 'pool_compare'
+  variant?: 'execution' | 'market' | 'portfolio_compare' | 'pool_compare' | 'evaluation_compare'
 }) {
   if (!active || !payload?.length) return null
   if (variant === 'market') {
@@ -1625,18 +1749,52 @@ function PlaybackChartTooltip({
         }}
       >
         <div style={{ color: '#f8fafc', fontSize: '0.84rem', marginBottom: 6 }}>{title}</div>
-        {label ? <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginBottom: 6 }}>Date: {label}</div> : null}
+        {label ? <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginBottom: 6 }}>Date: {label}</div> : null}
         {typeof source?.tqqq_price === 'number' ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>TQQQ Price: {source.tqqq_price.toFixed(2)}</div>
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>TQQQ Price: {source.tqqq_price.toFixed(2)}</div>
         ) : null}
         {typeof source?.ma50 === 'number' ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>MA50: {source.ma50.toFixed(2)}</div>
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>MA50: {source.ma50.toFixed(2)}</div>
         ) : null}
         {typeof source?.ma200 === 'number' ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>MA200: {source.ma200.toFixed(2)}</div>
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>MA200: {source.ma200.toFixed(2)}</div>
         ) : null}
         {typeof source?.value === 'number' && typeof source?.title === 'string' ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>{source.title}: {source.value.toFixed(2)}</div>
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>{source.title}: {source.value.toFixed(2)}</div>
+        ) : null}
+      </div>
+    )
+  }
+  if (variant === 'evaluation_compare') {
+    const source = payload.find((entry) => entry.payload)?.payload ?? null
+    const originalEval = typeof source?.original_evaluation_value === 'number' ? source.original_evaluation_value as number : null
+    const scenarioEval = typeof source?.scenario_evaluation_value === 'number' ? source.scenario_evaluation_value as number : null
+    const delta = originalEval != null && scenarioEval != null ? scenarioEval - originalEval : null
+    return (
+      <div
+        style={{
+          background: '#111827',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 8,
+          padding: '0.7rem 0.8rem',
+          minWidth: 180,
+        }}
+      >
+        <div style={{ color: '#f8fafc', fontSize: '0.84rem', fontWeight: 700, marginBottom: 6 }}>{typeof source?.date === 'string' ? source.date : label}</div>
+        {originalEval != null ? (
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+            Original VR: {originalEval.toFixed(2)}
+          </div>
+        ) : null}
+        {scenarioEval != null ? (
+          <div style={{ color: '#34d399', fontSize: '0.72rem' }}>
+            Scenario VR: {scenarioEval.toFixed(2)}
+          </div>
+        ) : null}
+        {delta != null ? (
+          <div style={{ color: delta >= 0 ? '#34d399' : '#f87171', fontSize: '0.72rem', marginTop: 4, fontWeight: 600 }}>
+            {delta >= 0 ? '+' : ''}{delta.toFixed(2)}
+          </div>
         ) : null}
       </div>
     )
@@ -1658,12 +1816,12 @@ function PlaybackChartTooltip({
       >
         <div style={{ color: '#f8fafc', fontSize: '0.84rem', marginBottom: 6 }}>{label}</div>
         {typeof originalValue === 'number' ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
             Original VR: {originalValue.toFixed(2)}
           </div>
         ) : null}
         {typeof scenarioValue === 'number' ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>
+          <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
             Scenario VR: {scenarioValue.toFixed(2)}
           </div>
         ) : null}
@@ -1704,69 +1862,69 @@ function PlaybackChartTooltip({
       }}
     >
       <div style={{ color: '#f8fafc', fontSize: '0.84rem', marginBottom: 6 }}>{title}</div>
-      {reason ? <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginBottom: 6 }}>{reason}</div> : null}
+      {reason ? <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginBottom: 6 }}>{reason}</div> : null}
       {typeof source?.cycle_no === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginTop: 6 }}>Cycle: {source.cycle_no}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginTop: 6 }}>Cycle: {source.cycle_no}</div>
       ) : null}
       {typeof source?.day_in_cycle === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Day In Cycle: {source.day_in_cycle}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Day In Cycle: {source.day_in_cycle}</div>
       ) : null}
-      {displayDate ? <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Date: {displayDate}</div> : null}
+      {displayDate ? <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Date: {displayDate}</div> : null}
       {typeof closeValue === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Close: {closeValue.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Close: {closeValue.toFixed(2)}</div>
       ) : null}
       {typeof source?.shares_after_trade === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Shares After: {source.shares_after_trade}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Shares After: {source.shares_after_trade}</div>
       ) : null}
       {typeof evaluationValue === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Evaluation Value: {evaluationValue.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Evaluation Value: {evaluationValue.toFixed(2)}</div>
       ) : null}
       {typeof source?.avg_cost_after_trade === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Avg Cost After: {source.avg_cost_after_trade.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Avg Cost After: {source.avg_cost_after_trade.toFixed(2)}</div>
       ) : null}
       {typeof source?.pool_cash_after_trade === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Pool Cash: {source.pool_cash_after_trade.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Pool Cash: {source.pool_cash_after_trade.toFixed(2)}</div>
       ) : null}
       {typeof totalPortfolioValue === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Total Portfolio Value: {totalPortfolioValue.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Total Portfolio Value: {totalPortfolioValue.toFixed(2)}</div>
       ) : null}
       {typeof vrefEval === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Vref Eval: {vrefEval.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Vref Eval: {vrefEval.toFixed(2)}</div>
       ) : null}
       {typeof vminEval === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Vmin Eval: {vminEval.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Vmin Eval: {vminEval.toFixed(2)}</div>
       ) : null}
       {typeof vmaxEval === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Vmax Eval: {vmaxEval.toFixed(2)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Vmax Eval: {vmaxEval.toFixed(2)}</div>
       ) : null}
       {typeof source?.cycle_pool_used_pct === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Cycle Pool Used: {source.cycle_pool_used_pct.toFixed(1)}%</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Cycle Pool Used: {source.cycle_pool_used_pct.toFixed(1)}%</div>
       ) : null}
       {triggerSource ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Trigger Source: {formatPlaybackToken(triggerSource)}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Trigger Source: {formatPlaybackToken(triggerSource)}</div>
       ) : null}
       {typeof ladderLevelHit === 'number' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Ladder Level: L{ladderLevelHit}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Ladder Level: L{ladderLevelHit}</div>
       ) : null}
       {typeof sellGateOpen === 'boolean' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Sell Gate Open: {sellGateOpen ? 'Yes' : 'No'}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Sell Gate Open: {sellGateOpen ? 'Yes' : 'No'}</div>
       ) : null}
       {markerType === 'buy' && typeof shareDelta === 'number' ? (
-        <div style={{ color: '#34d399', fontSize: '0.76rem' }}>Buy Executed: +{shareDelta} shares</div>
+        <div style={{ color: '#34d399', fontSize: '0.72rem' }}>Buy Executed: +{shareDelta} shares</div>
       ) : null}
       {markerType === 'sell' && typeof shareDelta === 'number' ? (
-        <div style={{ color: '#f59e0b', fontSize: '0.76rem' }}>Sell Executed: {shareDelta} shares</div>
+        <div style={{ color: '#f59e0b', fontSize: '0.72rem' }}>Sell Executed: {shareDelta} shares</div>
       ) : null}
       {markerType === 'defense' && typeof shareDelta === 'number' ? (
-        <div style={{ color: '#ef4444', fontSize: '0.76rem' }}>Defense Reduction: {shareDelta} shares</div>
+        <div style={{ color: '#ef4444', fontSize: '0.72rem' }}>Defense Reduction: {shareDelta} shares</div>
       ) : null}
       {markerType === 'cap_block' ? (
-        <div style={{ color: '#a78bfa', fontSize: '0.76rem' }}>
+        <div style={{ color: '#a78bfa', fontSize: '0.72rem' }}>
           Blocked Buy{typeof blockedLevelNo === 'number' ? `: level ${blockedLevelNo}` : ''} due to cycle cap
         </div>
       ) : null}
       {typeof source?.state_after_trade === 'string' ? (
-        <div style={{ color: '#94a3b8', fontSize: '0.76rem' }}>State After: {source.state_after_trade}</div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>State After: {source.state_after_trade}</div>
       ) : null}
     </div>
   )
@@ -1776,14 +1934,14 @@ function collectNumericValues(values: Array<number | null | undefined>) {
   return values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
 }
 
-function buildAxisDomain(values: Array<number | null | undefined>, paddingRatio = 0.08) {
+function buildAxisDomain(values: Array<number | null | undefined>, paddingRatio = 0.08): [number | string, number | string] {
   const numericValues = collectNumericValues(values)
-  if (!numericValues.length) return ['auto', 'auto'] as const
+  if (!numericValues.length) return ['auto', 'auto']
   const min = Math.min(...numericValues)
   const max = Math.max(...numericValues)
   const span = Math.max(max - min, Math.abs(max) * paddingRatio, 1)
   const padding = span * paddingRatio
-  return [Number((min - padding).toFixed(2)), Number((max + padding).toFixed(2))] as const
+  return [Number((min - padding).toFixed(2)), Number((max + padding).toFixed(2))]
 }
 
 function quantile(sortedValues: number[], q: number) {
@@ -1802,14 +1960,14 @@ function buildFocusedAxisDomain(
   paddingRatio = 0.04,
   lowerQuantile = 0.05,
   upperQuantile = 0.95,
-) {
+): [number | string, number | string] {
   const numericValues = collectNumericValues(values).sort((a, b) => a - b)
-  if (!numericValues.length) return ['auto', 'auto'] as const
+  if (!numericValues.length) return ['auto', 'auto']
   const focusedMin = quantile(numericValues, lowerQuantile)
   const focusedMax = quantile(numericValues, upperQuantile)
   const span = Math.max(focusedMax - focusedMin, 1)
   const padding = span * paddingRatio
-  return [Number((focusedMin - padding).toFixed(2)), Number((focusedMax + padding).toFixed(2))] as const
+  return [Number((focusedMin - padding).toFixed(2)), Number((focusedMax + padding).toFixed(2))]
 }
 
 function buildDateAxisTicks(dates: string[], cycleBoundaryDates: string[]) {
@@ -1926,7 +2084,7 @@ function PlaybackExplorerPanel({ playbackData }: { playbackData?: VRPlaybackView
                     >
                       <div style={{ color: '#f8fafc', fontSize: '0.95rem', fontWeight: 800 }}>{event.name}</div>
                       <div style={{ color: '#94a3b8', fontSize: '0.8rem', lineHeight: 1.5 }}>{event.suite_note}</div>
-                      <div style={{ color: '#64748b', fontSize: '0.76rem' }}>{event.archive_name}</div>
+                      <div style={{ color: '#64748b', fontSize: '0.72rem' }}>{event.archive_name}</div>
                     </a>
                   ))}
                 </div>
@@ -2023,7 +2181,7 @@ function OverviewTab({
               >
                 <div
                   style={{
-                    fontSize: '0.75rem',
+                    fontSize: '0.71rem',
                     color: '#94a3b8',
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
@@ -2142,6 +2300,12 @@ function PlaybackTab({
   const [cyclePoolCap, setCyclePoolCap] = useState<'30' | '40' | '50' | 'unlimited'>(
     initialEvent?.execution_playback.default_cap_option ?? '50'
   )
+  type _CapKey = '30' | '40' | '50' | 'unlimited'
+  type _CachedVariant = {
+    variant: NonNullable<VRPlaybackEventView['execution_playback']['variants'][_CapKey]>
+    comparison: NonNullable<VRPlaybackEventView['execution_playback']['comparison_by_cap'][_CapKey]>
+  }
+  const [variantCache, setVariantCache] = useState<Partial<Record<_CapKey, _CachedVariant>>>({})
   const [playbackLayer, setPlaybackLayer] = useState<'cycle' | 'daily'>('cycle')
   const [dailyWindowMode, setDailyWindowMode] = useState<'auto_focus' | 'full_event'>('auto_focus')
   const [executionMode, setExecutionMode] = useState<'original' | 'scenario' | 'compare'>('scenario')
@@ -2151,6 +2315,10 @@ function PlaybackTab({
   const [hoveredExecutionPayload, setHoveredExecutionPayload] = useState<Record<string, unknown> | null>(null)
   const [hoveredComparisonPayload, setHoveredComparisonPayload] = useState<Record<string, unknown> | null>(null)
   const [selectedCycleNo, setSelectedCycleNo] = useState<number | null>(null)
+  const [executionOverride, setExecutionOverride] = useState<{
+    cycle_start: VRPlaybackEventView['cycle_start']
+    execution_playback: VRPlaybackEventView['execution_playback']
+  } | null>(null)
   const selected = events.find((event) => event.id === selId) ?? events[0]
   const groupedEvents = PLAYBACK_SUITE_GROUP_ORDER.map((group) => ({
     group,
@@ -2168,6 +2336,8 @@ function PlaybackTab({
     setHoveredExecutionPayload(null)
     setHoveredComparisonPayload(null)
     setSelectedCycleNo(null)
+    setExecutionOverride(null)
+    setVariantCache({})
   }, [selected.id, selected.execution_playback.default_cap_option])
 
   useEffect(() => {
@@ -2182,6 +2352,16 @@ function PlaybackTab({
     setHoveredExecutionPayload(null)
     setHoveredComparisonPayload(null)
   }, [executionMode, dailyWindowMode, cursorMode])
+
+  // Lazy: compute variant only for the selected cap option
+  useEffect(() => {
+    const ep = selected.execution_playback
+    if (ep.variants[cyclePoolCap] || variantCache[cyclePoolCap]) return
+    const eventSrc = selected as unknown as ExecutionPlaybackSource
+    const { variant, comparison } = buildVariantForCap(eventSrc, cyclePoolCap)
+    setVariantCache((prev) => ({ ...prev, [cyclePoolCap]: { variant, comparison } }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cyclePoolCap, selected.id])
 
   if (!selected) {
     return (
@@ -2208,14 +2388,17 @@ function PlaybackTab({
     ? { start_date: resolvedActiveCycle.cycle_start_date, end_date: resolvedActiveCycle.cycle_end_date }
     : selected.cycle_framework.chart_overlay.active_cycle_highlight
   const activeCycleNo = resolvedActiveCycle?.cycle_no ?? null
+  const _ep = executionOverride?.execution_playback ?? selected.execution_playback
   const executionVariant =
-    selected.execution_playback.variants[cyclePoolCap] ??
-    selected.execution_playback.variants[selected.execution_playback.default_cap_option]
+    _ep.variants[cyclePoolCap] ??
+    variantCache[cyclePoolCap]?.variant ??
+    _ep.variants[_ep.default_cap_option]!
   const displayedExecutionVariant =
-    executionMode === 'original' ? selected.execution_playback.original_vr : executionVariant
+    executionMode === 'original' ? (executionOverride?.execution_playback ?? selected.execution_playback).original_vr : executionVariant
   const comparisonView =
-    selected.execution_playback.comparison_by_cap[cyclePoolCap] ??
-    selected.execution_playback.comparison_by_cap[selected.execution_playback.default_cap_option]
+    _ep.comparison_by_cap[cyclePoolCap] ??
+    variantCache[cyclePoolCap]?.comparison ??
+    _ep.comparison_by_cap[_ep.default_cap_option]!
   const marketRows = displayedExecutionVariant.market_chart.rows
   const cycleBoundaries = displayedExecutionVariant.market_chart.cycle_boundaries
   const cycleSummaries = displayedExecutionVariant.cycle_summaries
@@ -2247,6 +2430,7 @@ function PlaybackTab({
   const filteredDefenseMarkers = sortByDateAsc(displayedExecutionVariant.defense_markers.filter((marker) => isInDailyWindow(marker.date)))
   const filteredPoolCapFlags = sortByDateAsc(displayedExecutionVariant.pool_cap_flags.filter((marker) => isInDailyWindow(marker.date)))
   const filteredScenarioZones = displayedExecutionVariant.scenario_phase_zones
+    .filter((zone) => !firstInEventDate || zone.end_date >= firstInEventDate)
     .map((zone) => clipZoneToDailyWindow(zone))
     .filter((zone): zone is NonNullable<typeof zone> => zone != null)
   const filteredRecoveryZones = displayedExecutionVariant.vmin_recovery_attempt_zones
@@ -2256,7 +2440,16 @@ function PlaybackTab({
     .map((zone) => clipZoneToDailyWindow(zone))
     .filter((zone): zone is NonNullable<typeof zone> => zone != null)
   const filteredMarketRows = sortByDateAsc(marketRows.filter((row) => isInDailyWindow(row.date)))
-  const filteredCycleBoundaries = sortByDateAsc(cycleBoundaries.filter((boundary) => isInDailyWindow(boundary.date)))
+  // Separate display window from cycle logic window (WO61B):
+  // Cycle labels / boundaries only start from the first active event date (in_event=true).
+  // Pre-event history remains visible in the chart without cycle overlays.
+  const firstInEventDate = displayedExecutionVariant.points.find((pt) => pt.in_event)?.date ?? null
+  const filteredCycleBoundaries = sortByDateAsc(
+    cycleBoundaries.filter((boundary) =>
+      isInDailyWindow(boundary.date) &&
+      (!firstInEventDate || boundary.date >= firstInEventDate)
+    )
+  )
   const filteredBreachPoints = sortByDateAsc(displayedExecutionVariant.market_chart.breach_points.filter((point) => isInDailyWindow(point.date)))
   const filteredRecoveryMarkers = sortByDateAsc(displayedExecutionVariant.market_chart.recovery_markers.filter((point) => isInDailyWindow(point.date)))
   const dailyEventDates = filteredExecutionPoints.filter((point) => point.in_event).map((point) => point.date)
@@ -2288,6 +2481,9 @@ function PlaybackTab({
       sell_marker_eval: sellMarkerByDate.get(point.date)?.evaluation_value ?? null,
       defense_marker_eval: defenseMarkerByDate.get(point.date)?.evaluation_value ?? null,
       cap_block_marker_eval: capBlockMarkerByDate.get(point.date)?.evaluation_value ?? null,
+      buy_marker_portfolio: buyMarkerByDate.get(point.date)?.total_portfolio_value ?? null,
+      sell_marker_portfolio: sellMarkerByDate.get(point.date)?.total_portfolio_value ?? null,
+      defense_marker_portfolio: defenseMarkerByDate.get(point.date)?.total_portfolio_value ?? null,
     }
   })
   const executionChartRows = mapRowsWithTimestamp(mergedExecutionRows)
@@ -2442,12 +2638,11 @@ function PlaybackTab({
   const visibleCycleHighlightStartTs = toTimestampOrNull(visibleCycleHighlight?.start_date)
   const visibleCycleHighlightEndTs = toTimestampOrNull(visibleCycleHighlight?.end_date)
   const executionEvaluationDomain = buildAxisDomain(
-    mergedExecutionRows.flatMap((point) => [
-      point.evaluation_value,
-      point.vref_eval,
-      point.vmin_eval,
-      point.vmax_eval,
-    ]),
+    mergedExecutionRows.flatMap((point) =>
+      executionMode === 'scenario'
+        ? [point.portfolio_value, point.vref_eval, point.vmin_eval, point.vmax_eval].filter((v): v is number => typeof v === 'number' && v > 0)
+        : [point.evaluation_value, point.vref_eval, point.vmin_eval, point.vmax_eval]
+    ),
     0.05,
   )
   const cycleEvaluationDomain = buildAxisDomain(
@@ -2483,7 +2678,7 @@ function PlaybackTab({
           <div style={{ display: 'grid', gap: 12, width: '100%' }}>
             {groupedEvents.map((group) => (
               <div key={group.group} style={{ display: 'grid', gap: 8 }}>
-                <div style={{ color: '#94a3b8', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <div style={{ color: '#94a3b8', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {group.group}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -2505,7 +2700,7 @@ function PlaybackTab({
                         }}
                       >
                         <span>{event.name}</span>
-                        <span style={{ color: '#94a3b8', fontSize: '0.76rem', lineHeight: 1.4 }}>{event.suite_note}</span>
+                        <span style={{ color: '#94a3b8', fontSize: '0.72rem', lineHeight: 1.4 }}>{event.suite_note}</span>
                         <span
                           style={{
                             alignSelf: 'flex-start',
@@ -2542,7 +2737,18 @@ function PlaybackTab({
         </div>
       </div>
 
-      <CycleStartPanel key={selected.event_id} cycleStart={selected.cycle_start} />
+      <CycleStartPanel
+        key={selected.event_id}
+        cycleStart={executionOverride?.cycle_start ?? selected.cycle_start}
+        eventId={selected.event_id}
+        eventStart={selected.start}
+        eventEnd={selected.end}
+        chartData={selected.chart_data}
+        onApply={(data) => {
+          setExecutionOverride(data)
+          setCyclePoolCap(data.execution_playback.default_cap_option)
+        }}
+      />
 
       <CycleFrameworkPanel framework={selected.cycle_framework} />
 
@@ -2558,6 +2764,7 @@ function PlaybackTab({
               : 'Evaluation value path and V-band only. Price and cost remain in tooltip and the lower market chart.'
           }
         />
+        <CycleSummaryCard cycleSummaries={cycleSummaries} />
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {(['cycle', 'daily'] as const).map((layer) => (
@@ -2739,7 +2946,7 @@ function PlaybackTab({
               </ResponsiveContainer>
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1460, tableLayout: 'fixed' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100, tableLayout: 'fixed' }}>
                 <thead>
                   <tr style={{ textAlign: 'left' }}>
                     {[
@@ -2769,20 +2976,20 @@ function PlaybackTab({
                       <th
                         key={label}
                         style={{
-                          padding: '0.5rem 0.42rem',
+                          padding: '0.18rem 0.28rem',
                           borderBottom: '1px solid rgba(255,255,255,0.08)',
                           color: '#94a3b8',
-                          fontSize: '0.66rem',
+                          fontSize: '0.62rem',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.08em',
+                          letterSpacing: '0.05em',
                           width:
                             label === 'Cycle'
-                              ? 56
+                              ? 38
                               : label === 'Window'
-                                ? 188
+                                ? 148
                                 : label === 'Scenario Bias' || label === 'Playbook Bias'
-                                  ? 122
-                                  : 72,
+                                  ? 90
+                                  : 58,
                         }}
                       >
                         {label}
@@ -2796,7 +3003,7 @@ function PlaybackTab({
                     return (
                       <tr key={cycle.cycle_no} style={{ background: active ? 'rgba(96,165,250,0.08)' : 'transparent' }}>
                         
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f8fafc', fontWeight: 800, whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f8fafc', fontWeight: 800, whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
                           <button
                             type="button"
                             onClick={() => jumpToCycleDaily(cycle.cycle_no, cycle.start_date)}
@@ -2812,48 +3019,48 @@ function PlaybackTab({
                             C{cycle.cycle_no}
                           </button>
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', minWidth: 188, lineHeight: 1.38, fontSize: '0.76rem' }}>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', minWidth: 148, lineHeight: 1.38, fontSize: '0.72rem' }}>
                           {cycle.cycle_window}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#34d399', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
-                          {cycle.vref_eval.toFixed(2)}
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#34d399', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                          {Math.round(cycle.vref_eval)}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#ef4444', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
-                          {cycle.vmin_eval.toFixed(2)}
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#ef4444', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                          {Math.round(cycle.vmin_eval)}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f59e0b', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
-                          {cycle.vmax_eval.toFixed(2)}
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f59e0b', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                          {Math.round(cycle.vmax_eval)}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
-                          {cycle.start_evaluation_value.toFixed(2)}
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                          {Math.round(cycle.start_evaluation_value)}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{cycle.end_evaluation_value.toFixed(2)}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', lineHeight: 1.32, fontSize: '0.76rem' }}>
-                          {cycle.start_pool_cash.toFixed(2)} ({cycle.start_pool_pct.toFixed(1)}%)
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>{Math.round(cycle.end_evaluation_value)}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', lineHeight: 1.32, fontSize: '0.72rem' }}>
+                          {Math.round(cycle.start_pool_cash)} ({cycle.start_pool_pct.toFixed(0)}%)
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', lineHeight: 1.28, fontSize: '0.76rem' }}>
-                          {cycle.end_pool_pct.toFixed(1)}%
-                          <div style={{ color: '#64748b', fontSize: '0.66rem', marginTop: 2 }}>{cycle.end_pool_cash.toFixed(2)}</div>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', lineHeight: 1.28, fontSize: '0.72rem' }}>
+                          {cycle.end_pool_pct.toFixed(0)}%
+                          <div style={{ color: '#64748b', fontSize: '0.66rem', marginTop: 2 }}>{Math.round(cycle.end_pool_cash)}</div>
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e5e7eb', fontWeight: 700, whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{cycle.pool_used_pct_in_cycle.toFixed(1)}%</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{cycle.pool_spent_in_cycle.toFixed(2)}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#34d399', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
-                          {cycle.avg_buy_price == null ? 'N/A' : cycle.avg_buy_price.toFixed(2)}
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e5e7eb', fontWeight: 700, whiteSpace: 'nowrap', fontSize: '0.72rem' }}>{cycle.pool_used_pct_in_cycle.toFixed(0)}%</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>{Math.round(cycle.pool_spent_in_cycle)}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#34d399', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                          {cycle.avg_buy_price == null ? 'N/A' : Math.round(cycle.avg_buy_price)}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f59e0b', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
-                          {cycle.avg_sell_price == null ? 'N/A' : cycle.avg_sell_price.toFixed(2)}
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f59e0b', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                          {cycle.avg_sell_price == null ? 'N/A' : Math.round(cycle.avg_sell_price)}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#34d399', textAlign: 'center', fontSize: '0.76rem' }}>{cycle.buy_count}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f59e0b', textAlign: 'center', fontSize: '0.76rem' }}>{cycle.sell_count}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#ef4444', textAlign: 'center', fontSize: '0.76rem' }}>{cycle.defense_count}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#a78bfa', textAlign: 'center', fontSize: '0.76rem' }}>{cycle.blocked_buy_count}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{cycle.end_shares}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{cycle.end_avg_cost.toFixed(2)}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f8fafc', lineHeight: 1.28, fontSize: '0.75rem' }}>{formatPlaybackToken(cycle.ending_state)}</td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', minWidth: 122, fontSize: '0.72rem', lineHeight: 1.25 }}>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#34d399', textAlign: 'center', fontSize: '0.72rem' }}>{cycle.buy_count}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f59e0b', textAlign: 'center', fontSize: '0.72rem' }}>{cycle.sell_count}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#ef4444', textAlign: 'center', fontSize: '0.72rem' }}>{cycle.defense_count}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#a78bfa', textAlign: 'center', fontSize: '0.72rem' }}>{cycle.blocked_buy_count}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>{cycle.end_shares}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>{cycle.end_avg_cost.toFixed(1)}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#f8fafc', lineHeight: 1.28, fontSize: '0.71rem' }}>{formatPlaybackToken(cycle.ending_state)}</td>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', minWidth: 90, fontSize: '0.72rem', lineHeight: 1.25 }}>
                           {cycle.scenario_bias.length ? cycle.scenario_bias.slice(0, 2).map(formatPlaybackToken).join(', ') : <span style={{ color: '#64748b' }}>N/A</span>}
                         </td>
-                        <td style={{ padding: '0.52rem 0.42rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', minWidth: 122, fontSize: '0.72rem', lineHeight: 1.25 }}>
+                        <td style={{ padding: '0.18rem 0.28rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', minWidth: 90, fontSize: '0.72rem', lineHeight: 1.25 }}>
                           {cycle.playbook_bias.length ? cycle.playbook_bias.slice(0, 2).map(formatPlaybackToken).join(', ') : <span style={{ color: '#64748b' }}>N/A</span>}
                         </td>
                       </tr>
@@ -2988,23 +3195,25 @@ function PlaybackTab({
                   strokeWidth={cursorCycleForHighlight ? 1.5 : 1}
                 />
               ) : null}
-              {executionMode === 'compare' ? null : (
+              {executionMode === 'compare' ? (
+                <Tooltip content={<PlaybackChartTooltip variant="evaluation_compare" />} />
+              ) : (
                 <Tooltip content={<PlaybackChartTooltip resolveByDate={resolveExecutionPointByDate} variant="execution" />} />
               )}
               {executionMode === 'compare' ? (
                 <>
-                  <Line dataKey="original_evaluation_value" stroke="#94a3b8" strokeWidth={2} dot={false} name="Original Evaluation Value" connectNulls />
-                  <Line dataKey="scenario_evaluation_value" stroke="#34d399" strokeWidth={2.4} dot={false} name="Scenario Evaluation Value" connectNulls />
+                  <Line dataKey="original_evaluation_value" stroke="#94a3b8" strokeWidth={2} dot={false} name="Original Portfolio Value" connectNulls />
+                  <Line dataKey="scenario_evaluation_value" stroke="#34d399" strokeWidth={2.4} dot={false} name="Scenario Portfolio Value" connectNulls />
                 </>
               ) : (
                 <>
-                  <Line yAxisId="evaluation" dataKey="evaluation_value" stroke={executionMode === 'original' ? '#94a3b8' : '#e5e7eb'} strokeWidth={2.4} dot={false} name={executionMode === 'original' ? 'Original Evaluation Value' : 'Stock Evaluation Value'} connectNulls />
+                  <Line yAxisId="evaluation" dataKey={executionMode === 'scenario' ? 'portfolio_value' : 'evaluation_value'} stroke={executionMode === 'original' ? '#94a3b8' : '#e5e7eb'} strokeWidth={2.4} dot={false} name={executionMode === 'original' ? 'Original Evaluation Value' : 'Portfolio Value (Stock + Cash)'} connectNulls />
                   <Line yAxisId="evaluation" type="stepAfter" dataKey="vref_eval" stroke="#34d399" strokeWidth={2.2} strokeDasharray="6 4" dot={false} name="Vref Eval" connectNulls />
                   <Line yAxisId="evaluation" type="stepAfter" dataKey="vmin_eval" stroke="#ef4444" strokeWidth={1.5} dot={false} name="Vmin Eval" connectNulls />
                   <Line yAxisId="evaluation" type="stepAfter" dataKey="vmax_eval" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="Vmax Eval" connectNulls />
-                  <Scatter yAxisId="evaluation" data={executionChartRows} dataKey="buy_marker_eval" fill="#34d399" name="Buy Executions" />
-                  <Scatter yAxisId="evaluation" data={executionChartRows} dataKey="sell_marker_eval" fill="#f59e0b" name="Sell Executions" />
-                  <Scatter yAxisId="evaluation" data={executionChartRows} dataKey="defense_marker_eval" fill="#ef4444" name="Defense Reductions" />
+                  <Scatter yAxisId="evaluation" data={executionChartRows} dataKey={executionMode === 'scenario' ? 'buy_marker_portfolio' : 'buy_marker_eval'} fill="#34d399" name="Buy Executions" />
+                  <Scatter yAxisId="evaluation" data={executionChartRows} dataKey={executionMode === 'scenario' ? 'sell_marker_portfolio' : 'sell_marker_eval'} fill="#f59e0b" name="Sell Executions" />
+                  <Scatter yAxisId="evaluation" data={executionChartRows} dataKey={executionMode === 'scenario' ? 'defense_marker_portfolio' : 'defense_marker_eval'} fill="#ef4444" name="Defense Reductions" />
                   <Scatter yAxisId="evaluation" data={executionChartRows} dataKey="cap_block_marker_eval" fill="#a78bfa" name="Cap Blocked Buys" />
                 </>
               )}
@@ -3029,7 +3238,7 @@ function PlaybackTab({
                     gap: 5,
                   }}
                 >
-                  <div style={{ color: '#94a3b8', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{metric.label}</div>
+                  <div style={{ color: '#94a3b8', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{metric.label}</div>
                   <div style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>Original: {metric.original_value}</div>
                   <div style={{ color: '#f8fafc', fontSize: '0.86rem', fontWeight: 700 }}>Scenario: {metric.scenario_value}</div>
                   <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Delta: {metric.difference}</div>
@@ -3207,7 +3416,7 @@ function PlaybackTab({
                 gap: 6,
               }}
             >
-              <div style={{ color: '#94a3b8', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <div style={{ color: '#94a3b8', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 {metric.label}
               </div>
               <div style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>Original VR: {metric.original_value}</div>
@@ -3458,8 +3667,8 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
       <div style={panelStyle()}>
         <SectionHeader
           eyebrow="Strategy Arena"
-          title="VR Engine vs Retail Strategies"
-          note="Historical stress-event comparison across Buy and Hold, MA200 control, fixed stop loss, and VR Engine."
+          title="Strategy Comparison Arena"
+          note="Historical stress-event comparison (asset: TQQQ, initial capital: 100). Adaptive Exposure applies VR exposure decisions to TQQQ returns. Original VR (Scaled) is the archive efficiency ratio (vr_10k/bh_10k) overlaid on TQQQ buy-and-hold."
         />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           {events.map((event) => (
@@ -3472,11 +3681,11 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
           <PlaceholderCard label="Source Event" text={selected.standard_event_name} detail={`${selected.start} to ${selected.end}`} />
           <PlaceholderCard
             label="VR Curve Source"
-            text={selected.vr_source === 'survival_archive' ? 'Survival Archive' : 'Risk-Level Proxy'}
+            text={selected.vr_source === 'survival_archive' ? 'Survival Archive' : 'Not Available'}
             detail={
               selected.vr_source === 'survival_archive'
-                ? 'VR Engine uses event-specific survival playback.'
-                : 'VR Engine uses standard risk levels mapped to exposure caps.'
+                ? 'Adaptive Exposure and Original VR both use this event\'s survival archive.'
+                : 'No survival archive exists. Adaptive Exposure and Original VR are hidden.'
             }
           />
           <PlaceholderCard
@@ -3515,8 +3724,9 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
               </tr>
             </thead>
             <tbody>
-              {strategyKeys.map((strategyKey) => {
+              {strategyKeys.filter((k) => (k !== 'adaptive_exposure' && k !== 'original_vr_scaled') || selected.vr_source === 'survival_archive').map((strategyKey) => {
                 const metric = selected.metrics[strategyKey]
+                if (!metric) return null
                 return (
                   <tr key={strategyKey}>
                     <td style={{ padding: '0.9rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e5e7eb', fontWeight: 700 }}>
@@ -3546,9 +3756,10 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
       <div style={panelStyle()}>
         <SectionHeader eyebrow="Chart 1" title="Equity Curve Comparison" />
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-          {strategyKeys.map((strategyKey) => (
+          {strategyKeys.filter((k) => (k !== 'adaptive_exposure' && k !== 'original_vr_scaled') || selected.vr_source === 'survival_archive').map((strategyKey) => (
             <div
               key={strategyKey}
+              title={strategyKey === 'original_vr_scaled' ? 'Original VR (Scaled): Applies the archive efficiency ratio (vr_10k / bh_10k) to the TQQQ buy-and-hold curve. This is a scaled reference — NOT a full TQQQ re-execution of the VR engine.' : undefined}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -3559,12 +3770,21 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
                 background: 'rgba(255,255,255,0.03)',
                 color: '#cbd5e1',
                 fontSize: '0.8rem',
+                cursor: strategyKey === 'original_vr_scaled' ? 'help' : undefined,
               }}
             >
               <span style={{ width: 10, height: 10, borderRadius: 999, background: STRATEGY_COLORS[strategyKey] }} />
               {STRATEGY_LABELS[strategyKey]}
+              {strategyKey === 'original_vr_scaled' && (
+                <span style={{ fontSize: '0.68rem', color: '#64748b', marginLeft: 2 }}>ⓘ</span>
+              )}
             </div>
           ))}
+          {selected.vr_source !== 'survival_archive' && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.45rem 0.7rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)', color: '#475569', fontSize: '0.78rem', fontStyle: 'italic' }}>
+              Adaptive Exposure &amp; Original VR (Scaled) — no archive data for this event
+            </div>
+          )}
         </div>
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart data={selected.chart_data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
@@ -3575,7 +3795,12 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             <Line dataKey="buy_hold_equity" stroke={STRATEGY_COLORS.buy_hold} strokeWidth={2} dot={false} name="Buy and Hold" />
             <Line dataKey="ma200_risk_control_equity" stroke={STRATEGY_COLORS.ma200_risk_control} strokeWidth={2} dot={false} name="MA200 Risk Control" />
             <Line dataKey="fixed_stop_loss_equity" stroke={STRATEGY_COLORS.fixed_stop_loss} strokeWidth={2} dot={false} name="Fixed Stop Loss" />
-            <Line dataKey="vr_engine_equity" stroke={STRATEGY_COLORS.vr_engine} strokeWidth={2.4} dot={false} name="VR Engine" />
+            {selected.vr_source === 'survival_archive' && (
+              <Line dataKey="adaptive_exposure_equity" stroke={STRATEGY_COLORS.adaptive_exposure} strokeWidth={2.4} dot={false} name="Adaptive Exposure" />
+            )}
+            {selected.vr_source === 'survival_archive' && (
+              <Line dataKey="original_vr_scaled_equity" stroke={STRATEGY_COLORS.original_vr_scaled} strokeWidth={2} strokeDasharray="5 3" dot={false} name="Original VR (Scaled)" />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -3591,7 +3816,12 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             <Line dataKey="buy_hold_drawdown" stroke={STRATEGY_COLORS.buy_hold} strokeWidth={1.8} dot={false} name="Buy and Hold DD" />
             <Line dataKey="ma200_risk_control_drawdown" stroke={STRATEGY_COLORS.ma200_risk_control} strokeWidth={1.8} dot={false} name="MA200 DD" />
             <Line dataKey="fixed_stop_loss_drawdown" stroke={STRATEGY_COLORS.fixed_stop_loss} strokeWidth={1.8} dot={false} name="Stop DD" />
-            <Line dataKey="vr_engine_drawdown" stroke={STRATEGY_COLORS.vr_engine} strokeWidth={2.2} dot={false} name="VR DD" />
+            {selected.vr_source === 'survival_archive' && (
+              <Line dataKey="adaptive_exposure_drawdown" stroke={STRATEGY_COLORS.adaptive_exposure} strokeWidth={2.2} dot={false} name="Adaptive Exposure DD" />
+            )}
+            {selected.vr_source === 'survival_archive' && (
+              <Line dataKey="original_vr_scaled_drawdown" stroke={STRATEGY_COLORS.original_vr_scaled} strokeWidth={1.8} strokeDasharray="5 3" dot={false} name="Original VR (Scaled) DD" />
+            )}
             <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" />
           </ComposedChart>
         </ResponsiveContainer>
@@ -3608,7 +3838,12 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             <Line dataKey="buy_hold_exposure" stroke={STRATEGY_COLORS.buy_hold} strokeWidth={1.8} dot={false} name="Buy and Hold Exposure" />
             <Line dataKey="ma200_risk_control_exposure" stroke={STRATEGY_COLORS.ma200_risk_control} strokeWidth={1.8} dot={false} name="MA200 Exposure" />
             <Line dataKey="fixed_stop_loss_exposure" stroke={STRATEGY_COLORS.fixed_stop_loss} strokeWidth={1.8} dot={false} name="Stop Exposure" />
-            <Line dataKey="vr_engine_exposure" stroke={STRATEGY_COLORS.vr_engine} strokeWidth={2.2} dot={false} name="VR Exposure" />
+            {selected.vr_source === 'survival_archive' && (
+              <Line dataKey="adaptive_exposure_exposure" stroke={STRATEGY_COLORS.adaptive_exposure} strokeWidth={2.2} dot={false} name="Adaptive Exposure" />
+            )}
+            {selected.vr_source === 'survival_archive' && (
+              <Line dataKey="original_vr_scaled_exposure" stroke={STRATEGY_COLORS.original_vr_scaled} strokeWidth={1.8} strokeDasharray="5 3" dot={false} name="Original VR (Scaled) Exposure" />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -3618,7 +3853,11 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
           <PlaceholderCard label="MA200 Risk Control" text="Binary risk filter" detail={strategyArena?.methodology.ma200_rule} />
           <PlaceholderCard label="Fixed Stop Loss" text="12% peak-to-stop rule" detail={strategyArena?.methodology.fixed_stop_loss_rule} />
-          <PlaceholderCard label="VR Engine Source" text={selected.vr_source === 'survival_archive' ? 'Event survival curve' : 'Risk-level proxy'} detail={strategyArena?.methodology.vr_source_priority} />
+          <PlaceholderCard
+            label="VR Curves"
+            text={selected.vr_source === 'survival_archive' ? 'Adaptive Exposure + Original VR (Scaled)' : 'No archive — hidden'}
+            detail={strategyArena?.methodology.vr_source_priority}
+          />
         </div>
         <div style={{ marginTop: 12 }}>
           <a href={`/vr-survival?tab=Playback&event=${selected.playback_event_id}`} style={{ ...tabStyle(false), textDecoration: 'none' }}>
@@ -3810,7 +4049,7 @@ function LeverageStressHeatmap({ heatmapData }: { heatmapData?: ETFRoomData | nu
             >
               <div
                 style={{
-                  fontSize: '0.75rem',
+                  fontSize: '0.71rem',
                   color: '#cbd5e1',
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
@@ -3871,6 +4110,29 @@ export default function VRSurvival({
       {tab === 'Pool Logic' ? <PoolLogicTab /> : null}
       {tab === 'Options Overlay' ? <OptionsOverlayTab /> : null}
       {tab === 'Philosophy' ? <PhilosophyTab runId={data.run_id} /> : null}
+      {tab === 'Crash Analysis' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{
+            background: 'rgba(252,165,165,0.05)',
+            border: '1px solid rgba(252,165,165,0.18)',
+            borderRadius: 14,
+            padding: '0.75rem 1rem',
+          }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.13em', fontWeight: 600, marginBottom: 6 }}>
+              Crash Analysis · Validation Layer
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.55 }}>
+              Use this view to validate the AI interpretation above against observed engine behavior.
+              Pattern matches and historical analogs here should confirm or challenge the scenarios in the AI panel — not replace them.
+              Discrepancies between AI scenario probabilities and historical pattern data are signal, not noise.
+            </div>
+          </div>
+          <OverviewTab data={data} patternDashboard={patternDashboard} playbackData={playbackData} />
+        </div>
+      ) : null}
+      {tab === 'Strategy Lab' ? (
+        <StrategyLabTab events={(playbackData?.events ?? []) as unknown as LabEvent[]} />
+      ) : null}
       <LeverageStressHeatmap heatmapData={heatmapData} />
     </div>
   )

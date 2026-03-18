@@ -1,33 +1,78 @@
 """
 Classifies current market regime.
 Output: output/market_regime.json
+Data: ohlcv_daily (SPY) + cache.db series_data (VIX)
 """
-import yfinance as yf
 import pandas as pd
 import numpy as np
-import json, os
-from datetime import datetime
+import json, os, sqlite3
+from datetime import datetime, timedelta
 
-def safe_history(symbol, period='1y'):
+
+def get_db_path(filename: str) -> str:
+    base = os.path.dirname(__file__)
+    candidates = [
+        os.path.join(base, '..', '..', 'data', filename),
+        os.path.join(base, '..', 'data', filename),
+    ]
+    for p in candidates:
+        n = os.path.normpath(p)
+        if os.path.exists(n):
+            return n
+    return os.path.normpath(candidates[0])
+
+
+def load_spy_daily(lookback_days: int = 400) -> pd.Series | None:
+    db = get_db_path('marketflow.db')
+    if not os.path.exists(db):
+        return None
+    cutoff = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
     try:
-        hist = yf.Ticker(symbol).history(period=period)
-        if hist is None or hist.empty:
+        conn = sqlite3.connect(db)
+        df = pd.read_sql_query(
+            "SELECT date, close FROM ohlcv_daily WHERE symbol='SPY' AND date>=? ORDER BY date",
+            conn, params=(cutoff,))
+        conn.close()
+        if df.empty:
             return None
-        return hist
-    except Exception:
+        df['date'] = pd.to_datetime(df['date'])
+        return df.set_index('date')['close']
+    except Exception as e:
+        print(f"  DB SPY load error: {e}")
         return None
 
-def classify_regime():
-    spy = safe_history('SPY', '1y')
-    vix = safe_history('^VIX', '1y')
 
-    if spy is None or vix is None:
-        print("Warning: yfinance returned no data. Using fallback.")
+def load_vix_daily(lookback_days: int = 400) -> pd.Series | None:
+    db = get_db_path('cache.db')
+    if not os.path.exists(db):
+        return None
+    cutoff = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
+    try:
+        conn = sqlite3.connect(db)
+        df = pd.read_sql_query(
+            "SELECT date, value FROM series_data WHERE symbol='VIX' AND date>=? ORDER BY date",
+            conn, params=(cutoff,))
+        conn.close()
+        if df.empty:
+            return None
+        df['date'] = pd.to_datetime(df['date'])
+        return df.set_index('date')['value']
+    except Exception as e:
+        print(f"  DB VIX load error: {e}")
+        return None
+
+
+def classify_regime():
+    spy_close = load_spy_daily()
+    vix_series = load_vix_daily()
+
+    if spy_close is None or len(spy_close) < 50:
+        print("Warning: SPY data unavailable. Using fallback.")
         regime = {
             'timestamp': datetime.now().isoformat(),
             'trend': 'Unknown', 'risk_appetite': 'Unknown',
             'volatility': 'Unknown', 'cycle': 'Unknown',
-            'vix_level': 0, 'strategy': 'Data unavailable - check market hours',
+            'vix_level': 0, 'strategy': 'Data unavailable',
             'confidence': 'Low', 'note': 'Market data unavailable'
         }
         output_path = os.path.join(os.path.dirname(__file__), '..', 'output', 'market_regime.json')
@@ -37,12 +82,9 @@ def classify_regime():
         print("Market Regime: Unknown (data unavailable)")
         return
 
-    spy_close = spy['Close']
-    current_vix = float(vix['Close'].iloc[-1])
-
-    ma50 = float(spy_close.rolling(50).mean().iloc[-1])
-    ma200 = float(spy_close.rolling(200).mean().iloc[-1])
     current_price = float(spy_close.iloc[-1])
+    ma50  = float(spy_close.rolling(50).mean().iloc[-1])
+    ma200 = float(spy_close.rolling(200).mean().dropna().iloc[-1]) if len(spy_close) >= 200 else ma50
 
     if current_price > ma50 > ma200:
         trend = 'Bull'
@@ -51,21 +93,20 @@ def classify_regime():
     else:
         trend = 'Transition'
 
-    if current_vix < 15:
-        vol_regime = 'Low Vol'
-        risk_appetite = 'Risk On'
-    elif current_vix < 20:
-        vol_regime = 'Normal Vol'
-        risk_appetite = 'Risk On'
-    elif current_vix < 30:
-        vol_regime = 'Elevated Vol'
-        risk_appetite = 'Risk Off'
-    else:
-        vol_regime = 'High Vol'
-        risk_appetite = 'Risk Off'
+    current_vix = float(vix_series.iloc[-1]) if vix_series is not None and not vix_series.empty else 20.0
 
-    ret_3m = float(((spy_close.iloc[-1] / spy_close.iloc[-63]) - 1) * 100)
-    ret_6m = float(((spy_close.iloc[-1] / spy_close.iloc[-126]) - 1) * 100)
+    if current_vix < 15:
+        vol_regime = 'Low Vol';    risk_appetite = 'Risk On'
+    elif current_vix < 20:
+        vol_regime = 'Normal Vol'; risk_appetite = 'Risk On'
+    elif current_vix < 30:
+        vol_regime = 'Elevated Vol'; risk_appetite = 'Risk Off'
+    else:
+        vol_regime = 'High Vol';   risk_appetite = 'Risk Off'
+
+    n = len(spy_close)
+    ret_3m = float(((spy_close.iloc[-1] / spy_close.iloc[max(-63,-n)]) - 1) * 100)
+    ret_6m = float(((spy_close.iloc[-1] / spy_close.iloc[max(-126,-n)]) - 1) * 100)
 
     if ret_6m > 10 and ret_3m > 5:
         cycle = 'Late Cycle'
@@ -97,7 +138,7 @@ def classify_regime():
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(regime, f, indent=2, ensure_ascii=False)
 
-    print(f"Market Regime: {trend} / {risk_appetite} / {cycle}")
+    print(f"Market Regime: {trend} / {risk_appetite} / {cycle} (VIX={current_vix:.1f})")
 
 if __name__ == '__main__':
     classify_regime()
