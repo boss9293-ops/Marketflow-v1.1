@@ -4,16 +4,8 @@ import type { CSSProperties } from 'react'
 import VRSurvival, {
   type ETFRoomData,
   type Tab,
-  type VRDashboardPatternSummary,
   VRSurvivalData,
 } from '@/components/crash/vr/VRSurvival'
-import { detectPatternMatches } from '../../../../../engine/pattern_detector'
-import { computeCurrentMarketAnalogs } from '../../../../../vr/analog/compute_market_analog'
-import { buildPostureMessage } from '../../../../../vr/dashboard/build_posture_message'
-import { mapScenarioPlaybook } from '../../../../../vr/playbooks/playbook_mapper'
-import type { RawStandardPlaybackArchive } from '../../../../../vr/playback/vr_playback_loader'
-import { generateMarketState, toPatternDetectorInput } from '../../../../../vr/state/market_state_generator'
-import type { MarketState } from '../../../../../vr/types/market_state'
 import IntegratedResearchPanel   from '@/components/ai/IntegratedResearchPanel'
 import ResearchScenarioMapPanel  from '@/components/scenario/ResearchScenarioMapPanel'
 import VRTrustStrip              from '@/components/vr/VRTrustStrip'
@@ -52,87 +44,6 @@ function readOutputJson<T>(filename: string): T | null {
   }
 }
 
-function formatPercent(value: number) {
-  return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
-}
-
-function formatMA200Label(value: MarketState['ma200_relation']) {
-  if (value === 'above') return 'Above MA200'
-  if (value === 'test') return 'Testing MA200'
-  if (value === 'breach') return 'Breached MA200'
-  return 'Sustained Below MA200'
-}
-
-function formatStructureLabel(value: MarketState['price_structure']) {
-  const map: Record<MarketState['price_structure'], string> = {
-    trend_down: 'Trend Down',
-    slow_bleed: 'Slow Bleed',
-    vertical_drop: 'Vertical Drop',
-    range_market: 'Range Market',
-    sideways: 'Sideways Consolidation',
-    countertrend_rally: 'Countertrend Rally',
-    breakdown_retest: 'Breakdown Retest',
-  }
-  return map[value]
-}
-
-function formatVolatilityLabel(value: MarketState['volatility_regime']) {
-  return value.charAt(0).toUpperCase() + value.slice(1)
-}
-
-async function buildCurrentPatternDashboard(rootDir: string, preloadedStandard?: { events?: Array<{ name?: string }> } | null): Promise<VRDashboardPatternSummary | null> {
-  try {
-    const marketState = await generateMarketState({ rootDir })
-    const patternMatches = detectPatternMatches(toPatternDetectorInput(marketState), { rootDir, limit: 3 })
-    const scenarioPlaybook = mapScenarioPlaybook(patternMatches, { rootDir, maxScenarios: 3 })
-    const historicalAnalogs = computeCurrentMarketAnalogs({
-      rootDir,
-      marketState,
-      topPattern: patternMatches.top_matches[0] ?? null,
-      minScore: 40,
-      preloadedStandard,
-    })
-    const suggestedPosture = Array.from(
-      new Set(scenarioPlaybook.scenarios.flatMap((scenario) => scenario.posture_guidance))
-    ).slice(0, 3)
-    const postureMessage = buildPostureMessage({
-      marketState,
-      primaryPatternName: patternMatches.top_matches[0]?.pattern_name,
-      scenarios: scenarioPlaybook.scenarios.slice(0, 3).map((scenario) => ({
-        scenario_id: scenario.scenario_id,
-        scenario_name: scenario.scenario_name,
-        description: scenario.description,
-        posture_guidance: scenario.posture_guidance,
-      })),
-      suggestedPosture,
-    })
-
-    return {
-      snapshot: {
-        as_of_date: marketState.as_of_date,
-        market_pattern: patternMatches.top_matches[0]?.pattern_name ?? 'No pattern analog available yet',
-        nasdaq_drawdown: formatPercent(marketState.nasdaq_drawdown),
-        tqqq_drawdown: formatPercent(marketState.tqqq_drawdown),
-        ma200_status: formatMA200Label(marketState.ma200_relation),
-        market_structure: formatStructureLabel(marketState.price_structure),
-        volatility_regime: formatVolatilityLabel(marketState.volatility_regime),
-        recommended_posture: suggestedPosture,
-      },
-      posture_message: postureMessage,
-      top_matches: patternMatches.top_matches.slice(0, 3),
-      scenarios: scenarioPlaybook.scenarios.slice(0, 3).map((scenario) => ({
-        scenario_id: scenario.scenario_id,
-        scenario_name: scenario.scenario_name,
-        description: scenario.description,
-        posture_guidance: scenario.posture_guidance,
-      })),
-      historical_analogs: historicalAnalogs,
-      suggested_posture: suggestedPosture,
-    }
-  } catch {
-    return null
-  }
-}
 
 function toSingleValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
@@ -146,8 +57,6 @@ export default async function VRSurvivalPage({
   const raw = readOutputJson<VRSurvivalData>('vr_survival.json')
   const riskV1 = readRiskV1Current()
   const heatmapData = readOutputJson<ETFRoomData>('etf_room.json')
-  const standardPlayback = readOutputJson<RawStandardPlaybackArchive>('risk_v1_playback.json')
-  const rootDir = join(process.cwd(), '..', '..')
   const requestedTab = toSingleValue(searchParams?.tab)
   const requestedEvent = toSingleValue(searchParams?.event)
   const VALID_TABS: Tab[] = ['Overview', 'Strategy Lab', 'Crash Analysis', 'Backtest', 'Playback', 'Pool Logic', 'Options Overlay', 'Philosophy']
@@ -167,7 +76,6 @@ export default async function VRSurvivalPage({
           sim_stock_pct: simStockPct,
         }
       : undefined
-  const patternDashboard = await buildCurrentPatternDashboard(rootDir, standardPlayback)
 
   if (!raw) {
     return (
@@ -254,7 +162,6 @@ export default async function VRSurvivalPage({
         <VRSurvival
           data={raw}
           heatmapData={heatmapData}
-          patternDashboard={patternDashboard}
           initialTab={initialTab}
           initialPlaybackEventId={initialPlaybackEventId}
           simParams={simParams}

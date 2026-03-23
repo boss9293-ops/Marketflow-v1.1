@@ -5266,8 +5266,10 @@ export default function VRSurvival({
   const [playbackLoading, setPlaybackLoading] = useState(false)
   const [fetchedArena, setFetchedArena] = useState<StrategyArenaView | null>(null)
   const [arenaLoading, setArenaLoading] = useState(false)
+  const [fetchedPatternDashboard, setFetchedPatternDashboard] = useState<VRDashboardPatternSummary | null>(null)
   const playbackFetchRef = useRef(false)
   const arenaFetchRef = useRef(false)
+  const patternDashboardFetchRef = useRef(false)
 
   // Fetch playback data on mount (used by Overview, Playback, Strategy Lab tabs)
   useEffect(() => {
@@ -5288,6 +5290,17 @@ export default function VRSurvival({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Fetch pattern dashboard on mount (lazy — removes SSR computation from page.tsx)
+  useEffect(() => {
+    if (patternDashboardFetchRef.current) return
+    patternDashboardFetchRef.current = true
+    fetch('/api/vr-pattern-dashboard')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: VRDashboardPatternSummary | null) => setFetchedPatternDashboard(data))
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Fetch arena data lazily when Backtest tab is activated
   useEffect(() => {
     if (tab !== 'Backtest') return
@@ -5303,6 +5316,7 @@ export default function VRSurvival({
 
   const effectivePlayback = fetchedPlayback ?? playbackData ?? null
   const effectiveArena = fetchedArena ?? strategyArena ?? null
+  const effectivePatternDashboard = fetchedPatternDashboard ?? patternDashboard ?? null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -5335,7 +5349,7 @@ export default function VRSurvival({
       )}
 
       {tab === 'Overview' ? (
-        <OverviewTab data={data} patternDashboard={patternDashboard} playbackData={effectivePlayback} vrAudit={vrAudit} />
+        <OverviewTab data={data} patternDashboard={effectivePatternDashboard} playbackData={effectivePlayback} vrAudit={vrAudit} />
       ) : null}
       {tab === 'Playback' ? (
         <PlaybackTab playbackData={effectivePlayback} initialPlaybackEventId={initialPlaybackEventId} />
@@ -5361,7 +5375,7 @@ export default function VRSurvival({
               Discrepancies between AI scenario probabilities and historical pattern data are signal, not noise.
             </div>
           </div>
-          <OverviewTab data={data} patternDashboard={patternDashboard} playbackData={effectivePlayback} vrAudit={vrAudit} />
+          <OverviewTab data={data} patternDashboard={effectivePatternDashboard} playbackData={effectivePlayback} vrAudit={vrAudit} />
         </div>
       ) : null}
       {tab === 'Strategy Lab' ? (
