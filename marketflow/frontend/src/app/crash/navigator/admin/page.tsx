@@ -42,7 +42,16 @@ export default function NavigatorAdminParetoPage() {
     )
   }
 
-  const text = fs.readFileSync(csvPath, 'utf8')
+  let text: string
+  try {
+    text = fs.readFileSync(csvPath, 'utf8')
+  } catch {
+    return (
+      <main style={{ padding: '2rem', color: '#e5e7eb', background: '#0c0e13', minHeight: '100vh' }}>
+        <div>navigator_tradeoff_matrix.csv could not be read.</div>
+      </main>
+    )
+  }
   const rows = parseCsv(text).map((r) => ({
     param_set_id: Number(r.param_set_id),
     watch_ret2: Number(r.watch_ret2),

@@ -99,6 +99,7 @@ export default function WatchlistSidebar({ open, onClose }: Props) {
               borderRadius: 8,
               padding: '0.44rem 0.55rem',
               fontSize: '0.8rem',
+              caretColor: 'transparent',
             }}
           />
           <button type="submit" style={{ border: '1px solid rgba(0,217,255,0.35)', background: 'rgba(0,217,255,0.14)', color: '#67e8f9', borderRadius: 8, padding: '0.44rem 0.65rem', cursor: 'pointer', fontWeight: 700 }}>
