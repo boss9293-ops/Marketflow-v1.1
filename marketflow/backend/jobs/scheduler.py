@@ -1,8 +1,22 @@
 from __future__ import annotations
 
+import os
 from typing import Any
+from zoneinfo import ZoneInfo
 
 _scheduler = None
+
+
+def _parse_hhmm(value: str, fallback: str) -> tuple[int, int]:
+    raw = (value or fallback).strip()
+    try:
+        hour_str, minute_str = raw.split(":", 1)
+        hour = max(0, min(23, int(hour_str)))
+        minute = max(0, min(59, int(minute_str)))
+        return hour, minute
+    except Exception:
+        hour_str, minute_str = fallback.split(":", 1)
+        return int(hour_str), int(minute_str)
 
 
 def start_scheduler():
@@ -11,6 +25,8 @@ def start_scheduler():
         return _scheduler
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        from jobs.build_ai_briefings import build_ai_briefings
         from jobs.build_validation_snapshot import build_validation_snapshot
         from config.validation_guard_policy import load_guard_policy
     except Exception as e:
@@ -20,7 +36,7 @@ def start_scheduler():
     try:
         policy = load_guard_policy()
         run_time = str(((policy.get("schedule") or {}).get("daily_run_time_local")) or "18:30")
-        hour, minute = map(int, run_time.split(":"))
+        hour, minute = _parse_hhmm(run_time, "18:30")
     except Exception as e:
         print(f"[Scheduler] Invalid validation guard schedule config, using 18:30: {e}")
         hour, minute = 18, 30
@@ -37,8 +53,37 @@ def start_scheduler():
         max_instances=1,
         coalesce=True,
     )
+
+    try:
+        et_zone = ZoneInfo("America/New_York")
+        morning_hour, morning_minute = _parse_hhmm(os.getenv("AI_BRIEF_MORNING_TIME_ET", "01:00"), "01:00")
+        close_hour, close_minute = _parse_hhmm(os.getenv("AI_BRIEF_CLOSE_TIME_ET", "16:15"), "16:15")
+        scheduler.add_job(
+            build_ai_briefings,
+            trigger=CronTrigger(hour=morning_hour, minute=morning_minute, timezone=et_zone),
+            kwargs={"run_label": "morning"},
+            id="ai_brief_morning",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            build_ai_briefings,
+            trigger=CronTrigger(hour=close_hour, minute=close_minute, timezone=et_zone),
+            kwargs={"run_label": "close"},
+            id="ai_brief_close",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        print(
+            f"[Scheduler] AI briefings scheduled daily at {morning_hour:02d}:{morning_minute:02d} ET "
+            f"and {close_hour:02d}:{close_minute:02d} ET"
+        )
+    except Exception as e:
+        print(f"[Scheduler] AI briefing scheduler disabled: {e}")
+
     scheduler.start()
     print(f"[Scheduler] Validation Guard scheduled daily at {hour:02d}:{minute:02d}")
     _scheduler = scheduler
     return scheduler
-

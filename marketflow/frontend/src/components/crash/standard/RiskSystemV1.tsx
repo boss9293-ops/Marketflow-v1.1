@@ -1,8 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useState, useMemo, useEffect } from 'react'
 import MonteCarloInterpretationCard from '@/components/MonteCarloInterpretationCard'
 import { buildStandardInterpretationDisplayModel } from '@/lib/standard/buildStandardInterpretationDisplayModel'
+import { pickLang, type UiLang } from '@/lib/uiLang'
+import { UI_TEXT } from '@/lib/uiText'
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceLine, CartesianGrid,
@@ -52,7 +54,7 @@ type Current = {
 }
 
 type CtxHistPoint = { date: string; qqq_vs_ma200?: number | null; spy_vs_ma200: number | null; spy_dd: number; dia_vs_ma200: number | null; dia_dd: number | null; rs_n: number }
-type LayerScore = { score: number; max: number; label: string; desc: string; [key: string]: unknown }
+type LayerScore = { score: number; max: number; label: string; desc: string; key?: string; [key: string]: unknown }
 type CrisisStage = { stage: number; label: string; plain_label_ko: string; all_labels_ko: string[]; color: string; desc: string; all_labels: string[]; all_colors: string[] }
 type RegimeInfo = { regime: string; color: string; desc: string; confidence: number; drivers: string[]; weights: Record<string, number> }
 type TotalRisk = {
@@ -266,6 +268,31 @@ export type RiskV1Data = {
   global_transmission?: GlobalTransmission;
 }
 
+function buildAxisTicks<T extends Record<string, unknown>>(
+  points: T[],
+  key: keyof T,
+  desiredCount: number,
+): Array<string | number> {
+  const readTickValue = (point: T): string | number | null => {
+    const value = point[key]
+    return typeof value === 'string' || typeof value === 'number' ? value : null
+  }
+  if (!points.length) return []
+  if (points.length <= desiredCount) {
+    return points.map(readTickValue).filter((value): value is string | number => value !== null)
+  }
+  const step = Math.max(1, Math.floor((points.length - 1) / Math.max(1, desiredCount - 1)))
+  const ticks = points
+    .filter((_, index) => index % step === 0)
+    .map(readTickValue)
+    .filter((value): value is string | number => value !== null)
+  const last = points[points.length - 1]?.[key]
+  if ((typeof last === 'string' || typeof last === 'number') && ticks[ticks.length - 1] !== last) {
+    ticks.push(last)
+  }
+  return Array.from(new Set(ticks))
+}
+
 // Playback types
 type PbPoint = {
   d: string; qqq_n: number; ma50_n: number | null; ma200_n: number | null; tqqq_n: number | null;
@@ -286,6 +313,14 @@ const TYPE_COLORS: Record<string, string> = {
 
 const TABS = ['Overview', 'Event Library', 'Event Playback', 'Signal Analysis', 'Methodology'] as const
 type Tab = typeof TABS[number]
+
+const TAB_COPY: Record<Tab, { ko: string; en: string }> = {
+  Overview: UI_TEXT.risk.overview,
+  'Event Library': UI_TEXT.risk.eventLibrary,
+  'Event Playback': UI_TEXT.risk.eventPlayback,
+  'Signal Analysis': UI_TEXT.risk.signalAnalysis,
+  Methodology: UI_TEXT.risk.methodology,
+}
 
 // Helpers
 function card(extra?: object) {
@@ -426,19 +461,19 @@ function riskIntensityFromMss(score: number | null | undefined) {
 }
 
 // Tab bar
-function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+function TabBar({ tab, setTab, uiLang }: { tab: Tab; setTab: (t: Tab) => void; uiLang: UiLang }) {
   return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
       {TABS.map((t) => {
         const on = t === tab
         return (
           <button key={t} onClick={() => setTab(t)} style={{
-            padding: '0.39rem 1.04rem', borderRadius: 8,
-            border: on ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.09)',
-            background: on ? 'rgba(99,102,241,0.14)' : 'rgba(255,255,255,0.02)',
-            color: on ? '#a5b4fc' : '#e5e7eb',
-            fontSize: '1.14rem', fontWeight: on ? 700 : 500, cursor: 'pointer',
-          }}>{t}</button>
+            padding: '0.45rem 1rem', borderRadius: 9,
+            border: on ? '1px solid rgba(129,140,248,0.45)' : '1px solid rgba(148,163,184,0.16)',
+            background: on ? 'rgba(99,102,241,0.16)' : 'rgba(255,255,255,0.03)',
+            color: on ? '#eef3ff' : '#d7e1ee',
+            fontSize: '0.9rem', fontWeight: on ? 700 : 600, letterSpacing: '0.01em', cursor: 'pointer',
+          }}>{pickLang(uiLang, TAB_COPY[t].ko, TAB_COPY[t].en)}</button>
         )
       })}
     </div>
@@ -446,52 +481,53 @@ function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 }
 
 // Overview Tab
-function buildCausalChain(data: RiskV1Data): Array<{ step: string; text: string; color: string }> {
-  const mps = Math.round(data.total_risk?.macro_pressure ?? 0)
+function buildCausalChain(data: RiskV1Data, uiLang: UiLang): Array<{ step: string; text: string; color: string }> {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
+  const mps = Math.round(data.total_risk?.mps ?? 0)
   const mss = data.current.score ?? 100
   const breadth = data.breadth
   const trackA = data.track_a
   const total = data.total_risk
-  const levLoan = total?.layers.leveraged_loan_stress
+  const levLoan = total?.layers.lev_loan
   const fin = total?.layers.financial_stress
   const totalScore = total?.total ?? 0
 
-  let s1 = { step: 'Context', text: 'Market conditions are broadly stable.', color: '#22c55e' }
+  let s1 = { step: 'Context', text: L('시장 조건은 전반적으로 안정적입니다.', 'Market conditions are broadly stable.'), color: '#22c55e' }
   if (mps >= 60) {
-    s1 = { step: 'Context', text: `Macro pressure is elevated. MPS ${mps}.`, color: '#ef4444' }
+    s1 = { step: 'Context', text: L(`매크로 압력이 높습니다. MPS ${mps}.`, `Macro pressure is elevated. MPS ${mps}.`), color: '#ef4444' }
   } else if (breadth?.divergence) {
-    s1 = { step: 'Context', text: `Internal breadth is weak versus the index. MA200 breadth ${breadth.pct_above_ma200?.toFixed(0)}%.`, color: '#f97316' }
+    s1 = { step: 'Context', text: L(`내부 breadth가 지수 대비 약합니다. MA200 breadth ${breadth.pct_above_ma200?.toFixed(0)}%.`, `Internal breadth is weak versus the index. MA200 breadth ${breadth.pct_above_ma200?.toFixed(0)}%.`), color: '#f97316' }
   } else if (mps >= 40) {
-    s1 = { step: 'Context', text: `Macro pressure is building. MPS ${mps}.`, color: '#f59e0b' }
+    s1 = { step: 'Context', text: L(`매크로 압력이 쌓이고 있습니다. MPS ${mps}.`, `Macro pressure is building. MPS ${mps}.`), color: '#f59e0b' }
   }
 
-  let s2 = { step: 'Cause', text: 'Core warning signals remain limited.', color: '#22c55e' }
+  let s2 = { step: 'Cause', text: L('핵심 경고 신호는 아직 제한적입니다.', 'Core warning signals remain limited.'), color: '#22c55e' }
   if (trackA?.stage0) {
-    s2 = { step: 'Cause', text: `Track A credit stress is confirmed. Z ${trackA.z_credit?.toFixed(2)}.`, color: '#ef4444' }
+    s2 = { step: 'Cause', text: L(`Track A credit stress가 확인되었습니다. Z ${trackA.z_credit?.toFixed(2)}.`, `Track A credit stress is confirmed. Z ${trackA.z_credit?.toFixed(2)}.`), color: '#ef4444' }
   } else if (levLoan && levLoan.score / levLoan.max > 0.6) {
-    s2 = { step: 'Cause', text: `The leveraged-loan layer is weakening. ${levLoan.score}/${levLoan.max}.`, color: '#f97316' }
+    s2 = { step: 'Cause', text: L(`레버리지론 레이어가 약화되고 있습니다. ${levLoan.score}/${levLoan.max}.`, `The leveraged-loan layer is weakening. ${levLoan.score}/${levLoan.max}.`), color: '#f97316' }
   } else if (trackA?.hy_oas_current != null && trackA.hy_oas_current > 4.5) {
-    s2 = { step: 'Cause', text: `HY OAS is widening. ${trackA.hy_oas_current.toFixed(1)}%.`, color: '#f97316' }
+    s2 = { step: 'Cause', text: L(`HY OAS가 확대되고 있습니다. ${trackA.hy_oas_current.toFixed(1)}%.`, `HY OAS is widening. ${trackA.hy_oas_current.toFixed(1)}%.`), color: '#f97316' }
   } else if (fin && fin.score / fin.max > 0.5) {
-    s2 = { step: 'Cause', text: `The financial stress layer is rising. ${fin.score}/${fin.max}.`, color: '#f59e0b' }
+    s2 = { step: 'Cause', text: L(`금융 스트레스 레이어가 상승 중입니다. ${fin.score}/${fin.max}.`, `The financial stress layer is rising. ${fin.score}/${fin.max}.`), color: '#f59e0b' }
   }
 
-  let s3 = { step: 'Result', text: `MSS ${mss.toFixed(0)} keeps structure broadly intact.`, color: '#22c55e' }
+  let s3 = { step: 'Result', text: L(`MSS ${mss.toFixed(0)}가 구조를 대체로 유지합니다.`, `MSS ${mss.toFixed(0)} keeps structure broadly intact.`), color: '#22c55e' }
   if (mss < 92) {
-    s3 = { step: 'Result', text: `MSS ${mss.toFixed(0)}. Structural deterioration is in progress.`, color: '#ef4444' }
+    s3 = { step: 'Result', text: L(`MSS ${mss.toFixed(0)}. 구조적 약화가 진행 중입니다.`, `MSS ${mss.toFixed(0)}. Structural deterioration is in progress.`), color: '#ef4444' }
   } else if (mss < 100) {
-    s3 = { step: 'Result', text: `MSS ${mss.toFixed(0)}. Downside pressure persists below 100.`, color: '#f97316' }
+    s3 = { step: 'Result', text: L(`MSS ${mss.toFixed(0)}. 100 아래에서 하방 압력이 지속됩니다.`, `MSS ${mss.toFixed(0)}. Downside pressure persists below 100.`), color: '#f97316' }
   } else if (totalScore >= 50 || breadth?.divergence) {
-    s3 = { step: 'Result', text: `MSS ${mss.toFixed(0)}, but internal signals are softening.`, color: '#f59e0b' }
+    s3 = { step: 'Result', text: L(`MSS ${mss.toFixed(0)}이지만 내부 신호는 약해지고 있습니다.`, `MSS ${mss.toFixed(0)}, but internal signals are softening.`), color: '#f59e0b' }
   }
 
-  let s4 = { step: 'Action', text: 'Hold positioning and maintain short-term caution.', color: '#22c55e' }
+  let s4 = { step: 'Action', text: L('포지션을 유지하고 단기 경계를 유지하세요.', 'Hold positioning and maintain short-term caution.'), color: '#22c55e' }
   if (trackA?.stage0) {
-    s4 = { step: 'Action', text: 'Reduce added exposure and prepare for a defensive rotation.', color: '#ef4444' }
+    s4 = { step: 'Action', text: L('추가 노출을 줄이고 방어적 전환을 준비하세요.', 'Reduce added exposure and prepare for a defensive rotation.'), color: '#ef4444' }
   } else if (mss < 92 && mps >= 50) {
-    s4 = { step: 'Action', text: 'Trim leverage and increase review frequency.', color: '#f97316' }
+    s4 = { step: 'Action', text: L('레버리지를 줄이고 점검 빈도를 높이세요.', 'Trim leverage and increase review frequency.'), color: '#f97316' }
   } else if (breadth?.divergence || mss < 100) {
-    s4 = { step: 'Action', text: 'Prepare defensively while watching for Track A confirmation.', color: '#f59e0b' }
+    s4 = { step: 'Action', text: L('Track A 확인을 보면서 방어적으로 준비하세요.', 'Prepare defensively while watching for Track A confirmation.'), color: '#f59e0b' }
   }
 
   return [s1, s2, s3, s4]
@@ -516,76 +552,89 @@ function getBreadthDivergenceText(b: RiskV1Data['breadth'] | null | undefined): 
   return 'Breadth divergence is active. Internal participation is weaker than the headline index.'
 }
 
-function getScenarioActionHint(rs: RiskScenario | null | undefined): string {
-  if (!rs) return 'Use the scenario as context, not as the action layer.'
+function getScenarioActionHint(rs: RiskScenario | null | undefined, uiLang: UiLang): string {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
+  if (!rs) return L('시나리오는 참고용 맥락으로만 사용하세요. 실행 레이어가 아닙니다.', 'Use the scenario as context, not as the action layer.')
   const label = `${rs.scenario} ${getScenarioLabel(rs)}`.toLowerCase()
   if (label.includes('risk-on') || label.includes('expansion')) {
-    return 'Maintain standard exposure and keep momentum tactics active.'
+    return L('표준 익스포저를 유지하고 모멘텀 전략을 계속 사용하세요.', 'Maintain standard exposure and keep momentum tactics active.')
   }
   if (label.includes('late') || label.includes('cooling')) {
-    return 'Keep exposure, but tighten risk budgets and monitor leadership closely.'
+    return L('익스포저는 유지하되, 리스크 예산을 조이고 리더십을 면밀히 보세요.', 'Keep exposure, but tighten risk budgets and monitor leadership closely.')
   }
   if (label.includes('defensive') || label.includes('risk-off') || label.includes('contraction')) {
-    return 'Favor defense, tighter gross exposure, and higher review frequency.'
+    return L('방어를 우선하고, 총 익스포저를 낮추며, 점검 빈도를 높이세요.', 'Favor defense, tighter gross exposure, and higher review frequency.')
   }
-  return 'Use this scenario as a descriptive overlay. It does not override the action layer.'
+  return L('이 시나리오는 설명용 오버레이로만 사용하세요. 실행 레이어를 대체하지 않습니다.', 'Use this scenario as a descriptive overlay. It does not override the action layer.')
 }
 
-function getScenarioDescription(rs: RiskScenario | null | undefined): string {
-  if (!rs) return 'Scenario context is unavailable.'
+function getScenarioDescription(rs: RiskScenario | null | undefined, uiLang: UiLang): string {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
+  if (!rs) return L('시나리오 컨텍스트를 사용할 수 없습니다.', 'Scenario context is unavailable.')
   const label = `${rs.scenario} ${getScenarioLabel(rs)}`.toLowerCase()
   if (label.includes('risk-on') || label.includes('expansion')) {
-    return 'Most inputs are stable. Structure is healthy enough for standard risk-taking.'
+    return L('대부분의 입력이 안정적입니다. 구조는 표준 리스크를 감수할 수 있을 만큼 건강합니다.', 'Most inputs are stable. Structure is healthy enough for standard risk-taking.')
   }
   if (label.includes('late') || label.includes('cooling')) {
-    return 'The market still has support, but internal momentum is becoming less uniform.'
+    return L('시장은 아직 지지받고 있지만, 내부 모멘텀은 점점 균일하지 않습니다.', 'The market still has support, but internal momentum is becoming less uniform.')
   }
   if (label.includes('defensive') || label.includes('risk-off')) {
-    return 'Defensive rotation is dominant. Preserve flexibility and avoid forcing beta.'
+    return L('방어적 로테이션이 우세합니다. 유연성을 보존하고 beta를 억지로 늘리지 마세요.', 'Defensive rotation is dominant. Preserve flexibility and avoid forcing beta.')
   }
   if (label.includes('contraction')) {
-    return 'The path of stress points to contraction. Risk budgets should stay tight.'
+    return L('스트레스 경로는 수축을 가리킵니다. 리스크 예산은 타이트하게 유지하세요.', 'The path of stress points to contraction. Risk budgets should stay tight.')
   }
-  return isAsciiText(rs.desc) ? rs.desc : 'Scenario context is active, but its descriptive text is unavailable.'
+  return isAsciiText(rs.desc) ? rs.desc : L('시나리오 컨텍스트는 활성 상태지만, 설명 텍스트를 사용할 수 없습니다.', 'Scenario context is active, but its descriptive text is unavailable.')
 }
 
-function getMasterDetail(data: RiskV1Data): string {
+function getMasterDetail(data: RiskV1Data, uiLang: UiLang): string {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
   const ms = data.master_signal
   const tae = data.track_a_early
   const ta = data.track_a
   const tc = data.track_c
-  if (!ms) return 'Core tracks are stable. No active escalation is required.'
+  if (!ms) return L('핵심 트랙은 안정적입니다. 현재는 에스컬레이션이 필요하지 않습니다.', 'Core tracks are stable. No active escalation is required.')
 
   switch (ms.mode) {
     case 'EARLY_WARNING':
-      return `[Early transmission watch] Track A Early is ${tae?.state ?? 'active'}. Public-market proxies are weakening (${(tae?.triggered ?? []).join(', ') || 'BDC/SPY, XLF/SPY, KRE/SPY'}). Spreads are not confirmed yet, so keep positions but review Track A closely if weakness deepens.`
+      return L(
+        `[조기 전송 감시] Track A Early 상태는 ${tae?.state ?? 'active'}입니다. 공개시장 프록시가 약해지고 있습니다 (${(tae?.triggered ?? []).join(', ') || 'BDC/SPY, XLF/SPY, KRE/SPY'}). 스프레드는 아직 확인되지 않았으므로 포지션은 유지하되, 약화가 심해지면 Track A를 면밀히 점검하세요.`,
+        `[Early transmission watch] Track A Early is ${tae?.state ?? 'active'}. Public-market proxies are weakening (${(tae?.triggered ?? []).join(', ') || 'BDC/SPY, XLF/SPY, KRE/SPY'}). Spreads are not confirmed yet, so keep positions but review Track A closely if weakness deepens.`
+      )
     case 'CREDIT_CRISIS':
-      return 'Credit stress is confirmed. Reduce leverage, tighten gross exposure, and prioritize capital preservation.'
+      return L('신용 스트레스가 확인되었습니다. 레버리지를 줄이고 총 익스포저를 낮추며 자본 보전을 우선하세요.', 'Credit stress is confirmed. Reduce leverage, tighten gross exposure, and prioritize capital preservation.')
     case 'HEDGE_AND_HOLD':
-      return 'Stress is elevated but not yet disorderly. Maintain core holdings and add hedges rather than forcing exits.'
+      return L('스트레스는 높지만 아직 혼란 단계는 아닙니다. 핵심 보유는 유지하고, 강제 청산보다 헤지를 추가하세요.', 'Stress is elevated but not yet disorderly. Maintain core holdings and add hedges rather than forcing exits.')
     case 'COMPOUND_CRISIS':
-      return 'Multiple stress channels are firing together. Shift to capital preservation and crisis response mode.'
+      return L('여러 스트레스 채널이 동시에 반응하고 있습니다. 자본 보전과 위기 대응 모드로 전환하세요.', 'Multiple stress channels are firing together. Shift to capital preservation and crisis response mode.')
     default:
-      if (ta?.state && ta.state !== 'Normal') return `Track A is ${ta.state}. Public credit stress is no longer only a proxy signal.`
-      if (tc?.state && tc.state !== 'Normal') return `Track C is ${tc.state}. External shock sensors are active.`
-      return 'Core tracks are stable. No active escalation is required.'
+      if (ta?.state && ta.state !== 'Normal') return L(`Track A는 ${ta.state}입니다. 공개 신용 스트레스는 더 이상 프록시 신호에만 머물지 않습니다.`, `Track A is ${ta.state}. Public credit stress is no longer only a proxy signal.`)
+      if (tc?.state && tc.state !== 'Normal') return L(`Track C는 ${tc.state}입니다. 외부 shock 센서가 활성화되어 있습니다.`, `Track C is ${tc.state}. External shock sensors are active.`)
+      return L('핵심 트랙은 안정적입니다. 현재는 에스컬레이션이 필요하지 않습니다.', 'Core tracks are stable. No active escalation is required.')
   }
 }
 
-function getTotalRiskActionLine(data: RiskV1Data): string {
+function getTotalRiskActionLine(data: RiskV1Data, uiLang: UiLang): string {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
   const tr = data.total_risk
   const ms = data.master_signal
-  if (!tr) return 'Current engine state is based on combined structure, credit, shock, and macro inputs.'
+  if (!tr) return L('현재 엔진 상태는 구조, 신용, shock, 매크로 입력을 종합한 결과입니다.', 'Current engine state is based on combined structure, credit, shock, and macro inputs.')
   if (ms?.mode === 'EARLY_WARNING') {
-    return `WARNING -- Reduce leveraged exposure. Credit and cross-asset stress are spreading. ${getMasterDetail(data)}`
+    return L(
+      `경고 -- 레버리지 노출을 줄이세요. 신용과 cross-asset 스트레스가 확산되고 있습니다. ${getMasterDetail(data, uiLang)}`,
+      `WARNING -- Reduce leveraged exposure. Credit and cross-asset stress are spreading. ${getMasterDetail(data, uiLang)}`
+    )
   }
   if (ms?.mode === 'COMPOUND_CRISIS') {
-    return 'CRISIS -- Multiple layers are firing together. Prioritize defense and capital preservation.'
+    return L('위기 -- 여러 레이어가 동시에 반응하고 있습니다. 방어와 자본 보전을 우선하세요.', 'CRISIS -- Multiple layers are firing together. Prioritize defense and capital preservation.')
   }
   if (ms?.mode === 'CREDIT_CRISIS') {
-    return 'WARNING -- Credit stress is confirmed. Reduce leverage and tighten risk immediately.'
+    return L('경고 -- 신용 스트레스가 확인되었습니다. 레버리지를 줄이고 즉시 리스크를 낮추세요.', 'WARNING -- Credit stress is confirmed. Reduce leverage and tighten risk immediately.')
   }
-  return `${tr.state.toUpperCase()} -- Manage exposure based on the combined structure, credit, shock, and macro inputs.`
+  return L(
+    `${tr.state.toUpperCase()} -- 구조, 신용, shock, 매크로 입력을 종합해 익스포저를 조정하세요.`,
+    `${tr.state.toUpperCase()} -- Manage exposure based on the combined structure, credit, shock, and macro inputs.`
+  )
 }
 
 function getSafeScoreZoneRange(label: string, range?: string): string {
@@ -696,7 +745,8 @@ function getShortDominantLabel(label: string | null | undefined): string {
   return raw
 }
 
-function generateNarrative(data: RiskV1Data): { paragraphs: string[]; color: string } {
+function generateNarrative(data: RiskV1Data, uiLang: UiLang): { paragraphs: string[]; color: string } {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
   const mss = data.current.score ?? 100
   const level = data.current.level ?? 1
   const regime = data.market_regime?.regime ?? 'Expansion'
@@ -710,36 +760,36 @@ function generateNarrative(data: RiskV1Data): { paragraphs: string[]; color: str
 
   let p1 = ''
   if (mss >= 110) {
-    p1 = `Market structure (MSS ${mss.toFixed(0)}) remains strong. The ${regime} regime is intact.`
+    p1 = L(`시장 구조(MSS ${mss.toFixed(0)})는 여전히 강합니다. ${regime} 레짐은 유지되고 있습니다.`, `Market structure (MSS ${mss.toFixed(0)}) remains strong. The ${regime} regime is intact.`)
   } else if (mss >= 100) {
-    p1 = `Market structure (MSS ${mss.toFixed(0)}) is still above 100, but internal pressure needs monitoring.`
+    p1 = L(`시장 구조(MSS ${mss.toFixed(0)})는 아직 100 위지만, 내부 압력은 점검이 필요합니다.`, `Market structure (MSS ${mss.toFixed(0)}) is still above 100, but internal pressure needs monitoring.`)
   } else if (mss >= 92) {
-    p1 = `Market structure (MSS ${mss.toFixed(0)}) has entered a warning zone. Watch for further weakness within the ${regime} regime.`
+    p1 = L(`시장 구조(MSS ${mss.toFixed(0)})가 경고 구간에 들어섰습니다. ${regime} 레짐 안에서 추가 약화를 주의하세요.`, `Market structure (MSS ${mss.toFixed(0)}) has entered a warning zone. Watch for further weakness within the ${regime} regime.`)
   } else {
-    p1 = `Market structure (MSS ${mss.toFixed(0)}) is fragile. Defensive handling is warranted in the ${regime} regime.`
+    p1 = L(`시장 구조(MSS ${mss.toFixed(0)})는 취약합니다. ${regime} 레짐에서는 방어적 대응이 필요합니다.`, `Market structure (MSS ${mss.toFixed(0)}) is fragile. Defensive handling is warranted in the ${regime} regime.`)
   }
 
   let p2 = ''
   if (trackAState !== 'Normal') {
     const hy = trackA?.hy_oas_current != null ? ` HY OAS ${trackA.hy_oas_current.toFixed(1)}%.` : ''
-    p2 = `Track A is ${trackAState}.${hy} Continue to watch for public credit-market transmission.`
+    p2 = L(`Track A는 ${trackAState}입니다.${hy} 공개 신용시장 전이 여부를 계속 주시하세요.`, `Track A is ${trackAState}.${hy} Continue to watch for public credit-market transmission.`)
   } else if (trackCState !== 'Normal') {
     const shock = trackC?.shock_type && trackC.shock_type !== 'None' ? trackC.shock_type : 'external shock'
-    p2 = `Track C is ${trackCState}, with ${shock} signals detected. Defensive review should take priority over aggressive expansion.`
+    p2 = L(`Track C는 ${trackCState}이며, ${shock} 신호가 감지되었습니다. 공격적 확장보다 방어적 검토를 우선하세요.`, `Track C is ${trackCState}, with ${shock} signals detected. Defensive review should take priority over aggressive expansion.`)
   } else {
-    const scenarioText = scenario ? `${scenario.scenario} (${getScenarioLabel(scenario)}) - ${getScenarioActionHint(scenario)}` : 'Core tracks are broadly stable.'
-    p2 = `Track A and Track C are currently stable. ${scenarioText}`
+    const scenarioText = scenario ? `${scenario.scenario} (${getScenarioLabel(scenario)}) - ${getScenarioActionHint(scenario, uiLang)}` : L('핵심 트랙은 대체로 안정적입니다.', 'Core tracks are broadly stable.')
+    p2 = L(`Track A와 Track C는 현재 안정적입니다. ${scenarioText}`, `Track A and Track C are currently stable. ${scenarioText}`)
   }
 
   let p3 = ''
   if (topDriver) {
-    p3 = `The main stress driver is ${topDriver.label}, contributing about ${Math.round(topDriver.ratio * 100)}%. `
+    p3 = L(`주요 스트레스 드라이버는 ${topDriver.label}이며, 기여도는 약 ${Math.round(topDriver.ratio * 100)}%입니다. `, `The main stress driver is ${topDriver.label}, contributing about ${Math.round(topDriver.ratio * 100)}%. `)
   }
   if (trackB?.velocity_alert) {
     const delta = trackB.mss_5d_delta != null ? trackB.mss_5d_delta.toFixed(1) : '?'
-    p3 += `The 5-day MSS change is rising by ${delta}pt, so structural velocity also warrants attention.`
+    p3 += L(`5일 MSS 변화가 ${delta}pt 상승하고 있어 구조적 velocity도 주의가 필요합니다.`, `The 5-day MSS change is rising by ${delta}pt, so structural velocity also warrants attention.`)
   } else {
-    p3 += `MSS velocity remains manageable for now.`
+    p3 += L('MSS velocity는 현재 관리 가능한 수준입니다.', 'MSS velocity remains manageable for now.')
   }
 
   const color = level <= 0 ? '#22c55e' : level === 1 ? '#f59e0b' : level === 2 ? '#f97316' : '#ef4444'
@@ -900,11 +950,13 @@ function RadarChart({
 }
 function OverviewTab({
   data,
+  uiLang,
 }: {
   data: RiskV1Data
+  uiLang: UiLang
 }) {
   const { current: c, history, methodology } = data
-  const interpretationModel = useMemo(() => buildStandardInterpretationDisplayModel(data), [data])
+  const interpretationModel = useMemo(() => buildStandardInterpretationDisplayModel(data, uiLang), [data, uiLang])
   const tier = methodology.level_tiers.find((t) => t.level === c.level) ?? methodology.level_tiers[0]
   const colNow = LEVEL_COLORS[c.level] ?? '#e5e7eb'
   const freshnessOrder = ['qqq', 'spy', 'hyg', 'lqd', 'dxy', 'vix', 'put_call', 'hy_oas', 'ig_oas', 'fsi', 'move']
@@ -915,7 +967,7 @@ function OverviewTab({
   const staleFreshness = orderedFreshness.filter(([, meta]) => meta?.is_stale)
   const cadenceFreshness = orderedFreshness.filter(([, meta]) => meta?.cadence && !meta?.is_stale)
 
-  // Current 90D live window (auto-fetch)
+  // Current live window (auto-fetch)
   const [cur90Pts,     setCur90Pts]     = useState<any[]>([])
   const [cur90Loading, setCur90Loading] = useState(false)
   const [chartMode,    setChartMode]    = useState<'score' | 'risk' | 'compare' | 'long-term'>('score')
@@ -925,6 +977,7 @@ function OverviewTab({
   const [contextSignalTab, setContextSignalTab] = useState<'spy' | 'dia' | 'rotation'>('spy')
   const [mssCtxTab, setMssCtxTab] = useState<'mss' | 'risk' | 'both'>('mss')
   const [ovChartMode, setOvChartMode] = useState<'score' | 'risk' | 'compare' | 'long-term'>('score')
+  const [ovTab, setOvTab] = useState<0|1|2|3|4>(0)
 
   const cur90ChartPts = useMemo(() => {
     if (!cur90Pts.length) return []
@@ -941,8 +994,8 @@ function OverviewTab({
       risk_intensity: riskIntensityFromMss(p.score),
     }))
   }, [cur90Pts])
-  const cur90xInt = Math.max(1, Math.floor(cur90ChartPts.length / 10))
   const cur90Latest = cur90ChartPts.length ? cur90ChartPts[cur90ChartPts.length - 1] : null
+  const cur90AxisTicks = useMemo(() => buildAxisTicks(cur90ChartPts, 'label', 10), [cur90ChartPts])
   const cur90Zone = interpretMssZone(cur90Latest?.score)
   const cur90Exposure = exposureBandFromScore(cur90Latest?.score)
 
@@ -966,7 +1019,24 @@ function OverviewTab({
       .catch(() => {})
       .finally(() => setLtLoading(false))
   }, [chartMode, ltPts.length])
+  const ltAxisTicks = useMemo(() => buildAxisTicks(ltPts, 'd', 10), [ltPts])
+  const ltLastDate = ltPts[ltPts.length - 1]?.d ?? ''
 
+
+  const diagLayers = data.total_risk ? [
+    data.total_risk.layers.equity,
+    data.total_risk.layers.breadth,
+    data.total_risk.layers.credit,
+    data.total_risk.layers.lev_loan,
+    data.total_risk.layers.liquidity,
+    data.total_risk.layers.funding,
+    data.total_risk.layers.macro,
+    data.total_risk.layers.shock,
+    data.total_risk.layers.cross_asset,
+    data.total_risk.layers.credit_spread,
+    data.total_risk.layers.liquidity_shock,
+    data.total_risk.layers.financial_stress,
+  ] : []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.17rem', WebkitFontSmoothing: 'antialiased' }}>
@@ -989,48 +1059,48 @@ function OverviewTab({
         const heroState = (ctx?.final_risk ?? tr?.state ?? c.level_label).toUpperCase()
         const heroColor = tr?.state_color ?? (ctx ? (finalColorMap[ctx.final_risk] ?? colNow) : colNow)
         const exposure = ctx?.final_exposure ?? tier.exposure
-        const summaryLine = getTotalRiskActionLine(data)
+        const summaryLine = getTotalRiskActionLine(data, uiLang)
         const engineCards = [
           {
-            label: 'Systemic Risk',
+            label: pickLang(uiLang, '시스템 리스크', 'Systemic Risk'),
             value: tr ? `${tr.total}/120` : '--',
             sub: tr?.state ?? '--',
             color: tr?.state_color ?? heroColor,
           },
           {
-            label: 'Market Structure',
+            label: pickLang(uiLang, '시장 구조', 'Market Structure'),
             value: `MSS ${c.score.toFixed(0)}`,
-            sub: `Level ${c.level} - ${tier.label}`,
+            sub: pickLang(uiLang, `레벨 ${c.level} - ${tier.label}`, `Level ${c.level} - ${tier.label}`),
             color: colNow,
           },
           {
-            label: 'Track A Early',
+            label: pickLang(uiLang, 'Track A 조기', 'Track A Early'),
             value: tae?.state ?? '--',
-            sub: tae?.as_of_date ? `score ${tae.score ?? '--'} - ${tae.as_of_date}` : 'Early transmission watch',
+            sub: tae?.as_of_date ? pickLang(uiLang, `점수 ${tae.score ?? '--'} - ${tae.as_of_date}`, `score ${tae.score ?? '--'} - ${tae.as_of_date}`) : pickLang(uiLang, '조기 전송 감시', 'Early transmission watch'),
             color: tae?.state === 'Early Watch' ? '#f97316' : tae?.state === 'Soft Watch' ? '#f59e0b' : tae?.state === 'Monitor' ? '#eab308' : '#22c55e',
           },
           {
             label: 'Track A',
             value: ta?.state ?? '--',
-            sub: ta?.as_of_date ? `as-of ${ta.as_of_date}` : 'Credit early warning',
+            sub: ta?.as_of_date ? pickLang(uiLang, `기준일 ${ta.as_of_date}`, `as-of ${ta.as_of_date}`) : pickLang(uiLang, '신용 조기 경고', 'Credit early warning'),
             color: ta?.state === 'Normal' ? '#22c55e' : '#f97316',
           },
           {
             label: 'Track B',
             value: tb?.mss_5d_delta != null ? `${tb.mss_5d_delta > 0 ? '+' : ''}${tb.mss_5d_delta.toFixed(1)}pt` : '--',
-            sub: tb?.mss_5d_ago_date ? `vs ${tb.mss_5d_ago_date}` : 'MSS velocity',
+            sub: tb?.mss_5d_ago_date ? pickLang(uiLang, `비교 ${tb.mss_5d_ago_date}`, `vs ${tb.mss_5d_ago_date}`) : pickLang(uiLang, 'MSS 속도', 'MSS velocity'),
             color: tb?.velocity_alert ? '#ef4444' : '#22c55e',
           },
           {
             label: 'Track C',
-            value: tc ? (tc.state === 'Normal' ? 'All Clear' : tc.state) : '--',
-            sub: tc?.as_of_date ? `as-of ${tc.as_of_date}` : 'Event / shock',
+            value: tc ? (tc.state === 'Normal' ? pickLang(uiLang, '정상', 'All Clear') : tc.state) : '--',
+            sub: tc?.as_of_date ? pickLang(uiLang, `기준일 ${tc.as_of_date}`, `as-of ${tc.as_of_date}`) : pickLang(uiLang, '이벤트 / shock', 'Event / shock'),
             color: tc?.state === 'Normal' ? '#22c55e' : '#06b6d4',
           },
           {
-            label: 'Macro Pressure',
+            label: pickLang(uiLang, '매크로 압력', 'Macro Pressure'),
             value: tr ? `MPS ${tr.mps}` : '--',
-            sub: 'Environment pressure',
+            sub: pickLang(uiLang, '환경 압력', 'Environment pressure'),
             color: tr ? (tr.mps < 30 ? '#22c55e' : tr.mps < 50 ? '#84cc16' : tr.mps < 70 ? '#f59e0b' : tr.mps < 85 ? '#f97316' : '#ef4444') : '#e5e7eb',
           },
         ]
@@ -1052,7 +1122,7 @@ function OverviewTab({
                       background: `${heroColor}18`, border: `1px solid ${heroColor}44`,
                       borderRadius: 5, padding: '2px 9px',
                     }}>
-                      12-Layer {tr.total}/120
+                      {pickLang(uiLang, '12-레이어', '12-Layer')} {tr.total}/120
                     </span>
                   )}
                   {tr?.crisis_stage && (
@@ -1080,7 +1150,7 @@ function OverviewTab({
               </div>
               <div style={{ marginLeft: 'auto', textAlign: 'right', minWidth: 110 }}>
                 <div style={{ fontSize: '0.85rem', color: '#e5e7eb', fontWeight: 700, letterSpacing: '0.08em' }}>
-                  Recommended Exposure
+                  {pickLang(uiLang, '권장 익스포저', 'Recommended Exposure')}
                 </div>
                 <div style={{ fontSize: '1.7rem', fontWeight: 800, color: heroColor, lineHeight: 1, WebkitTextStroke: '0.4px currentColor', letterSpacing: '0.02em' }}>
                   {exposure}%
@@ -1150,8 +1220,29 @@ function OverviewTab({
           </div>
         )
       })()}
+      {/* ─── OVERVIEW SUB-TABS ─── */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 8, marginTop: 4 }}>
+        {(['Summary','Structure','Signals','Context','Live'] as const).map((label, idx) => (
+          <button key={label} onClick={() => setOvTab(idx as 0|1|2|3|4)} style={{
+            padding: '7px 18px', fontSize: '0.76rem', fontWeight: 700,
+            color: ovTab === idx ? '#f8fafc' : '#475569',
+            background: ovTab === idx ? (idx === 4 ? 'linear-gradient(180deg, rgba(251,146,60,0.24), rgba(239,68,68,0.12))' : 'rgba(99,102,241,0.15)') : 'transparent',
+            border: 'none', borderBottom: ovTab === idx ? (idx === 4 ? '2px solid #fb923c' : '2px solid #6366f1') : '2px solid transparent',
+            boxShadow: ovTab === idx && idx === 4 ? '0 0 18px rgba(251,146,60,0.15)' : 'none',
+            cursor: 'pointer', letterSpacing: '0.07em', textTransform: 'uppercase',
+            borderRadius: '6px 6px 0 0', transition: 'color 0.15s',
+          }}>
+            {idx === 4 ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 999, background: '#fb923c', boxShadow: '0 0 0 4px rgba(251,146,60,0.18)' }} />
+                {label}
+              </span>
+            ) : label}
+          </button>
+        ))}
+      </div>
 
-      {orderedFreshness.length > 0 && (
+      {ovTab === 2 && orderedFreshness.length > 0 && (
         <div
           style={{
             border: '1px solid rgba(99,102,241,0.18)',
@@ -1342,10 +1433,31 @@ function OverviewTab({
         </div>
       )}
 
+      {/* ═══════════════════════════════════════════════════
+           MARKET STRUCTURE DIAGNOSTICS
+           Score components · breadth · concentration · stress overlays
+      ════════════════════════════════════════════════════ */}
+      {ovTab === 1 && <div style={{
+        border: '1px solid rgba(255,255,255,0.09)',
+        borderRadius: 14,
+        background: 'rgba(255,255,255,0.018)',
+        padding: '1rem 1.1rem',
+        display: 'flex', flexDirection: 'column', gap: '0.85rem',
+      }}>
+        {/* Group header */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            {pickLang(uiLang, '시장 구조 진단', 'Market Structure Diagnostics')}
+          </span>
+          <span style={{ fontSize: '0.7rem', color: '#374151' }}>
+            {pickLang(uiLang, '점수 · breadth · stress', 'score · breadth · stress')}
+          </span>
+        </div>
+
       {/* MSS components compact pill grid */}
       <div style={card()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ fontSize: '0.99rem', color: '#e5e7eb', fontWeight: 700 }}>MSS Components</span>
+          <span style={{ fontSize: '0.99rem', color: '#e5e7eb', fontWeight: 700 }}>{pickLang(uiLang, 'MSS 구성요소', 'MSS Components')}</span>
           <span style={{ fontSize: '1.12rem', fontWeight: 700, color: colNow }}>{c.score.toFixed(1)}</span>
           {(c as any).score_zone && (
             <span style={{ fontSize: '0.9rem', color: '#e5e7eb', fontStyle: 'italic' }}>{(c as any).score_zone}</span>
@@ -1477,7 +1589,7 @@ function OverviewTab({
         const fmt    = (d: number | null) => d == null ? '--' : `${d > 0 ? '+' : ''}${d.toFixed(1)}`
         const relFmt = (v: number | null) => v == null ? '--' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`
         const relColor = (v: number | null) =>
-          v == null ? '#e5e7eb' : v > 3 ? '#f97316' : v > 0 ? '#f59e0b' : v > -3 ? '#22c55e' : '#a78bfa'
+          v == null ? '#e5e7eb' : v > 3 ? '#22c55e' : v > 0 ? '#86efac' : v > -3 ? '#fca5a5' : '#ef4444'
 
         if (!cn?.available && hLen < 6) return null
         return (
@@ -1505,25 +1617,25 @@ function OverviewTab({
             {cn?.available && (
               <div style={{ flex: 1, background: '#0d1117', border: `1px solid ${cn.color}33`, borderLeft: `3px solid ${cn.color}`, borderRadius: 10, padding: '0.75rem 1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{ fontSize: '0.72rem', color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>MAG7 Concentration</div>
+                  <div style={{ fontSize: '0.72rem', color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>{pickLang(uiLang, 'MAG7 집중도', 'MAG7 Concentration')}</div>
                   <span style={{ fontSize: '0.88rem', fontWeight: 700, color: cn.color, background: `${cn.color}18`, border: `1px solid ${cn.color}33`, borderRadius: 5, padding: '1px 7px' }}>{getConcentrationLabel(cn)}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {([['5D', cn.rel_5d], ['20D', cn.rel_20d], ['60D', cn.rel_60d]] as [string, number|null][]).map(([lbl, v]) => (
                     <div key={lbl} style={{ textAlign: 'center', flex: 1 }}>
-                      <div style={{ fontSize: '0.75rem', color: '#e5e7eb', marginBottom: 2 }}>vs SPY {lbl}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#e5e7eb', marginBottom: 2 }}>{pickLang(uiLang, `SPY 대비 ${lbl}`, `vs SPY ${lbl}`)}</div>
                       <div style={{ fontSize: '1.15rem', fontWeight: 700, color: relColor(v), lineHeight: 1 }}>{relFmt(v)}</div>
                     </div>
                   ))}
                 </div>
                 <div style={{ fontSize: '0.69rem', color: '#e5e7eb', marginTop: 5, lineHeight: 1.4 }}>
                   {cn.risk === 'high'
-                    ? 'MAG7 concentration is elevated and may overstate broad market strength.'
+                    ? pickLang(uiLang, 'MAG7 집중도가 높아 광범위한 시장 강도를 과대평가할 수 있습니다.', 'MAG7 concentration is elevated and may overstate broad market strength.')
                     : cn.risk === 'moderate'
-                      ? 'Monitor concentration risk. Leadership is narrowing toward a few names.'
+                      ? pickLang(uiLang, '집중도 리스크를 점검하세요. 리더십이 소수 종목으로 좁아지고 있습니다.', 'Monitor concentration risk. Leadership is narrowing toward a few names.')
                       : cn.risk === 'mag7_weak'
-                        ? 'MAG7 weakness is broadening and may lead the wider market lower.'
-                        : 'Market returns are more evenly distributed across the index.'}
+                        ? pickLang(uiLang, 'MAG7 약세가 확산 중이며 더 넓은 시장을 끌어내릴 수 있습니다.', 'MAG7 weakness is broadening and may lead the wider market lower.')
+                        : pickLang(uiLang, '시장 수익률은 지수 전반에 더 고르게 분포되어 있습니다.', 'Market returns are more evenly distributed across the index.')}
                 </div>
               </div>
             )}
@@ -1531,7 +1643,271 @@ function OverviewTab({
         )
       })()}
 
-      {/* Current 90D comparison */}
+      {/* divider between score components and stress overlays */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', margin: '0.1rem 0' }} />
+
+      <MonteCarloInterpretationCard
+        summaryLine={interpretationModel.summaryLine}
+        detailLines={interpretationModel.detailLines}
+        forwardNarrativeLine={interpretationModel.forwardNarrativeLine}
+        interpretationState={interpretationModel.interpretationState}
+        currentRegime={interpretationModel.currentRegime}
+        agreementScore={interpretationModel.agreementScore}
+        conflictScore={interpretationModel.conflictScore}
+        trustScore={interpretationModel.trustScore}
+        subtext={interpretationModel.subtext}
+        uiLang={uiLang}
+      />
+
+
+      {/* Market Regime and Risk Scenario */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.81rem', fontWeight: 700, color: '#e5e7eb', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Stress Lens
+        </div>
+        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+          descriptive overlays, not the final action layer
+        </div>
+      </div>
+      {(data.market_regime || data.risk_scenario) && (() => {
+        const mr = data.market_regime
+        const rs = data.risk_scenario
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+
+            {/* Market Regime */}
+            {mr && (
+              <div style={{
+                background: `${mr.regime_color}0c`, border: `1px solid ${mr.regime_color}44`,
+                borderLeft: `4px solid ${mr.regime_color}`, borderRadius: 10, padding: '0.7rem 0.9rem',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
+                    Market Regime Lens
+                  </span>
+                  <span style={{
+                    fontSize: '0.95rem', fontWeight: 700, color: mr.regime_color,
+                    background: `${mr.regime_color}18`, border: `1px solid ${mr.regime_color}44`,
+                    borderRadius: 6, padding: '2px 9px',
+                  }}>{mr.regime}</span>
+                  <span style={{
+                    fontSize: '0.78rem', fontWeight: 700, color: mr.stability_color,
+                    background: `${mr.stability_color}18`, border: `1px solid ${mr.stability_color}44`,
+                    borderRadius: 999, padding: '1px 7px',
+                  }}>{mr.stability_label}</span>
+                  <span style={{ fontSize: '0.78rem', color: '#9ca3af', marginLeft: 'auto' }}>
+                    {mr.days_in_regime}d - {mr.regime_confidence}% conf
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#9ca3af', lineHeight: 1.45 }}>
+                  {mr.regime_drivers.slice(0, 2).join(' - ')}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#6b7280', lineHeight: 1.4 }}>
+                  Stress lens based on funding, liquidity, shock, and credit transmission.
+                </div>
+                {/* Stability bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.72rem', color: '#6b7280', minWidth: 60 }}>Stability</span>
+                  <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${mr.stability_score}%`, background: mr.stability_color, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: mr.stability_color, fontWeight: 700, minWidth: 28, textAlign: 'right' }}>
+                    {mr.stability_score}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Risk Scenario */}
+            {rs && (
+              <div style={{
+                background: rs.fill, border: `1px solid ${rs.color}44`,
+                borderLeft: `4px solid ${rs.color}`, borderRadius: 10, padding: '0.7rem 0.9rem',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
+                    {pickLang(uiLang, '주식 경로 시나리오', 'Equity Path Scenario')}
+                  </span>
+                  <span style={{
+                    fontSize: '0.95rem', fontWeight: 700, color: rs.color,
+                    background: `${rs.color}18`, border: `1px solid ${rs.color}44`,
+                    borderRadius: 6, padding: '2px 9px',
+                  }}>{rs.scenario}: {getScenarioLabel(rs)}</span>
+                  <span style={{ fontSize: '0.78rem', color: '#9ca3af', marginLeft: 'auto' }}>
+                    {pickLang(uiLang, `${rs.confidence}% 정렬`, `${rs.confidence}% aligned`)}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#d1d5db', lineHeight: 1.45 }}>
+                  {getScenarioDescription(rs, uiLang)}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#6b7280', lineHeight: 1.4 }}>
+                  {pickLang(uiLang, '스트레스 경로를 설명합니다. 최종 실행 레이어를 대체하지 않습니다.', 'Describes the path of stress. It does not override the final action layer.')}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: rs.color, fontWeight: 600, lineHeight: 1.4 }}>
+                  {getScenarioActionHint(rs, uiLang)}
+                </div>
+                {/* Confidence bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.72rem', color: '#6b7280', minWidth: 60 }}>{pickLang(uiLang, '신뢰도', 'Confidence')}</span>
+                  <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${rs.confidence}%`, background: rs.color, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: rs.color, fontWeight: 700, minWidth: 28, textAlign: 'right' }}>
+                    {rs.confidence}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Primary Risk Drivers */}
+      {(() => {
+        const total = (data.total_risk?.total || 1)
+        const sorted = [...diagLayers]
+          .filter(l => l.score > 0)
+          .sort((a, b) => (b.score / b.max) - (a.score / a.max))
+        const top3 = sorted.slice(0, 3)
+        const stressDescriptions: Record<string, string> = {
+          'Macro / Defensive Rotation': 'Macro pressure and defensive rotation are setting the current tone.',
+          'Financial Stress': 'Banks and financials are carrying visible transmission stress.',
+          'Funding Stress': 'Funding conditions are tightening before broader stress confirmation.',
+          'Liquidity Stress': 'Liquidity conditions are weakening across internal market plumbing.',
+          'Equity Structure': 'Price structure is softening at the index level.',
+          'Credit Stress': 'Credit transmission is active but not yet fully confirmed.',
+          'Leveraged Loans': 'Leveraged-loan proxies are weakening ahead of spread confirmation.',
+          'Market Breadth': 'Participation is narrowing beneath the surface of the tape.',
+          'Shock Detector': 'Event-sensitive shock detectors are contributing to stress.',
+          'Cross-Asset': 'Cross-asset defensiveness is reinforcing the current posture.',
+          'Credit Spread': 'Spread widening is contributing directly to total stress.',
+          'Liquidity Shock': 'Liquidity shock inputs are acting like acute accelerants.',
+        }
+        if (top3.length === 0) return null
+        return (
+          <div style={{
+            background: 'rgba(245,158,11,0.05)',
+            border: '1px solid rgba(245,158,11,0.22)',
+            borderLeft: '4px solid #f59e0b',
+            borderRadius: 12, padding: '0.85rem 1rem',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.81rem', fontWeight: 700, color: '#f59e0b', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Stress Composition
+              </span>
+              <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
+                top 3 by stress utilization - total risk {total}/120
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+              {top3.map((layer, idx) => {
+                const ratio = layer.score / layer.max
+                const contribPct = layer.score / total * 100
+                const lColor = ratio >= 0.7 ? '#ef4444' : ratio >= 0.5 ? '#f97316' : ratio >= 0.35 ? '#f59e0b' : '#84cc16'
+                const bgColor = ratio >= 0.7 ? 'rgba(127, 29, 29, 0.35)' : ratio >= 0.5 ? 'rgba(124, 45, 18, 0.30)' : ratio >= 0.35 ? 'rgba(120, 53, 15, 0.22)' : 'rgba(20, 83, 45, 0.18)'
+                return (
+                  <div key={layer.label} style={{
+                    background: bgColor,
+                    border: `1px solid ${lColor}30`,
+                    borderRadius: 10,
+                    padding: '0.8rem 0.9rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: 'rgba(229,231,235,0.45)', fontWeight: 700, marginBottom: 4 }}>#{idx + 1}</div>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 800, color: lColor }}>{layer.label}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#e5e7eb' }}>{layer.score}/{layer.max}</div>
+                        <div style={{ fontSize: '0.75rem', color: lColor, fontWeight: 700 }}>{contribPct.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.77rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+                      {stressDescriptions[layer.label] ?? 'This layer is a top contributor to the current stress mix.'}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── AI Insight: Structure ── */}
+      {(() => {
+        type CompItem = { readonly name: string; readonly val: number; readonly desc: string }
+        const comps1: CompItem[] = [
+          { name: 'TrendAdj', val: c.components.trend, desc: '가격 추세 (MA50/200 대비)' },
+          { name: 'DepthAdj', val: c.components.depth, desc: '시장 폭 (MA200 상회 비율)' },
+          { name: 'VolAdj',   val: c.components.vol,   desc: '변동성 레짐 (VIX 백분위)' },
+          { name: 'DDAdj',    val: c.components.dd,    desc: '최대낙폭 패널티' },
+        ]
+        const worst1 = comps1.reduce((a, b) => a.val < b.val ? a : b)
+        const best1  = comps1.reduce((a, b) => a.val > b.val ? a : b)
+        const negCnt1 = comps1.filter(x => x.val < 0).length
+        const bPct1   = data.breadth?.pct_above_ma200
+        const head1 = negCnt1 === 0
+          ? '모든 MSS 구성 요소 긍정적 — 광범위한 구조적 지지'
+          : negCnt1 === 1
+            ? `${worst1.name}이 MSS의 단일 하락 요인 (${worst1.val})`
+            : `${negCnt1}개 항목 부정적 — ${worst1.name}이 주요 압박 (${worst1.val})`
+        const bNote1 = bPct1 != null
+          ? bPct1 > 60 ? `${bPct1.toFixed(0)}%의 종목이 MA200 위 — 폭넓은 참여가 MSS를 지지합니다.`
+          : bPct1 > 40 ? `${bPct1.toFixed(0)}%의 종목만 MA200 위 — 지수보다 시장 체력이 약합니다.`
+          : `${bPct1.toFixed(0)}%의 종목만 MA200 위 — 시장 폭 위험 신호입니다.`
+          : null
+        const ins1 = negCnt1 === 0
+          ? '현재 시장 구조는 전반적으로 건강합니다. 모든 지표 긍정적 — 추세를 유지하세요.'
+          : c.score < 100
+            ? `MSS가 100 아래로 내려왔습니다. ${worst1.name}이 가장 큰 압력 요인 — 방어적 포지션을 검토하세요.`
+            : `MSS는 중립 이상이나 ${worst1.name}(${worst1.val})에 주의가 필요합니다. 구조 악화 진행 여부를 모니터링하세요.`
+        return (
+          <div style={{
+            background: 'rgba(165,180,252,0.05)',
+            border: '1px solid rgba(165,180,252,0.2)',
+            borderLeft: '3px solid #a5b4fc',
+            borderRadius: 10, padding: '0.85rem 1.1rem',
+            display: 'flex', flexDirection: 'column', gap: 7,
+            marginTop: 4,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(165,180,252,0.15)', borderRadius: 4, padding: '1px 7px' }}>{pickLang(uiLang, 'AI 인사이트', 'AI Insight')}</span>
+              <span style={{ fontSize: '0.8rem', color: '#e2e8f0', fontWeight: 600 }}>{head1}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {[
+                `• 가장 강한 항목: ${best1.name} (+${best1.val} / ${best1.desc})`,
+                negCnt1 > 0 ? `• 가장 약한 항목: ${worst1.name} (${worst1.val} / ${worst1.desc})` : '',
+                bNote1 ? `• 시장 폭: ${bNote1}` : '',
+              ].filter(Boolean).map((b, i) => (
+                <span key={i} style={{ fontSize: '0.77rem', color: '#94a3b8', lineHeight: 1.5 }}>{b}</span>
+              ))}
+            </div>
+            <div style={{ borderTop: '1px solid rgba(165,180,252,0.12)', paddingTop: 5, fontSize: '0.78rem', color: '#cbd5e1' }}>
+              <span style={{ color: '#a5b4fc', fontWeight: 700 }}>구독자 시사점: </span>{ins1}
+            </div>
+          </div>
+        )
+      })()}
+
+      </div>}{/* end Market Structure Diagnostics group */}
+
+      {/* ─── Risk Action Engine ─── */}
+      {ovTab === 2 && <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: '0.15rem' }}>
+        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          Risk Action Engine
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+        <span style={{ fontSize: '0.7rem', color: '#374151' }}>systemic score · tracks · final decision</span>
+      </div>}
+
+      {/* Current live comparison */}
       {/* Total Risk Score and 5-Layer systemic engine */}
       {data.total_risk && (() => {
         const tr = data.total_risk!
@@ -1582,6 +1958,56 @@ function OverviewTab({
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
+            {ovTab === 2 && <>
+
+            {/* ── AI Insight: Signals ── */}
+            {(() => {
+              const masterMode2 = data.master_signal?.mode ?? 'UNKNOWN'
+              type ModeInfo = { label: string; color: string; ko: string }
+              const modeMap2: Record<string, ModeInfo> = {
+                ALL_CLEAR:       { label: 'ALL CLEAR',      color: '#22c55e', ko: '현재 시장 구조는 안전합니다. QQQ/SPY 등 주식 포지션을 정상 비중으로 유지할 수 있는 구간입니다.' },
+                EARLY_WARNING:   { label: 'EARLY WARNING',   color: '#f59e0b', ko: '초기 경고 신호가 감지됩니다. 주식 비중을 일부 축소하고 손절 라인을 재확인하세요.' },
+                HEDGE_AND_HOLD:  { label: 'HEDGE & HOLD',    color: '#f97316', ko: '주식 비중을 줄이거나 헤지를 추가할 때입니다. 시장 하락이 가속될 수 있습니다.' },
+                CREDIT_CRISIS:   { label: 'CREDIT CRISIS',   color: '#ef4444', ko: '신용 위기 신호입니다. 주식 포지션을 즉시 축소하고 현금 비중을 높이세요.' },
+                COMPOUND_CRISIS: { label: 'COMPOUND CRISIS', color: '#dc2626', ko: '복합 위기입니다. 시스템 전반 스트레스가 극단적 — 주식 비중을 최소화하고 현금을 확보하세요.' },
+              }
+              const mi2: ModeInfo = modeMap2[masterMode2] ?? { label: masterMode2, color: '#94a3b8', ko: '신호를 분석 중입니다.' }
+              const stage2 = tr.crisis_stage.stage
+              const sNote2 = stage2 <= 2
+                ? `위기 단계 ${stage2}: 전파 경로 초기 단계 — 아직 전면 위기는 아닙니다.`
+                : stage2 <= 4
+                  ? `위기 단계 ${stage2}: 위기가 신용 시장으로 전파 중 — 주의가 필요합니다.`
+                  : `위기 단계 ${stage2}: 심각한 전파 단계 — 즉각적인 대응이 필요합니다.`
+              const rNote2 = tr.total < 50
+                ? `12-레이어 총 위험 ${tr.total}/120 — 경계 임계값(50) 이하`
+                : tr.total < 70
+                  ? `12-레이어 총 위험 ${tr.total}/120 — 경고 구간 진입`
+                  : `12-레이어 총 위험 ${tr.total}/120 — 고위험 구간`
+              return (
+                <div style={{
+                  background: 'rgba(165,180,252,0.05)',
+                  border: '1px solid rgba(165,180,252,0.2)',
+                  borderLeft: `3px solid ${mi2.color}`,
+                  borderRadius: 10, padding: '0.85rem 1.1rem',
+                  display: 'flex', flexDirection: 'column', gap: 7,
+                  marginBottom: 4,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(165,180,252,0.15)', borderRadius: 4, padding: '1px 7px' }}>{pickLang(uiLang, 'AI 인사이트', 'AI Insight')}</span>
+                    <span style={{ fontSize: '0.73rem', fontWeight: 700, color: mi2.color, background: `${mi2.color}15`, border: `1px solid ${mi2.color}44`, borderRadius: 5, padding: '2px 9px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{mi2.label}</span>
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>MSS {data.current.score.toFixed(0)} · Risk {tr.total}/120 · Stage {stage2}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {[sNote2, rNote2].map((b, i) => (
+                      <span key={i} style={{ fontSize: '0.77rem', color: '#94a3b8', lineHeight: 1.5 }}>• {b}</span>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(165,180,252,0.12)', paddingTop: 5, fontSize: '0.78rem', color: '#cbd5e1' }}>
+                    <span style={{ color: '#a5b4fc', fontWeight: 700 }}>구독자 시사점: </span>{mi2.ko}
+                  </div>
+                </div>
+              )
+            })()}
             {/* Hero row */}
             <div style={{ background: '#0d1117', border: `1px solid ${sc}44`, borderLeft: `4px solid ${sc}`, borderRadius: 14, padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {/* 5-column info strip: MPS | Total Risk | Crisis Stage | Final Decision | Stance */}
@@ -1606,7 +2032,7 @@ function OverviewTab({
                 </div>
                 {/* Total Risk ??half-circle gauge */}
                 <div style={{ borderRight: '1px solid rgba(255,255,255,0.07)', paddingRight: 10 }}>
-                  <div style={{ fontSize: '0.75rem', color: '#e5e7eb', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>12-Layer Systemic Risk</div>
+                  <div style={{ fontSize: '0.75rem', color: '#e5e7eb', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>{pickLang(uiLang, '12-레이어 시스템 리스크', '12-Layer Systemic Risk')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
                     <HalfGauge value={tr.total} max={120} color={sc} width={116} height={74} valueFontSize={20} denomFontSize={10} />
                     <div style={{ fontSize: '0.99rem', fontWeight: 700, color: sc, letterSpacing: '0.05em', marginTop: 1 }}>{tr.state.toUpperCase()}</div>
@@ -1652,7 +2078,7 @@ function OverviewTab({
 
               {/* Action line */}
               <div style={{ fontSize: '1.02rem', color: '#e5e7eb', background: `${sc}0d`, border: `1px solid ${sc}22`, borderRadius: 8, padding: '0.5rem 0.75rem', lineHeight: 1.5 }}>
-                {getTotalRiskActionLine(data)}
+                {getTotalRiskActionLine(data, uiLang)}
               </div>
             </div>
 
@@ -1696,11 +2122,11 @@ function OverviewTab({
                         MSS 5D {velDelta > 0 ? '+' : ''}{velDelta.toFixed(1)}pt {velAlert ? 'ALERT' : 'OK'}
                       </span>
                     )}
-                    <span style={{ fontSize: '0.81rem', color: '#e5e7eb', lineHeight: 1.45, flexGrow: 1 }}>{getMasterDetail(data)}</span>
+                    <span style={{ fontSize: '0.81rem', color: '#e5e7eb', lineHeight: 1.45, flexGrow: 1 }}>{getMasterDetail(data, uiLang)}</span>
                   </div>
                   {escList.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', width: '100%' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#e5e7eb', textTransform: 'uppercase', fontWeight: 700 }}>Escalation</span>
+                      <span style={{ fontSize: '0.72rem', color: '#e5e7eb', textTransform: 'uppercase', fontWeight: 700 }}>{pickLang(uiLang, '에스컬레이션', 'Escalation')}</span>
                       {escList.map((ec, idx) => {
                         const ecColor = ec.already_fired ? '#ef4444' : '#f59e0b'
                         return (
@@ -1753,7 +2179,7 @@ function OverviewTab({
                   gap: 10,
                 }}>
                   <div style={{ flexShrink: 0 }}>
-                    <div style={{ fontSize: '0.72rem', color: '#e5e7eb', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>Track A Early</div>
+                    <div style={{ fontSize: '0.72rem', color: '#e5e7eb', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>{pickLang(uiLang, 'Track A 조기', 'Track A Early')}</div>
                     <div style={{ fontSize: '0.75rem', color: '#e5e7eb' }}>Transmission Watch</div>
                   </div>
                   <div style={{ flexShrink: 0 }}>
@@ -2127,7 +2553,8 @@ function OverviewTab({
 
             {/* Integrated Narrative Summary */}
             </div>
-            {(() => {
+            </>}
+            {ovTab === 0 && (() => {
               const mss = data.current.score
               const totalScore = tr.total
               const stage = tr.crisis_stage.stage
@@ -2190,7 +2617,7 @@ function OverviewTab({
                   {/* Header */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.72rem', color: '#e5e7eb', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
-                      Core Evidence
+                      {pickLang(uiLang, '핵심 근거', 'Core Evidence')}
                     </span>
                     <span style={{
                       fontSize: '0.99rem', fontWeight: 700, color: cColor,
@@ -2199,12 +2626,26 @@ function OverviewTab({
                     }}>{cLabel}</span>
                     {warnCount > 0 && (
                       <span style={{ fontSize: '0.78rem', color: cColor, background: `${cColor}15`, borderRadius: 999, padding: '1px 8px', border: `1px solid ${cColor}33` }}>
-                        {warnCount} active warning{warnCount === 1 ? '' : 's'}
+                        {pickLang(uiLang, `${warnCount}개의 활성 경고`, `${warnCount} active warning${warnCount === 1 ? '' : 's'}`)}
                       </span>
                     )}
                     <span style={{ fontSize: '0.72rem', color: '#e5e7eb', marginLeft: 'auto' }}>
-                      Detail matrix behind the top-level final decision
+                      {pickLang(uiLang, '최상위 최종 판단 뒤의 세부 매트릭스', 'Detail matrix behind the top-level final decision')}
                     </span>
+                  </div>
+
+                  {/* ── AI Insight: Summary ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '8px 10px', background: 'rgba(165,180,252,0.04)', borderRadius: 7, border: '1px solid rgba(165,180,252,0.12)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(165,180,252,0.15)', borderRadius: 4, padding: '1px 7px' }}>{pickLang(uiLang, 'AI 인사이트', 'AI Insight')}</span>
+                      <span style={{ fontSize: '0.72rem', color: '#475569' }}>— 현재 시장 상황 요약</span>
+                    </div>
+                    {[p1, p2, p3, p4].map((p, i) => (
+                      <span key={i} style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.6 }}>• {p}</span>
+                    ))}
+                    <div style={{ marginTop: 4, paddingTop: 5, borderTop: '1px solid rgba(165,180,252,0.1)', fontSize: '0.78rem', color: '#cbd5e1' }}>
+                      <span style={{ color: '#a5b4fc', fontWeight: 700 }}>구독자 시사점: </span>{watchFor}
+                    </div>
                   </div>
 
                   {/* Indicator grid */}
@@ -2212,46 +2653,46 @@ function OverviewTab({
                     {/* MSS */}
                     <div style={{ background: mssWarn ? 'rgba(239,68,68,0.07)' : 'rgba(34,197,94,0.06)', border: `1px solid ${mssWarn ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.2)'}`, borderRadius: 7, padding: '7px 8px' }}>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 3 }}>
-                        Market Structure (MSS)
+                        {pickLang(uiLang, '시장 구조 (MSS)', 'Market Structure (MSS)')}
                       </div>
                       <div style={{ fontSize: '1.19rem', fontWeight: 700, color: mssWarn ? '#ef4444' : '#22c55e', lineHeight: 1 }}>
                         {mss.toFixed(0)} <span style={{ fontSize: '0.75rem', fontWeight: 600, color: mssWarn ? '#ef4444' : '#4ade80' }}>{trackBLevel}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', lineHeight: 1.45, marginTop: 4 }}>
-                        Structural market strength. Above 100 = healthy, below 100 = weakening.
+                        {pickLang(uiLang, '구조적 시장 강도입니다. 100 초과 = 양호, 100 미만 = 약화.', 'Structural market strength. Above 100 = healthy, below 100 = weakening.')}
                       </div>
                     </div>
 
                     {/* 12-Layer */}
                     <div style={{ background: stressWarn ? 'rgba(249,115,22,0.07)' : 'rgba(34,197,94,0.06)', border: `1px solid ${stressWarn ? 'rgba(249,115,22,0.25)' : 'rgba(34,197,94,0.2)'}`, borderRadius: 7, padding: '7px 8px' }}>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 3 }}>
-                        Total Risk (12L)
+                        {pickLang(uiLang, '총 리스크 (12L)', 'Total Risk (12L)')}
                       </div>
                       <div style={{ fontSize: '1.19rem', fontWeight: 700, color: stressWarn ? '#f97316' : '#22c55e', lineHeight: 1 }}>
                         {totalScore}<span style={{ fontSize: '0.75rem', color: '#e5e7eb' }}>/120</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', lineHeight: 1.45, marginTop: 4 }}>
-                        Sum of 12 layers. 50+ = warning, 70+ = high risk.
+                        {pickLang(uiLang, '12개 레이어의 합계입니다. 50+ = 경고, 70+ = 고위험.', 'Sum of 12 layers. 50+ = warning, 70+ = high risk.')}
                       </div>
                     </div>
 
                     {/* Crisis Stage */}
                     <div style={{ background: stageWarn ? 'rgba(249,115,22,0.07)' : 'rgba(34,197,94,0.06)', border: `1px solid ${stageWarn ? 'rgba(249,115,22,0.25)' : 'rgba(34,197,94,0.2)'}`, borderRadius: 7, padding: '7px 8px' }}>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 3 }}>
-                        Crisis Stage
+                        {pickLang(uiLang, '위기 단계', 'Crisis Stage')}
                       </div>
                       <div style={{ fontSize: '1.19rem', fontWeight: 700, color: stageWarn ? '#f97316' : '#22c55e', lineHeight: 1 }}>
                         {stage}<span style={{ fontSize: '0.75rem', color: stageWarn ? '#f97316' : '#4ade80', marginLeft: 3 }}>{stageLabel.split(' ')[0]}</span>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', lineHeight: 1.45, marginTop: 4 }}>
-                        Equity {"->"} loans {"->"} credit {"->"} finance. Panic is stage 6.
+                        {pickLang(uiLang, '주식 -> 대출 -> 신용 -> 금융. Panic은 6단계입니다.', 'Equity -> loans -> credit -> finance. Panic is stage 6.')}
                       </div>
                     </div>
 
                     {/* Track A Early */}
                     <div style={{ background: earlyWarn ? 'rgba(245,158,11,0.07)' : 'rgba(34,197,94,0.06)', border: `1px solid ${earlyWarn ? 'rgba(245,158,11,0.25)' : 'rgba(34,197,94,0.2)'}`, borderRadius: 7, padding: '7px 8px' }}>
                       <div style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 3 }}>
-                        Track A Early
+                        {pickLang(uiLang, 'Track A 조기', 'Track A Early')}
                       </div>
                       <div style={{ fontSize: '1.19rem', fontWeight: 700, color: earlyWarn ? '#f59e0b' : '#22c55e', lineHeight: 1 }}>
                         {taeState}
@@ -2290,7 +2731,7 @@ function OverviewTab({
 
                   {/* Causal chain */}
                   {(() => {
-                    const chain = buildCausalChain(data)
+                    const chain = buildCausalChain(data, uiLang)
                     return (
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 10 }}>
                         <div style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 6 }}>
@@ -2327,199 +2768,9 @@ function OverviewTab({
               )
             })()}
 
-            <MonteCarloInterpretationCard
-              summaryLine={interpretationModel.summaryLine}
-              detailLines={interpretationModel.detailLines}
-              forwardNarrativeLine={interpretationModel.forwardNarrativeLine}
-              interpretationState={interpretationModel.interpretationState}
-              currentRegime={interpretationModel.currentRegime}
-              agreementScore={interpretationModel.agreementScore}
-              conflictScore={interpretationModel.conflictScore}
-              trustScore={interpretationModel.trustScore}
-              subtext={interpretationModel.subtext}
-            />
 
 
-            {/* Market Regime and Risk Scenario */}
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: '0.81rem', fontWeight: 700, color: '#e5e7eb', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Stress Lens
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                descriptive overlays, not the final action layer
-              </div>
-            </div>
-            {(data.market_regime || data.risk_scenario) && (() => {
-              const mr = data.market_regime
-              const rs = data.risk_scenario
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-
-                  {/* Market Regime */}
-                  {mr && (
-                    <div style={{
-                      background: `${mr.regime_color}0c`, border: `1px solid ${mr.regime_color}44`,
-                      borderLeft: `4px solid ${mr.regime_color}`, borderRadius: 10, padding: '0.7rem 0.9rem',
-                      display: 'flex', flexDirection: 'column', gap: 6,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.72rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
-                          Market Regime Lens
-                        </span>
-                        <span style={{
-                          fontSize: '0.95rem', fontWeight: 700, color: mr.regime_color,
-                          background: `${mr.regime_color}18`, border: `1px solid ${mr.regime_color}44`,
-                          borderRadius: 6, padding: '2px 9px',
-                        }}>{mr.regime}</span>
-                        <span style={{
-                          fontSize: '0.78rem', fontWeight: 700, color: mr.stability_color,
-                          background: `${mr.stability_color}18`, border: `1px solid ${mr.stability_color}44`,
-                          borderRadius: 999, padding: '1px 7px',
-                        }}>{mr.stability_label}</span>
-                        <span style={{ fontSize: '0.78rem', color: '#9ca3af', marginLeft: 'auto' }}>
-                          {mr.days_in_regime}d - {mr.regime_confidence}% conf
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#9ca3af', lineHeight: 1.45 }}>
-                        {mr.regime_drivers.slice(0, 2).join(' - ')}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#6b7280', lineHeight: 1.4 }}>
-                        Stress lens based on funding, liquidity, shock, and credit transmission.
-                      </div>
-                      {/* Stability bar */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', minWidth: 60 }}>Stability</span>
-                        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${mr.stability_score}%`, background: mr.stability_color, borderRadius: 2 }} />
-                        </div>
-                        <span style={{ fontSize: '0.72rem', color: mr.stability_color, fontWeight: 700, minWidth: 28, textAlign: 'right' }}>
-                          {mr.stability_score}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Risk Scenario */}
-                  {rs && (
-                    <div style={{
-                      background: rs.fill, border: `1px solid ${rs.color}44`,
-                      borderLeft: `4px solid ${rs.color}`, borderRadius: 10, padding: '0.7rem 0.9rem',
-                      display: 'flex', flexDirection: 'column', gap: 6,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.72rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
-                          Equity Path Scenario
-                        </span>
-                        <span style={{
-                          fontSize: '0.95rem', fontWeight: 700, color: rs.color,
-                          background: `${rs.color}18`, border: `1px solid ${rs.color}44`,
-                          borderRadius: 6, padding: '2px 9px',
-                        }}>{rs.scenario}: {getScenarioLabel(rs)}</span>
-                        <span style={{ fontSize: '0.78rem', color: '#9ca3af', marginLeft: 'auto' }}>
-                          {rs.confidence}% aligned
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#d1d5db', lineHeight: 1.45 }}>
-                        {getScenarioDescription(rs)}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#6b7280', lineHeight: 1.4 }}>
-                        Describes the path of stress. It does not override the final action layer.
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: rs.color, fontWeight: 600, lineHeight: 1.4 }}>
-                        {getScenarioActionHint(rs)}
-                      </div>
-                      {/* Confidence bar */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', minWidth: 60 }}>Confidence</span>
-                        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${rs.confidence}%`, background: rs.color, borderRadius: 2 }} />
-                        </div>
-                        <span style={{ fontSize: '0.72rem', color: rs.color, fontWeight: 700, minWidth: 28, textAlign: 'right' }}>
-                          {rs.confidence}%
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-
-            {/* Primary Risk Drivers */}
-            {(() => {
-              const total = tr.total || 1
-              const sorted = [...layers]
-                .filter(l => l.score > 0)
-                .sort((a, b) => (b.score / b.max) - (a.score / a.max))
-              const top3 = sorted.slice(0, 3)
-              const stressDescriptions: Record<string, string> = {
-                'Macro / Defensive Rotation': 'Macro pressure and defensive rotation are setting the current tone.',
-                'Financial Stress': 'Banks and financials are carrying visible transmission stress.',
-                'Funding Stress': 'Funding conditions are tightening before broader stress confirmation.',
-                'Liquidity Stress': 'Liquidity conditions are weakening across internal market plumbing.',
-                'Equity Structure': 'Price structure is softening at the index level.',
-                'Credit Stress': 'Credit transmission is active but not yet fully confirmed.',
-                'Leveraged Loans': 'Leveraged-loan proxies are weakening ahead of spread confirmation.',
-                'Market Breadth': 'Participation is narrowing beneath the surface of the tape.',
-                'Shock Detector': 'Event-sensitive shock detectors are contributing to stress.',
-                'Cross-Asset': 'Cross-asset defensiveness is reinforcing the current posture.',
-                'Credit Spread': 'Spread widening is contributing directly to total stress.',
-                'Liquidity Shock': 'Liquidity shock inputs are acting like acute accelerants.',
-              }
-              if (top3.length === 0) return null
-              return (
-                <div style={{
-                  background: 'rgba(245,158,11,0.05)',
-                  border: '1px solid rgba(245,158,11,0.22)',
-                  borderLeft: '4px solid #f59e0b',
-                  borderRadius: 12, padding: '0.85rem 1rem',
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.81rem', fontWeight: 700, color: '#f59e0b', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                      Stress Composition
-                    </span>
-                    <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
-                      top 3 by stress utilization - total risk {total}/120
-                    </span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-                    {top3.map((layer, idx) => {
-                      const ratio = layer.score / layer.max
-                      const contribPct = layer.score / total * 100
-                      const lColor = ratio >= 0.7 ? '#ef4444' : ratio >= 0.5 ? '#f97316' : ratio >= 0.35 ? '#f59e0b' : '#84cc16'
-                      const bgColor = ratio >= 0.7 ? 'rgba(127, 29, 29, 0.35)' : ratio >= 0.5 ? 'rgba(124, 45, 18, 0.30)' : ratio >= 0.35 ? 'rgba(120, 53, 15, 0.22)' : 'rgba(20, 83, 45, 0.18)'
-                      return (
-                        <div key={layer.label} style={{
-                          background: bgColor,
-                          border: `1px solid ${lColor}30`,
-                          borderRadius: 10,
-                          padding: '0.8rem 0.9rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 8,
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                            <div>
-                              <div style={{ fontSize: '0.72rem', color: 'rgba(229,231,235,0.45)', fontWeight: 700, marginBottom: 4 }}>#{idx + 1}</div>
-                              <div style={{ fontSize: '0.92rem', fontWeight: 800, color: lColor }}>{layer.label}</div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#e5e7eb' }}>{layer.score}/{layer.max}</div>
-                              <div style={{ fontSize: '0.75rem', color: lColor, fontWeight: 700 }}>{contribPct.toFixed(1)}%</div>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '0.77rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-                            {stressDescriptions[layer.label] ?? 'This layer is a top contributor to the current stress mix.'}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })()}
-
-
+            {ovTab === 3 && <>
             {/* Forward Distribution and Event Similarity */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ fontSize: '0.81rem', fontWeight: 700, color: '#e5e7eb', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -2788,7 +3039,7 @@ function OverviewTab({
 
             {/* Risk Narrative Engine (Rule-Based) */}
             {(() => {
-              const { paragraphs, color } = generateNarrative(data)
+              const { paragraphs, color } = generateNarrative(data, uiLang)
               return (
                 <div style={{
                   background: color + '06',
@@ -3018,78 +3269,163 @@ function OverviewTab({
             })()}
 
 
+            {/* ── AI Insight: Context ── */}
+            {(() => {
+              const lvl3 = data.current.level ?? 1
+              const cr3  = data.signal_analysis?.conditional_returns?.[String(lvl3)]
+              const sim3 = data.event_similarity
+              const LVL3: Record<number, string> = {0:'Normal',1:'Caution',2:'Warning',3:'High Risk',4:'Crisis'}
+              const lvlLbl3 = LVL3[lvl3] ?? String(lvl3)
+              if (!cr3 && (!sim3 || sim3.length === 0)) return null
+              const med3  = cr3?.median
+              const p10_3 = cr3?.p10
+              const p90_3 = cr3?.p90
+              const n3    = cr3?.n ?? 0
+              const pr3   = cr3?.pos_rate ?? null
+              const oCol3 = med3 == null ? '#94a3b8'
+                : med3 > 3 ? '#22c55e' : med3 > 0 ? '#86efac' : med3 > -3 ? '#f59e0b' : '#ef4444'
+              const oLbl3 = med3 == null ? '데이터 없음'
+                : med3 > 3 ? `강세 편향 (중앙값 +${med3.toFixed(1)}%)`
+                : med3 > 0 ? `소폭 상승 편향 (중앙값 +${med3.toFixed(1)}%)`
+                : med3 > -3 ? `약세 편향 (중앙값 ${med3.toFixed(1)}%)`
+                : `강한 약세 편향 (중앙값 ${med3.toFixed(1)}%)`
+              const top3 = sim3?.[0]
+              const insight3 = lvl3 <= 1
+                ? `현재 레벨(${lvlLbl3})의 역사적 21일 수익률은 긍정적인 편입니다. 과도한 방어보다 현 포지션을 유지하세요.`
+                : lvl3 <= 2
+                  ? `경고 구간(${lvlLbl3})입니다. 하방 위험(P10: ${p10_3?.toFixed(1) ?? '--'}%)을 고려해 포지션 크기를 점검하세요.`
+                  : `고위험 구간(${lvlLbl3})입니다. 역사적 최악 케이스(${p10_3?.toFixed(1) ?? '--'}%)에 대비한 방어 설정이 필요합니다.`
+              return (
+                <div style={{
+                  background: 'rgba(165,180,252,0.05)',
+                  border: '1px solid rgba(165,180,252,0.2)',
+                  borderLeft: `3px solid ${oCol3}`,
+                  borderRadius: 10, padding: '0.85rem 1.1rem',
+                  display: 'flex', flexDirection: 'column', gap: 7,
+                  marginTop: 4,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(165,180,252,0.15)', borderRadius: 4, padding: '1px 7px' }}>{pickLang(uiLang, 'AI 인사이트', 'AI Insight')}</span>
+                    <span style={{ fontSize: '0.8rem', color: oCol3, fontWeight: 600 }}>21일 전망: {oLbl3}</span>
+                    <span style={{ fontSize: '0.72rem', color: '#475569' }}>Level {lvl3} ({lvlLbl3}) · n={n3}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {[
+                      cr3 && `• 21일 수익률 분포: P10=${p10_3?.toFixed(1) ?? '--'}% | 중앙값=${med3?.toFixed(1) ?? '--'}% | P90=${p90_3?.toFixed(1) ?? '--'}%`,
+                      (cr3 && pr3 != null) && `• 역사적 상승 확률: ${pr3}% (${n3}개 케이스 기준)`,
+                      top3 && `• 가장 유사한 과거 구간: ${top3.name} (유사도 ${top3.similarity_pct}%)`,
+                    ].filter(Boolean).map((b, i) => (
+                      <span key={i} style={{ fontSize: '0.77rem', color: '#94a3b8', lineHeight: 1.5 }}>{b as string}</span>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(165,180,252,0.12)', paddingTop: 5, fontSize: '0.78rem', color: '#cbd5e1' }}>
+                    <span style={{ color: '#a5b4fc', fontWeight: 700 }}>구독자 시사점: </span>{insight3}
+                  </div>
+                </div>
+              )
+            })()}
+            </>}
           </div>
         )
       })()}
 
-      <div style={{ display:'flex', flexDirection:'column', gap:'1.3rem' }}>
+      {ovTab === 4 && <div style={{ display:'flex', flexDirection:'column', gap:'1.3rem' }}>
 
         {cur90ChartPts.length > 0 && (
           <>
-            {/* Cur90 info header */}
-            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(99,102,241,0.25)', borderLeft:'3px solid #6366f1', borderRadius:12, padding:'0.91rem 1.04rem' }}>
-              <div style={{ fontSize:'1.04rem', fontWeight:800, color:'#a5b4fc' }}>Current 90D - Live</div>
-              <div style={{ fontSize: '1.02rem', color:'#e5e7eb', marginTop:3 }}>
-                {cur90ChartPts[0]?.d} ??{cur90ChartPts[cur90ChartPts.length-1]?.d} - {cur90ChartPts.length} trading days
+            {/* Cur90 section title */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, paddingBottom:2 }}>
+              <div>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:'1.15rem', fontWeight:900, color:'#fb923c', letterSpacing:'0.09em', textTransform:'uppercase' }}>
+                  <span style={{ width:8, height:8, borderRadius:999, background:'#fb923c', boxShadow:'0 0 0 5px rgba(251,146,60,0.16)' }} />
+                  LIVE
+                </div>
+                <div style={{ fontSize:'0.78rem', color:'#94a3b8', marginTop:4, letterSpacing:'0.03em' }}>
+                  {cur90ChartPts[0]?.d} → {cur90ChartPts[cur90ChartPts.length-1]?.d} &nbsp;·&nbsp; Live window
+                </div>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginTop:10 }}>
-                {[
-                  { label:'Current MSS',  value: cur90Latest?.score != null ? cur90Latest.score.toFixed(1) : '--', color:'#a5b4fc' },
-                  { label:'Current Zone', value: cur90Zone?.label ?? '--', color: cur90Zone?.color ?? '#e5e7eb' },
-                  { label:'Exposure',     value: cur90Exposure, color:'#e5e7eb' },
-                  { label:'QQQ DD',       value: cur90Latest?.dd_rel != null ? `${cur90Latest.dd_rel.toFixed(1)}%` : '--', color:'#ef4444' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ background:'rgba(255,255,255,0.03)', borderRadius:8, padding:'0.52rem 0.65rem' }}>
-                    <div style={{ fontSize: '0.95rem', color:'#e5e7eb', marginBottom:2 }}>{label}</div>
-                    <div style={{ fontSize:'1.04rem', fontWeight:800, color }}>{value}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                {cur90Zone && (
+                  <span style={{ fontSize:'0.75rem', fontWeight:700, color: cur90Zone.color,
+                    background: cur90Zone.color + '18', border: `1px solid ${cur90Zone.color}44`,
+                    borderRadius:6, padding:'3px 10px', letterSpacing:'0.06em', textTransform:'uppercase' }}>
+                    {cur90Zone.label}
+                  </span>
+                )}
+                <span style={{ fontSize:'0.82rem', color:'#94a3b8' }}>
+                  MSS&nbsp;<strong style={{ color:'#e2e8f0' }}>{cur90Latest?.score?.toFixed(1) ?? '--'}</strong>
+                </span>
+                <span style={{ fontSize:'0.82rem', color:'#94a3b8' }}>
+                  QQQ DD&nbsp;<strong style={{ color: cur90Latest?.dd_rel != null && cur90Latest.dd_rel < 0 ? '#ef4444' : '#22c55e' }}>
+                    {cur90Latest?.dd_rel != null ? `${cur90Latest.dd_rel.toFixed(1)}%` : '--'}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+
+            {/* ── AI Insight: LIVE ── */}
+            {(() => {
+              const firstPt4   = cur90ChartPts[0]
+              const lastScore4 = cur90Latest?.score
+              const firstScore4 = firstPt4?.score
+              const change4     = (firstScore4 != null && lastScore4 != null) ? lastScore4 - firstScore4 : null
+              const trending4   = change4 == null ? 'flat' : change4 > 3 ? 'up' : change4 < -3 ? 'down' : 'flat'
+              const tColor4 = trending4 === 'up' ? '#22c55e' : trending4 === 'down' ? '#ef4444' : '#f59e0b'
+              const tLabel4 = trending4 === 'up' ? '개선 중' : trending4 === 'down' ? '악화 중' : '보합세'
+              const mssVal4 = lastScore4?.toFixed(1) ?? '--'
+              const ddVal4  = cur90Latest?.dd_rel?.toFixed(1) ?? '--'
+              const near100 = lastScore4 != null && Math.abs(lastScore4 - 100) < 5
+              const near110 = lastScore4 != null && Math.abs(lastScore4 - 110) < 5
+              const nextLine4 = (lastScore4 ?? 0) > 100 ? 100 : 110
+               const insight4 = trending4 === 'up' && (lastScore4 ?? 0) >= 100
+                 ? `LIVE MSS가 ${change4 != null ? `+${change4.toFixed(1)}pt` : ''} 개선되었습니다. 구조가 강화되고 있으니 공격 전환은 가능하지만 100선 유지 여부를 계속 확인하세요.`
+                 : trending4 === 'down' && (lastScore4 ?? 0) < 100
+                   ? `LIVE MSS가 ${change4 != null ? `${change4.toFixed(1)}pt` : ''} 하락했습니다. 100 아래에서는 방어적 포지션을 유지하세요.`
+                   : (near100 || near110)
+                     ? `LIVE MSS ${mssVal4}는 경계 구간입니다. 현재 레벨을 확인하면서 노출을 보수적으로 유지하세요.`
+                     : `LIVE MSS ${mssVal4}는 중립 구간입니다. 다음 기준선 ${nextLine4}pt를 주시하세요.`
+              return (
+                <div style={{
+                  background: 'rgba(165,180,252,0.05)',
+                  border: '1px solid rgba(165,180,252,0.2)',
+                  borderLeft: `3px solid ${tColor4}`,
+                  borderRadius: 10, padding: '0.85rem 1.1rem',
+                  display: 'flex', flexDirection: 'column', gap: 7,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#a5b4fc', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(165,180,252,0.15)', borderRadius: 4, padding: '1px 7px' }}>{pickLang(uiLang, 'AI 인사이트', 'AI Insight')}</span>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#fb923c', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(251,146,60,0.14)', borderRadius: 4, padding: '1px 7px' }}>LIVE</span>
+                    <span style={{ fontSize: '0.8rem', color: tColor4, fontWeight: 600 }}>{pickLang(uiLang, 'LIVE MSS 추세:', 'LIVE MSS Trend:')} {tLabel4}</span>
+                    {change4 != null && (
+                      <span style={{ fontSize: '0.72rem', color: '#475569' }}>
+                        {firstScore4?.toFixed(1)} → {mssVal4} ({change4 >= 0 ? '+' : ''}{change4.toFixed(1)}pt)
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Cur90 Panel 1: QQQ + MA50 + MA200 */}
-            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'0.91rem 1.04rem' }}>
-              <div style={{ fontSize: '1.06rem', color:'#e5e7eb', marginBottom:8 }}>QQQ + MA50 + MA200 (base=100) - Last 90D</div>
-              <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={cur90ChartPts} margin={{ top:4, right:8, left:0, bottom:0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={cur90xInt} />
-                  <YAxis tick={{ fontSize: 12, fill: '#e5e7eb' }} domain={['auto','auto']} width={32} />
-                  <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius:6 }}
-                    formatter={(v:number) => v?.toFixed(1)} />
-                  <ReferenceLine y={100} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 2" />
-                  <Line dataKey="qqq_n"   stroke="#e5e7eb" strokeWidth={1.5} dot={false} name="QQQ" />
-                  <Line dataKey="ma50_n"  stroke="#60a5fa" strokeWidth={1}   dot={false} name="MA50"  strokeDasharray="4 2" />
-                  <Line dataKey="ma200_n" stroke="#fb923c" strokeWidth={1}   dot={false} name="MA200" strokeDasharray="4 2" />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:4 }}>Legend: QQQ / MA50 / MA200</div>
-            </div>
-
-            {/* Cur90 Panel 2: QQQ DD + TQQQ DD */}
-            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'0.91rem 1.04rem' }}>
-              <div style={{ fontSize: '1.06rem', color:'#e5e7eb', marginBottom:8 }}>Window-relative drawdown (QQQ % vs TQQQ DD) - Last 90D</div>
-              <ResponsiveContainer width="100%" height={240}>
-                <ComposedChart data={cur90ChartPts} margin={{ top:4, right:8, left:0, bottom:0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={cur90xInt} />
-                  <YAxis tick={{ fontSize: 12, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} domain={['auto', 'auto']} />
-                  <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius:6 }}
-                    formatter={(v:number) => `${v?.toFixed(2)}%`} />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} />
-                  <Area dataKey="dd_rel"      stroke="#ef4444" fill="rgba(239,68,68,0.15)" strokeWidth={1.5} dot={false} name="QQQ DD" />
-                  <Area dataKey="tqqq_dd_rel" stroke="#a78bfa" fill="rgba(167,139,250,0.10)" strokeWidth={1.5} dot={false} name="TQQQ DD" />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:4 }}>Legend: QQQ DD / TQQQ DD</div>
-            </div>
-
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {[
+                      `• 현재 MSS: ${mssVal4} — 구간: ${cur90Zone?.label ?? '--'}`,
+                      `• QQQ 기간 내 최대낙폭: ${ddVal4}%`,
+                      (near100 || near110)
+                        ? `• ⚠ 주요 경계선 근처 — MSS ${near100 ? '100' : '110'} 돌파 여부 주시`
+                        : `• 다음 주요 경계선: ${nextLine4}pt`,
+                    ].map((b, i) => (
+                      <span key={i} style={{ fontSize: '0.77rem', color: '#94a3b8', lineHeight: 1.5 }}>{b}</span>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(165,180,252,0.12)', paddingTop: 5, fontSize: '0.78rem', color: '#cbd5e1' }}>
+                    <span style={{ color: '#a5b4fc', fontWeight: 700 }}>LIVE </span>{insight4}
+                  </div>
+                </div>
+              )
+            })()}
             {/* Cur90 Panel 3: MSS Score / Risk View */}
             <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'0.91rem 1.04rem' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
                 <div>
                   <div style={{ fontSize: '1.12rem', fontWeight:800, color:'#e5e7eb' }}>
-                    {chartMode === 'risk' ? 'Risk Intensity - Last 90 Days' : 'Market Structure Score (MSS) - Last 90 Days'}
+                    {chartMode === 'risk' ? 'Risk Intensity - Live Window' : 'Market Structure Score (MSS) - Live Window'}
                   </div>
                   <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:4 }}>
                     {chartMode === 'risk' ? 'Higher = more danger (inverted from MSS)' : '100 = structural baseline'}
@@ -3136,9 +3472,13 @@ function OverviewTab({
                         <ResponsiveContainer width="100%" height={280}>
                           <ComposedChart data={ltPts} margin={{ top:4, right:48, left:0, bottom:0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                            <XAxis dataKey="d" tick={{ fontSize:10, fill:'#9ca3af' }}
-                              interval={Math.max(1, Math.floor(ltPts.length / 10))}
-                              tickFormatter={(d:string) => d.slice(0,4)} />
+                            <XAxis
+                              dataKey="d"
+                              tick={{ fontSize:10, fill:'#9ca3af' }}
+                              ticks={ltAxisTicks}
+                              interval={0}
+                              tickFormatter={(d:string) => (d === ltLastDate ? d.slice(2) : d.slice(0,4))}
+                            />
                             <YAxis domain={[40, 130]} tick={{ fontSize:11, fill:'#e5e7eb' }} width={28} />
                             <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize:'0.95rem', borderRadius:6 }}
                               formatter={(v:number) => [v?.toFixed(1), 'MSS']}
@@ -3160,7 +3500,7 @@ function OverviewTab({
               {chartMode !== 'long-term' && <ResponsiveContainer width="100%" height={220}>
                 <ComposedChart data={cur90ChartPts} margin={{ top:4, right:48, left:0, bottom:0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={cur90xInt} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} ticks={cur90AxisTicks} interval={0} />
                   {chartMode !== 'risk' && (
                     <YAxis yAxisId="score" domain={[60, 130]} tick={{ fontSize: 12, fill: '#e5e7eb' }} width={28} />
                   )}
@@ -3225,25 +3565,63 @@ function OverviewTab({
                 ))}
               </div>
             </div>
+
+            {/* Cur90 Panel 1: QQQ + MA50 + MA200 */}
+            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'0.91rem 1.04rem' }}>
+              <div style={{ fontSize: '1.06rem', color:'#e5e7eb', marginBottom:8 }}>QQQ + MA50 + MA200 (base=100) - Live</div>
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={cur90ChartPts} margin={{ top:4, right:48, left:0, bottom:0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} ticks={cur90AxisTicks} interval={0} />
+                  <YAxis tick={{ fontSize: 12, fill: '#e5e7eb' }} domain={['auto','auto']} width={32} />
+                  <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius:6 }}
+                    formatter={(v:number) => v?.toFixed(1)} />
+                  <ReferenceLine y={100} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 2" />
+                  <Line dataKey="qqq_n"   stroke="#e5e7eb" strokeWidth={1.5} dot={false} name="QQQ" />
+                  <Line dataKey="ma50_n"  stroke="#60a5fa" strokeWidth={1}   dot={false} name="MA50"  strokeDasharray="4 2" />
+                  <Line dataKey="ma200_n" stroke="#fb923c" strokeWidth={1}   dot={false} name="MA200" strokeDasharray="4 2" />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:4 }}>Legend: QQQ / MA50 / MA200</div>
+            </div>
+
+            {/* Cur90 Panel 2: QQQ DD + TQQQ DD */}
+            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'0.91rem 1.04rem' }}>
+              <div style={{ fontSize: '1.06rem', color:'#e5e7eb', marginBottom:8 }}>Window-relative drawdown (QQQ % vs TQQQ DD) - Live</div>
+              <ResponsiveContainer width="100%" height={240}>
+                <ComposedChart data={cur90ChartPts} margin={{ top:4, right:48, left:0, bottom:0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} ticks={cur90AxisTicks} interval={0} />
+                  <YAxis tick={{ fontSize: 12, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} domain={['auto', 'auto']} />
+                  <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius:6 }}
+                    formatter={(v:number) => `${v?.toFixed(2)}%`} />
+                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} />
+                  <Area dataKey="dd_rel"      stroke="#ef4444" fill="rgba(239,68,68,0.15)" strokeWidth={1.5} dot={false} name="QQQ DD" />
+                  <Area dataKey="tqqq_dd_rel" stroke="#a78bfa" fill="rgba(167,139,250,0.10)" strokeWidth={1.5} dot={false} name="TQQQ DD" />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:4 }}>Legend: QQQ DD / TQQQ DD</div>
+            </div>
+
           </>
         )}
-      </div>
+      </div>}
 
       {/* Context History Charts (SPY and Rotation) */}
-      {data.context_history && data.context_history.length > 0 && (() => {
+      {ovTab === 4 && data.context_history && data.context_history.length > 0 && (() => {
         const ch = data.context_history!
-        const xInt = Math.max(1, Math.floor(ch.length / 6))
+        const historyTicks = buildAxisTicks(ch, 'date', 6)
         const formatHistoryDate = (d: unknown) => typeof d === 'string' ? d.slice(2) : ''
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* QQQ vs MA200 */}
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '0.91rem 1.04rem' }}>
-              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>QQQ Core Structure — 90D</div>
+              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>QQQ Core Structure — Live</div>
               <div style={{ fontSize: '0.95rem', color: '#e5e7eb', marginBottom: 8 }}>QQQ distance from MA200 (%) - positive = above MA200</div>
               <ResponsiveContainer width="100%" height={140}>
-                <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [`${v?.toFixed(2)}%`, 'QQQ vs MA200']} />
@@ -3255,12 +3633,12 @@ function OverviewTab({
             </div>
             {/* SPY vs MA200 */}
             <div style={{ display: 'none', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '0.91rem 1.04rem' }}>
-              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>SPY Broad Market Context — 90D</div>
+              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>SPY Broad Market Context — Live</div>
               <div style={{ fontSize: '0.95rem', color: '#e5e7eb', marginBottom: 8 }}>SPY distance from MA200 (%) - positive = above MA200</div>
               <ResponsiveContainer width="100%" height={140}>
-                <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [`${v?.toFixed(2)}%`, 'SPY vs MA200']} />
@@ -3273,7 +3651,7 @@ function OverviewTab({
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '0.91rem 1.04rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                 <div>
-                  <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>Risk Signal Context — 90D</div>
+                  <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>Risk Signal Context — Live</div>
                   <div style={{ fontSize: '0.95rem', color: '#e5e7eb' }}>SPY, DIA, and QQQ/SPY rotation in one tabbed view</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -3309,9 +3687,9 @@ function OverviewTab({
                 <>
                   <div style={{ fontSize: '0.95rem', color: '#e5e7eb' }}>SPY distance from MA200 (%) - positive = above MA200</div>
                   <ResponsiveContainer width="100%" height={140}>
-                    <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                    <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                       <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                       <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                         formatter={(v: number) => [`${v?.toFixed(2)}%`, 'SPY vs MA200']} />
@@ -3326,9 +3704,9 @@ function OverviewTab({
                 <>
                   <div style={{ fontSize: '0.95rem', color: '#e5e7eb' }}>DIA distance from MA200 (%) - Dow Jones 30 industrial/cyclical proxy</div>
                   <ResponsiveContainer width="100%" height={140}>
-                    <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                    <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                       <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                       <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                         formatter={(v: number) => [`${v?.toFixed(2)}%`, 'DIA vs MA200']} />
@@ -3343,9 +3721,9 @@ function OverviewTab({
                 <>
                   <div style={{ fontSize: '0.95rem', color: '#e5e7eb' }}>100 = window start - rising = Nasdaq leading - falling = rotation away from tech</div>
                   <ResponsiveContainer width="100%" height={140}>
-                    <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                    <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                       <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} domain={['auto', 'auto']} width={30} />
                       <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                         formatter={(v: number) => [v?.toFixed(1), 'RS (base=100)']} />
@@ -3358,12 +3736,12 @@ function OverviewTab({
             </div>
             {/* DIA Industrial Context */}
             <div style={{ display: 'none', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '0.91rem 1.04rem' }}>
-              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>DIA Industrial Context — 90D</div>
+              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>DIA Industrial Context — Live</div>
               <div style={{ fontSize: '0.95rem', color: '#e5e7eb', marginBottom: 8 }}>DIA distance from MA200 (%) - Dow Jones 30 industrial/cyclical proxy</div>
               <ResponsiveContainer width="100%" height={140}>
-                <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [`${v?.toFixed(2)}%`, 'DIA vs MA200']} />
@@ -3375,12 +3753,12 @@ function OverviewTab({
             </div>
             {/* QQQ/SPY Rotation */}
             <div style={{ display: 'none', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '0.91rem 1.04rem' }}>
-              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>QQQ/SPY Relative Strength — 90D</div>
+              <div style={{ fontSize: '1.06rem', fontWeight: 700, color: '#e5e7eb', marginBottom: 2 }}>QQQ/SPY Relative Strength — Live</div>
               <div style={{ fontSize: '0.95rem', color: '#e5e7eb', marginBottom: 8 }}>100 = window start - rising = Nasdaq leading - falling = rotation away from tech</div>
               <ResponsiveContainer width="100%" height={140}>
-                <ComposedChart data={ch} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <ComposedChart data={ch} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} interval={xInt} tickFormatter={formatHistoryDate} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#e5e7eb' }} ticks={historyTicks} interval={0} tickFormatter={formatHistoryDate} />
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} domain={['auto', 'auto']} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [v?.toFixed(1), 'RS (base=100)']} />
@@ -3389,147 +3767,6 @@ function OverviewTab({
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-
-      <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'0.91rem 1.04rem' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
-          <div>
-            <div style={{ fontSize: '1.12rem', fontWeight:800, color:'#e5e7eb' }}>
-              {ovChartMode === 'risk' ? 'Risk Intensity - Last 90 Days' : 'Market Structure Score (MSS) - Last 90 Days'}
-            </div>
-            <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:4 }}>
-              {ovChartMode === 'risk' ? 'Higher = more danger (inverted from MSS)' : '100 = structural baseline'}
-            </div>
-          </div>
-          <div style={{ display:'flex', gap:6 }}>
-            {(['score','risk','compare','long-term'] as const).map((m) => {
-              const on = ovChartMode === m
-              const label = m === 'score' ? 'Score View' : m === 'risk' ? 'Risk View' : m === 'compare' ? 'Compare' : 'Full History'
-              return (
-                <button key={m} onClick={() => setOvChartMode(m)} style={{
-                  padding:'0.3rem 0.7rem', borderRadius:999,
-                  border: on ? '1px solid rgba(34,211,238,0.55)' : '1px solid rgba(255,255,255,0.08)',
-                  background: on ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.02)',
-                  color: on ? '#99f6e4' : '#e5e7eb', fontSize: '0.95rem', fontWeight:700,
-                }}>{label}</button>
-              )
-            })}
-          </div>
-        </div>
-        <div style={{ fontSize: '0.99rem', color:'#e5e7eb', marginTop:6, lineHeight:1.6 }}>
-          {ovChartMode === 'long-term'
-            ? 'Full MSS history (1999-present) with historical crisis periods overlaid. Shaded = known crisis events.'
-            : ovChartMode === 'risk'
-              ? 'Risk Intensity is the inverted view of MSS, designed for users who prefer higher values to represent higher danger.'
-              : 'Market Structure Score (MSS) measures how healthy the market structure is relative to its long-term baseline. Higher = stronger, lower = riskier.'}
-        </div>
-        {/* Long-term MSS history with crisis overlays */}
-        {ovChartMode === 'long-term' && (
-          ltLoading
-            ? <div style={{ textAlign:'center', padding:40, color:'#9ca3af', fontSize:'0.9rem' }}>Loading full history...</div>
-            : ltPts.length === 0
-              ? <div style={{ textAlign:'center', padding:40, color:'#6b7280', fontSize:'0.9rem' }}>No data ??run build_risk_v1.py</div>
-              : <>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:6, marginTop:4 }}>
-                    {CRISIS_OVERLAYS.map(co => (
-                      <span key={co.label} style={{
-                        fontSize:'0.72rem', fontWeight:700, color: co.color,
-                        background: co.fill, borderRadius:4, padding:'2px 7px',
-                        border: `1px solid ${co.color}44`,
-                      }}>{co.label}</span>
-                    ))}
-                  </div>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <ComposedChart data={ltPts} margin={{ top:4, right:48, left:0, bottom:0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                      <XAxis dataKey="d" tick={{ fontSize:10, fill:'#9ca3af' }}
-                        interval={Math.max(1, Math.floor(ltPts.length / 10))}
-                        tickFormatter={(d:string) => d.slice(0,4)} />
-                      <YAxis domain={[40, 130]} tick={{ fontSize:11, fill:'#e5e7eb' }} width={28} />
-                      <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize:'0.95rem', borderRadius:6 }}
-                        formatter={(v:number) => [v?.toFixed(1), 'MSS']}
-                        labelFormatter={(d:string) => d} />
-                      {MSS_ZONES.map((z) => (
-                        <ReferenceArea key={`zone-${z.key}`} y1={z.min} y2={z.max} fill={z.fill} strokeOpacity={0} />
-                      ))}
-                      {CRISIS_OVERLAYS.map(co => (
-                        <ReferenceArea key={co.label} x1={co.x1} x2={co.x2}
-                          fill={co.fill} strokeOpacity={0}
-                          label={{ value: co.label, position:'insideTopLeft', fill: co.color, fontSize:9, fontWeight:700 }} />
-                      ))}
-                      <ReferenceLine y={100} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 2" />
-                      <Line dataKey="s" stroke="#22d3ee" strokeWidth={1.5} dot={false} name="MSS" />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </>
-        )}
-        {ovChartMode !== 'long-term' && <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={cur90ChartPts} margin={{ top:4, right:48, left:0, bottom:0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={cur90xInt} />
-            {ovChartMode !== 'risk' && (
-              <YAxis yAxisId="score" domain={[60, 130]} tick={{ fontSize: 12, fill: '#e5e7eb' }} width={28} />
-            )}
-            {ovChartMode === 'risk' && (
-              <YAxis yAxisId="risk" domain={[0, 60]} tick={{ fontSize: 12, fill: '#e5e7eb' }} width={28} />
-            )}
-            {ovChartMode === 'compare' && (
-              <YAxis yAxisId="risk" orientation="right" domain={[0, 60]} tick={{ fontSize: 12, fill: '#e5e7eb' }} width={28} />
-            )}
-            <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius:6 }}
-              formatter={(v:number) => v?.toFixed(1)} />
-            {ovChartMode !== 'risk' && MSS_ZONES.map((z) => (
-              <ReferenceArea key={`zone-${z.key}`} yAxisId="score" y1={z.min} y2={z.max} fill={z.fill} strokeOpacity={0} />
-            ))}
-            {ovChartMode === 'risk' && RISK_ZONES.map((z) => (
-              <ReferenceArea key={`rzone-${z.label}`} yAxisId="risk" y1={z.min} y2={z.max} fill={z.fill} strokeOpacity={0} />
-            ))}
-            {ovChartMode !== 'risk' && MSS_ZONES.map((z) => (
-              <ReferenceLine key={`label-${z.key}`} yAxisId="score" y={(z.min + z.max) / 2} stroke="rgba(255,255,255,0.06)" label={{ value: z.label, fill: z.color, fontSize: 10, position: 'right' }} />
-            ))}
-            {ovChartMode === 'risk' && RISK_ZONES.map((z) => (
-              <ReferenceLine key={`rlabel-${z.label}`} yAxisId="risk" y={(z.min + z.max) / 2} stroke="rgba(255,255,255,0.06)" label={{ value: z.label, fill: z.color, fontSize: 10, position: 'right' }} />
-            ))}
-            {ovChartMode !== 'risk' && (
-              <ReferenceLine yAxisId="score" y={100} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 2" />
-            )}
-            {ovChartMode === 'score' && (
-              <>
-                <Line yAxisId="score" dataKey="score" stroke="#22d3ee" strokeWidth={1.9} dot={false} name="MSS" />
-                {cur90Latest?.score != null && (
-                  <ReferenceDot yAxisId="score" x={cur90Latest.label} y={cur90Latest.score} r={4} fill="#22d3ee" stroke="#ffffff" strokeWidth={1} />
-                )}
-              </>
-            )}
-            {ovChartMode === 'risk' && (
-              <>
-                <Line yAxisId="risk" dataKey="risk_intensity" stroke="#ef4444" strokeWidth={1.9} dot={false} name="Risk Intensity" />
-                {cur90Latest?.risk_intensity != null && (
-                  <ReferenceDot yAxisId="risk" x={cur90Latest.label} y={cur90Latest.risk_intensity} r={4} fill="#ef4444" stroke="#ffffff" strokeWidth={1} />
-                )}
-              </>
-            )}
-            {ovChartMode === 'compare' && (
-              <>
-                <Line yAxisId="score" dataKey="score" stroke="#22d3ee" strokeWidth={1.7} dot={false} name="MSS (health)" />
-                <Line yAxisId="risk" dataKey="risk_intensity" stroke="#ef4444" strokeWidth={1.7} dot={false} name="Risk Intensity" />
-                <Legend verticalAlign="top" align="right" height={24} wrapperStyle={{ color:'#e5e7eb', fontSize: '0.88rem' }} />
-              </>
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, marginTop:10 }}>
-          {[
-            { label:'Current MSS', value: cur90Latest?.score != null ? cur90Latest.score.toFixed(1) : '--', color:'#a5b4fc' },
-            { label:'Current Zone', value: cur90Zone?.label ?? '--', color: cur90Zone?.color ?? '#e5e7eb' },
-            { label:'Recommended Exposure', value: cur90Exposure, color:'#e5e7eb' },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ background:'rgba(255,255,255,0.03)', borderRadius:8, padding:'0.52rem 0.65rem' }}>
-              <div style={{ fontSize: '0.95rem', color:'#e5e7eb', marginBottom:2 }}>{label}</div>
-              <div style={{ fontSize:'1.02rem', fontWeight:800, color }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
           </div>
         )
       })()}
@@ -3639,7 +3876,7 @@ function EventPlaybackTab({ events }: { events: EventRec[] }) {
       risk_level_label: riskLevel,
     }
   }), [pts])
-  const xInterval = Math.max(1, Math.floor(chartPts.length / 10))
+  const chartTicks = useMemo(() => buildAxisTicks(chartPts, 'label', 10), [chartPts])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.17rem' }}>
@@ -3703,9 +3940,9 @@ function EventPlaybackTab({ events }: { events: EventRec[] }) {
               <div style={card()}>
                 <div style={{ fontSize: '1.06rem', color: '#e5e7eb', marginBottom: 8 }}>Panel 1 - QQQ + MA50 + MA200 (base=100)</div>
                 <ResponsiveContainer width="100%" height={270}>
-                  <ComposedChart data={chartPts} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <ComposedChart data={chartPts} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={xInterval} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} ticks={chartTicks} interval={0} />
                     <YAxis tick={{ fontSize: 13, fill: '#e5e7eb' }} domain={['auto', 'auto']} width={32} />
                     <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius: 6 }} formatter={(v: number) => v.toFixed(1)} />
                     <ReferenceLine y={100} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 2" />
@@ -3720,9 +3957,9 @@ function EventPlaybackTab({ events }: { events: EventRec[] }) {
               <div style={card()}>
                 <div style={{ fontSize: '1.06rem', color: '#e5e7eb', marginBottom: 8 }}>Panel 2 - Drawdown % (QQQ vs TQQQ)</div>
                 <ResponsiveContainer width="100%" height={240}>
-                  <ComposedChart data={chartPts} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <ComposedChart data={chartPts} margin={{ top: 4, right: 48, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={xInterval} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} ticks={chartTicks} interval={0} />
                     <YAxis domain={['auto', 10]} tick={{ fontSize: 13, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
                     <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius: 6 }} formatter={(v: number) => `${v.toFixed(1)}%`} />
                     <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" />
@@ -3768,7 +4005,7 @@ function EventPlaybackTab({ events }: { events: EventRec[] }) {
                 <ResponsiveContainer width="100%" height={210}>
                   <ComposedChart data={chartPts} margin={{ top: 4, right: 64, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} interval={xInterval} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#e5e7eb' }} ticks={chartTicks} interval={0} />
                     <YAxis yAxisId="mss" domain={[68, 132]} ticks={[70, 76, 84, 92, 100, 110, 120, 130]} tick={{ fontSize: 11, fill: '#e5e7eb' }} width={28} />
                     <Tooltip
                       contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius: 6 }}
@@ -4255,12 +4492,14 @@ function SignalAnalysisTab({ data }: { data: RiskV1Data }) {
 }
 
 // Methodology Tab
-function MethodologyTab({ m }: { m: Methodology }) {
+function MethodologyTab({ m, uiLang }: { m: Methodology; uiLang: UiLang }) {
+  const L = (ko: string, en: string) => pickLang(uiLang, ko, en)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.17rem' }}>
       <div style={card()}>
-        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 4 }}>MSS Components (Market Structure Score)</div>
-        <div style={{ fontSize: '1.02rem', color: '#e5e7eb', marginBottom: 10 }}>Formula: MSS = 100 + TrendAdj + DepthAdj + VolAdj + DDAdj</div>
+        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 4 }}>{L('MSS 구성요소 (시장 구조 점수)', 'MSS Components (Market Structure Score)')}</div>
+        <div style={{ fontSize: '1.02rem', color: '#e5e7eb', marginBottom: 10 }}>{L('공식: MSS = 100 + TrendAdj + DepthAdj + VolAdj + DDAdj', 'Formula: MSS = 100 + TrendAdj + DepthAdj + VolAdj + DDAdj')}</div>
         {m.score_components.map((c) => (
           <div key={c.name} style={{ marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -4274,7 +4513,7 @@ function MethodologyTab({ m }: { m: Methodology }) {
 
       {m.score_zones && (
       <div style={card()}>
-        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 10 }}>MSS Score Zones</div>
+        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 10 }}>{L('MSS 점수 구간', 'MSS Score Zones')}</div>
         {m.score_zones.map((z) => {
           const zColor = z.label === 'Strong Bull' || z.label === 'Overheat' ? '#22c55e'
             : z.label === 'Healthy Bull' ? '#86efac'
@@ -4296,21 +4535,21 @@ function MethodologyTab({ m }: { m: Methodology }) {
       )}
 
       <div style={card()}>
-        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 10 }}>Level Tiers and Exposure Guide</div>
+        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 10 }}>{L('레벨 구간 및 익스포저 가이드', 'Level Tiers and Exposure Guide')}</div>
         {m.level_tiers.map((t) => (
           <div key={t.level} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: t.color }} />
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: t.color }}>Level {t.level} - {t.label}</span>
+              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: t.color }}>{L(`레벨 ${t.level} - ${t.label}`, `Level ${t.level} - ${t.label}`)}</span>
               <span style={{ fontSize: '1.05rem', color: '#e5e7eb' }}> (MSS {t.range})</span>
             </div>
-            <div style={{ fontSize: '1.1rem', color: '#e5e7eb' }}>Recommended exposure {t.exposure}%</div>
+            <div style={{ fontSize: '1.1rem', color: '#e5e7eb' }}>{L(`권장 익스포저 ${t.exposure}%`, `Recommended exposure ${t.exposure}%`)}</div>
           </div>
         ))}
       </div>
 
       <div style={card()}>
-        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 10 }}>Event Type Classification</div>
+        <div style={{ fontSize: '1.15rem', color: '#a5b4fc', fontWeight: 700, marginBottom: 10 }}>{L('이벤트 타입 분류', 'Event Type Classification')}</div>
         {m.event_types.map((e) => (
           <div key={e.type} style={{ marginBottom: 10 }}>
             <div style={{ fontSize: '1.14rem', fontWeight: 700, color: TYPE_COLORS[e.type] ?? '#e5e7eb' }}>{e.type}</div>
@@ -4320,12 +4559,12 @@ function MethodologyTab({ m }: { m: Methodology }) {
       </div>
 
       <div style={{ background: 'rgba(255,165,0,0.05)', border: '1px solid rgba(255,165,0,0.15)', borderRadius: 8, padding: '0.98rem 1.17rem', fontSize: '1.05rem', color: '#e5e7eb', lineHeight: 1.6 }}>
-        <strong style={{ color: '#f59e0b' }}>Tone Policy</strong><br />
-        This system is descriptive, not prophetic. Use it the way you would use a weather risk dashboard.<br />
-        "Environment suggests elevated downside risk." - OK<br />
-        "Historical pattern indicates structural deterioration." - OK<br />
-        "Market will crash." - Not allowed<br />
-        "Guaranteed protection." - Not allowed<br />
+        <strong style={{ color: '#f59e0b' }}>{L('톤 정책', 'Tone Policy')}</strong><br />
+        {L('이 시스템은 설명용이지 예언용이 아닙니다. 날씨 리스크 대시보드처럼 보세요.', 'This system is descriptive, not prophetic. Use it the way you would use a weather risk dashboard.')}<br />
+        {L('"환경이 하방 위험을 높인다." - 허용', '"Environment suggests elevated downside risk." - OK')}<br />
+        {L('"과거 패턴이 구조적 악화를 시사한다." - 허용', '"Historical pattern indicates structural deterioration." - OK')}<br />
+        {L('"시장이 폭락할 것이다." - 금지', '"Market will crash." - Not allowed')}<br />
+        {L('"무조건 방어된다." - 금지', '"Guaranteed protection." - Not allowed')}<br />
         <br />
         {m.disclaimer}
       </div>
@@ -4336,19 +4575,21 @@ function MethodologyTab({ m }: { m: Methodology }) {
 // Main
 export default function RiskSystemV1({
   data,
+  uiLang,
 }: {
   data: RiskV1Data
+  uiLang: UiLang
 }) {
   const [tab, setTab] = useState<Tab>('Overview')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.17rem', WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' }}>
-      <TabBar tab={tab} setTab={setTab} />
-      {tab === 'Overview'        && <OverviewTab      data={data} />}
+      <TabBar tab={tab} setTab={setTab} uiLang={uiLang} />
+      {tab === 'Overview'        && <OverviewTab      data={data} uiLang={uiLang} />}
       {tab === 'Event Library'   && <EventLibraryTab  events={data.events} />}
       {tab === 'Event Playback'  && <EventPlaybackTab events={data.events} />}
       {tab === 'Signal Analysis' && <SignalAnalysisTab data={data} />}
-      {tab === 'Methodology'     && <MethodologyTab    m={data.methodology} />}
+      {tab === 'Methodology'     && <MethodologyTab    m={data.methodology} uiLang={uiLang} />}
     </div>
   )
 }

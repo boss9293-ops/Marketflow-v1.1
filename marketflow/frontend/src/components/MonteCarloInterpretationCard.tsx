@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { pickLang, type UiLang } from '@/lib/uiLang'
 
 type MonteCarloInterpretationCardProps = {
   summaryLine: string
@@ -10,6 +11,7 @@ type MonteCarloInterpretationCardProps = {
   conflictScore: number
   trustScore: number
   subtext?: string
+  uiLang: UiLang
 }
 
 function formatScore(value: number) {
@@ -33,10 +35,9 @@ function badgeStyle(): CSSProperties {
   }
 }
 
-function scoreCell(label: string, value: number) {
+function scoreCell(uiLang: UiLang, labelKo: string, labelEn: string, value: number) {
   return (
     <div
-      key={label}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -48,7 +49,7 @@ function scoreCell(label: string, value: number) {
       }}
     >
       <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-        {label}
+        {pickLang(uiLang, labelKo, labelEn)}
       </span>
       <span style={{ fontSize: '1rem', color: '#e5e7eb', fontWeight: 800 }}>
         {formatScore(value)}
@@ -67,6 +68,7 @@ export default function MonteCarloInterpretationCard({
   conflictScore,
   trustScore,
   subtext,
+  uiLang,
 }: MonteCarloInterpretationCardProps) {
   return (
     <div
@@ -83,10 +85,10 @@ export default function MonteCarloInterpretationCard({
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <span style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Interpretive Overlay
+          {pickLang(uiLang, '해석 오버레이', 'Interpretive Overlay')}
         </span>
         <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-          Secondary narrative layer
+          {pickLang(uiLang, '보조 서술 레이어', 'Secondary narrative layer')}
         </span>
       </div>
 
@@ -109,14 +111,14 @@ export default function MonteCarloInterpretationCard({
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span style={badgeStyle()}>{interpretationState.split('_').join(' ')}</span>
+        <span style={badgeStyle()}>{pickLang(uiLang, interpretationState.split('_').join(' '), interpretationState.split('_').join(' '))}</span>
         <span style={badgeStyle()}>{currentRegime}</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: 8 }}>
-        {scoreCell('Agreement', agreementScore)}
-        {scoreCell('Conflict', conflictScore)}
-        {scoreCell('Trust', trustScore)}
+        {scoreCell(uiLang, '정렬', 'Agreement', agreementScore)}
+        {scoreCell(uiLang, '충돌', 'Conflict', conflictScore)}
+        {scoreCell(uiLang, '신뢰도', 'Trust', trustScore)}
       </div>
 
       {subtext ? (

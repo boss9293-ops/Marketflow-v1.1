@@ -205,6 +205,7 @@ class ValidationEngine:
 
         # Forward fill weekly WALCL and any gaps
         df = df.sort_index()
+        df = df[~df.index.duplicated(keep="last")]
         full_idx = pd.date_range(start=df.index.min(), end=df.index.max(), freq="B")
         df = df.reindex(full_idx)
         df = df.ffill()

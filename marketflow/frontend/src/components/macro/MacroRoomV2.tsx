@@ -5,11 +5,11 @@ import MacroDetailCard from '@/components/macro/MacroDetailCard'
 import PublicMacroContext from '@/components/macro/PublicMacroContext'
 import RealTimeTab from '@/components/macro/tabs/RealTimeTab'
 import EarlyWarningTab from '@/components/macro/tabs/EarlyWarningTab'
-import LanguageModeToggle from '@/components/LanguageModeToggle'
 import InfoTip from '@/components/ui/InfoTip'
 import { refreshMacroStore, useMacroStore } from '@/stores/macroStore'
 import { pickLang, useLangMode } from '@/lib/useLangMode'
 import { MACRO_TERM_COPY } from '@/lib/macroCopy'
+import { UI_TEXT } from '@/lib/uiText'
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -318,9 +318,9 @@ export default function MacroRoomV2() {
     setZoomSpan(null)
   }, [historyRange, history.length])
 
-  if (state.loading) return <div className="text-slate-400 text-sm">{pickLang(mode, '매크로 스냅샷 로딩 중...', 'Loading macro snapshot...')}</div>
+  if (state.loading) return <div className="text-slate-300 text-sm font-medium">{pickLang(mode, UI_TEXT.macro.loadingSnapshot.ko, UI_TEXT.macro.loadingSnapshot.en)}</div>
   if (state.error) return <div className="text-red-400 text-sm">{pickLang(mode, '오류', 'Error')}: {state.error}</div>
-  if (!state.data) return <div className="text-slate-400 text-sm">{pickLang(mode, '사용 가능한 매크로 스냅샷이 없습니다.', 'No macro snapshot available.')}</div>
+  if (!state.data) return <div className="text-slate-300 text-sm font-medium">{pickLang(mode, UI_TEXT.macro.noSnapshot.ko, UI_TEXT.macro.noSnapshot.en)}</div>
 
   const data = state.data
   const c = data.computed || {}
@@ -819,38 +819,37 @@ export default function MacroRoomV2() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mf-macro-root space-y-5">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="text-sm text-slate-300">
-          {pickLang(mode, '스냅샷', 'Snapshot')}: <span className="text-white font-semibold">{data.snapshot_date}</span>
+        <div className="text-sm font-medium text-slate-200">
+          {pickLang(mode, UI_TEXT.macro.snapshot.ko, UI_TEXT.macro.snapshot.en)}: <span className="text-white font-semibold">{data.snapshot_date}</span>
         </div>
         <div className="flex items-center gap-2">
-          <LanguageModeToggle />
           <button
             type="button"
             onClick={() => refreshMacroStore()}
-            className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-slate-200 hover:bg-white/5"
+            className="px-3 py-1.5 text-[13px] font-semibold rounded-lg border border-white/10 text-slate-100 hover:bg-white/5"
           >
-            {pickLang(mode, '새로고침', 'Refresh')}
+            {pickLang(mode, UI_TEXT.common.refresh.ko, UI_TEXT.common.refresh.en)}
           </button>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         {[
-          { key: 'realtime', label: pickLang(mode, 'Real-time', 'Real-time') },
-          { key: 'context', label: pickLang(mode, 'Context', 'Context') },
-          { key: 'early_warning', label: pickLang(mode, 'Early Warning', 'Early Warning') },
-          { key: 'history', label: pickLang(mode, 'History', 'History') },
-          { key: 'debug', label: 'Debug' },
+          { key: 'realtime', label: pickLang(mode, UI_TEXT.macro.realtime.ko, UI_TEXT.macro.realtime.en) },
+          { key: 'context', label: pickLang(mode, UI_TEXT.macro.context.ko, UI_TEXT.macro.context.en) },
+          { key: 'early_warning', label: pickLang(mode, UI_TEXT.macro.earlyWarning.ko, UI_TEXT.macro.earlyWarning.en) },
+          { key: 'history', label: pickLang(mode, UI_TEXT.macro.history.ko, UI_TEXT.macro.history.en) },
+          { key: 'debug', label: pickLang(mode, UI_TEXT.macro.debug.ko, UI_TEXT.macro.debug.en) },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setViewTab(tab.key as 'realtime' | 'context' | 'early_warning' | 'history' | 'debug')}
-            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+            className={`px-3 py-1.5 text-[13px] font-semibold rounded-lg border transition-colors ${
               viewTab === tab.key
-                ? 'border-cyan-400/40 text-cyan-200 bg-cyan-500/10'
-                : 'border-white/10 text-slate-300 hover:bg-white/5'
+                ? 'border-cyan-300/40 text-cyan-100 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.08)]'
+                : 'border-white/10 text-slate-200 hover:bg-white/5 hover:text-slate-50'
             }`}
           >
             {tab.label}
@@ -904,7 +903,7 @@ export default function MacroRoomV2() {
         <div className="space-y-4">
           <div className="bg-[#17191d] rounded-2xl p-5 border border-white/10">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-100">{pickLang(mode, '데이터 신뢰도', 'Data Confidence')}</div>
+              <div className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-50">{pickLang(mode, UI_TEXT.macro.dataConfidence.ko, UI_TEXT.macro.dataConfidence.en)}</div>
               <div className="text-base md:text-lg font-semibold text-slate-100">
                 {confidenceScore}%
               </div>

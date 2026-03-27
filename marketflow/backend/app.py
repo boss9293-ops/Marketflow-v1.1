@@ -1,4 +1,4 @@
-﻿from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import csv
 import io
@@ -11,6 +11,18 @@ import hashlib
 from ai import gpt_client, gemini_client
 from api.analyze_srs import srs_bp
 from api.analyze_integrated import integrated_bp
+from api.pipeline_metrics import pipeline_metrics_bp
+from api.pipeline_intelligence import pipeline_intelligence_bp
+from api.pipeline_recovery import pipeline_recovery_bp
+from api.pipeline_root_cause import pipeline_root_cause_bp
+from api.pipeline_retry_policy import pipeline_retry_policy_bp
+from api.pipeline_retry_audit import pipeline_retry_audit_bp
+from api.pipeline_healing import pipeline_healing_bp
+from api.pipeline_ops_mode import pipeline_ops_mode_bp
+from api.pipeline_episode import pipeline_episode_bp
+from api.pipeline_predictive import pipeline_predictive_bp
+from api.pipeline_runbook import pipeline_runbook_bp
+from api.pipeline_digest  import pipeline_digest_bp
 # -- In-memory TTL cache (10s) ------------------------------------------
 import time as _time
 from validation_engine import ValidationEngine
@@ -52,6 +64,18 @@ app = Flask(__name__)
 CORS(app)
 app.register_blueprint(srs_bp)
 app.register_blueprint(integrated_bp)
+app.register_blueprint(pipeline_metrics_bp)
+app.register_blueprint(pipeline_intelligence_bp)
+app.register_blueprint(pipeline_recovery_bp)
+app.register_blueprint(pipeline_root_cause_bp)
+app.register_blueprint(pipeline_retry_policy_bp)
+app.register_blueprint(pipeline_retry_audit_bp)
+app.register_blueprint(pipeline_healing_bp)
+app.register_blueprint(pipeline_ops_mode_bp)
+app.register_blueprint(pipeline_episode_bp)
+app.register_blueprint(pipeline_predictive_bp)
+app.register_blueprint(pipeline_runbook_bp)
+app.register_blueprint(pipeline_digest_bp)
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
 VALIDATION_SNAPSHOT_DIR = os.path.join(os.path.dirname(__file__), 'storage', 'validation_snapshots')
@@ -1030,6 +1054,66 @@ def regime():
 @app.route('/api/rrg')
 def rrg():
     return jsonify(load_json('rrg_data.json'))
+
+@app.route('/api/rrg/custom')
+def rrg_custom():
+    try:
+        from rrg_calculator import (
+            calculate_rrg, load_weekly,
+            calculate_rrg_daily, load_daily,
+        )
+    except ImportError as e:
+        return jsonify({'error': f'Import error: {e}'}), 500
+
+    symbols_raw = request.args.get('symbols', '').strip()
+    benchmark   = request.args.get('benchmark', 'SPY').strip().upper() or 'SPY'
+    period      = request.args.get('period', 'daily').strip().lower()
+    if period not in ('daily', 'weekly'):
+        period = 'daily'
+
+    try:
+        period_val = max(5, min(52, int(request.args.get('weeks', '14' if period == 'daily' else '10'))))
+    except (ValueError, TypeError):
+        period_val = 14 if period == 'daily' else 10
+
+    if not symbols_raw:
+        return jsonify({'error': 'No symbols provided'}), 400
+
+    symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:10]
+
+    if period == 'daily':
+        bench_close = load_daily(benchmark)
+    else:
+        bench_close = load_weekly(benchmark)
+
+    if bench_close is None or len(bench_close) < 15:
+        return jsonify({'error': f'Cannot load benchmark data for {benchmark}'}), 400
+
+    tail_n = 90 if period == 'daily' else 52
+    bench_prices = [round(float(v), 2) for v in bench_close.tail(tail_n).tolist()]
+    bench_dates  = [str(d.date()) for d in bench_close.tail(tail_n).index.tolist()]
+
+    results, failed = [], []
+    for sym in symbols:
+        if period == 'daily':
+            data = calculate_rrg_daily(sym, bench_close, days=period_val)
+        else:
+            data = calculate_rrg(sym, bench_close, weeks=period_val)
+        if data:
+            results.append({'symbol': sym, 'name': sym, **data})
+        else:
+            failed.append(sym)
+
+    return jsonify({
+        'timestamp':        datetime.now().isoformat(),
+        'benchmark':        benchmark,
+        'benchmark_price':  round(float(bench_close.iloc[-1]), 2),
+        'benchmark_prices': bench_prices,
+        'benchmark_dates':  bench_dates,
+        'sectors':          results,
+        'failed':           failed,
+        'period':           period,
+    })
 
 @app.route('/api/macro/summary')
 def macro_summary():

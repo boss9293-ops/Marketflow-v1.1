@@ -1,291 +1,179 @@
-/**
- * VRRiskTracksCard — WO61
- * Surfaces the dual-track risk model: Event Risk vs Structural Risk
- * Data comes from vr_survival.json (event state) + risk_v1.json (MSS/structural)
- * No engine logic duplicated here — pure display + label mapping
- */
+import type { CSSProperties } from 'react'
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type EventTrackState = 'NORMAL' | 'EVENT_WATCH' | 'EVENT_CRASH' | 'POST_EXIT'
-
-type StructuralTrackState =
-  | 'NONE'
-  | 'STRUCTURAL_WATCH'
-  | 'STRUCTURAL_STRESS'
-  | 'STRUCTURAL_CRASH'
+type RiskSummarySnapshot = {
+  score: number | null
+  scoreName: string | null
+  scoreZone: string | null
+  level: number | null
+  levelLabel: string | null
+  eventType: string | null
+  finalRisk: string | null
+  finalExposure: number | null
+  brief: string | null
+  date: string | null
+}
 
 export type VRRiskTracksInput = {
-  /** Raw VF state string from vr_survival.json current.state */
-  rawEventState: string | null
-  /** Actual structural state from vr_survival.json current.structural_state */
-  structuralState: string | null
-  /** MSS score from risk_v1.json (kept for meta row display only) */
-  mssScore: number | null
-  /** MSS level from risk_v1.json (kept for meta row display only) */
-  mssLevel: number | null
-  /** Date of last update */
-  updatedAt: string | null
+  snapshot: RiskSummarySnapshot
 }
 
-// ── Label & color mappings ────────────────────────────────────────────────────
-
-const EVENT_LABELS: Record<EventTrackState, string> = {
-  NORMAL:      'Normal',
-  EVENT_WATCH: 'Watch',
-  EVENT_CRASH: 'Crash',
-  POST_EXIT:   'Post-Exit',
+type Tone = {
+  accent: string
+  border: string
+  soft: string
+  text: string
+  glow: string
 }
 
-const EVENT_COLORS: Record<EventTrackState, string> = {
-  NORMAL:      '#86efac',   // green-300
-  EVENT_WATCH: '#fde68a',   // amber-200
-  EVENT_CRASH: '#fca5a5',   // red-300
-  POST_EXIT:   '#c4b5fd',   // violet-300
-}
-
-const STRUCTURAL_LABELS: Record<StructuralTrackState, string> = {
-  NONE:               'None',
-  STRUCTURAL_WATCH:   'Watch',
-  STRUCTURAL_STRESS:  'Stress',
-  STRUCTURAL_CRASH:   'Crash',
-}
-
-const STRUCTURAL_COLORS: Record<StructuralTrackState, string> = {
-  NONE:               '#64748b',   // slate-500 (muted — no concern)
-  STRUCTURAL_WATCH:   '#fde68a',   // amber-200
-  STRUCTURAL_STRESS:  '#fb923c',   // orange-400
-  STRUCTURAL_CRASH:   '#fca5a5',   // red-300
-}
-
-// ── State derivation ─────────────────────────────────────────────────────────
-
-function deriveEventState(raw: string | null): EventTrackState {
-  if (!raw) return 'NORMAL'
-  const s = raw.toUpperCase()
-  if (s.includes('EXIT'))       return 'POST_EXIT'
-  if (s.includes('CRASH') || s.includes('SHOCK') || s.includes('STRUCTURAL')) return 'EVENT_CRASH'
-  if (s.includes('ARMED') || s.includes('GRIND') || s.includes('WATCH'))      return 'EVENT_WATCH'
-  return 'NORMAL'
-}
-
-function deriveStructuralState(raw: string | null): StructuralTrackState {
-  if (!raw) return 'NONE'
-  const s = raw.toUpperCase()
-  if (s === 'STRUCTURAL_CRASH')  return 'STRUCTURAL_CRASH'
-  if (s === 'STRUCTURAL_STRESS') return 'STRUCTURAL_STRESS'
-  if (s === 'STRUCTURAL_WATCH')  return 'STRUCTURAL_WATCH'
-  return 'NONE'
-}
-
-// ── Text templates ────────────────────────────────────────────────────────────
-
-const EVENT_DESCRIPTIONS: Record<EventTrackState, string> = {
-  NORMAL:      'No active event-driven shock is currently dominating short-term behavior.',
-  EVENT_WATCH: 'Short-term stress signals are elevated, but a full event-crash state has not been confirmed.',
-  EVENT_CRASH: 'A short-term event-driven shock is active and has disrupted normal market behavior.',
-  POST_EXIT:   'The event-driven crash phase has eased, but recovery conditions are still being evaluated.',
-}
-
-const STRUCTURAL_DESCRIPTIONS: Record<StructuralTrackState, string> = {
-  NONE:              'No persistent structural deterioration is currently being confirmed.',
-  STRUCTURAL_WATCH:  'Conditions are showing signs of persistent pressure beyond a typical short-lived shock.',
-  STRUCTURAL_STRESS: 'The environment is displaying sustained deterioration consistent with a broader risk regime.',
-  STRUCTURAL_CRASH:  'Short-term shock has evolved into a structural risk regime with persistent damage and weak recovery quality.',
-}
-
-// ── Combined summary ──────────────────────────────────────────────────────────
-
-function combinedSummary(ev: EventTrackState, st: StructuralTrackState): string {
-  if (ev === 'NORMAL' && st === 'NONE')
-    return 'No active risk pressure detected on either track.'
-  if (ev === 'EVENT_CRASH' && st === 'NONE')
-    return 'Current risk is primarily event-driven — may still be temporary.'
-  if ((ev === 'EVENT_WATCH' || ev === 'EVENT_CRASH') && st === 'STRUCTURAL_WATCH')
-    return 'Current risk is transitioning from event shock to structural watch.'
-  if ((ev === 'EVENT_WATCH' || ev === 'EVENT_CRASH') && st === 'STRUCTURAL_STRESS')
-    return 'Short-term shock is active inside a deteriorating broader regime.'
-  if (ev === 'EVENT_CRASH' && st === 'STRUCTURAL_CRASH')
-    return 'Highest concern state — both immediate disruption and persistent structural damage are active.'
-  if (ev === 'POST_EXIT' && (st === 'STRUCTURAL_STRESS' || st === 'STRUCTURAL_CRASH'))
-    return 'The sharp shock has eased, but the broader structural environment remains weak.'
-  if (ev === 'NORMAL' && st !== 'NONE')
-    return 'No active event shock, but background structural pressure remains elevated.'
-  return 'Current risk is primarily event-driven.'
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function TrackPanel({
-  trackLabel,
-  state,
-  stateLabel,
-  color,
-  description,
-}: {
-  trackLabel: string
-  state: string
-  stateLabel: string
-  color: string
-  description: string
-}) {
-  return (
-    <div style={{
-      flex: 1,
-      minWidth: 0,
-      padding: '1rem 1.1rem',
-      background: 'rgba(255,255,255,0.025)',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,0.07)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.55rem',
-    }}>
-      {/* Track label */}
-      <div style={{
-        fontSize: '0.64rem',
-        color: '#475569',
-        letterSpacing: '0.14em',
-        textTransform: 'uppercase',
-        fontWeight: 700,
-      }}>
-        {trackLabel}
-      </div>
-
-      {/* State pill */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{
-          fontSize: '0.82rem',
-          fontWeight: 700,
-          color,
-          background: color + '18',
-          padding: '0.18rem 0.65rem',
-          borderRadius: 5,
-          border: `1px solid ${color}30`,
-          letterSpacing: '0.04em',
-        }}>
-          {stateLabel}
-        </span>
-      </div>
-
-      {/* Description */}
-      <div style={{
-        fontSize: '0.78rem',
-        color: '#94a3b8',
-        lineHeight: 1.55,
-      }}>
-        {description}
-      </div>
-    </div>
-  )
-}
-
-// ── Main export ───────────────────────────────────────────────────────────────
-
-export default function VRRiskTracksCard({ rawEventState, structuralState: rawStructural, mssScore, mssLevel, updatedAt }: VRRiskTracksInput) {
-  const eventState      = deriveEventState(rawEventState)
-  const structuralState = deriveStructuralState(rawStructural)
-  const summary         = combinedSummary(eventState, structuralState)
-
-  const eventColor      = EVENT_COLORS[eventState]
-  const structuralColor = STRUCTURAL_COLORS[structuralState]
-
-  // Unavailable fallback
-  if (rawEventState === null && mssScore === null) {
-    return (
-      <div style={{
-        background: '#111827',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 10,
-        padding: '1rem 1.25rem',
-        color: '#475569',
-        fontSize: '0.82rem',
-      }}>
-        <span style={{ color: '#64748b', fontWeight: 600 }}>Risk Tracks</span>
-        {' '}— classification temporarily unavailable. VR posture remains based on current system state.
-      </div>
-    )
+function toneForLevel(levelLabel: string): Tone {
+  const upper = levelLabel.toUpperCase()
+  if (upper === 'CRISIS') {
+    return {
+      accent: '#fb7185',
+      border: 'rgba(251,113,133,0.34)',
+      soft: 'rgba(251,113,133,0.10)',
+      text: '#ffe4e6',
+      glow: 'rgba(251,113,133,0.18)',
+    }
   }
+  if (upper === 'WARNING') {
+    return {
+      accent: '#f59e0b',
+      border: 'rgba(245,158,11,0.32)',
+      soft: 'rgba(245,158,11,0.10)',
+      text: '#fef3c7',
+      glow: 'rgba(245,158,11,0.16)',
+    }
+  }
+  return {
+    accent: '#22c55e',
+    border: 'rgba(34,197,94,0.30)',
+    soft: 'rgba(34,197,94,0.10)',
+    text: '#dcfce7',
+    glow: 'rgba(34,197,94,0.14)',
+  }
+}
 
+function titleCase(value: string | null): string {
+  if (!value) return 'n/a'
+  return value
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (match) => match.toUpperCase())
+}
+
+function Chip({ label, tone }: { label: string; tone: Tone }) {
   return (
-    <div style={{
-      background: '#111827',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 10,
-      padding: '1rem 1.25rem',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.75rem',
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-        <div>
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#cbd5e1', letterSpacing: '0.03em' }}>
-            Risk Structure
-          </span>
-          <span style={{ fontSize: '0.72rem', color: '#475569', marginLeft: 8 }}>
-            Short-term shock vs persistent structural pressure
-          </span>
-        </div>
-        {updatedAt && (
-          <span style={{ fontSize: '0.68rem', color: '#334155', whiteSpace: 'nowrap' }}>
-            {updatedAt}
-          </span>
-        )}
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        borderRadius: 999,
+        padding: '0.28rem 0.58rem',
+        border: `1px solid ${tone.border}`,
+        background: tone.soft,
+        color: tone.text,
+        fontSize: '0.76rem',
+        fontWeight: 800,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: tone.accent, boxShadow: `0 0 0 4px ${tone.glow}` }} />
+      {label}
+    </span>
+  )
+}
+
+function Metric({ label, value, accent }: { label: string; value: string; accent: string }) {
+  return (
+    <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+      <div style={{ fontSize: '0.7rem', color: accent, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 800 }}>
+        {label}
       </div>
-
-      {/* Two track panels */}
-      <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-        <TrackPanel
-          trackLabel="Event Risk"
-          state={eventState}
-          stateLabel={EVENT_LABELS[eventState]}
-          color={eventColor}
-          description={EVENT_DESCRIPTIONS[eventState]}
-        />
-        <TrackPanel
-          trackLabel="Structural Risk"
-          state={structuralState}
-          stateLabel={STRUCTURAL_LABELS[structuralState]}
-          color={structuralColor}
-          description={STRUCTURAL_DESCRIPTIONS[structuralState]}
-        />
+      <div style={{ fontSize: '1rem', color: '#f8fafc', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {value}
       </div>
-
-      {/* Divider */}
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
-
-      {/* Combined summary */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span style={{ fontSize: '0.64rem', color: '#334155', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, paddingTop: 2, flexShrink: 0 }}>
-          Combined
-        </span>
-        <span style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.5 }}>
-          {summary}
-        </span>
-      </div>
-
-      {/* Score meta row (compact, muted) */}
-      {mssScore !== null && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <MetaItem label="MSS" value={String(Math.round(mssScore))} />
-          <MetaItem label="Level" value={mssLevel !== null ? String(mssLevel) : '—'} />
-          <MetaItem label="Source" value="WO60-B Engine" />
-        </div>
-      )}
     </div>
   )
 }
 
-function MetaItem({ label, value }: { label: string; value: string }) {
+export default function VRRiskTracksCard({ snapshot }: VRRiskTracksInput) {
+  const score = snapshot.score != null ? Math.round(snapshot.score) : null
+  const levelLabel = snapshot.levelLabel ?? 'Unknown'
+  const tone = toneForLevel(levelLabel)
+  const scoreZone = snapshot.scoreZone ?? 'n/a'
+  const finalRisk = titleCase(snapshot.finalRisk)
+  const targetExposure = snapshot.finalExposure != null ? `${snapshot.finalExposure}%` : 'n/a'
+  const updatedAt = snapshot.date ?? 'n/a'
+  const summary = snapshot.brief?.trim() || 'Standard risk summary is not available.'
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-      <span style={{ fontSize: '0.64rem', color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: '0.68rem', color: '#475569', fontWeight: 500 }}>
-        {value}
-      </span>
+    <div
+      style={{
+        background: 'linear-gradient(180deg, rgba(10,15,24,0.98), rgba(7,10,16,0.99))',
+        border: `1px solid ${tone.border}`,
+        borderRadius: 12,
+        padding: '0.95rem 1.05rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        minWidth: 0,
+        boxShadow: `0 0 0 1px ${tone.soft} inset, 0 12px 30px rgba(0,0,0,0.16)`,
+      }}
+    >
+      <div style={{ height: 4, borderRadius: 999, background: `linear-gradient(90deg, ${tone.accent}, rgba(255,255,255,0.06))` }} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+          <div style={{ fontSize: '0.68rem', color: tone.accent, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
+            Standard Risk Summary
+          </div>
+          <div style={{ fontSize: '1.06rem', fontWeight: 800, color: '#f8fafc' }}>
+            {snapshot.scoreName ?? 'Market Structure Score (MSS)'}
+          </div>
+        </div>
+
+        <Chip label={levelLabel} tone={tone} />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ fontSize: '1.7rem', fontWeight: 900, color: tone.accent, lineHeight: 1 }}>
+          MSS {score ?? 'n/a'}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <Chip label={scoreZone} tone={tone} />
+          <Chip label={finalRisk} tone={tone} />
+          <Chip label={`${targetExposure} target`} tone={tone} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        <Metric label="Level" value={levelLabel} accent={tone.accent} />
+        <Metric label="Event" value={snapshot.eventType ?? 'n/a'} accent="#7dd3fc" />
+        <Metric label="Updated" value={updatedAt} accent="#a78bfa" />
+        <Metric label="Source" value="Standard" accent="#22c55e" />
+      </div>
+
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${tone.border}`,
+          borderRadius: 12,
+          padding: '0.85rem 0.95rem',
+        }}
+      >
+        <div style={{ fontSize: '0.68rem', color: tone.accent, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, fontWeight: 800 }}>
+          Summary
+        </div>
+        <div style={{ fontSize: '0.92rem', color: '#e2e8f0', lineHeight: 1.65 }}>
+          {summary}
+        </div>
+      </div>
+
+      <div style={{ fontSize: '0.76rem', color: '#94a3b8', lineHeight: 1.45 }}>
+        Standard는 현재 시장 위험의 라이브 소스입니다. VR은 이 컨텍스트를 바탕으로 대응 전략과 실행 시나리오를 해석합니다.
+      </div>
     </div>
   )
 }

@@ -124,14 +124,12 @@ export default function SmartFlowPanel({ data, prevLeadersCount = null }: Props)
 
   const regimeFit = regimeFitFrom(flow?.regime || 'Neutral')
   const volRisk = volRiskFrom(flow?.shock_prob_30d ?? null, flow?.tail_sigma ?? null)
-  const regimeFitValue: string = String(regimeFit)
-  const volRiskValue: string = String(volRisk)
-  const environmentFit =
-    regimeFitValue == 'Low' || regimeFitValue == 'Very Low' || volRiskValue == 'High'
-      ? 'Low'
-      : regimeFitValue == 'High' && volRiskValue != 'High'
-      ? 'High'
-      : 'Medium'
+  let environmentFit: 'Low' | 'Medium' | 'High' = 'Medium'
+  if (regimeFit === 'Low' || regimeFit === 'Very Low' || volRisk === 'High') {
+    environmentFit = 'Low'
+  } else if (regimeFit === 'High') {
+    environmentFit = 'High'
+  }
 
   return (
     <section

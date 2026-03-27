@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import BilLabel from '@/components/BilLabel'
 import type { RiskToken } from '@/lib/riskPalette'
+import { UI_TEXT } from '@/lib/uiText'
 
 type SummaryPill = {
   label: string
@@ -20,8 +21,8 @@ export default function RiskEngineSummaryBar({
   return (
     <section
       style={{
-        background: '#070B10',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: '#091018',
+        border: '1px solid rgba(148,163,184,0.14)',
         borderRadius: 14,
         padding: '0.7rem 0.85rem',
         display: 'flex',
@@ -33,7 +34,7 @@ export default function RiskEngineSummaryBar({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ width: 6, height: 26, borderRadius: 999, background: riskToken.colorVar }} />
           <div style={{ color: '#F8FAFC' }}>
-            <BilLabel ko="리스크 엔진" en="Risk Engine" variant="label" />
+            <BilLabel ko={UI_TEXT.dashboard.riskEngine.ko} en={UI_TEXT.dashboard.riskEngine.en} variant="label" />
           </div>
           <span
             style={{
@@ -47,24 +48,21 @@ export default function RiskEngineSummaryBar({
             }}
           >
             <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.05 }}>
-              <span style={{ fontSize: '0.62rem', fontWeight: 700 }}>독점 지표</span>
-              <span style={{ fontSize: '0.58rem', color: '#FCA5A5', fontWeight: 600 }}>Proprietary</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#F8FAFC' }}>{UI_TEXT.dashboard.proprietary.ko}</span>
+              <span style={{ fontSize: '0.58rem', color: '#D1D5DB', fontWeight: 600 }}>{UI_TEXT.dashboard.proprietary.en}</span>
             </span>
           </span>
         </div>
         <Link
           href={href}
           style={{
-            color: '#93C5FD',
+            color: '#C7DBFF',
             fontSize: '0.76rem',
             fontWeight: 700,
             textDecoration: 'none',
           }}
         >
-          <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.05 }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700 }}>리스크 엔진</span>
-            <span style={{ fontSize: '0.6rem', color: '#BFDBFE', fontWeight: 600 }}>Open</span>
-          </span>
+          <BilLabel ko={UI_TEXT.dashboard.riskEngine.ko} en={UI_TEXT.common.open.en} variant="micro" />
         </Link>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2" style={{ minWidth: 0 }}>
@@ -81,10 +79,10 @@ export default function RiskEngineSummaryBar({
               gap: 4,
             }}
           >
-            <div style={{ color: '#94A3B8', fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em' }}>
+            <div style={{ color: '#C7D2E1', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em' }}>
               {pill.label}
             </div>
-            <div style={{ color: pill.tone || '#F8FAFC', fontSize: '0.95rem', fontWeight: 800 }}>
+            <div style={{ color: pill.tone || '#F8FAFC', fontSize: '0.98rem', fontWeight: 800, lineHeight: 1.08 }}>
               {pill.value}
             </div>
           </div>

@@ -41,6 +41,8 @@ SCRIPT_TIMEOUTS: dict[str, int] = {
     "build_tqqq_dca.py":           120,  #  2 min — DCA backtest compute
 }
 
+SCRIPT_TIMEOUTS["build_ai_briefings.py"] = 300
+
 
 SCRIPTS = [
     ("market_data.py", "Market Data + Gate Score"),
@@ -53,7 +55,6 @@ SCRIPTS = [
     ("predictor_ml.py", "ML Direction Predictor"),
     ("regime_classifier.py", "Market Regime Classifier"),
     ("risk_calculator.py", "Portfolio Risk Calculator"),
-    ("briefing_ai.py", "AI Market Briefing"),
     ("validate_kr_outputs.py", "KR Output Contract Validation"),
     # DB/cache chain (order-sensitive: ohlcv first, market_daily reads from ohlcv)
     ("ensure_risk_universe.py", "Ensure Risk Engine Universe Symbols"),
@@ -91,6 +92,7 @@ SCRIPTS = [
     ("build_macro_snapshot.py", "Build Macro Layer v2 Snapshot"),
     ("build_validation_snapshot.py", "Build Macro Validation Auto-Guard Snapshot"),
     ("build_tqqq_dca.py",   "Build TQQQ DCA Backtest Cache"),
+    ("build_ai_briefings.py", "Build Cached AI Briefings"),
     ("validate_cache.py",   "Validate Cache & Write healthcheck.json"),
 ]
 

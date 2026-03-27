@@ -7,21 +7,34 @@ import WatchlistSidebar from '@/components/WatchlistSidebar'
 import { WatchlistProvider } from '@/contexts/WatchlistContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import UserPlanBadge from '@/components/subscription/UserPlanBadge'
+import LanguageModeToggle from '@/components/LanguageModeToggle'
+import { applyUiLangToDocument, persistUiLang, readStoredUiLang, type UiLang } from '@/lib/uiLang'
+import { pickLang } from '@/lib/useLangMode'
+import { UI_TEXT } from '@/lib/uiText'
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+export default function ClientLayout({
+  children,
+  initialUiLang,
+}: {
+  children: React.ReactNode
+  initialUiLang: UiLang
+}) {
   const [watchlistOpen, setWatchlistOpen] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [uiLang, setUiLang] = useState<UiLang>(initialUiLang)
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem('mf_lang_mode')
-      if (saved === 'en' || saved === 'ko') {
-        document.documentElement.setAttribute('data-lang-mode', saved)
-      }
-    } catch {
-      // ignore
+    const saved = readStoredUiLang(initialUiLang)
+    if (saved !== uiLang) {
+      setUiLang(saved)
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUiLang])
+
+  useEffect(() => {
+    applyUiLangToDocument(uiLang)
+    persistUiLang(uiLang)
+  }, [uiLang])
 
   return (
     <SessionProvider>
@@ -74,6 +87,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             {/* Top-right controls */}
             <div style={{ position: 'fixed', top: 12, right: 14, zIndex: 70, display: 'flex', alignItems: 'center', gap: 8 }}>
               <UserPlanBadge />
+              <LanguageModeToggle value={uiLang} onChange={setUiLang} />
               <button
                 onClick={() => setWatchlistOpen(true)}
                 style={{
@@ -86,8 +100,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   fontWeight: 700,
                   cursor: 'pointer',
                 }}
+                title={pickLang(uiLang, UI_TEXT.common.openWatchlist.ko, UI_TEXT.common.openWatchlist.en)}
               >
-                Watchlist
+                {pickLang(uiLang, UI_TEXT.nav.watchlist.ko, UI_TEXT.nav.watchlist.en)}
               </button>
             </div>
             <WatchlistSidebar open={watchlistOpen} onClose={() => setWatchlistOpen(false)} />

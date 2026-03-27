@@ -3494,6 +3494,7 @@ def main() -> None:
     # Manual end-date overrides for events where the algorithmic end is too early
     EVENT_END_OVERRIDES: dict[str, pd.Timestamp] = {
         '2024-07': pd.Timestamp('2024-10-25'),
+        '2025-01': pd.Timestamp('2025-09-20'),
     }
     events_merged = [
         (start, max(end, EVENT_END_OVERRIDES[start.strftime('%Y-%m')])
@@ -3539,7 +3540,9 @@ def main() -> None:
                 tqqq_drawdown = (tqqq_trough - tqqq_start) / tqqq_start * 100.0
 
         start_idx = all_dates.index(start)
-        end_idx = all_dates.index(end)
+        end_idx = int(df.index.get_indexer([end], method="ffill")[0])
+        if end_idx < 0:
+            raise ValueError(f"End date {end.strftime('%Y-%m-%d')} is before available data")
 
         def fwd_ret(offset: int) -> float | None:
             idx = start_idx + offset

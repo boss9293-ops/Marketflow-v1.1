@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import { IBM_Plex_Mono, Manrope } from 'next/font/google'
 import './globals.css'
 import ClientLayout from '@/components/ClientLayout'
+import { UI_LANG_COOKIE, normalizeUiLang } from '@/lib/uiLang'
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -27,10 +29,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const initialUiLang = normalizeUiLang(cookies().get(UI_LANG_COOKIE)?.value)
+
   return (
-    <html lang="ko" data-lang-mode="ko">
+    <html lang={initialUiLang} data-lang-mode={initialUiLang}>
       <body className={`${manrope.variable} ${ibmPlexMono.variable}`}>
-        <ClientLayout>
+        <ClientLayout initialUiLang={initialUiLang}>
           {children}
         </ClientLayout>
       </body>

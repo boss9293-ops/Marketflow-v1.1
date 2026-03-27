@@ -1,58 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import type { UiLang } from '@/lib/uiLang'
 
-const STORAGE_KEY = 'mf_lang_mode'
-type LangMode = 'en' | 'ko'
-
-function applyMode(mode: LangMode) {
-  if (typeof document === 'undefined') return
-  document.documentElement.setAttribute('data-lang-mode', mode)
+type Props = {
+  value: UiLang
+  onChange: (next: UiLang) => void
 }
 
-export default function LanguageModeToggle() {
-  const [mode, setMode] = useState<LangMode>('ko')
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY)
-      const next = saved === 'en' ? 'en' : 'ko'
-      setMode(next)
-      applyMode(next)
-    } catch {
-      applyMode('ko')
-    }
-  }, [])
-
-  function onChange(next: LangMode) {
-    setMode(next)
-    applyMode(next)
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      // ignore
-    }
-  }
+export default function LanguageModeToggle({ value, onChange }: Props) {
 
   return (
     <div
       role="group"
-      aria-label="Language mode"
+      aria-label="UI language mode"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
         borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(148,163,184,0.18)',
+        background: 'rgba(255,255,255,0.03)',
         padding: 4,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
       }}
     >
       {([
-        { key: 'en', label: 'EN' },
         { key: 'ko', label: 'KR' },
+        { key: 'en', label: 'EN' },
       ] as const).map((x) => {
-        const active = mode === x.key
+        const active = value === x.key
         return (
           <button
             key={x.key}
@@ -61,16 +37,18 @@ export default function LanguageModeToggle() {
             style={{
               border: '1px solid transparent',
               background: active ? '#D7FF37' : 'transparent',
-              color: active ? '#0B0F14' : '#CBD5E1',
+              color: active ? '#0B0F14' : '#D7E1F0',
               borderRadius: 8,
-              minWidth: 46,
+              minWidth: 48,
               height: 32,
-              padding: '0 10px',
-              fontSize: '0.86rem',
+              padding: '0 12px',
+              fontSize: '0.8rem',
               fontWeight: 800,
-              letterSpacing: '0.03em',
+              letterSpacing: '0.08em',
               cursor: 'pointer',
+              boxShadow: active ? '0 0 0 1px rgba(215,255,55,0.12), 0 0 0 3px rgba(215,255,55,0.08)' : 'none',
             }}
+            title={x.key === 'ko' ? 'Korean UI' : 'English UI'}
           >
             {x.label}
           </button>
@@ -79,4 +57,3 @@ export default function LanguageModeToggle() {
     </div>
   )
 }
-

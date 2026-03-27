@@ -1,2 +1,1 @@
-// uiText.ts — re-export from uxCopy for convenience
-export * from './uxCopy'
+export { UI_TEXT, uiText, type UiCopy } from '@/i18n/resources'

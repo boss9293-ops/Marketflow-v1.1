@@ -16,7 +16,7 @@ def _find_root():
     here = os.path.dirname(os.path.abspath(__file__))
     for candidate in [os.path.join(here, '..'), os.path.join(here, '..', '..')]:
         candidate = os.path.realpath(candidate)
-        if os.path.exists(os.path.join(candidate, 'data', 'marketflow.db')):
+        if os.path.exists(os.path.join(candidate, 'backend', 'output')):
             return candidate
     raise RuntimeError('Cannot locate project root')
 
@@ -40,6 +40,10 @@ RECOMMENDED_FILES = [
     ('cache/health_snapshot.json', ['trend', 'risk', 'breadth_greed']),
     ('cache/action_snapshot.json', ['exposure_guidance', 'portfolio', 'watchlist_moves']),
     ('cache/daily_briefing.json',  ['headline', 'bullets', 'stance']),
+    ('ai/std_risk/latest.json',   ['layer', 'generated_at', 'paragraphs', 'warnings']),
+    ('ai/macro/latest.json',      ['layer', 'generated_at', 'paragraphs', 'warnings']),
+    ('ai/integrated/latest.json', ['layer', 'generated_at', 'paragraphs', 'warnings']),
+    ('briefing.json',             ['timestamp', 'summary', 'content']),
 ]
 
 def check_file(rel_path, required_keys):

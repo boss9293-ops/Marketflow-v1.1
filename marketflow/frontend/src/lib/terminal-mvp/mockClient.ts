@@ -197,13 +197,76 @@ export function createMockClient(): TerminalMvpApiClient {
     },
 
     async getWatchlistItems(watchlistId: string) {
-      await delay()
-      const items = WATCHLIST_ITEMS[watchlistId] ?? []
+      let items: any[] = []
+      
+      // 1. Fetch base watchlist symbols from the new backend API
+      try {
+         const wlRes = await fetch(`/api/watchlist?id=${encodeURIComponent(watchlistId)}`, { cache: 'no-store' })
+         if (wlRes.ok) {
+            const json = await wlRes.json()
+            items = json.items || []
+         }
+      } catch (err) {
+         console.warn("[Terminal MVP] Failed to fetch watchlist items from API:", err)
+      }
+
+      // Fallback if API fails
+      if (items.length === 0) {
+         items = WATCHLIST_ITEMS[watchlistId] ?? []
+      }
+
+      // 2. Fetch live quotes to enrich the base items
+      try {
+        const symbols = items.map((i: any) => i.symbol).join(',')
+        const res = await fetch(`/api/quote?symbols=${symbols}`)
+        if (res.ok) {
+           const data = await res.json()
+           const quotes = data.quotes || []
+           const quoteMap = new Map()
+           for (const q of quotes) {
+             quoteMap.set(q.symbol, q)
+           }
+
+           const enrichedItems = items.map((item: any) => {
+              const q = quoteMap.get(item.symbol)
+              if (q) {
+                 const price = q.price ?? 0
+                 const changePct = q.changePercent ?? 0
+                 const dayLow = q.dayLow
+                 const dayHigh = q.dayHigh
+
+                 return {
+                    ...item,
+                    companyName: q.name || item.companyName,
+                    lastPrice: `$${price.toFixed(2)}`,
+                    changePercent: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`,
+                    rangeLabel: `Day Range: $${dayLow?.toFixed(2) ?? '--'} - $${dayHigh?.toFixed(2) ?? '--'}`
+                 }
+              }
+              return item
+           })
+           return envelope({ watchlistId, items: enrichedItems })
+        }
+      } catch (err) {
+         console.warn("[Terminal MVP] Failed to fetch live quotes for watchlist:", err)
+      }
+
       return envelope({ watchlistId, items })
     },
 
     async getTickerBriefs(symbol: string, dateET: ETDateString) {
       await delay()
+      try {
+         const res = await fetch(`/api/news?symbol=${symbol}`)
+         if (res.ok) {
+            const data = await res.json()
+            if (data.briefs && data.briefs.length > 0) {
+               return envelope({ symbol, briefs: data.briefs }, dateET)
+            }
+         }
+      } catch (err) {
+         console.warn("[Terminal MVP] Failed to fetch news briefs dynamically:", err)
+      }
       return envelope({ symbol, briefs: buildBriefs(symbol, dateET) }, dateET)
     },
 
@@ -213,6 +276,17 @@ export function createMockClient(): TerminalMvpApiClient {
     },
 
     async getMarketHeadlines(dateET: ETDateString) {
+      try {
+        const res = await fetch('/api/market-headlines', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.headlines && data.headlines.length > 0) {
+            return envelope({ headlines: data.headlines }, dateET)
+          }
+        }
+      } catch (err) {
+        console.warn('[Terminal MVP] market-headlines API failed:', err)
+      }
       await delay()
       return envelope({ headlines: buildMarketHeadlines(dateET) }, dateET)
     },

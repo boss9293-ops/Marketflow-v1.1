@@ -27,7 +27,7 @@ SECTORS = {
 }
 BENCHMARK = 'SPY'
 WEEKS = 10        # RS-Ratio SMA 기간
-TRAIL_POINTS = 52 # 저장할 최대 트레일 포인트 수
+TRAIL_POINTS = 260 # 저장할 최대 트레일 포인트 수
 
 
 def get_db_path() -> str:
@@ -147,6 +147,104 @@ def calculate_rrg(symbol: str, bench_close: pd.Series, weeks: int = WEEKS):
 
     except Exception as e:
         print(f"  Error {symbol}: {e}")
+        return None
+
+
+
+def load_daily_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | None:
+    """Load daily close from DB (no resampling)."""
+    db = get_db_path()
+    if not os.path.exists(db):
+        return None
+    cutoff = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
+    try:
+        conn = sqlite3.connect(db)
+        df = pd.read_sql_query(
+            "SELECT date, close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
+            conn, params=(symbol, cutoff),
+        )
+        conn.close()
+        if df.empty or len(df) < 20:
+            return None
+        df['date'] = pd.to_datetime(df['date'])
+        return df.set_index('date')['close']
+    except Exception as e:
+        print(f"  DB load daily error {symbol}: {e}")
+        return None
+
+
+def load_daily(symbol: str) -> pd.Series | None:
+    """Try DB first, fall back to yfinance daily."""
+    series = load_daily_from_db(symbol)
+    if series is not None and len(series) >= 20:
+        return series
+    try:
+        import yfinance as yf
+        raw = yf.download(symbol, period='2y', interval='1d',
+                          auto_adjust=True, progress=False)
+        if raw.empty:
+            return None
+        close = raw['Close']
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        return close.dropna()
+    except Exception as e:
+        print(f"  yfinance daily fallback error {symbol}: {e}")
+        return None
+
+
+def calculate_rrg_daily(symbol: str, bench_close: pd.Series, days: int = 14):
+    """Calculate RRG using daily closes."""
+    try:
+        close = load_daily(symbol)
+        if close is None:
+            return None
+
+        common = close.index.intersection(bench_close.index)
+        if len(common) < days + 3:
+            return None
+        close = close[common]
+        bench = bench_close[common]
+
+        rs = close / bench
+        rs_sma = rs.rolling(window=days).mean()
+        rs_ratio = (rs / rs_sma) * 100
+        rs_momentum = rs_ratio.pct_change(1) * 100 + 100
+
+        rs_ratio = rs_ratio.dropna()
+        rs_momentum = rs_momentum.dropna()
+        common2 = rs_ratio.index.intersection(rs_momentum.index)
+        if len(common2) < days:
+            return None
+        rs_ratio = rs_ratio[common2]
+        rs_momentum = rs_momentum[common2]
+
+        trail = []
+        for i in range(-TRAIL_POINTS - 1, -1):
+            if abs(i) > len(rs_ratio):
+                continue
+            trail.append({
+                'ratio':    round(float(rs_ratio.iloc[i]), 4),
+                'momentum': round(float(rs_momentum.iloc[i]), 4),
+            })
+
+        current = {
+            'ratio':    round(float(rs_ratio.iloc[-1]), 4),
+            'momentum': round(float(rs_momentum.iloc[-1]), 4),
+        }
+
+        n = min(TRAIL_POINTS, len(close))
+        price_change = float(((close.iloc[-1] / close.iloc[-n]) - 1) * 100)
+
+        return {
+            'current':  current,
+            'trail':    trail,
+            'price':    round(float(close.iloc[-1]), 2),
+            'change':   round(price_change, 2),
+        }
+
+    except Exception as e:
+        print(f"  Error daily {symbol}: {e}")
         return None
 
 

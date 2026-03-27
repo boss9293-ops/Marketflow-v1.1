@@ -34,6 +34,11 @@ const MODULES = [
   },
 ]
 
+const MODULE_SHORTCUTS: Record<string, { label: string; href: string }> = {
+  backtests: { label: 'Open Backtest', href: '/vr-survival?tab=Backtest' },
+  templates: { label: 'Open Playback', href: '/vr-survival?tab=Playback' },
+}
+
 export default function LeverageTamingLanding() {
   return (
     <main
@@ -190,6 +195,23 @@ export default function LeverageTamingLanding() {
               ) : (
                 <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>{module.status}</div>
               )}
+              {!module.active && MODULE_SHORTCUTS[module.key] ? (
+                <Link
+                  href={MODULE_SHORTCUTS[module.key].href}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: 'rgba(56,189,248,0.12)',
+                    color: '#e5e7eb',
+                    border: '1px solid rgba(56,189,248,0.24)',
+                    borderRadius: 10,
+                    padding: '0.4rem 0.8rem',
+                    fontSize: '0.8rem',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {MODULE_SHORTCUTS[module.key].label}
+                </Link>
+              ) : null}
             </div>
           ))}
           </div>

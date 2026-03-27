@@ -1,5 +1,9 @@
 import type { CSSProperties } from 'react'
 
+type ToneStyle = CSSProperties & {
+  accent: string
+}
+
 export type VRPostureMessage = {
   headline: string
   subline?: string
@@ -7,33 +11,33 @@ export type VRPostureMessage = {
   tone: 'neutral' | 'cautious' | 'defensive' | 'improving'
 }
 
-function toneStyle(tone: VRPostureMessage['tone']): CSSProperties {
+function toneStyle(tone: VRPostureMessage['tone']): ToneStyle {
   if (tone === 'defensive') {
     return {
       border: '1px solid rgba(239,68,68,0.24)',
       background: 'linear-gradient(180deg, rgba(80,16,16,0.44), rgba(22,10,10,0.92))',
       accent: '#fca5a5',
-    } as CSSProperties
+    }
   }
   if (tone === 'improving') {
     return {
       border: '1px solid rgba(34,197,94,0.22)',
       background: 'linear-gradient(180deg, rgba(12,52,26,0.44), rgba(9,18,14,0.92))',
       accent: '#86efac',
-    } as CSSProperties
+    }
   }
   if (tone === 'cautious') {
     return {
       border: '1px solid rgba(245,158,11,0.22)',
       background: 'linear-gradient(180deg, rgba(74,43,10,0.42), rgba(18,15,9,0.92))',
       accent: '#fcd34d',
-    } as CSSProperties
+    }
   }
   return {
     border: '1px solid rgba(96,165,250,0.2)',
     background: 'linear-gradient(180deg, rgba(13,34,58,0.4), rgba(9,13,20,0.92))',
     accent: '#93c5fd',
-  } as CSSProperties
+  }
 }
 
 export default function SuggestedPostureStrip({
@@ -49,7 +53,7 @@ export default function SuggestedPostureStrip({
   }
   const current = message ?? fallback
   const tone = toneStyle(current.tone)
-  const accent = (tone.accent as string) ?? '#93c5fd'
+  const accent = tone.accent ?? '#93c5fd'
 
   return (
     <div

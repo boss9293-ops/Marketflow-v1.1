@@ -1,21 +1,22 @@
-import { readFileSync } from 'fs'
+﻿import { readFileSync } from 'fs'
 import { join } from 'path'
 import type { CSSProperties } from 'react'
 import VRSurvival, {
-  type ETFRoomData,
   type Tab,
   VRSurvivalData,
 } from '@/components/crash/vr/VRSurvival'
-import IntegratedResearchPanel   from '@/components/ai/IntegratedResearchPanel'
-import ResearchScenarioMapPanel  from '@/components/scenario/ResearchScenarioMapPanel'
-import VRTrustStrip              from '@/components/vr/VRTrustStrip'
 import VRRiskTracksCard           from '@/components/vr/VRRiskTracksCard'
-import VRHistoricalContextCard   from '@/components/vr/VRHistoricalContextCard'
-import VRActionGuideCard         from '@/components/vr/VRActionGuideCard'
 
 type RiskV1CurrentSnapshot = {
   score: number | null
+  scoreName: string | null
+  scoreZone: string | null
   level: number | null
+  levelLabel: string | null
+  eventType: string | null
+  finalRisk: string | null
+  finalExposure: number | null
+  brief: string | null
   date: string | null
 }
 
@@ -24,13 +25,33 @@ function readRiskV1Current(): RiskV1CurrentSnapshot {
     const base = join(process.cwd(), '..', 'backend', 'output')
     const raw = readFileSync(join(base, 'risk_v1.json'), 'utf-8')
     const data = JSON.parse(raw)
+    const current = data?.current ?? {}
+    const context = current?.context ?? {}
     return {
-      score: data?.current?.score ?? null,
-      level: data?.current?.level ?? null,
-      date:  data?.current?.date  ?? null,
+      score: current?.score ?? null,
+      scoreName: current?.score_name ?? null,
+      scoreZone: current?.score_zone ?? null,
+      level: current?.level ?? null,
+      levelLabel: current?.level_label ?? null,
+      eventType: current?.event_type ?? null,
+      finalRisk: context?.final_risk ?? null,
+      finalExposure: context?.final_exposure ?? null,
+      brief: context?.brief ?? null,
+      date: current?.date ?? null,
     }
   } catch {
-    return { score: null, level: null, date: null }
+    return {
+      score: null,
+      scoreName: null,
+      scoreZone: null,
+      level: null,
+      levelLabel: null,
+      eventType: null,
+      finalRisk: null,
+      finalExposure: null,
+      brief: null,
+      date: null,
+    }
   }
 }
 
@@ -49,6 +70,19 @@ function toSingleValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
+const NAV_ITEMS = [
+  { href: '/risk-v1', label: 'Standard (QQQ)', accent: '#f59e0b', border: 'rgba(245,158,11,0.26)', bg: 'rgba(245,158,11,0.08)' },
+  { href: '/backtest', label: 'Backtests', accent: '#38bdf8', border: 'rgba(56,189,248,0.26)', bg: 'rgba(56,189,248,0.08)' },
+  { href: '/crash', label: 'Crash Hub', accent: '#fb7185', border: 'rgba(251,113,133,0.26)', bg: 'rgba(251,113,133,0.08)' },
+  { href: '/dashboard', label: 'Dashboard', accent: '#22c55e', border: 'rgba(34,197,94,0.26)', bg: 'rgba(34,197,94,0.08)' },
+] as const
+
+const ROLE_SPLIT_COPY =
+  'Standard는 위험을 감지하고, VR은 그 상황에서 어떤 대응 전략이 유효했는지를 보여줍니다.'
+
+const NON_SIGNAL_COPY =
+  '이 엔진은 실시간 매수·매도 신호를 제공하지 않습니다. 시장 대응 방법을 이해하기 위한 참고 도구입니다.'
+
 export default async function VRSurvivalPage({
   searchParams,
 }: {
@@ -56,10 +90,9 @@ export default async function VRSurvivalPage({
 }) {
   const raw = readOutputJson<VRSurvivalData>('vr_survival.json')
   const riskV1 = readRiskV1Current()
-  const heatmapData = readOutputJson<ETFRoomData>('etf_room.json')
   const requestedTab = toSingleValue(searchParams?.tab)
   const requestedEvent = toSingleValue(searchParams?.event)
-  const VALID_TABS: Tab[] = ['Overview', 'Strategy Lab', 'Crash Analysis', 'Backtest', 'Playback', 'Pool Logic', 'Options Overlay', 'Philosophy']
+  const VALID_TABS: Tab[] = ['Overview', 'Backtest', 'Playback']
   const initialTab: Tab = (requestedTab && VALID_TABS.includes(requestedTab as Tab)) ? (requestedTab as Tab) : 'Overview'
   const initialPlaybackEventId =
     requestedEvent && /^\d{4}-\d{2}$/.test(requestedEvent) ? requestedEvent : undefined
@@ -98,77 +131,107 @@ export default async function VRSurvivalPage({
     <main
       style={{
         minHeight: '100vh',
-        background: '#0c0e13',
+        background:
+          'radial-gradient(circle at top left, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at top right, rgba(244,63,94,0.10), transparent 26%), linear-gradient(180deg, #090c13 0%, #0c0e13 48%, #090b10 100%)',
         color: '#e5e7eb',
         fontFamily: "'Inter','Segoe UI',sans-serif",
         padding: '1.35rem 1.5rem',
       }}
     >
-      <div style={{ maxWidth: 1460, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+      <div style={{ maxWidth: 1360, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              MarketFlow - Leverage Exposure Control
+              MARKETFLOW - SURVIVAL LAB
             </div>
             <h1 style={{ fontSize: '2.3rem', fontWeight: 900, color: '#f8fafc', margin: '0.35rem 0 0' }}>
-              VR Survival System v1
+              VR Survival Lab
             </h1>
             <div style={{ fontSize: '0.92rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 760 }}>
-              AI-centered interpretation of current market regime, VR state, and historical analogs.
-              Engine data and strategy results follow below as supporting context.
+              Crash 대응 전략을 미리 경험하는 시뮬레이션 엔진
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: 10, lineHeight: 1.75, maxWidth: 860 }}>
+              이 시스템은 VR(Value Rebalancing) 전략을 기반으로, 하락장에서의 대응 방식을 연구하는 시뮬레이션 엔진입니다. 평상시에는 VR 규칙에 따라 운용되며, Vmin 붕괴 이후와 같은 지속적인 하락 국면에서는 과거 시장 이벤트를 기반으로 다양한 시나리오를 분석하여, 투자자가 대응 전략을 이해하고 준비할 수 있도록 돕습니다.
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 860 }}>
+              {NON_SIGNAL_COPY}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a href="/risk-v1" style={navLinkStyle}>
-              Standard (QQQ)
-            </a>
-            <a href="/backtest" style={navLinkStyle}>
-              Backtests
-            </a>
-            <a href="/crash" style={navLinkStyle}>
-              Crash Hub
-            </a>
-            <a href="/dashboard" style={navLinkStyle}>
-              Dashboard
-            </a>
+            {NAV_ITEMS.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                style={{
+                  ...navLinkStyle,
+                  color: item.accent,
+                  borderColor: item.border,
+                  background: item.bg,
+                  boxShadow: `0 0 0 1px ${item.border} inset`,
+                }}
+              >
+                {item.label}
+              </a>
+            ))}
           </div>
         </div>
 
-        <VRTrustStrip />
+        <div style={{ fontSize: '0.66rem', color: '#7dd3fc', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>
+          STEP 1 OF 3 — MARKET CONDITION (STANDARD)
+        </div>
 
-        <VRRiskTracksCard
-          rawEventState={raw?.current?.state ?? null}
-          structuralState={raw?.current?.structural_state ?? null}
-          mssScore={riskV1.score}
-          mssLevel={riskV1.level}
-          updatedAt={riskV1.date}
-        />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)',
+            gap: 12,
+            alignItems: 'stretch',
+          }}
+        >
+          <VRRiskTracksCard snapshot={riskV1} />
 
-        <IntegratedResearchPanel />
-
-        <ResearchScenarioMapPanel vrState={raw.current.state} />
-
-        <VRHistoricalContextCard />
-
-        <VRActionGuideCard vrState={raw.current.state} />
+          <div
+            style={{
+              borderRadius: 14,
+              border: '1px solid rgba(56,189,248,0.16)',
+              background: 'linear-gradient(180deg, rgba(8,16,28,0.96), rgba(7,11,18,0.98))',
+              padding: '1.05rem 1.1rem',
+              display: 'grid',
+              gap: 10,
+              boxShadow: '0 0 0 1px rgba(56,189,248,0.08) inset',
+            }}
+          >
+            <div style={{ fontSize: '0.72rem', color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 800 }}>
+              What VR Does
+            </div>
+            <div style={{ fontSize: '1.02rem', color: '#f8fafc', lineHeight: 1.7, fontWeight: 800 }}>
+              VR은 시장을 예측하는 엔진이 아니라, 하락장에서 어떻게 살아남는지를 보여주는 엔진입니다.
+            </div>
+            <div style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.7 }}>
+              정답을 지시하지 않습니다. 대신 가능한 대응 방법과 그 결과를 비교해 보여줍니다.
+            </div>
+            <div style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: 1.65 }}>
+              {ROLE_SPLIT_COPY}
+            </div>
+          </div>
+        </div>
 
         <FlowDivider
-          step="Step 2 of 4"
-          label="Engine Data & Strategy"
-          desc="Use Strategy Lab to test AI scenarios against historical event data. Use Crash Analysis to validate the risk assessment. Use Playback to review execution step by step."
+          step="STEP 2 OF 3"
+          label="HISTORICAL EVIDENCE"
+          desc="Playback과 Backtest가 유사한 과거 사례와 전략 결과를 보여줍니다."
         />
 
         <VRSurvival
           data={raw}
-          heatmapData={heatmapData}
           initialTab={initialTab}
           initialPlaybackEventId={initialPlaybackEventId}
           simParams={simParams}
         />
 
         <div style={{ fontSize: '0.75rem', color: '#475569', textAlign: 'center', paddingTop: '0.4rem' }}>
-          Generated: {raw.run_id} - VR Survival System v1
+          Generated: {raw.run_id} - VR Survival Lab
         </div>
       </div>
     </main>
@@ -178,26 +241,40 @@ export default async function VRSurvivalPage({
 function FlowDivider({ step, label, desc }: { step: string; label: string; desc: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0.35rem 0' }}>
-      <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0 }}>
-        <div style={{ fontSize: '0.62rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 700, whiteSpace: 'nowrap' }}>
-          {step} · {label}
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(56,189,248,0.35), transparent)' }} />
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 3,
+        minWidth: 0,
+        padding: '0.28rem 0.75rem',
+        borderRadius: 999,
+        border: '1px solid rgba(56,189,248,0.18)',
+        background: 'rgba(15,23,42,0.92)',
+      }}>
+        <div style={{ fontSize: '0.62rem', color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 800, whiteSpace: 'nowrap' }}>
+          {step} — {label}
         </div>
-        <div style={{ fontSize: '0.71rem', color: '#475569', fontStyle: 'italic', textAlign: 'center', maxWidth: 480 }}>
+        <div style={{ fontSize: '0.71rem', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', maxWidth: 480 }}>
           {desc}
         </div>
       </div>
-      <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(251,113,133,0.35), transparent)' }} />
     </div>
   )
 }
 
 const navLinkStyle: CSSProperties = {
   fontSize: '0.85rem',
-  color: '#94a3b8',
+  fontWeight: 700,
+  display: 'inline-flex',
+  alignItems: 'center',
   textDecoration: 'none',
   padding: '0.45rem 0.95rem',
   border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: 10,
   background: 'rgba(255,255,255,0.02)',
+  transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
 }
+

@@ -3,7 +3,8 @@ import { getStripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe'
 import { getUserByStripeCustomerId, updateUserPlan, updateStripeInfo } from '@/lib/db/userDb'
 import type Stripe from 'stripe'
 
-export const config = { api: { bodyParser: false } }
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()

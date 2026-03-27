@@ -1,6 +1,14 @@
 ﻿'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { pickLang, useLangMode } from '@/lib/useLangMode'
+import type { UiLang } from '@/lib/uiLang'
+import { UI_TEXT } from '@/lib/uiText'
+import {
+  normalizeAiBriefing,
+  selectBriefingParagraphs,
+  selectBriefingWarnings,
+} from '@/lib/aiBriefing'
 import {
   LineChart,
   Line,
@@ -30,6 +38,7 @@ type LiveTimelineProps = {
   currentMps?: number | null
   currentVix?: number | null
   dataDate?: string | null
+  outputLang?: UiLang
 }
 
 type RangeStat = {
@@ -45,8 +54,8 @@ type BestWorst = {
 }
 
 type BriefSource = {
-  title: string
-  url: string
+  title?: string
+  url?: string
   date?: string
 }
 
@@ -227,7 +236,9 @@ const computeBestWorst5d = (arr: LivePoint[], key: keyof LivePoint): BestWorst |
   }
 }
 
-export default function LiveTimeline({ series, currentMps, currentVix, dataDate }: LiveTimelineProps) {
+export default function LiveTimeline({ series, currentMps, currentVix, dataDate, outputLang }: LiveTimelineProps) {
+  const uiLang = useLangMode()
+  const resolvedOutputLang = outputLang ?? uiLang
   const [selectedWindow, setSelectedWindow] = useState<WindowMode>('YTD')
   const contextSeriesRaw = useMemo(() => {
     const windowStart = resolveWindowStart(series, selectedWindow)
@@ -255,8 +266,8 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
       ),
     [focusWithFlags]
   )
-  const formatAxisTick = (value: string | number) => {
-    if (typeof value !== 'string') return value
+  const formatAxisTick = (value: string | number): string => {
+    if (typeof value !== 'string') return ''
     if (selectedWindow === 'YTD') return value.slice(5)
     if (yearBreakDates.has(value)) return `${value.slice(0, 4)}-${value.slice(5, 7)}`
     return value.slice(5)
@@ -312,7 +323,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
 
   useEffect(() => {
     if (!asofDay) return
-    const key = `live-brief:manual:${asofDay}`
+    const key = `live-brief:manual:${asofDay}:${resolvedOutputLang}`
     try {
       const saved = localStorage.getItem(key) ?? ''
       setManualDraft(saved)
@@ -320,7 +331,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
     } catch {
       // ignore storage read failures
     }
-  }, [asofDay])
+  }, [asofDay, resolvedOutputLang])
 
   const runDataRefresh = async (force = false) => {
     if (dataRefreshing) return
@@ -358,83 +369,66 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
   }, [dataDate])
 
   useEffect(() => {
-    if (!contextSeries.length || !asofDay) return
-    const cacheKey = `live-brief:${asofDay}:${selectedWindow}`
+    if (!asofDay) return
+    const cacheKey = `ai-brief:macro:${asofDay}:${resolvedOutputLang}`
     if (lastBriefKeyRef.current === cacheKey) return
     lastBriefKeyRef.current = cacheKey
+
+    let active = true
+    let cacheHit = false
 
     try {
       const cachedRaw = localStorage.getItem(cacheKey)
       if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw) as { paragraphs?: string[]; warnings?: string[] }
-        if (Array.isArray(cached.paragraphs)) {
-          setBrief(cached.paragraphs)
-          setWarnings(Array.isArray(cached.warnings) ? cached.warnings : [])
-          setBriefLoading(false)
-          setBriefError(null)
-          return
-        }
+        const cached = normalizeAiBriefing(JSON.parse(cachedRaw))
+        setBrief(selectBriefingParagraphs(cached, resolvedOutputLang))
+        setWarnings(selectBriefingWarnings(cached, resolvedOutputLang))
+        setSources(Array.isArray(cached.sources) ? cached.sources : [])
+        setProvider(typeof cached.provider === 'string' ? cached.provider : 'cache')
+        setModel(typeof cached.model === 'string' ? cached.model : '')
+        cacheHit = true
       }
     } catch {
       // ignore cache read failures
     }
 
-    const payload = {
-      asof: asofDay,
-      windowLabel: selectedWindow,
-      windowDays: contextSeries.length,
-      focusDays: focusSeries.length,
-      forceRefresh: refreshToken > 0,
-      mpsNow: mpsCurrent,
-      vixNow: vixCurrent,
-      mpsRange,
-      vixRange,
-      qqqWindowReturn,
-      tqqqWindowReturn,
-      qqq5dChange,
-      tqqq5dChange,
-      qqq5dWorst: qqqMoves?.worst,
-      qqq5dBest: qqqMoves?.best,
-      tqqq5dWorst: tqqqMoves?.worst,
-      tqqq5dBest: tqqqMoves?.best,
-      qqq5dWorstDate: contextSeriesRaw[qqqMoves?.worst?.endIndex ?? 0]?.date ?? null,
-      qqq5dBestDate: contextSeriesRaw[qqqMoves?.best?.endIndex ?? 0]?.date ?? null,
-      tqqq5dWorstDate: contextSeriesRaw[tqqqMoves?.worst?.endIndex ?? 0]?.date ?? null,
-      tqqq5dBestDate: contextSeriesRaw[tqqqMoves?.best?.endIndex ?? 0]?.date ?? null,
-      stressDays,
-    }
-
-    let active = true
-    setBriefLoading(true)
+    setBriefLoading(!cacheHit)
     setBriefError(null)
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 20000)
-    fetch('/api/live-brief', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+
+    fetch('/api/ai/macro', {
+      headers: { Accept: 'application/json' },
       signal: controller.signal,
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to load brief')
-        return res.json()
+        if (!res.ok) {
+          let rerunHint = ''
+          try {
+            const payload = await res.json()
+            if (payload && typeof payload === 'object' && typeof payload.rerun_hint === 'string') {
+              rerunHint = ` ${payload.rerun_hint}`
+            }
+          } catch {
+            // ignore error body parsing
+          }
+          throw new Error(`Cached macro brief unavailable (${res.status}).${rerunHint}`)
+        }
+        return normalizeAiBriefing(await res.json())
       })
       .then((data) => {
         if (!active) return
-        setBrief(Array.isArray(data.paragraphs) ? data.paragraphs : [])
-        setWarnings(Array.isArray(data.warnings) ? data.warnings : [])
+        setBrief(selectBriefingParagraphs(data, resolvedOutputLang))
+        setWarnings(selectBriefingWarnings(data, resolvedOutputLang))
         setSources(Array.isArray(data.sources) ? data.sources : [])
-        setProvider(typeof data.provider === 'string' ? data.provider : 'auto')
+        setProvider(typeof data.provider === 'string' ? data.provider : 'cache')
         setModel(typeof data.model === 'string' ? data.model : '')
         try {
           localStorage.setItem(
             cacheKey,
             JSON.stringify({
-              paragraphs: data.paragraphs ?? [],
-              warnings: data.warnings ?? [],
-              sources: data.sources ?? [],
-              provider: data.provider ?? 'auto',
-              model: data.model ?? '',
+              ...data,
             })
           )
         } catch {
@@ -443,11 +437,9 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
       })
       .catch((err: Error) => {
         if (!active) return
+        if (cacheHit) return
         setBriefError(err.name === 'AbortError' ? 'Timeout' : err.message)
-        setBrief([
-          '뉴스 요약/리뷰 영역입니다. 현재 API 응답이 지연되거나 실패했습니다.',
-          '서버 콘솔에서 /api/live-brief 호출 로그와 Gemini 응답 상태를 확인해 주세요.',
-        ])
+        setBrief([])
         setWarnings([])
         setSources([])
         setProvider('error')
@@ -461,8 +453,10 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
 
     return () => {
       active = false
+      clearTimeout(timeout)
+      controller.abort()
     }
-  }, [asofDay, refreshToken, selectedWindow, contextSeries.length, focusSeries.length, mpsCurrent, vixCurrent, qqqWindowReturn, tqqqWindowReturn, qqq5dChange, tqqq5dChange, stressDays])
+  }, [asofDay, refreshToken, resolvedOutputLang])
 
   const displayedParagraphs =
     useManual && manualDraft.trim().length
@@ -473,7 +467,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
 
   const handleRetry = () => {
     if (!asofDay) return
-    const cacheKey = `live-brief:${asofDay}:${selectedWindow}`
+    const cacheKey = `ai-brief:macro:${asofDay}:${resolvedOutputLang}`
     try {
       localStorage.removeItem(cacheKey)
     } catch {
@@ -485,7 +479,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
 
   const handleManualSave = () => {
     if (!asofDay) return
-    const key = `live-brief:manual:${asofDay}`
+    const key = `live-brief:manual:${asofDay}:${resolvedOutputLang}`
     try {
       localStorage.setItem(key, manualDraft)
     } catch {
@@ -496,7 +490,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
 
   const handleManualClear = () => {
     if (!asofDay) return
-    const key = `live-brief:manual:${asofDay}`
+    const key = `live-brief:manual:${asofDay}:${resolvedOutputLang}`
     try {
       localStorage.removeItem(key)
     } catch {
@@ -509,7 +503,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
   if (!contextSeries.length) {
     return (
       <div className="text-sm text-slate-400">
-        Live data is not available yet. Generate cache files to render the live view.
+        {pickLang(uiLang, '실시간 데이터가 아직 없습니다. 캐시 파일을 생성한 뒤 실시간 화면을 확인하세요.', 'Live data is not available yet. Generate cache files to render the live view.')}
       </div>
     )
   }
@@ -519,8 +513,8 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
           <div>
-            <div className="text-lg font-semibold text-white">Real-time Timeline</div>
-            <div className="text-xs text-slate-400">MPS + VIX + {responseLabel} - updated daily</div>
+            <div className="text-lg font-semibold text-white">{pickLang(uiLang, '실시간 타임라인', 'Real-time Timeline')}</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, `MPS + VIX + ${responseLabel} - 매일 갱신`, `MPS + VIX + ${responseLabel} - updated daily`)}</div>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-1">
             {WINDOW_OPTIONS.map((option) => (
@@ -528,7 +522,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
                 key={option.value}
                 type="button"
                 onClick={() => setSelectedWindow(option.value)}
-                className={`rounded-md px-3 py-1 text-xs transition-colors ${
+              className={`rounded-md px-3 py-1 text-xs transition-colors ${
                   selectedWindow === option.value
                     ? 'bg-sky-500/20 text-sky-200'
                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
@@ -543,9 +537,9 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
               onClick={() => runDataRefresh(true)}
               className="px-3 py-1 rounded-md border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 transition-colors"
               disabled={dataRefreshing}
-              title="Refresh live data"
+              title={pickLang(uiLang, '실시간 데이터를 새로고침합니다', 'Refresh live data')}
             >
-              {dataRefreshing ? 'Refreshing...' : 'Refresh'}
+              {dataRefreshing ? pickLang(uiLang, '새로고침 중...', 'Refreshing...') : UI_TEXT.common.refresh[uiLang]}
             </button>
             {dataRefreshError ? (
               <span className="text-xs text-red-300">{dataRefreshError}</span>
@@ -553,14 +547,14 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
           </div>
         </div>
         <div className="text-xs text-slate-400 text-right">
-          <div>This is a live monitoring view, not forecasting.</div>
-          <div>Update local: {localUpdate}</div>
-          <div>Update UTC: {utcUpdate}</div>
+          <div>{pickLang(uiLang, '이 화면은 실시간 모니터링용이며 예측이 아닙니다.', 'This is a live monitoring view, not forecasting.')}</div>
+          <div>{pickLang(uiLang, '로컬 업데이트', 'Update local')}: {localUpdate}</div>
+          <div>{pickLang(uiLang, 'UTC 업데이트', 'Update UTC')}: {utcUpdate}</div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="text-xs uppercase tracking-wider text-slate-300 mb-2">{windowLabel} Focus Window</div>
+        <div className="text-xs uppercase tracking-wider text-slate-300 mb-2">{pickLang(uiLang, `${windowLabel} 집중 구간`, `${windowLabel} Focus Window`)}</div>
         <div className="mb-3 text-xs text-slate-500">
           {formatWindowRange(contextSeriesRaw[0]?.date ?? null, contextSeriesRaw[contextSeriesRaw.length - 1]?.date ?? null)}
         </div>
@@ -708,40 +702,40 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <div className="text-sm font-semibold text-slate-100 mb-3">Window Summary ({windowLabel})</div>
+        <div className="text-sm font-semibold text-slate-100 mb-3">{pickLang(uiLang, `구간 요약 (${windowLabel})`, `Window Summary (${windowLabel})`)}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 md:col-span-2">
-            <div className="text-xs text-slate-400">Today</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, '오늘', 'Today')}</div>
             <div className="text-slate-100 font-semibold">
               {formatDateWithYear(lastPoint?.date ?? dataDate ?? null)} · MPS {mpsCurrent != null ? mpsCurrent.toFixed(0) : '--'} · VIX {vixCurrent != null ? vixCurrent.toFixed(1) : '--'} · QQQ {formatPct(qqq5dChange)} (5D) · TQQQ {formatPct(tqqq5dChange)} (5D)
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-            <div className="text-xs text-slate-400">MPS Range ({windowLabel})</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, `MPS 범위 (${windowLabel})`, `MPS Range (${windowLabel})`)}</div>
             <div className="text-slate-100 font-semibold">
               {mpsRange.minVal != null ? mpsRange.minVal.toFixed(0) : '--'} ({formatDateWithYear(mpsRange.minDate)}){' -> '}{mpsRange.maxVal != null ? mpsRange.maxVal.toFixed(0) : '--'} ({formatDateWithYear(mpsRange.maxDate)})
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-            <div className="text-xs text-slate-400">VIX Range ({windowLabel})</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, `VIX 범위 (${windowLabel})`, `VIX Range (${windowLabel})`)}</div>
             <div className="text-slate-100 font-semibold">
               {vixRange.minVal != null ? vixRange.minVal.toFixed(1) : '--'} ({formatDateWithYear(vixRange.minDate)}){' -> '}{vixRange.maxVal != null ? vixRange.maxVal.toFixed(1) : '--'} ({formatDateWithYear(vixRange.maxDate)})
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-            <div className="text-xs text-slate-400">{windowLabel} Return</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, `${windowLabel} 수익률`, `${windowLabel} Return`)}</div>
             <div className="text-slate-100 font-semibold">
               QQQ {formatPct(qqqWindowReturn)} / TQQQ {formatPct(tqqqWindowReturn)}
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-            <div className="text-xs text-slate-400">QQQ 5D Worst / Best</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, 'QQQ 5D 최악 / 최고', 'QQQ 5D Worst / Best')}</div>
             <div className="text-slate-100 font-semibold">
               {formatPct(qqqMoves?.worst?.value ?? null)} ({formatShortDate(contextSeriesRaw[qqqMoves?.worst?.endIndex ?? 0]?.date)}) / {formatPct(qqqMoves?.best?.value ?? null)} ({formatShortDate(contextSeriesRaw[qqqMoves?.best?.endIndex ?? 0]?.date)})
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-            <div className="text-xs text-slate-400">TQQQ 5D Worst / Best</div>
+            <div className="text-xs text-slate-400">{pickLang(uiLang, 'TQQQ 5D 최악 / 최고', 'TQQQ 5D Worst / Best')}</div>
             <div className="text-slate-100 font-semibold">
               {formatPct(tqqqMoves?.worst?.value ?? null)} ({formatShortDate(contextSeriesRaw[tqqqMoves?.worst?.endIndex ?? 0]?.date)}) / {formatPct(tqqqMoves?.best?.value ?? null)} ({formatShortDate(contextSeriesRaw[tqqqMoves?.best?.endIndex ?? 0]?.date)})
             </div>
@@ -751,7 +745,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <h4 className="text-sm font-semibold text-slate-100">Indicator Guide</h4>
+          <h4 className="text-sm font-semibold text-slate-100">{pickLang(uiLang, '지표 가이드', 'Indicator Guide')}</h4>
           <div className="mt-4 space-y-4 text-base leading-[1.7] text-slate-300">
             <div>
               <div className="text-xs uppercase tracking-wider text-slate-400">MPS (0-100)</div>
@@ -776,7 +770,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
           <div className="flex items-center justify-between gap-3">
-            <h4 className="text-sm font-semibold text-slate-100">Daily AI Analysis (Auto)</h4>
+            <h4 className="text-sm font-semibold text-slate-100">{pickLang(uiLang, '매크로 AI 분석 (캐시)', 'Macro AI Analysis (Cached)')}</h4>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-400">
                 {displayedProvider.toUpperCase()}{displayedModel ? ` · ${displayedModel}` : ''}
@@ -786,13 +780,13 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
                 onClick={handleRetry}
                 className="rounded border border-white/10 px-2 py-1 text-slate-300 hover:text-white hover:border-white/30"
               >
-                Retry
+                {pickLang(uiLang, '재시도', 'Retry')}
               </button>
             </div>
           </div>
           <div className="mt-4 text-[16px] leading-[1.75] text-slate-200 space-y-3">
-            {briefLoading && <div className="text-sm text-slate-400">Loading daily analysis...</div>}
-            {!briefLoading && briefError && <div className="text-sm text-red-400">Failed to load daily analysis.</div>}
+            {briefLoading && <div className="text-sm text-slate-400">{pickLang(uiLang, '캐시된 매크로 브리핑을 불러오는 중...', 'Loading cached macro brief...')}</div>}
+            {!briefLoading && briefError && <div className="text-sm text-red-400">{pickLang(uiLang, '캐시된 매크로 브리핑을 불러오지 못했습니다.', 'Failed to load cached macro brief.')} {briefError ? `· ${briefError}` : ''}</div>}
             {!briefLoading && !briefError && displayedParagraphs.map((line, idx) => (
               <p key={`brief-${idx}`}>{line}</p>
             ))}
@@ -805,7 +799,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
             )}
             {!briefLoading && !briefError && sources.length > 0 && (
               <div className="mt-3 text-xs text-slate-400 space-y-1">
-                <div className="uppercase tracking-wider text-slate-500">Sources</div>
+                <div className="uppercase tracking-wider text-slate-500">{pickLang(uiLang, '참고 자료', 'Sources')}</div>
                 {sources.slice(0, 3).map((src, idx) => (
                   <div key={`src-${idx}`}>
                     <a className="hover:text-slate-200" href={src.url} target="_blank" rel="noreferrer">
@@ -818,10 +812,10 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
             )}
           </div>
           <div className="mt-4 border-t border-white/10 pt-4">
-            <div className="text-xs uppercase tracking-wider text-slate-400">Manual Review</div>
+            <div className="text-xs uppercase tracking-wider text-slate-400">{pickLang(uiLang, '수동 검토', 'Manual Review')}</div>
             <textarea
               className="mt-2 w-full min-h-[110px] rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-200 outline-none focus:border-white/30"
-              placeholder="뉴스 요약/리뷰를 직접 입력하세요 (줄바꿈으로 단락 구분)"
+              placeholder={pickLang(uiLang, '뉴스 요약/리뷰를 직접 입력하세요 (줄바꿈으로 단락 구분)', 'Enter your own news summary/review (use line breaks for paragraphs)')}
               value={manualDraft}
               onChange={(e) => setManualDraft(e.target.value)}
             />
@@ -831,14 +825,14 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
                 onClick={handleManualSave}
                 className="rounded border border-white/10 px-2 py-1 text-slate-300 hover:text-white hover:border-white/30"
               >
-                Save
+                {pickLang(uiLang, '저장', 'Save')}
               </button>
               <button
                 type="button"
                 onClick={handleManualClear}
                 className="rounded border border-white/10 px-2 py-1 text-slate-300 hover:text-white hover:border-white/30"
               >
-                Clear
+                {pickLang(uiLang, '비우기', 'Clear')}
               </button>
               <label className="flex items-center gap-2 text-slate-400">
                 <input
@@ -846,11 +840,11 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate 
                   checked={useManual}
                   onChange={(e) => setUseManual(e.target.checked)}
                 />
-                Use manual text
+                {pickLang(uiLang, '수동 텍스트 사용', 'Use manual text')}
               </label>
             </div>
           </div>
-          <div className="mt-4 text-xs text-slate-500">Auto-generated from the latest snapshot. Interpretation only.</div>
+          <div className="mt-4 text-xs text-slate-500">{pickLang(uiLang, '캐시된 AI 브리핑을 읽습니다. 페이지 로드 시 라이브 AI 호출은 없습니다.', 'Reads cached AI briefings only. No live AI call runs on page load.')}</div>
         </div>
       </div>
     </div>

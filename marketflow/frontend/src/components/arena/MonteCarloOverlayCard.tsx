@@ -152,7 +152,7 @@ export default function MonteCarloOverlayCard({
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {formatOdds(model.mcOverlay.mcNextStateOdds[state])}
+                {formatOdds(model.mcOverlay?.mcNextStateOdds[state] ?? 0)}
               </div>
             </div>
           ))}

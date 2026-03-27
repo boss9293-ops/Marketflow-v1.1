@@ -1,8 +1,10 @@
 'use client'
 
+import type { UiLang } from '@/lib/uiLang'
+import { pickLang } from '@/lib/uiLang'
 import { useState } from 'react'
 
-export default function RiskV1RefreshButton() {
+export default function RiskV1RefreshButton({ uiLang }: { uiLang: UiLang }) {
   const [status, setStatus] = useState<'idle' | 'running' | 'error'>('idle')
 
   const onRefresh = async () => {
@@ -31,9 +33,9 @@ export default function RiskV1RefreshButton() {
         background: status === 'running' ? 'rgba(99,102,241,0.12)' : 'transparent',
         cursor: status === 'running' ? 'not-allowed' : 'pointer',
       }}
-      title="Run risk_v1 refresh"
+      title={pickLang(uiLang, 'risk_v1 새로고침 실행', 'Run risk_v1 refresh')}
     >
-      {status === 'running' ? 'Refreshing...' : 'Refresh'}
+      {status === 'running' ? pickLang(uiLang, '새로고침 중...', 'Refreshing...') : pickLang(uiLang, '새로고침', 'Refresh')}
     </button>
   )
 }

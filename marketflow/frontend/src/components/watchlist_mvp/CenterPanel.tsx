@@ -137,16 +137,6 @@ export default function CenterPanel({
   onExportEvidenceToSheet,
   onCloseDetail,
 }: CenterPanelProps) {
-  const openBrief = briefs.find((brief) => brief.checkpointET === '09:30') ?? null
-  const closeBrief = briefs.find((brief) => brief.checkpointET === '16:00') ?? null
-  const openNarrative = useMemo(
-    () => buildNarrative(openBrief, 'Open brief narrative is unavailable.'),
-    [openBrief],
-  )
-  const closeNarrative = useMemo(
-    () => buildNarrative(closeBrief, 'Close brief narrative is unavailable.'),
-    [closeBrief],
-  )
   const openClosePriceLabels = useMemo(() => {
     const closePrice = parseNumeric(selectedItem?.lastPrice)
     const changePct = parseNumeric(selectedItem?.changePercent)
@@ -225,20 +215,20 @@ export default function CenterPanel({
                 <div className={styles.dailyDateBoundary}>
                   <p className={styles.timelineDateHeader}>{formatTimelineDateHeader(dateET)}</p>
                 </div>
-                <article className={styles.briefCard}>
-                  <p className={styles.briefTime}>
-                    {openBrief?.checkpointET ?? '09:30'} ET | OPEN {openClosePriceLabels.open}
-                  </p>
-                  <p className={styles.briefSummary}>{openNarrative}</p>
-                  <p className={styles.briefSource}>Source: {openBrief?.source ?? 'N/A'}</p>
-                </article>
-                <article className={styles.briefCard}>
-                  <p className={styles.briefTime}>
-                    {closeBrief?.checkpointET ?? '16:00'} ET | CLOSE {openClosePriceLabels.close}
-                  </p>
-                  <p className={styles.briefSummary}>{closeNarrative}</p>
-                  <p className={styles.briefSource}>Source: {closeBrief?.source ?? 'N/A'}</p>
-                </article>
+                {briefs.map((brief) => {
+                  const label = brief.checkpointET === '09:30' ? 'OPEN' : 'CLOSE'
+                  const price = brief.checkpointET === '09:30' ? openClosePriceLabels.open : openClosePriceLabels.close
+                  const text = buildNarrative(brief, 'Brief narrative is unavailable.')
+                  return (
+                    <article key={brief.id} className={styles.briefCard}>
+                      <p className={styles.briefTime}>
+                        {brief.checkpointET} EDT | {label}
+                      </p>
+                      <p className={styles.timelineSummary}>{text}</p>
+                      {shouldShowMore(text) && <p className={styles.timelineSource} style={{ cursor: 'pointer' }}>...More</p>}
+                    </article>
+                  )
+                })}
               </>
             )}
           </div>

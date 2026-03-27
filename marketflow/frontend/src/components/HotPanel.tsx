@@ -135,25 +135,25 @@ function Drawer({ item, onClose }: { item: HotItem; onClose: () => void }) {
       {/* Panel */}
       <div className="mf-drawer-panel" style={{
         position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(420px, 92vw)',
-        background: 'var(--bg-panel)', borderLeft: '1px solid rgba(255,255,255,0.1)',
+        background: 'var(--bg-panel)', borderLeft: '1px solid rgba(148,163,184,0.16)',
         zIndex: 1001, overflow: 'auto', display: 'flex', flexDirection: 'column',
         boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
       }}>
         {/* Header */}
-        <div style={{ padding: '1rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+        <div style={{ padding: '1rem 1rem', borderBottom: '1px solid rgba(148,163,184,0.14)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>{item.symbol}</span>
               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: chgColor(chg) }}>{fmtPct(chg)}</span>
               {item.price != null && (
-                <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>${item.price.toLocaleString()}</span>
+                <span style={{ fontSize: '0.82rem', color: '#d7e1ee' }}>${item.price.toLocaleString()}</span>
               )}
             </div>
-            <div style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: '0.25rem' }}>{item.name}</div>
+            <div style={{ color: '#9fb0c3', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 500 }}>{item.name}</div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'rgba(255,255,255,0.07)', border: 'none', color: '#9ca3af', borderRadius: 8, width: 40, height: 40, cursor: 'pointer', fontSize: '1rem', flexShrink: 0 }}
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(148,163,184,0.15)', color: '#d7e1ee', borderRadius: 8, width: 40, height: 40, cursor: 'pointer', fontSize: '1rem', flexShrink: 0 }}
           >
             ✕
           </button>
@@ -174,8 +174,8 @@ function Drawer({ item, onClose }: { item: HotItem; onClose: () => void }) {
                 color: '#e5e7eb',
               },
             ].map(({ label, value, color }) => (
-              <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '0.7rem', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.62rem', color: '#6b7280', marginBottom: '0.3rem', textTransform: 'uppercase' }}>{label}</div>
+              <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '0.7rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: '0.64rem', color: '#9fb0c3', marginBottom: '0.3rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>{label}</div>
                 <div style={{ fontSize: '1.1rem', fontWeight: 800, color }}>{value}</div>
               </div>
             ))}
@@ -183,16 +183,16 @@ function Drawer({ item, onClose }: { item: HotItem; onClose: () => void }) {
 
           {/* Streak + RSI */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.9rem', flex: 1, minWidth: 100 }}>
-              <div style={{ fontSize: '0.62rem', color: '#6b7280', marginBottom: '0.25rem' }}>STREAK</div>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.9rem', flex: 1, minWidth: 100, border: '1px solid rgba(255,255,255,0.04)' }}>
+              <div style={{ fontSize: '0.64rem', color: '#9fb0c3', marginBottom: '0.25rem', fontWeight: 700, letterSpacing: '0.06em' }}>STREAK</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '1rem', fontWeight: 700, color: '#e5e7eb' }}>{item.streak}d</span>
                 <StreakBadge streak={item.streak} />
               </div>
             </div>
             {item.rsi14 != null && (
-              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.9rem', flex: 1, minWidth: 100 }}>
-                <div style={{ fontSize: '0.62rem', color: '#6b7280', marginBottom: '0.25rem' }}>RSI14</div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.6rem 0.9rem', flex: 1, minWidth: 100, border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: '0.64rem', color: '#9fb0c3', marginBottom: '0.25rem', fontWeight: 700, letterSpacing: '0.06em' }}>RSI14</div>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: item.rsi14 >= 70 ? C.rsi : item.rsi14 <= 30 ? C.defensive : '#e5e7eb' }}>
                   {item.rsi14.toFixed(1)}
                 </div>
@@ -202,14 +202,14 @@ function Drawer({ item, onClose }: { item: HotItem; onClose: () => void }) {
 
           {/* Reason text */}
           <div style={{ background: `${C.accent}0c`, border: `1px solid ${C.accent}28`, borderRadius: 10, padding: '0.85rem 1rem' }}>
-            <div style={{ fontSize: '0.65rem', color: C.accent, marginBottom: '0.4rem', textTransform: 'uppercase', fontWeight: 700 }}>Reason</div>
-            <div style={{ fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.6 }}>{item.reason_text}</div>
+            <div style={{ fontSize: '0.66rem', color: '#d7e1ee', marginBottom: '0.4rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>Reason</div>
+            <div style={{ fontSize: '0.9rem', color: '#edf3fb', lineHeight: 1.55, fontWeight: 500 }}>{item.reason_text}</div>
           </div>
 
           {/* All Triggers */}
           {allTriggers.length > 0 && (
             <div>
-              <div style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>All Triggers ({allTriggers.length})</div>
+              <div style={{ fontSize: '0.66rem', color: '#9fb0c3', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>All Triggers ({allTriggers.length})</div>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {allTriggers.map(t => <TriggerBadge key={t} t={t} />)}
               </div>
@@ -233,7 +233,7 @@ function Drawer({ item, onClose }: { item: HotItem; onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: '#374151' }}>
+        <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid rgba(148,163,184,0.12)', fontSize: '0.68rem', color: '#8da0b7' }}>
           Not financial advice. Educational purposes only.
         </div>
       </div>

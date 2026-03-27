@@ -1,6 +1,12 @@
 // Leverage Taming - Risk Engine (Navigator)
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const runtime = 'nodejs'
+
+import Database from 'better-sqlite3'
 import Link from 'next/link'
-import { readCacheJson, readCacheJsonOrNull } from '@/lib/readCacheJson'
+import path from 'path'
+import { readCacheJsonOrNull } from '@/lib/readCacheJson'
 import { computeNavigatorStates, type NavigatorInput } from '@/lib/crash/navigatorState'
 import { NAVIGATOR_ACTIONS_V1 } from '@/lib/crash/navigatorActions'
 import { NAVIGATOR_MESSAGES_V1 } from '@/lib/crash/navigatorMessages'
@@ -62,6 +68,17 @@ type SnapshotCache = {
   snapshots?: Snapshot[]
 }
 
+function openReadonlyDb(candidates: string[]) {
+  for (const candidate of candidates) {
+    try {
+      return new Database(candidate, { readonly: true, fileMustExist: true })
+    } catch {
+      // Try next candidate path.
+    }
+  }
+  return null
+}
+
 function volatility(arr: number[]) {
   if (arr.length === 0) return 0
   const mean = arr.reduce((a, b) => a + b, 0) / arr.length
@@ -69,7 +86,43 @@ function volatility(arr: number[]) {
   return Math.sqrt(varSum)
 }
 
-async function loadHistorySnapshots() {
+function readLiveNavigatorSnapshots(): Snapshot[] {
+  const db = openReadonlyDb([
+    path.resolve(process.cwd(), '..', 'data', 'marketflow.db'),
+    path.resolve(process.cwd(), 'data', 'marketflow.db'),
+  ])
+  if (!db) return []
+
+  try {
+    const rows = db.prepare(`
+      SELECT
+        o.date,
+        o.close AS qqq_close,
+        i.sma200 AS qqq_sma200
+      FROM ohlcv_daily o
+      LEFT JOIN indicators_daily i
+        ON i.symbol = o.symbol AND i.date = o.date
+      WHERE o.symbol = 'QQQ'
+        AND o.close IS NOT NULL
+      ORDER BY o.date ASC
+    `).all() as Array<{ date: string; qqq_close: number | null; qqq_sma200: number | null }>
+
+    return rows.map((row) => ({
+      date: row.date,
+      qqq_close: typeof row.qqq_close === 'number' ? row.qqq_close : undefined,
+      qqq_sma200: typeof row.qqq_sma200 === 'number' ? row.qqq_sma200 : undefined,
+    }))
+  } finally {
+    db.close()
+  }
+}
+
+async function loadNavigatorSnapshots() {
+  const live = readLiveNavigatorSnapshots()
+  if (live.length) {
+    return { snapshots: live, source: 'db' as const }
+  }
+
   const candidates = [
     'snapshots_full_5y.json',
     'snapshots_full_2y.json',
@@ -78,10 +131,10 @@ async function loadHistorySnapshots() {
   for (const name of candidates) {
     const cache = await readCacheJsonOrNull<SnapshotCache>(name)
     if (cache?.snapshots && cache.snapshots.length) {
-      return cache.snapshots
+      return { snapshots: cache.snapshots, source: 'cache' as const }
     }
   }
-  return []
+  return { snapshots: [] as Snapshot[], source: 'cache' as const }
 }
 
 function computeRet3History(snapshots: Snapshot[], years: number) {
@@ -114,8 +167,7 @@ export default async function CrashNavigatorEnginePage({
 }) {
   const lang = typeof searchParams?.lang === 'string' && searchParams.lang.toLowerCase() === 'en' ? 'en' : 'ko'
   const t = (ko: string, en: string) => (lang === 'en' ? en : ko)
-  const cache = await readCacheJson<SnapshotCache>('snapshots_120d.json', { snapshots: [] })
-  const snapshots = cache.snapshots ?? []
+  const { snapshots, source: snapshotSource } = await loadNavigatorSnapshots()
 
   const rawProfile = typeof searchParams?.profile === 'string' ? searchParams.profile : 'balanced'
   const profileKey: ProfileKey = (rawProfile in PROFILE_CONFIGS ? rawProfile : 'balanced') as ProfileKey
@@ -155,10 +207,9 @@ export default async function CrashNavigatorEnginePage({
     ? 'Admin Preview (temporary)'
     : PROFILE_CONFIGS[profileKey].label
 
-  const historySnapshots = await loadHistorySnapshots()
-  let historyRet3d = computeRet3History(historySnapshots, 5)
+  let historyRet3d = computeRet3History(snapshots, 5)
   if (historyRet3d.length < 252) {
-    historyRet3d = computeRet3History(historySnapshots, 2)
+    historyRet3d = computeRet3History(snapshots, 2)
   }
   if (historyRet3d.length < 252) {
     historyRet3d = []
@@ -237,7 +288,7 @@ export default async function CrashNavigatorEnginePage({
     latest.meta.ret3d_tail_pct === null
       ? null
       : lang === 'en'
-        ? `The 3-day cumulative move ${formatPct(latest.evidence.ret_3d)} is in the bottom ${latest.meta.ret3d_tail_pct.toFixed(1)}% (2018~present).`
+        ? `The 3-day cumulative move ${formatPct(latest.evidence.ret_3d)} is in the bottom ${latest.meta.ret3d_tail_pct.toFixed(1)}% of the recent history window.`
         : `최근 3일 누적 하락 ${formatPct(latest.evidence.ret_3d)}는 (2018~현재) 기준 급락 상위 ${latest.meta.ret3d_tail_pct.toFixed(1)}% 구간입니다.`
 
   const defenseDistanceAt = (i: number) => {
@@ -284,6 +335,7 @@ export default async function CrashNavigatorEnginePage({
   const actions = NAVIGATOR_ACTIONS_V1[latest.state]
   const messages = NAVIGATOR_MESSAGES_V1[latest.state]
   const bannerColor = STATE_COLORS[latest.state] ?? '#94a3b8'
+  const snapshotSourceLabel = snapshotSource === 'db' ? 'live DB (QQQ proxy)' : 'snapshot cache (QQQ proxy)'
 
   const contextPack = {
     date: dates[dates.length - 1] ?? '',
@@ -452,8 +504,8 @@ export default async function CrashNavigatorEnginePage({
           <div style={{ fontSize: '0.94rem', color: '#cbd5f5' }}>{messages.evidence_line}</div>
           <div style={{ fontSize: '0.8rem', color: '#7b8499' }}>
             {t(
-              'Data source: snapshot cache (QQQ proxy). Navigator logic is standalone (no VR score/pool).',
-              'Data source: snapshot cache (QQQ proxy). Navigator logic is standalone (no VR score/pool).'
+              `Data source: ${snapshotSourceLabel}. Navigator logic is standalone (no VR score/pool).`,
+              `Data source: ${snapshotSourceLabel}. Navigator logic is standalone (no VR score/pool).`
             )}
           </div>
         </div>

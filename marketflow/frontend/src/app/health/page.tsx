@@ -1,7 +1,9 @@
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { readCacheJsonOrNull } from '@/lib/readCacheJson'
 import { generateMarketNarration, type NarrationOutput } from '@/lib/generateMarketNarration'
 import MacroBadgeStrip from '@/components/MacroBadgeStrip'
+import { UI_LANG_COOKIE, normalizeUiLang } from '@/lib/uiLang'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -116,6 +118,7 @@ const formatTimestamp = (value?: string | null) => {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function HealthPage() {
+  const uiLang = normalizeUiLang(cookies().get(UI_LANG_COOKIE)?.value)
   const mh = await readCacheJsonOrNull<MarketHealth>('market_health.json')
   const hasScoreShape =
     !!mh &&
@@ -143,7 +146,7 @@ export default async function HealthPage() {
         volatility:  { score: mh.scores.volatility.score, label: mh.scores.volatility.label_en, conf: mh.scores.volatility.confidence },
         breadth:     { score: mh.scores.breadth.score,    label: mh.scores.breadth.label_en,    conf: mh.scores.breadth.confidence },
         liquidity:   { score: mh.scores.liquidity.score,  label: mh.scores.liquidity.label_en,  conf: mh.scores.liquidity.confidence },
-      })
+      }, { outputLang: uiLang })
     } catch {
       narration = null
     }

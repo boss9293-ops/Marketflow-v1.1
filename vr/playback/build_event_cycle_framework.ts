@@ -65,10 +65,11 @@ function buildGridLevels(input: {
   status: CycleGridLevel['status']
   label: 'buy' | 'sell'
 }) {
-  if (typeof input.anchor !== 'number') return [] as CycleGridLevel[]
+  const anchor = input.anchor
+  if (typeof anchor !== 'number') return [] as CycleGridLevel[]
   return input.offsets.map((offset, index) => ({
     level_no: index + 1,
-    price: Number((input.anchor * (1 + offset)).toFixed(2)),
+    price: Number((anchor * (1 + offset)).toFixed(2)),
     weight: Number((1 / input.offsets.length).toFixed(2)),
     status: input.status,
     touched: false,

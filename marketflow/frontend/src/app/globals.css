@@ -46,14 +46,14 @@
 
 :root {
   /* Background Tokens */
-  --bg-main:     #000000;   /* Capital black                      */
-  --bg-panel:    #1a1a1a;   /* capital-gray-800                   */
-  --bg-elevated: #2a2a2a;   /* capital-gray-700                   */
+  --bg-main:     #06090f;   /* clean institutional black          */
+  --bg-panel:    #101722;   /* primary panel surface               */
+  --bg-elevated: #171f2b;   /* elevated card surface              */
 
   /* Text Tokens */
-  --text-primary:   #ffffff;   /* pure white                      */
-  --text-secondary: #b9c9dd;   /* brighter subtitle blue-gray     */
-  --text-muted:     #8ea1b9;   /* brighter muted for readability  */
+  --text-primary:   #f5f8ff;   /* near-white                          */
+  --text-secondary: #d7e1ee;   /* crisp secondary gray                */
+  --text-muted:     #9fb0c3;   /* readable muted tone                 */
 
   /* Capital OS Accent */
   --accent-lime:  #c4ff0d;   /* capital-lime — primary CTA        */
@@ -117,7 +117,7 @@
 html, body {
   max-width: 100vw;
   overflow-x: hidden;
-  background: #000000;
+  background: #06090f;
   color: #ffffff;
   font-family: var(--font-ui-sans);
 }
@@ -142,6 +142,61 @@ html[data-lang-mode='en'] .mf-bil-en {
 /* ── Capital OS Component Utilities ─────────────────────────────────────── */
 
 @layer components {
+  .mf-ui-primary {
+    color: var(--text-primary);
+  }
+
+  .mf-ui-secondary {
+    color: var(--text-secondary);
+  }
+
+  .mf-ui-muted {
+    color: var(--text-muted);
+  }
+
+  .mf-section-title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em];
+    color: var(--text-secondary);
+  }
+
+  .mf-card-title {
+    @apply text-[0.97rem] font-semibold leading-tight;
+    color: var(--text-primary);
+  }
+
+  .mf-card-title-lg {
+    @apply text-base font-bold leading-tight;
+    color: var(--text-primary);
+  }
+
+  .mf-micro-label {
+    @apply text-[11px] font-medium leading-tight;
+    color: var(--text-secondary);
+  }
+
+  .mf-tab-base {
+    @apply rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-colors;
+  }
+
+  .mf-tab-active {
+    @apply border-cyan-400/40 bg-cyan-500/10 text-cyan-100;
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08);
+  }
+
+  .mf-tab-inactive {
+    @apply border-white/10 bg-white/[0.02] text-slate-200 hover:bg-white/[0.05] hover:text-slate-50;
+  }
+
+  .mf-surface-panel {
+    @apply rounded-2xl border border-white/10;
+    background: var(--bg-panel);
+  }
+
+  .mf-surface-card {
+    @apply rounded-xl border border-white/10;
+    background: var(--bg-elevated);
+  }
+
   .capital-card {
     @apply bg-capital-gray-800 rounded-2xl border border-capital-gray-700;
     @apply hover:border-capital-lime transition-colors duration-200;
@@ -169,6 +224,57 @@ html[data-lang-mode='en'] .mf-bil-en {
   .metric-label {
     @apply text-xs uppercase tracking-wider text-capital-gray-500 mb-1;
   }
+}
+
+.mf-dashboard-root,
+.mf-macro-root,
+.mf-risk-v1-root {
+  color: var(--text-primary);
+}
+
+.mf-dashboard-root .text-slate-500,
+.mf-macro-root .text-slate-500,
+.mf-risk-v1-root .text-slate-500,
+.mf-dashboard-root .text-gray-500,
+.mf-macro-root .text-gray-500,
+.mf-risk-v1-root .text-gray-500 {
+  color: #8ea0b4 !important;
+}
+
+.mf-dashboard-root .text-slate-400,
+.mf-macro-root .text-slate-400,
+.mf-risk-v1-root .text-slate-400,
+.mf-dashboard-root .text-gray-400,
+.mf-macro-root .text-gray-400,
+.mf-risk-v1-root .text-gray-400 {
+  color: #aab7c7 !important;
+}
+
+.mf-dashboard-root .text-slate-300,
+.mf-macro-root .text-slate-300,
+.mf-risk-v1-root .text-slate-300,
+.mf-dashboard-root .text-gray-300,
+.mf-macro-root .text-gray-300,
+.mf-risk-v1-root .text-gray-300 {
+  color: #d3dde9 !important;
+}
+
+.mf-dashboard-root .text-slate-200,
+.mf-macro-root .text-slate-200,
+.mf-risk-v1-root .text-slate-200,
+.mf-dashboard-root .text-gray-200,
+.mf-macro-root .text-gray-200,
+.mf-risk-v1-root .text-gray-200 {
+  color: #eef3fb !important;
+}
+
+.mf-dashboard-root .text-slate-100,
+.mf-macro-root .text-slate-100,
+.mf-risk-v1-root .text-slate-100,
+.mf-dashboard-root .text-gray-100,
+.mf-macro-root .text-gray-100,
+.mf-risk-v1-root .text-gray-100 {
+  color: #f8fbff !important;
 }
 
 /* ── Existing component styles ───────────────────────────────────────────── */

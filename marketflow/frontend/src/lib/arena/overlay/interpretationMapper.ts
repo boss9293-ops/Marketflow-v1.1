@@ -45,8 +45,11 @@ function regimePhrase(regime: ArenaMonteCarloOverlayView['mcCurrentRegime']) {
 function scenarioPhrase(args: {
   scenarioHint: ArenaOverlayScenarioHint
   warningState: ArenaOverlayWarningState
-  overlay: ArenaMonteCarloOverlayView
+  overlay: ArenaMonteCarloOverlayView | null
 }) {
+  if (!args.overlay) {
+    return 'MC overlay remains unavailable, so scenario alignment is based on the rule layer alone.'
+  }
   if (args.overlay.dominantMcScenario === 'Mixed') {
     return 'MC paths remain mixed without a dominant directional scenario.'
   }

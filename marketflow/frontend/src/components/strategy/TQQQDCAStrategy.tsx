@@ -38,20 +38,35 @@ interface Params {
 interface Summary {
   ticker: string
   period: { start: string; end: string; days: number }
+  initial_capital: number
   total_invested: number; final_value: number; total_return_pct: number
   cagr_pct: number; mdd_pct: number; realized_pnl: number
-  unrealized_pnl: number; cash_realized: number
+  unrealized_pnl: number; cash_realized: number; pool_balance: number
   buy_count: number; sell_count: number
-  bh: { total_invested: number; final_value: number; total_return_pct: number; cagr_pct: number; mdd_pct: number }
+  bh: {
+    total_invested: number; final_value: number; total_return_pct: number
+    cagr_pct: number; mdd_pct: number; pool_balance: number
+  }
   generated: string
 }
 interface EquityPoint {
-  d: string; close: number; current_value: number; cash_realized: number; total_value: number
+  d: string; close: number; current_value: number; cash_realized: number; pool_balance: number; total_value: number
   invested_cost: number; total_shares: number; profit_pct: number
   total_cost: number; bh_value: number; ma50: number | null; ma200: number | null
 }
 interface DdPoint { d: string; dd: number; bh_dd: number }
-interface Signal { d: string; type: 'buy' | 'sell'; price: number; shares: number; amount: number; reason: string; pnl?: number }
+interface Signal {
+  d: string
+  type: 'buy' | 'sell'
+  price: number
+  shares: number
+  amount: number
+  current_value: number
+  invested_cost: number
+  total_cost: number
+  reason: string
+  pnl?: number
+}
 interface BacktestResult { summary: Summary; equity_curve: EquityPoint[]; dd_curve: DdPoint[]; signals: Signal[] }
 
 /* ─── Defaults ──────────────────────────────────────────────────────────── */
@@ -101,9 +116,10 @@ const metaCard = (color: string): React.CSSProperties => ({
 /* ─── Tooltip ───────────────────────────────────────────────────────────── */
 function ChartTip({ active, payload, label: lbl2 }: any) {
   if (!active || !payload?.length) return null
+  const labelText = formatTooltipDate(lbl2)
   return (
     <div style={{ background: 'rgba(15,20,30,0.96)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: '0.78rem' }}>
-      <div style={{ color: '#9ca3af', marginBottom: 4 }}>{lbl2}</div>
+      <div style={{ color: '#9ca3af', marginBottom: 4 }}>{labelText}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} style={{ color: p.color, display: 'flex', gap: 8, justifyContent: 'space-between' }}>
           <span>{p.name}</span>
@@ -114,6 +130,37 @@ function ChartTip({ active, payload, label: lbl2 }: any) {
       ))}
     </div>
   )
+}
+
+function triangleShape(fill: string, direction: 'up' | 'down') {
+  return function Triangle({ cx, cy }: any) {
+    if (cx == null || cy == null) return <g />
+    const points = direction === 'up'
+      ? `${cx},${cy - 8} ${cx - 5},${cy + 3} ${cx + 5},${cy + 3}`
+      : `${cx},${cy + 8} ${cx - 5},${cy - 3} ${cx + 5},${cy - 3}`
+    return <polygon points={points} fill={fill} opacity={0.88} />
+  }
+}
+
+function dateToTs(dateStr: string) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return Date.UTC(year, month - 1, day)
+}
+
+function formatTsDate(ts: number) {
+  return new Date(ts).toISOString().slice(2, 10)
+}
+
+function formatTooltipDate(value: unknown) {
+  if (value == null) return ''
+  if (typeof value === 'number') return new Date(value).toISOString().slice(0, 10)
+  if (typeof value === 'string') {
+    if (/^\d+$/.test(value)) return new Date(Number(value)).toISOString().slice(0, 10)
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10)
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10)
+  }
+  return String(value)
 }
 
 /* ─── Ticker Picker ─────────────────────────────────────────────────────── */
@@ -288,6 +335,7 @@ export default function TQQQDCAStrategy() {
   const [params, setParams]   = useState<Params>(DEFAULTS)
   const [pinned, setPinned]   = useState<string[]>(DEFAULT_TICKERS)
   const [result, setResult]   = useState<BacktestResult | null>(null)
+  const [viewTab, setViewTab] = useState<'results' | 'logic'>('results')
   const [tradeFilter, setTradeFilter] = useState<'all' | 'buy' | 'sell'>('all')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
@@ -310,7 +358,7 @@ export default function TQQQDCAStrategy() {
   }, [pinned])
 
   const run = useCallback(async () => {
-    setLoading(true); setError(null)
+    setLoading(true); setError(null); setViewTab('results')
     try {
       const body = { ...params, end_date: params.end_date || null }
       const r = await fetch(`${API}/api/backtests/tqqq-dca/run`, {
@@ -325,12 +373,120 @@ export default function TQQQDCAStrategy() {
     finally { setLoading(false) }
   }, [params])
 
-  const buyDots  = result?.signals.filter(s => s.type === 'buy').map(s => s.d)  ?? []
-  const sellDots = result?.signals.filter(s => s.type === 'sell').map(s => s.d) ?? []
+  const buySignals = result?.signals.filter(s => s.type === 'buy') ?? []
+  const sellSignals = result?.signals.filter(s => s.type === 'sell') ?? []
+  const tpSignals = sellSignals.filter(s => s.reason === 'TP')
+  const slSignals = sellSignals.filter(s => s.reason === 'SL')
+  const maSellSignals = sellSignals.filter(s => s.reason === 'MA_SELL')
+  const signalSellSignals = sellSignals.filter(s => s.reason === 'SIGNAL')
+  const buyDots = buySignals.map(s => s.d)
+  const sellDots = sellSignals.map(s => s.d)
   const s = result?.summary
   const initialCapital = params.initial_capital || 0
-  const investedTotal = s?.total_invested ?? 0
-  const poolCash = initialCapital - investedTotal
+  const poolCash = s?.pool_balance ?? initialCapital
+  const latestEquity = result?.equity_curve?.length ? result.equity_curve[result.equity_curve.length - 1] : null
+  const equityHighlights = latestEquity ? [
+    { label: '전략', value: latestEquity.total_value, color: '#f59e0b', hint: '전략 누적자산' },
+    { label: 'B&H', value: latestEquity.bh_value, color: '#6366f1', hint: '동일 기간 매수후보유' },
+    { label: '보유원가', value: latestEquity.invested_cost, color: '#94a3b8', hint: '현재 남아있는 보유분 원가' },
+  ] : []
+  const signalBreakdown = [
+    { label: '매수', count: buySignals.length, color: '#22c55e', active: true },
+    { label: 'TP', count: tpSignals.length, color: '#fbbf24', active: params.use_take_profit },
+    { label: 'SL', count: slSignals.length, color: '#ef4444', active: params.use_stop_loss },
+    { label: 'MA 매도', count: maSellSignals.length, color: '#fb923c', active: params.use_ma_sell },
+    { label: '신호매도', count: signalSellSignals.length, color: '#a78bfa', active: params.use_rsi_sell || params.use_macd_sell },
+  ]
+  const equityChartData = (result?.equity_curve ?? []).map(p => ({ ...p, ts: dateToTs(p.d) }))
+  const buyChartData = buySignals.map(sig => ({ d: sig.d, ts: dateToTs(sig.d), price: sig.price }))
+  const tpChartData = tpSignals.map(sig => ({ d: sig.d, ts: dateToTs(sig.d), price: sig.price }))
+  const slChartData = slSignals.map(sig => ({ d: sig.d, ts: dateToTs(sig.d), price: sig.price }))
+  const maSellChartData = maSellSignals.map(sig => ({ d: sig.d, ts: dateToTs(sig.d), price: sig.price }))
+  const signalSellChartData = signalSellSignals.map(sig => ({ d: sig.d, ts: dateToTs(sig.d), price: sig.price }))
+  const assetValues = equityChartData.flatMap(p => [p.total_value, p.bh_value]).filter(v => Number.isFinite(v))
+  const assetMin = assetValues.length ? Math.min(...assetValues) : 0
+  const assetMax = assetValues.length ? Math.max(...assetValues) : 0
+  const assetPad = assetValues.length ? Math.max((assetMax - assetMin) * 0.08, 500) : 1000
+  const assetDomain: [number, number] = [Math.max(0, assetMin - assetPad), assetMax + assetPad]
+  const costValues = equityChartData.map(p => p.invested_cost).filter(v => Number.isFinite(v))
+  const costMax = costValues.length ? Math.max(...costValues) : 0
+  const costDomain: [number, number] = [0, costMax + Math.max(costMax * 0.2, 100)]
+  const priceValues = [...buySignals, ...sellSignals].map(sig => sig.price).filter(v => Number.isFinite(v))
+  const priceMin = priceValues.length ? Math.min(...priceValues) : 0
+  const priceMax = priceValues.length ? Math.max(...priceValues) : 0
+  const pricePad = priceValues.length ? Math.max((priceMax - priceMin) * 0.15, 2) : 5
+  const priceDomain: [number, number] = [Math.max(0, priceMin - pricePad), priceMax + pricePad]
+  const panelTabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: '0.5rem 0.65rem',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.08)',
+    cursor: 'pointer',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    transition: 'all 120ms',
+    background: active ? 'rgba(245,158,11,0.16)' : 'rgba(255,255,255,0.04)',
+    color: active ? '#fbbf24' : '#6b7280',
+  })
+  const logicSections = useMemo(() => [
+    {
+      title: '1. 익절 / 손절 기준',
+      lines: [
+        '익절·손절 판정은 계좌 전체 수익률이 아니라 현재 남아 있는 보유분의 평가수익률 기준입니다.',
+        `익절: ${params.use_take_profit ? `ON / ${params.take_profit_pct}%` : 'OFF'}`,
+        `손절: ${params.use_stop_loss ? `ON / ${params.stop_loss_pct}%` : 'OFF'}`,
+      ],
+    },
+    {
+      title: '2. 부분매도 로직',
+      lines: [
+        params.use_partial_sell
+          ? `TP / SL / SIGNAL 발생 시 보유 수량의 ${params.sell_ratio_pct}%를 매도합니다.`
+          : 'TP / SL / SIGNAL 발생 시 전량매도합니다.',
+        '부분매도는 수익금 비중이 아니라 현재 보유 주식 수량 비중 기준입니다.',
+        'MA 매도는 별도 설정값인 MA 매도 %를 사용합니다.',
+      ],
+    },
+    {
+      title: '3. Pool(현금잔고) 로직',
+      lines: [
+        '초기투입금은 백테스트 시작 시점의 전체 계좌 현금으로 사용됩니다.',
+        '매수하면 Pool에서 차감되고, 매도하면 매도대금이 Pool로 다시 들어옵니다.',
+        '총자산은 Pool + 현재 보유 평가금액으로 계산됩니다.',
+        'Pool이 부족하면 남아 있는 현금 한도 안에서만 축소 매수됩니다.',
+      ],
+    },
+    {
+      title: '4. 재매수 로직',
+      lines: [
+        '전량매도 후 자동으로 다음날 강제 재매수하지는 않습니다.',
+        '기존 매수 규칙(Daily / Weekly / One Time, RSI, MACD, MA 등)이 다시 충족될 때만 재진입합니다.',
+        '쿨다운 없이 현재 조건식 그대로 다시 판단합니다.',
+      ],
+    },
+    {
+      title: '5. V자 회복매수',
+      lines: [
+        params.use_v_buy
+          ? `현재 설정: MA200 아래 + 최근 3일 평균 등락률 ${params.v_buy_drop_pct}% 이상 + MA${params.v_buy_ma_len} 상향돌파 시 보유수량의 ${params.v_buy_pct}% 추가매수`
+          : '현재 OFF 상태입니다. ON이면 MA200 아래에서 낙폭 둔화와 단기 MA 상향돌파가 동시에 나올 때 추가매수합니다.',
+        '급락 구간에서 바로 추격매수하지 않고, 하락 둔화와 단기 회복 확인이 같이 나와야 발동합니다.',
+      ],
+    },
+  ], [params])
+  const logicSectionsDetail = logicSections.map((section, idx) => {
+    if (idx !== 4) return section
+    return {
+      title: '5. V자 회복매수 원칙',
+      lines: [
+        params.use_v_buy ? '현재 상태: ON' : '현재 상태: OFF',
+        `원칙 1 - 추세 필터: 종가가 MA200 아래일 때만 작동합니다. 상승 추세의 중간 눌림이 아니라, 하락 추세의 끝자락에서만 V자 회복을 찾습니다.`,
+        `원칙 2 - 회복 확인: 최근 3일 평균 등락률이 ${params.v_buy_drop_pct}% 이상일 때만 작동합니다. 급락이 계속되는 구간은 제외하고, 하락 속도가 둔화된 뒤의 회복만 봅니다.`,
+        `원칙 3 - 진입 트리거: 종가가 MA${params.v_buy_ma_len}를 아래에서 위로 상향 돌파해야 합니다. 단기 이동평균을 되찾는 순간에만 추가매수합니다.`,
+        `매수 규모: 보유 수량이 있으면 현재 보유 수량의 ${params.v_buy_pct}%를 추가매수하고, 보유가 없으면 기본 DCA 금액 기준으로 1회 진입합니다.`,
+      ],
+    }
+  })
 
   return (
     <div style={{ padding: '1.8rem 2rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 1400 }}>
@@ -391,6 +547,9 @@ export default function TQQQDCAStrategy() {
             <div style={{ color: '#4b5563', fontSize: '0.7rem', marginTop: 6 }}>
               매수 후 남은 현금 기준
             </div>
+          </div>
+          <div style={{ color: '#4b5563', fontSize: '0.7rem', marginBottom: '0.8rem' }}>
+            백테스트 후에는 실제 남은 현금 Pool 기준으로 표시됩니다.
           </div>
 
           {/* Buy frequency */}
@@ -600,11 +759,48 @@ export default function TQQQDCAStrategy() {
               {error}
             </div>
           )}
+          <div style={{ display: 'flex', gap: 8, marginTop: '0.85rem' }}>
+            <button style={panelTabStyle(viewTab === 'results')} onClick={() => setViewTab('results')}>
+              결과
+            </button>
+            <button style={panelTabStyle(viewTab === 'logic')} onClick={() => setViewTab('logic')}>
+              로직 설명
+            </button>
+          </div>
+          <div style={{ color: '#4b5563', fontSize: '0.7rem', marginTop: 6 }}>
+            구독자용 설명 탭에서 현재 전략 규칙을 바로 확인할 수 있습니다.
+          </div>
         </div>
 
         {/* ── Results Panel ─────────────────────────────────────────────────── */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-          {!result && !loading && (
+          {viewTab === 'logic' && (
+            <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div>
+                <div style={{ color: '#f3f4f6', fontWeight: 800, fontSize: '1rem' }}>전략 로직 설명</div>
+                <div style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: 4 }}>
+                  구독자가 바로 이해할 수 있도록 현재 시뮬레이터 규칙을 카드형으로 정리했습니다.
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.8rem' }}>
+                {logicSectionsDetail.map(section => (
+                  <div key={section.title} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '0.9rem 1rem' }}>
+                    <div style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.84rem', marginBottom: '0.55rem' }}>
+                      {section.title}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                      {section.lines.map((line, idx) => (
+                        <div key={`${section.title}-${idx}`} style={{ color: '#d1d5db', fontSize: '0.8rem', lineHeight: 1.55 }}>
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {viewTab === 'results' && !result && !loading && (
             <div style={{ ...card, textAlign: 'center', padding: '3rem', color: '#4b5563' }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📊</div>
               <div>종목을 선택하고 백테스트를 실행하세요</div>
@@ -612,14 +808,14 @@ export default function TQQQDCAStrategy() {
             </div>
           )}
 
-          {result && s && (
+          {viewTab === 'results' && result && s && (
             <>
               {/* Summary Cards */}
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 {[
                   { label: '종목', val: s.ticker, color: '245,158,11' },
-                  { label: '총 투자', val: `$${s.total_invested.toLocaleString()}`, color: '148,163,184' },
-                  { label: '최종 가치', val: `$${s.final_value.toLocaleString()}`, color: '245,158,11' },
+                  { label: '누적 매수액', val: `$${s.total_invested.toLocaleString()}`, color: '148,163,184' },
+                  { label: '최종 계좌가치', val: `$${s.final_value.toLocaleString()}`, color: '245,158,11' },
                   { label: '수익률', val: `${s.total_return_pct > 0 ? '+' : ''}${s.total_return_pct.toFixed(1)}%`, color: s.total_return_pct >= 0 ? '34,197,94' : '239,68,68' },
                   { label: 'CAGR', val: `${s.cagr_pct > 0 ? '+' : ''}${s.cagr_pct.toFixed(1)}%`, color: s.cagr_pct >= 0 ? '99,102,241' : '239,68,68' },
                   { label: 'MDD', val: `${s.mdd_pct.toFixed(1)}%`, color: '239,68,68' },
@@ -631,6 +827,12 @@ export default function TQQQDCAStrategy() {
                     <div style={{ color: '#f3f4f6', fontWeight: 700, fontSize: '1.0rem' }}>{m.val}</div>
                   </div>
                 ))}
+                <div style={metaCard('20,184,166')}>
+                  <div style={{ color: 'rgb(20,184,166)', fontSize: '0.72rem', marginBottom: 2 }}>Pool</div>
+                  <div style={{ color: '#f3f4f6', fontWeight: 700, fontSize: '1.0rem' }}>
+                    ${s.pool_balance.toLocaleString()}
+                  </div>
+                </div>
               </div>
 
               {/* B&H Comparison */}
@@ -640,10 +842,11 @@ export default function TQQQDCAStrategy() {
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                   {[
-                    { label: '최종 가치', val: `$${s.bh.final_value.toLocaleString()}` },
+                    { label: '최종 계좌가치', val: `$${s.bh.final_value.toLocaleString()}` },
                     { label: '수익률', val: `${s.bh.total_return_pct > 0 ? '+' : ''}${s.bh.total_return_pct.toFixed(1)}%` },
                     { label: 'CAGR', val: `${s.bh.cagr_pct > 0 ? '+' : ''}${s.bh.cagr_pct.toFixed(1)}%` },
                     { label: 'MDD', val: `${s.bh.mdd_pct.toFixed(1)}%` },
+                    { label: 'Pool', val: `$${s.bh.pool_balance.toLocaleString()}` },
                     { label: '기간', val: `${s.period.start} ~ ${s.period.end} (${s.period.days}d)` },
                   ].map(m => (
                     <div key={m.label}>
@@ -659,16 +862,123 @@ export default function TQQQDCAStrategy() {
                 <div style={{ color: '#d1d5db', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.6rem' }}>
                   💰 자산 곡선 — <span style={{ color: '#fbbf24' }}>{s.ticker}</span> 전략 vs B&H
                 </div>
+                <div style={{ color: '#6b7280', fontSize: '0.72rem', marginBottom: '0.6rem' }}>
+                  좌측 축: 전략 / B&amp;H / 보유원가 · 우측 축: 매수 / 매도 가격
+                </div>
+                {equityHighlights.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                    {equityHighlights.map(item => (
+                      <div
+                        key={item.label}
+                        style={{
+                          flex: '1 1 180px',
+                          minWidth: 160,
+                          background: 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${item.color}33`,
+                          borderRadius: 12,
+                          padding: '0.65rem 0.8rem',
+                        }}
+                      >
+                        <div style={{ color: item.color, fontSize: '0.72rem', fontWeight: 700, marginBottom: 4 }}>
+                          {item.label}
+                        </div>
+                        <div style={{ color: '#f3f4f6', fontWeight: 800, fontSize: '1rem' }}>
+                          ${item.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '0.7rem', marginTop: 2 }}>
+                          {item.hint}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <ResponsiveContainer width="100%" height={240}>
-                  <ComposedChart data={result.equity_curve} margin={{ top: 4, right: 16, bottom: 4, left: 10 }}>
+                  <ComposedChart data={equityChartData} margin={{ top: 4, right: 16, bottom: 4, left: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="d" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => v.slice(2)} interval="preserveStartEnd" />
-                    <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={['auto','auto']} />
-                    <Tooltip content={<ChartTip />} />
+                    <XAxis
+                      dataKey="ts"
+                      type="number"
+                      scale="time"
+                      domain={['dataMin', 'dataMax']}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
+                      tickFormatter={v => formatTsDate(Number(v))}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      yAxisId="asset"
+                      width={92}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
+                      tickFormatter={v => `$${Math.round(Number(v)).toLocaleString()}`}
+                      domain={assetDomain}
+                    />
+                    <YAxis
+                      yAxisId="cost"
+                      hide
+                      domain={costDomain}
+                    />
+                    <YAxis
+                      yAxisId="price"
+                      orientation="right"
+                      width={68}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
+                      tickFormatter={v => `$${Math.round(Number(v)).toLocaleString()}`}
+                      domain={priceDomain}
+                    />
+                    <Tooltip content={<ChartTip />} labelFormatter={(value) => formatTsDate(Number(value))} />
                     <Legend wrapperStyle={{ fontSize: '0.78rem', color: '#9ca3af' }} />
-                    <Area type="monotone" dataKey="total_value"   name="전략" stroke="#f59e0b" fill="rgba(245,158,11,0.08)" strokeWidth={2} dot={false} />
-                    <Area type="monotone" dataKey="bh_value"      name="B&H"  stroke="#6366f1" fill="rgba(99,102,241,0.06)" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-                    <Line  type="monotone" dataKey="invested_cost" name="투자원금" stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="4 3" />
+                    <Area type="monotone" yAxisId="asset" dataKey="total_value"   name="전략" stroke="#f59e0b" fill="rgba(245,158,11,0.08)" strokeWidth={2} dot={false} />
+                    <Area type="monotone" yAxisId="asset" dataKey="bh_value"      name="B&H"  stroke="#6366f1" fill="rgba(99,102,241,0.06)" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+                    <Line  type="monotone" yAxisId="cost" dataKey="invested_cost" name="보유원가" stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="4 3" />
+                    {buySignals.length > 0 && (
+                      <Scatter
+                        yAxisId="price"
+                        name={`매수 (${buySignals.length})`}
+                        data={buyChartData}
+                        dataKey="price"
+                        fill="#22c55e"
+                        shape={triangleShape('#22c55e', 'up')}
+                      />
+                    )}
+                    {tpSignals.length > 0 && (
+                      <Scatter
+                        yAxisId="price"
+                        name={`TP 매도 (${tpSignals.length})`}
+                        data={tpChartData}
+                        dataKey="price"
+                        fill="#fbbf24"
+                        shape={triangleShape('#fbbf24', 'down')}
+                      />
+                    )}
+                    {slSignals.length > 0 && (
+                      <Scatter
+                        yAxisId="price"
+                        name={`SL 매도 (${slSignals.length})`}
+                        data={slChartData}
+                        dataKey="price"
+                        fill="#ef4444"
+                        shape={triangleShape('#ef4444', 'down')}
+                      />
+                    )}
+                    {maSellSignals.length > 0 && (
+                      <Scatter
+                        yAxisId="price"
+                        name={`MA 매도 (${maSellSignals.length})`}
+                        data={maSellChartData}
+                        dataKey="price"
+                        fill="#fb923c"
+                        shape={triangleShape('#fb923c', 'down')}
+                      />
+                    )}
+                    {signalSellSignals.length > 0 && (
+                      <Scatter
+                        yAxisId="price"
+                        name={`신호매도 (${signalSellSignals.length})`}
+                        data={signalSellChartData}
+                        dataKey="price"
+                        fill="#a78bfa"
+                        shape={triangleShape('#a78bfa', 'down')}
+                      />
+                    )}
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -698,19 +1008,43 @@ export default function TQQQDCAStrategy() {
                   📈 <span style={{ color: '#fbbf24' }}>{s.ticker}</span> 가격 + 매매 시그널
                   <span style={{ color: '#6b7280', fontWeight: 400, fontSize: '0.75rem', marginLeft: 8 }}>🟢 매수  🔴 매도</span>
                 </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.65rem' }}>
+                  {signalBreakdown.map(item => (
+                    <div
+                      key={item.label}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '0.28rem 0.55rem',
+                        borderRadius: 999,
+                        border: `1px solid ${item.color}33`,
+                        background: item.active ? `${item.color}14` : 'rgba(255,255,255,0.04)',
+                        color: item.active ? item.color : '#6b7280',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        opacity: item.count > 0 ? 1 : 0.65,
+                      }}
+                    >
+                      <span>{item.label}</span>
+                      <span>{item.count}</span>
+                    </div>
+                  ))}
+                </div>
                 <ResponsiveContainer width="100%" height={260}>
                   <ComposedChart data={result.equity_curve} margin={{ top: 4, right: 16, bottom: 4, left: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="d" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => v.slice(2)} interval="preserveStartEnd" />
                     <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => `$${v.toFixed(0)}`} domain={['auto','auto']} />
                     <Tooltip content={<ChartTip />} />
+                    <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#9ca3af' }} />
                     <Line type="monotone" dataKey="close" name={s.ticker} stroke="#38bdf8" strokeWidth={1.5} dot={false} />
                     <Line type="monotone" dataKey="ma50"  name="MA50"  stroke="#fbbf24" strokeWidth={1} dot={false} strokeDasharray="3 2" connectNulls />
                     <Line type="monotone" dataKey="ma200" name="MA200" stroke="#f97316" strokeWidth={1.2} dot={false} strokeDasharray="6 2" connectNulls />
-                    {buyDots.length > 0 && (
+                    {false && (
                       <Scatter
                         name="매수"
-                        data={result.equity_curve.filter(r => buyDots.includes(r.d)).map(r => ({ d: r.d, close: r.close }))}
+                        data={(result?.equity_curve ?? []).filter(r => buyDots.includes(r.d)).map(r => ({ d: r.d, close: r.close }))}
                         dataKey="close"
                         fill="#22c55e"
                         shape={(props: any) => {
@@ -719,10 +1053,10 @@ export default function TQQQDCAStrategy() {
                         }}
                       />
                     )}
-                    {sellDots.length > 0 && (
+                    {false && (
                       <Scatter
                         name="매도"
-                        data={result.equity_curve.filter(r => sellDots.includes(r.d)).map(r => ({ d: r.d, close: r.close }))}
+                        data={(result?.equity_curve ?? []).filter(r => sellDots.includes(r.d)).map(r => ({ d: r.d, close: r.close }))}
                         dataKey="close"
                         fill="#ef4444"
                         shape={(props: any) => {
@@ -772,7 +1106,7 @@ export default function TQQQDCAStrategy() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                         <thead style={{ position: 'sticky', top: 0, background: 'rgba(13,17,23,0.97)', zIndex: 1 }}>
                           <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                            {['날짜','구분','가격','수량','금액','이유','손익'].map(h => (
+                            {['날짜','구분','가격','수량','금액','원금 / 평가액','이유','손익'].map(h => (
                               <th key={h} style={{ color: '#6b7280', fontWeight: 600, padding: '0.32rem 0.5rem', textAlign: 'left' }}>{h}</th>
                             ))}
                           </tr>
@@ -790,6 +1124,14 @@ export default function TQQQDCAStrategy() {
                               <td style={{ padding: '0.28rem 0.5rem', color: '#f3f4f6' }}>${sig.price.toFixed(2)}</td>
                               <td style={{ padding: '0.28rem 0.5rem', color: '#d1d5db' }}>{sig.shares.toFixed(3)}</td>
                               <td style={{ padding: '0.28rem 0.5rem', color: '#d1d5db' }}>${sig.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                              <td style={{ padding: '0.28rem 0.5rem', color: '#d1d5db' }}>
+                                <div style={{ color: '#f3f4f6', fontWeight: 700 }}>
+                                  평가액 ${sig.current_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </div>
+                                <div style={{ color: '#6b7280', fontSize: '0.7rem', marginTop: 1 }}>
+                                  원금 ${sig.invested_cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </div>
+                              </td>
                               <td style={{ padding: '0.28rem 0.5rem', color: sig.reason === 'TP' ? '#86efac' : sig.reason === 'SL' ? '#fca5a5' : sig.reason === 'MA_SELL' ? '#fb923c' : sig.reason === 'MA_BUY' ? '#34d399' : sig.reason === 'MA_DIP' || sig.reason?.startsWith('DIP') ? '#38bdf8' : sig.reason?.startsWith('V') ? '#a78bfa' : '#a5b4fc' }}>
                                 {sig.reason}
                               </td>

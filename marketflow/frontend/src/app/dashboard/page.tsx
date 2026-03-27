@@ -8,7 +8,6 @@ import RiskPanel from '@/components/RiskPanel'
 import MarketHistoryStrip from '@/components/MarketHistoryStrip'
 import RecentAlertsCard from '@/components/RecentAlertsCard'
 import AdvancedMetricsDrawer from '@/components/AdvancedMetricsDrawer'
-import LanguageModeToggle from '@/components/LanguageModeToggle'
 import AIMarketBrief from '@/components/dashboard/AIMarketBrief'
 import ActionGuidanceCard from '@/components/dashboard/ActionGuidanceCard'
 import TodaySnapshotBar from '@/components/dashboard/TodaySnapshotBar'
@@ -48,6 +47,20 @@ import { authOptions } from '@/lib/auth'
 import UnifiedPriorityStrip  from '@/components/priority/UnifiedPriorityStrip'
 import DailyDigestPanel       from '@/components/digest/DailyDigestPanel'
 import VrValidationTriggerPanel from '@/components/validation/VrValidationTriggerPanel'
+import PipelineStatusCard from '@/components/PipelineStatusCard'
+import PipelineHistoryCard from '@/components/PipelineHistoryCard'
+import PipelineHealthCard from '@/components/dashboard/PipelineHealthCard'
+import PipelineFailuresCard from '@/components/dashboard/PipelineFailuresCard'
+import PipelineIntelligenceCard from '@/components/dashboard/PipelineIntelligenceCard'
+import PipelineRecoveryCard from '@/components/dashboard/PipelineRecoveryCard'
+import PipelineRootCauseCard from '@/components/dashboard/PipelineRootCauseCard'
+import PipelineRetryPolicyCard from '@/components/dashboard/PipelineRetryPolicyCard'
+import PipelineHealingCard from '@/components/dashboard/PipelineHealingCard'
+import PipelineOpsModeCard from '@/components/dashboard/PipelineOpsModeCard'
+import PipelineEpisodeCard from '@/components/dashboard/PipelineEpisodeCard'
+import PipelinePredictiveCard from '@/components/dashboard/PipelinePredictiveCard'
+import PipelineRunbookCard from '@/components/dashboard/PipelineRunbookCard'
+import PipelineDigestCard  from '@/components/dashboard/PipelineDigestCard'
 import type { SmartMoneyCache } from '@/components/SmartMoneyView'
 import type { OverviewHomeData } from '@/components/HotPanel'
 import type { AlertEvidenceContext } from '@/components/AlertDetailDrawer'
@@ -622,12 +635,12 @@ export default async function Dashboard() {
       : (flowTailSigma != null && flowTailSigma >= 2.0)
       ? 'Medium'
       : 'Low'
-  const environmentFit =
-    flowRegimeFit === 'Low' || flowRegimeFit === 'Very Low' || flowVolRisk === 'High'
-      ? 'Low'
-      : flowRegimeFit === 'High' && flowVolRisk !== 'High'
-      ? 'High'
-      : 'Medium'
+  let environmentFit: 'Low' | 'Medium' | 'High' = 'Medium'
+  if (flowRegimeFit === 'Low' || flowRegimeFit === 'Very Low' || flowVolRisk === 'High') {
+    environmentFit = 'Low'
+  } else if (flowRegimeFit === 'High') {
+    environmentFit = 'High'
+  }
 
   const structureConfidence =
     environmentFit === 'High' && breadthState === 'Strong' && (flowSummary.acceleration_state === 'Expanding' || flowSummary.acceleration_state == null)
@@ -748,9 +761,6 @@ export default async function Dashboard() {
             <div style={{ width: 26, height: 26, borderRadius: 8, background: '#D7FF37', color: '#0b0f14', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: '0.78rem', boxShadow: '0 0 0 1px rgba(215,255,55,0.25)' }}>C</div>
             <div style={{ color: '#F8FAFC', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1 }}>Capital OS</div>
             <div style={{ color: '#D8E6F5', fontSize: '0.74rem', letterSpacing: '0.08em', fontWeight: 700 }}>INSTITUTIONAL GRADE</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
-            <LanguageModeToggle />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {[
@@ -951,7 +961,7 @@ export default async function Dashboard() {
         </section>
       </section>
 
-      {rdPayload && <SmartAnalyzerSection payload={rdPayload} />}
+      {saViewPayload && <SmartAnalyzerSection payload={saViewPayload} />}
 
       {/* ── Smart Analyzer Hero (WO-SA14) ── */}
       <AlertBanner alerts={alertsPayload} />
@@ -995,6 +1005,20 @@ export default async function Dashboard() {
       <UnifiedPriorityStrip />
       <DailyDigestPanel />
       <VrValidationTriggerPanel />
+      <PipelineStatusCard />
+      <PipelineHistoryCard />
+      <PipelineHealthCard />
+      <PipelineFailuresCard />
+      <PipelineIntelligenceCard />
+      <PipelineRecoveryCard />
+      <PipelineRootCauseCard />
+      <PipelineRetryPolicyCard />
+              <PipelineHealingCard />
+              <PipelineOpsModeCard />
+              <PipelineEpisodeCard />
+              <PipelinePredictiveCard />
+              <PipelineDigestCard />
+              <PipelineRunbookCard />
 
       <details
         style={{

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
@@ -15,16 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import HistoricalAnalogPanel, { type HistoricalAnalogSummary } from './HistoricalAnalogPanel'
 import { StrategyLabTab, type LabEvent } from './StrategyLabTab'
-import ScenarioEnginePanel from './ScenarioEnginePanel'
-import SuggestedPostureStrip, { type VRPostureMessage } from './SuggestedPostureStrip'
-import VrActionAuditCard from '../../vr/VrActionAuditCard'
-import VrTimelinePanel from '../../vr/VrTimelinePanel'
-import type { VrAuditViewPayload } from '../../../lib/formatVrAudit'
-import type { InvestorActionViewPayload } from '../../../types/investorAction'
-import InvestorActionBadgeRow from '../../dashboard/InvestorActionBadgeRow'
-import type { VrTimelineRow } from '../../../lib/formatVrTimeline'
 import OverlayAlignmentBadge from '../../arena/OverlayAlignmentBadge'
 import MonteCarloOverlayCard from '../../arena/MonteCarloOverlayCard'
 import OverlayScoreStrip from '../../arena/OverlayScoreStrip'
@@ -32,11 +23,13 @@ import {
   buildArenaOverlayDisplayModel,
   type ArenaOverlayDisplayModel,
 } from '../../../lib/arena/overlay/buildArenaOverlayDisplayModel'
+import type { VrTimelineRow } from '../../../lib/formatVrTimeline'
 import {
   buildVariantForCap,
   type ExecutionPlaybackSource,
 } from '../../../../../../vr/playback/build_execution_playback'
 import CycleSummaryCard from '../../vr/CycleSummaryCard'
+import VrTimelinePanel from '../../vr/VrTimelinePanel'
 
 export type VRSurvivalData = {
   run_id: string
@@ -90,34 +83,6 @@ export type ETFRoomData = {
       }>
     }
   }
-}
-
-export type VRDashboardPatternSummary = {
-  snapshot?: {
-    as_of_date: string
-    market_pattern: string
-    nasdaq_drawdown: string
-    tqqq_drawdown: string
-    ma200_status: string
-    market_structure: string
-    volatility_regime: string
-    recommended_posture: string[]
-  }
-  posture_message?: VRPostureMessage
-  historical_analogs?: HistoricalAnalogSummary
-  top_matches: Array<{
-    pattern_id: string
-    pattern_name: string
-    score: number
-    explanation?: string[]
-  }>
-  scenarios: Array<{
-    scenario_id: string
-    scenario_name: string
-    description: string
-    posture_guidance: string[]
-  }>
-  suggested_posture?: string[]
 }
 
 type VRPlaybackEventView = {
@@ -1114,10 +1079,17 @@ type StrategyArenaView = {
   }
 }
 
-const TABS = ['Overview', 'Strategy Lab', 'Crash Analysis', 'Backtest', 'Playback', 'Pool Logic', 'Options Overlay', 'Philosophy', 'Timeline'] as const
-const HEATMAP_SYMBOLS = ['TQQQ', 'SOXL', 'TECL', 'SPXL', 'UPRO', 'LABU'] as const
-export type Tab = (typeof TABS)[number]
-type HeatmapState = 'Stable' | 'Weak' | 'Fragile' | 'Breakdown Risk' | 'No Data'
+const TABS = ['Overview', 'Playback', 'Backtest'] as const
+export type Tab =
+  | 'Overview'
+  | 'Playback'
+  | 'Backtest'
+  | 'Pool Logic'
+  | 'Options Overlay'
+  | 'Philosophy'
+  | 'Crash Analysis'
+  | 'Strategy Lab'
+  | 'Timeline'
 
 const STRATEGY_LABELS = {
   buy_hold: 'Buy & Hold',
@@ -1155,106 +1127,109 @@ const ARENA_BACKTEST_TEXT = {
   en: {
     backtest: {
       philosophy: {
-        eyebrow: 'Backtest Philosophy',
-        title: 'Positioning Map, Not Winner Selection',
+        eyebrow: '생존 전략',
+        title: '승자를 고르는 화면이 아니라, 포지셔닝을 비교하는 화면',
         body: [
-          'This backtest is not designed to identify the best strategy.',
-          'Instead, it shows how different approaches are positioned under the same market conditions.',
-          'Each approach reflects a different balance between risk, drawdown, recovery behavior, and psychological stability.',
-          'The warning layer comes before execution. It is designed to flag abnormal downside behavior early, not to auto-trade by itself.',
+          '이 백테스트의 목적은 가장 좋은 전략을 뽑는 것이 아닙니다.',
+          '같은 충격 구간에서 VR, MA200, 저점 기반 회복 전략, Buy & Hold가 어떻게 다르게 반응하는지를 보여주는 것이 목적입니다.',
+          '각 전략은 위험 감수, 낙폭 방어, 회복 속도, 자본 보존 사이의 균형이 서로 다릅니다.',
+          '이 화면의 해석 레이어는 실행보다 먼저 읽는 참고용이며, 자체적으로 자동매매를 지시하지 않습니다.',
         ],
-        footer: 'Backtest is a map, not the answer.',
+        footer: '백테스트는 지시가 아니라 증거입니다.',
       },
       conditions: {
-        eyebrow: 'Test Conditions',
-        title: 'What This Comparison Is Testing',
+        eyebrow: '과거 증거',
+        title: '이 비교가 무엇을 시험하는가',
         labels: {
-          period: 'Period',
-          asset: 'Asset',
-          execution: 'Execution',
-          purpose: 'Purpose',
-          note: 'Important Note',
+          period: '기간',
+          asset: '자산',
+          execution: '실행',
+          purpose: '목적',
+          note: '중요 메모',
         },
         asset: {
           name: 'TQQQ',
-          detail: 'A 3x leveraged Nasdaq-100 ETF with much higher volatility than standard ETFs.',
+          detail: '일반 ETF보다 변동성이 훨씬 큰 3배 레버리지 나스닥-100 ETF입니다.',
         },
         execution:
-          'Signals are evaluated at the close of each trading day and applied on the next trading session. All Arena strategies begin from the same 80% invested / 20% cash allocation.',
+          '모든 응답은 거래일 종가에서 판단하고 다음 거래 세션에서 실행합니다. Arena 전략은 모두 80% 투자 / 20% 현금의 동일한 출발점에서 시작합니다.',
         purpose:
-          'This comparison is intended to show positioning differences, not to determine a superior strategy.',
+          '이 비교는 우열을 가리기 위한 것이 아니라, 대응 방식의 차이를 보여주기 위한 것입니다.',
         note:
-          'Leveraged ETFs amplify both gains and losses, which can lead to large drawdowns and rapid rebounds.',
+          '레버리지 ETF는 상승과 하락을 모두 증폭시키므로, 큰 낙폭과 빠른 반등이 함께 나타날 수 있습니다.',
         marketContextByEventId: {
-          '2008-crash': 'A prolonged global deleveraging period tied to the credit crisis.',
-          '2011-debt-crisis': 'US downgrade stress and Eurozone instability created a sharp risk-off phase.',
-          '2018-volmageddon': 'A volatility shock and rapid deleveraging event hit leveraged Nasdaq exposure.',
-          '2020-covid-crash': 'Pandemic panic and policy shock created a historic crash followed by a violent rebound.',
-          '2022-bear-market': 'A prolonged bearish market with rising rates and persistent inflation pressure.',
-          '2024-yen-carry': 'A fast unwind in crowded risk positioning produced a sharp selloff and rebound.',
+          '2008-crash': '신용위기와 함께 발생한 장기 디레버리징 국면입니다.',
+          '2011-debt-crisis': '미국 신용등급 강등과 유로존 불안이 겹치며 강한 리스크오프 국면이 나타났습니다.',
+          '2018-volmageddon': '변동성 쇼크와 급격한 디레버리징이 레버리지 나스닥 익스포저를 강하게 흔들었습니다.',
+          '2020-covid-crash': '팬데믹 공포와 정책 충격이 역사적 급락과 폭발적인 반등을 동시에 만들었습니다.',
+          '2022-bear-market': '금리 상승과 인플레이션 압력이 이어진 장기 약세장입니다.',
+          '2024-yen-carry': '과도하게 쌓인 위험 포지션이 빠르게 해소되며 급락과 반등이 함께 나타났습니다.',
           '2025-tariff':
-            'This period reflects tariff-related uncertainty and policy-driven volatility. Markets experienced intermittent drawdowns, uneven recoveries, and elevated sensitivity to macro and geopolitical signals.',
+            '관세 관련 불확실성과 정책 주도 변동성이 나타난 구간입니다. 시장은 간헐적인 하락, 고르지 못한 회복, 그리고 거시 및 지정학 변수에 대한 높은 민감도를 보였습니다.',
         },
         purposeByEventId: {
           '2025-tariff':
-            'To observe how different approaches behave under non-linear, macro-driven stress conditions.',
+            '비선형적이고 거시 변수 중심의 스트레스 환경에서 각 접근법이 어떻게 반응하는지 보기 위함입니다.',
         },
       },
         summary: {
           adaptive: {
             title: 'Adaptive Exposure',
-            fallback: 'Featured advanced defensive approach',
+            fallback: '대표적인 고급 방어형 접근법',
           },
           lb30: {
             title: 'LB30',
-            detail: 'Default low-based recovery | Slower re-risking, lower flip-flop',
+            detail: '저점 회복형 기본안 | 사이클 바닥(trackedLow) 기준 +30% / +40% / +50%-or-MA200 반등에서 25%p / 25%p / 30%p씩 재진입',
           },
           ma200: {
             title: 'MA200 (50%)',
-            detail: 'Psychological stability reference | Simpler, slower response',
+            detail: '심리 안정형 기준점 | 종가가 MA200 아래로 마감되면 비중을 50%로 줄이고, 첫 종가 기준 재돌파 시 80% 투자 cap으로 복귀',
           },
           hybrid: {
             title: 'MA200 + LB30',
-            detail: 'MA200 defense with low-based recovery | Hybrid reference',
+            detail: 'MA200 방어 후 LB30 복구 사다리 | MA200 아래에서 50%로 줄인 뒤, 바닥(trackedLow) 대비 반등폭에 따라 25%p / 25%p / 30%p씩 다시 쌓는 혼합형',
           },
           vr: {
             title: 'VR Original (Capped)',
-            detail: 'Original VR reference | Core comparison baseline from the VR family',
+            detail: '원본 VR 기준안 | 아카이브 VR 방어와 Vmin-buy 의도를 Arena-local TQQQ 경로에 재사용한 VR 계열의 핵심 비교 기준',
           },
         },
     },
     strategy: {
       buy_hold:
-        'Starts with 80% invested in TQQQ and keeps a permanent 20% cash reserve. It does not rebalance, defend, or re-enter, so it serves as the plain market baseline under the shared Arena allocation.',
+        'TQQQ에 80%를 투자한 상태로 시작하고, 20% 현금은 끝까지 유지한다. 리밸런싱도 없고, 방어도 없고, 재진입도 없다. 그래서 단순한 시장 기준선 역할을 한다.',
       ma200_risk_control:
-        'Starts from the shared 80 / 20 Arena allocation, moves to cash below the 200-day moving average, and restores to the 80% invested cap above it. This is a stricter research reference, not the main anchor for this page.',
+        '공통 80 / 20 Arena 출발점에서 시작해, 종가 기준 200일 이동평균선 아래로 내려가면 현금 비중을 늘리고, 다시 위로 복귀하면 80% 투자 cap으로 돌아간다. 더 엄격한 연구 참고안이며, 이 페이지의 주 기준축은 아니다.',
       ma200_risk_control_50:
-        'Starts from the shared 80 / 20 Arena allocation, reduces exposure to 50% when price falls below the 200-day moving average, and restores to the 80% invested cap when price recovers above it. Its primary purpose is psychological stability, helping investors stay invested during large drawdowns. This is a familiar reference approach, not a return-maximizing strategy.',
+        '공통 80 / 20 Arena 출발점에서 시작해, 종가가 200일 이동평균선 아래로 마감되면 노출을 50%로 줄이고, 첫 번째로 다시 MA200 위에서 마감되면 80% 투자 cap으로 복귀한다. 목적은 수익 극대화가 아니라 심리적 안정성이다. 큰 낙폭 구간에서도 투자 상태를 유지하게 만드는 익숙한 기준 전략이다.',
       ma200_risk_control_50_early_rebuy:
-        'A traditional MA200-based defensive approach with an optional early re-entry feature. After reducing exposure below the 200-day moving average, a partial re-entry is triggered if price rebounds significantly from the local low. This helps reduce delayed re-entry during recovery phases while keeping the MA200 framework intact.',
+        '전통적인 MA200 방어에 조기 재진입 기능을 추가한 형태다. 200일선 아래에서 비중을 줄인 뒤, 바닥에서 의미 있게 반등하면 부분 재진입을 넣어 늦은 복귀를 줄인다. 다만 기본 뼈대는 여전히 MA200이다.',
       ma200_lb30_hybrid:
-        'Uses a simple MA200 defense on the way down, then re-adds risk through the LB30 low-based rebound ladder instead of waiting for a full MA200-only recovery.',
+        '먼저 MA200 50% 방어로 내려간 뒤, 같은 하락 사이클에서 기록된 최저 종가(trackedLow)를 바닥으로 삼아 LB30 반등 사다리로 다시 위험을 늘린다. 바닥 대비 +30% 반등이면 25%p, +40% 반등이면 추가 25%p, +50% 반등 또는 MA200 재돌파면 추가 30%p를 넣어 최대 80% 투자 cap까지 복귀한다. 여기서 30/40/50은 고점 대비 하락률이 아니라 바닥 대비 반등률이다.',
       fixed_stop_loss:
-        'A hard stop-based defensive rule that exits after a deep instrument drawdown and waits for a cleaner re-entry setup.',
+        '진입 고점 대비 깊은 하락이 나오면 전량 이탈하고, 더 깔끔한 재진입 조건이 나올 때까지 기다리는 하드 스탑 기반 방어 규칙이다.',
       low_based_lb30:
-        'Default low-based recovery approach. It keeps the existing Adaptive downside evidence, caps the deepest defense at 40% invested, and re-adds risk through slower 30% / 40% / 50%-or-MA200 rebound steps.',
+        '기본 저점 회복형 접근법이다. Adaptive 계열의 하락 evidence를 유지하고, MA200 아래에서 50%로 줄인 뒤, 가장 깊은 방어 구간은 40% 투자까지 낮춘다. 이후에는 같은 사이클의 바닥을 기준으로 +30% / +40% / +50%-or-MA200 반등 단계에서 천천히 다시 위험을 늘린다.',
       low_based_lb25:
-        'Bear-market reference version of the low-based recovery ladder. It uses the same downside evidence, but re-enters a bit earlier with 25% / 35% / 45%-or-MA200 rebound steps.',
+        '약세장 참고 버전의 저점 회복 사다리다. 같은 하락 evidence를 쓰지만, 재진입은 조금 더 일찍 한다. 바닥 대비 +25% / +35% / +45%-or-MA200 단계에서 다시 위험을 늘린다.',
       adaptive_exposure:
-        'Adaptive keeps the current evidence-based defensive ladder unchanged. In Arena, it is used as the fast-recovery and V-shape reference rather than the default low-based recovery model.',
+        'Adaptive는 현재의 evidence 기반 방어 사다리를 그대로 유지한다. Arena에서는 기본 저점 회복 모델이 아니라, 빠른 회복과 V자 반등의 기준점으로 사용한다.',
       adaptive_exposure_fast_reentry:
-        'Experimental variant of Adaptive Exposure with a faster rebound step from 25% back to 50%.',
+        'Adaptive Exposure의 실험적 변형으로, 25%에서 50%로 돌아오는 반등 단계가 더 빠르다.',
       adaptive_exposure_relaxed_reentry:
-        'Experimental variant of Adaptive Exposure with a looser condition for returning from 50% back to the 80% Arena cap.',
+        'Adaptive Exposure의 실험적 변형으로, 50%에서 80% Arena cap으로 복귀하는 조건이 더 느슨하다.',
       adaptive_exposure_step_reentry:
-        'Experimental variant of Adaptive Exposure that re-risks in smaller staged steps.',
+        'Adaptive Exposure의 실험적 변형으로, 더 작은 단계로 나누어 다시 위험을 늘린다.',
       original_vr_scaled:
-        'Original VR reference that reuses archive VR defense and Vmin-buy intent on the Arena-local TQQQ path. Vmin-triggered rebuys are constrained by a 50% per-cycle capital cap and a permanent 20% cash floor, making it a controlled baseline rather than an unbounded averaging system.',
+        '아카이브 VR 방어와 Vmin-buy 의도를 Arena-local TQQQ 경로에서 다시 사용한 원본 VR 기준안이다. Vmin 트리거 재매수는 사이클당 총자본 50% cap과 20% 현금 바닥에 묶여 있어서, 무제한 물타기 시스템이 아니라 제어된 기준선으로 동작한다.',
     },
   },
 } as const
 
 const BACKTEST_COPY = ARENA_BACKTEST_TEXT.en
+
+const SURVIVAL_ROLE_SPLIT_COPY =
+  'Standard는 위험을 감지하고, VR은 그 상황에서 어떤 대응 전략이 유효했는지를 보여줍니다.'
 
 const ARENA_TOOLTIP_ORDER: StrategyArenaKey[] = [
   'buy_hold',
@@ -1389,7 +1364,7 @@ function formatStrategyExplainability(report?: StrategyExposureReport) {
 function formatWarningExplainability(report?: WarningLayerReport) {
   if (!report) return ''
   const visibleTransitionSummary = report.visible_transitions
-    .map((transition) => `${transition.from_state} → ${transition.to_state} ${transition.date}`)
+    .map((transition) => `${transition.from_state} ??${transition.to_state} ${transition.date}`)
     .join('; ')
 
   return [
@@ -1434,25 +1409,98 @@ function formatWarningStateLabel(value: WarningLayerReport['warning_state']) {
 
 function panelStyle(extra?: CSSProperties): CSSProperties {
   return {
-    background: 'linear-gradient(180deg, rgba(8,12,22,0.94), rgba(9,11,17,0.98))',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'linear-gradient(180deg, rgba(9,14,24,0.98), rgba(7,10,16,0.99))',
+    border: '1px solid rgba(56,189,248,0.12)',
     borderRadius: 20,
     padding: '1.35rem 1.45rem',
-    boxShadow: '0 18px 40px rgba(0,0,0,0.18)',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.02)',
     ...extra,
   }
 }
 
-function tabStyle(active: boolean): CSSProperties {
+const TAB_TONES: Record<string, { idle: string; active: string; border: string; glow: string; text: string; activeText: string }> = {
+  Overview: {
+    idle: 'rgba(255,255,255,0.03)',
+    active: 'rgba(244,63,94,0.18)',
+    border: 'rgba(244,63,94,0.42)',
+    glow: 'rgba(244,63,94,0.16)',
+    text: '#9ca3af',
+    activeText: '#fff1f2',
+  },
+  Playback: {
+    idle: 'rgba(255,255,255,0.03)',
+    active: 'rgba(34,197,94,0.18)',
+    border: 'rgba(34,197,94,0.36)',
+    glow: 'rgba(34,197,94,0.14)',
+    text: '#9ca3af',
+    activeText: '#ecfdf5',
+  },
+  Backtest: {
+    idle: 'rgba(255,255,255,0.03)',
+    active: 'rgba(251,146,60,0.18)',
+    border: 'rgba(251,146,60,0.38)',
+    glow: 'rgba(251,146,60,0.14)',
+    text: '#9ca3af',
+    activeText: '#fff7ed',
+  },
+}
+
+function tabStyle(tabOrActive: Tab | boolean, activeMaybe?: boolean): CSSProperties {
+  if (typeof tabOrActive === 'boolean') {
+    const active = tabOrActive
+    const tone = {
+      idle: 'rgba(255,255,255,0.03)',
+      active: 'rgba(148,163,184,0.16)',
+      border: 'rgba(148,163,184,0.32)',
+      glow: 'rgba(148,163,184,0.12)',
+      text: '#94a3b8',
+      activeText: '#f8fafc',
+    }
+    return {
+      padding: '0.65rem 1rem',
+      borderRadius: 999,
+      border: active ? `1px solid ${tone.border}` : '1px solid rgba(255,255,255,0.08)',
+      background: active ? tone.active : tone.idle,
+      color: active ? tone.activeText : tone.text,
+      fontSize: '0.9rem',
+      fontWeight: 700,
+      cursor: 'pointer',
+      boxShadow: active ? `0 0 0 1px ${tone.glow} inset, 0 8px 22px rgba(0,0,0,0.22)` : 'none',
+    }
+  }
+
+  const active = Boolean(activeMaybe)
+  const tone = TAB_TONES[tabOrActive] ?? TAB_TONES.Overview
   return {
     padding: '0.65rem 1rem',
     borderRadius: 999,
-    border: active ? '1px solid rgba(148,163,184,0.3)' : '1px solid rgba(255,255,255,0.08)',
-    background: active ? 'rgba(148,163,184,0.16)' : 'rgba(255,255,255,0.03)',
-    color: active ? '#f8fafc' : '#94a3b8',
+    border: active ? `1px solid ${tone.border}` : '1px solid rgba(255,255,255,0.08)',
+    background: active ? tone.active : tone.idle,
+    color: active ? tone.activeText : tone.text,
     fontSize: '0.9rem',
     fontWeight: 700,
     cursor: 'pointer',
+    boxShadow: active ? `0 0 0 1px ${tone.glow} inset, 0 8px 22px rgba(0,0,0,0.22)` : 'none',
+  }
+}
+
+function playbackEventCardStyle(active: boolean): CSSProperties {
+  return {
+    padding: '0.45rem 0.6rem',
+    borderRadius: 14,
+    border: active ? '1px solid rgba(34,211,238,0.34)' : '1px solid rgba(255,255,255,0.08)',
+    background: active ? 'linear-gradient(180deg, rgba(6,182,212,0.18), rgba(17,24,39,0.96))' : 'rgba(255,255,255,0.03)',
+    color: active ? '#ecfeff' : '#94a3b8',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    width: '100%',
+    minWidth: 0,
+    textAlign: 'left',
+    display: 'grid',
+    gap: 2,
+    boxSizing: 'border-box',
+    boxShadow: active ? '0 0 0 1px rgba(34,211,238,0.12) inset' : 'none',
   }
 }
 
@@ -1460,10 +1508,12 @@ function SectionHeader({
   eyebrow,
   title,
   note,
+  tone = '#7dd3fc',
 }: {
   eyebrow?: string
   title: string
   note?: string
+  tone?: string
 }) {
   return (
     <div
@@ -1480,11 +1530,12 @@ function SectionHeader({
         {eyebrow ? (
           <div
             style={{
-              color: '#64748b',
+              color: tone,
               fontSize: '0.72rem',
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
               marginBottom: 4,
+              fontWeight: 800,
             }}
           >
             {eyebrow}
@@ -1502,31 +1553,39 @@ function PlaceholderCard({
   text,
   detail,
   compact,
+  tone,
 }: {
   label: string
   text: string
   detail?: string
   compact?: boolean
+  tone?: string
 }) {
+  const accent = tone ?? '#94a3b8'
   return (
     <div
       style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))',
+        border: `1px solid ${tone ? `${tone}40` : 'rgba(255,255,255,0.06)'}`,
         borderRadius: 16,
         padding: compact ? '0.8rem 0.9rem' : '1rem',
         minHeight: compact ? 96 : 132,
+        boxShadow: tone ? `0 0 0 1px ${tone}12 inset, 0 10px 24px rgba(0,0,0,0.08)` : 'none',
       }}
     >
-      <div
-        style={{
-          fontSize: '0.71rem',
-          color: '#94a3b8',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}
-      >
-        {label}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: accent, boxShadow: `0 0 0 4px ${accent}20` }} />
+        <div
+          style={{
+            fontSize: '0.71rem',
+            color: accent,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontWeight: 800,
+          }}
+        >
+          {label}
+        </div>
       </div>
       <div style={{ color: '#e5e7eb', fontSize: compact ? '0.96rem' : '1rem', fontWeight: 700, marginTop: compact ? 8 : 10 }}>{text}</div>
       {detail ? <div style={{ color: '#94a3b8', fontSize: compact ? '0.78rem' : '0.82rem', lineHeight: 1.5, marginTop: compact ? 8 : 10 }}>{detail}</div> : null}
@@ -1569,7 +1628,7 @@ function formatSignedPercent(value: number) {
 }
 
 function formatRecoveryDays(value: number | null) {
-  return value == null ? 'Not Recovered' : `${value}d`
+  return value == null ? 'No recovery by window end' : `Recovered in ${value}d`
 }
 
 function formatArenaPeriodRange(start: string, end: string) {
@@ -2138,148 +2197,6 @@ function CycleFrameworkPanel({ framework }: { framework: VRPlaybackEventView['cy
   )
 }
 
-function deriveVRState(data: VRSurvivalData) {
-  const current = data.current
-  const target = data.pool_logic.level_pools.find((item) => item.level === current.level)
-
-  const drawdownVelocity =
-    current.dd_pct <= -12 || current.components.dd >= 12 ? 3 :
-    current.dd_pct <= -8 || current.components.dd >= 6 ? 2 :
-    current.dd_pct <= -4 || current.components.dd >= 2 ? 1 : 0
-
-  const trendFailure =
-    current.price < current.ma200 ? 3 :
-    current.price < current.ma50 || current.days_below_ma200 > 0 ? 2 :
-    current.price / current.ma200 < 1.04 ? 1 : 0
-
-  const volatilityExpansion =
-    current.vol_pct >= 85 || current.components.vol >= 18 ? 3 :
-    current.vol_pct >= 70 || current.components.vol >= 12 ? 2 :
-    current.vol_pct >= 55 || current.components.vol >= 6 ? 1 : 0
-
-  const reboundFailure =
-    current.shock_cooldown > 0 || (current.survival_active && current.pool_pct >= 75) ? 3 :
-    current.price < current.ma50 && current.dd_pct <= -6 ? 2 :
-    current.pool_pct > 0 || current.survival_active ? 1 : 0
-
-  const fragilityScore = drawdownVelocity + trendFailure + volatilityExpansion + reboundFailure
-  const fragilityState =
-    fragilityScore >= 9 ? 'Breakdown Risk' :
-    fragilityScore >= 6 ? 'Fragile' :
-    fragilityScore >= 3 ? 'Weak' : 'Stable'
-
-  const eventState =
-    current.state.toUpperCase() === 'SHOCK' || current.shock_cooldown > 0 || (current.dd_pct <= -10 && current.vol_pct >= 75)
-      ? 'Crash Event'
-      : current.dd_pct <= -5 || current.vol_pct >= 65 || current.components.dd >= 3
-      ? 'Stress Event'
-      : 'Normal'
-
-  const downsideState =
-    eventState === 'Crash Event'
-      ? 'Active Downside'
-      : current.pool_pct > 0 && current.exposure_pct > 0 && current.price >= current.ma50
-      ? 'Exhaustion Emerging'
-      : 'Potential Exhaustion'
-
-  const reentryStatus =
-    downsideState === 'Exhaustion Emerging' && fragilityState !== 'Fragile' && current.days_below_ma200 === 0
-      ? 'Recovery Confirming'
-      : downsideState !== 'Active Downside' && fragilityState !== 'Breakdown Risk' && current.price >= current.ma50
-      ? 'Trial Eligible'
-      : 'Not Qualified'
-
-  const phaseMap =
-    eventState === 'Crash Event' && fragilityState === 'Breakdown Risk' ? 'Collapse Phase' :
-    eventState === 'Stress Event' && fragilityState === 'Fragile' ? 'Panic Phase' :
-    downsideState === 'Potential Exhaustion' ? 'Exhaustion Phase' :
-    reentryStatus === 'Trial Eligible' ? 'Recovery Attempt Phase' :
-    reentryStatus === 'Recovery Confirming' ? 'Recovery Confirming Phase' :
-    'Collapse Phase'
-
-  const leveragePosture =
-    reentryStatus === 'Trial Eligible' || reentryStatus === 'Recovery Confirming' ? 'Re-entry Watch' :
-    fragilityState === 'Breakdown Risk' ? 'High Risk' :
-    fragilityState === 'Fragile' ? 'Defensive Bias' :
-    fragilityState === 'Weak' ? 'Caution' : 'Normal'
-
-  const poolGuidance =
-    reentryStatus === 'Trial Eligible' || reentryStatus === 'Recovery Confirming' ? 'Pool may be redeployed selectively' :
-    fragilityState === 'Breakdown Risk' ? 'Raise pool aggressively' :
-    fragilityState === 'Weak' || fragilityState === 'Fragile' ? 'Raise pool gradually' :
-    'Maintain pool'
-
-  const buyAttemptSignal =
-    reentryStatus === 'Recovery Confirming' ? 'Recovery Attempt Active' :
-    reentryStatus === 'Trial Eligible' ? 'Limited Buy Attempt Reasonable' :
-    downsideState === 'Active Downside' ? 'Avoid Aggressive Buying' :
-    'Watch for Exhaustion'
-
-  return {
-    current,
-    target,
-    fragilityState,
-    eventState,
-    downsideState,
-    reentryStatus,
-    phaseMap,
-    leveragePosture,
-    poolGuidance,
-    buyAttemptSignal,
-    fragilityDrivers: {
-      drawdownVelocity,
-      trendFailure,
-      volatilityExpansion,
-      reboundFailure,
-    },
-  }
-}
-
-function classifyHeatmapState(item?: {
-  ret_1d: number | null
-  ret_5d: number | null
-  ret_20d: number | null
-  vol_surge: number | null
-  above_sma50: boolean | null
-  above_sma200: boolean | null
-}): HeatmapState {
-  if (
-    !item ||
-    item.ret_1d == null ||
-    item.ret_5d == null ||
-    item.ret_20d == null ||
-    item.vol_surge == null ||
-    item.above_sma50 == null ||
-    item.above_sma200 == null
-  ) {
-    return 'No Data'
-  }
-
-  const total =
-    (item.ret_20d <= -20 ? 3 : item.ret_20d <= -10 ? 2 : item.ret_20d <= -4 ? 1 : 0) +
-    (item.ret_5d <= -8 || item.ret_1d <= -6 ? 3 : item.ret_5d <= -5 || item.ret_1d <= -3 ? 2 : item.ret_5d <= -2 ? 1 : 0) +
-    (item.vol_surge >= 1.6 ? 3 : item.vol_surge >= 1.3 ? 2 : item.vol_surge >= 1.1 ? 1 : 0) +
-    (item.above_sma50 === false && item.above_sma200 === false ? 3 : item.above_sma50 === false ? 1 : 0)
-
-  return total >= 9 ? 'Breakdown Risk' : total >= 6 ? 'Fragile' : total >= 3 ? 'Weak' : 'Stable'
-}
-
-function heatmapTone(state: HeatmapState): CSSProperties {
-  if (state === 'Stable') {
-    return { border: '1px solid rgba(34,197,94,0.32)', background: 'rgba(34,197,94,0.12)', color: '#86efac' }
-  }
-  if (state === 'Weak') {
-    return { border: '1px solid rgba(250,204,21,0.32)', background: 'rgba(250,204,21,0.12)', color: '#fde68a' }
-  }
-  if (state === 'Fragile') {
-    return { border: '1px solid rgba(249,115,22,0.32)', background: 'rgba(249,115,22,0.12)', color: '#fdba74' }
-  }
-  if (state === 'Breakdown Risk') {
-    return { border: '1px solid rgba(239,68,68,0.32)', background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }
-  }
-  return { border: '1px solid rgba(100,116,139,0.26)', background: 'rgba(100,116,139,0.1)', color: '#94a3b8' }
-}
-
 function playbackStatusTone(status: VRPlaybackEventView['vr_support_status']): CSSProperties {
   if (status === 'ready') {
     return { border: '1px solid rgba(34,197,94,0.32)', background: 'rgba(34,197,94,0.12)', color: '#86efac' }
@@ -2660,9 +2577,9 @@ function PlaybackExplorerPanel({ playbackData }: { playbackData?: VRPlaybackView
   return (
     <div style={panelStyle()}>
       <SectionHeader
-        eyebrow="Playback Explorer"
-        title="Curated VR Test Suite"
-        note="Playback is a focused strategy research suite: crash tests, leverage stress cases, and corrections."
+        eyebrow="Historical Evidence"
+        title="Curated Response Archive"
+        note="Playback is a curated archive of stress cases and survival responses."
       />
       <div style={{ display: 'grid', gap: 12 }}>
         <div
@@ -2678,16 +2595,16 @@ function PlaybackExplorerPanel({ playbackData }: { playbackData?: VRPlaybackView
             alignItems: 'center',
           }}
         >
-          <div style={{ display: 'grid', gap: 6 }}>
-            <div style={{ color: '#f8fafc', fontSize: '1rem', fontWeight: 800 }}>
-              {events.length ? `${events.length} curated playback cases` : 'Playback archive not available'}
+            <div style={{ display: 'grid', gap: 6 }}>
+              <div style={{ color: '#f8fafc', fontSize: '1rem', fontWeight: 800 }}>
+                {events.length ? `${events.length} curated playback cases` : 'Playback archive not available'}
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '0.86rem', lineHeight: 1.55 }}>
+                {playbackData?.archive_event_count
+                ? `${playbackData.archive_event_count} raw archive events remain in the data layer, but the main UI now focuses on historical evidence and response comparison.`
+                : 'Open the playback explorer to compare current structure against curated historical response cases.'}
+              </div>
             </div>
-            <div style={{ color: '#94a3b8', fontSize: '0.86rem', lineHeight: 1.55 }}>
-              {playbackData?.archive_event_count
-                ? `${playbackData.archive_event_count} raw archive events remain in the data layer, but the main UI now focuses on the curated VR test suite.`
-                : 'Open the playback explorer to compare current structure against curated historical leverage cases.'}
-            </div>
-          </div>
           <a
             href="/vr-survival?tab=Playback"
             style={{
@@ -2697,7 +2614,7 @@ function PlaybackExplorerPanel({ playbackData }: { playbackData?: VRPlaybackView
               alignItems: 'center',
             }}
           >
-            Open Playback Explorer
+            과거 증거 열기
           </a>
         </div>
 
@@ -2744,8 +2661,8 @@ function MethodologyPanel() {
     <div style={panelStyle()}>
       <SectionHeader
         eyebrow="Methodology"
-        title="How The VR Engine Works"
-        note="Interpretation only. The engine summarizes risk structure, historical analogs, scenarios, and posture without forecasting exact outcomes."
+        title="How VR Studies Survival"
+        note="Interpretation only. The lab summarizes risk structure, historical evidence, scenarios, and posture without forecasting exact outcomes."
       />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <PlaceholderCard
@@ -2754,173 +2671,111 @@ function MethodologyPanel() {
           detail="QQQ, TQQQ, MA200 relation, volatility regime, drawdown depth, and rebound behavior."
         />
         <PlaceholderCard
-          label="Pattern Detection"
+          label="Pattern Memory"
           text="Pattern Memory"
           detail="Current structure is matched against the VR pattern library using deterministic rule scoring."
         />
         <PlaceholderCard
-          label="Historical Analogs"
+          label="Historical Evidence"
           text="Tagged Cases"
-          detail="The engine compares current conditions against curated VR-tagged historical events."
+          detail="The lab compares current conditions against curated VR-tagged historical events."
         />
         <PlaceholderCard
-          label="Scenario Engine"
+          label="Response Framework"
           text="Path Monitoring"
           detail="Scenario branches highlight downside risk, neutral monitoring, and recovery-attempt paths."
         />
         <PlaceholderCard
           label="Posture Messaging"
           text="Executive Summary"
-          detail="Suggested posture compresses the current structure into high-signal, non-deterministic guidance."
+          detail="Suggested posture compresses the current structure into high-value, non-deterministic guidance."
         />
       </div>
     </div>
   )
 }
 
-function OverviewTab({
-  data,
-  patternDashboard,
-  playbackData,
-  vrAudit,
-}: {
-  data: VRSurvivalData
-  patternDashboard?: VRDashboardPatternSummary | null
-  playbackData?: VRPlaybackView | null
-  vrAudit?: VrAuditViewPayload | null
-}) {
-  const vr = deriveVRState(data)
+function OverviewTab({ data }: { data: VRSurvivalData }) {
+  const current = data.current
+  const pool = `${current.pool_pct.toFixed(0)}%`
+  const exposure = `${current.exposure_pct.toFixed(0)}%`
+  const cooldown = current.shock_cooldown > 0 ? `${current.shock_cooldown}d` : 'Open'
+  const stateTone = current.survival_active ? '#34d399' : '#f59e0b'
+  const gateTone = current.shock_cooldown > 0 ? '#fb7185' : '#38bdf8'
+  const structuralState = current.structural_state ?? 'n/a'
+  const structuralTone = structuralState.toLowerCase().includes('shock')
+    ? '#fb7185'
+    : structuralState.toLowerCase().includes('recovery')
+      ? '#22c55e'
+      : '#cbd5e1'
+  const interpretation =
+    current.explain?.trim() ||
+    'Standard market context is translated into VR execution posture and replay links.'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={panelStyle({ borderColor: 'rgba(56,189,248,0.2)' })}>
         <SectionHeader
-          eyebrow="Current State"
-          title="Current Market Snapshot"
-          note="DB-backed market state, pattern match, and scenario posture summary for the current leveraged ETF regime."
+          eyebrow="Execution Context"
+          title="VR Strategy Context"
+          note="Standard owns market condition. VR converts that state into exposure, pool, cooldown, and replay navigation."
+          tone="#60a5fa"
         />
-        {patternDashboard?.snapshot ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-              <PlaceholderCard
-                label="Market Pattern"
-                text={patternDashboard.snapshot.market_pattern}
-                detail={`As of ${patternDashboard.snapshot.as_of_date}`}
-              />
-              <PlaceholderCard label="Nasdaq Drawdown" text={patternDashboard.snapshot.nasdaq_drawdown} />
-              <PlaceholderCard label="TQQQ Drawdown" text={patternDashboard.snapshot.tqqq_drawdown} />
-              <PlaceholderCard label="MA200 Status" text={patternDashboard.snapshot.ma200_status} />
-              <PlaceholderCard label="Market Structure" text={patternDashboard.snapshot.market_structure} />
-              <PlaceholderCard label="Volatility" text={patternDashboard.snapshot.volatility_regime} />
-            </div>
 
-            {patternDashboard.snapshot.recommended_posture.length ? (
-              <div
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: 16,
-                  padding: '1rem',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '0.71rem',
-                    color: '#94a3b8',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    marginBottom: 10,
-                  }}
-                >
-                  Recommended Posture
-                </div>
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {patternDashboard.snapshot.recommended_posture.slice(0, 3).map((item) => (
-                    <div key={item} style={{ color: '#e5e7eb', fontSize: '0.95rem', fontWeight: 700 }}>
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <PlaceholderCard
+            label="Execution State"
+            text={current.survival_active ? 'Active' : 'Standby'}
+            detail={current.survival_active ? 'VR posture is live.' : 'VR posture is waiting for confirmation.'}
+            tone={stateTone}
+          />
+          <PlaceholderCard
+            label="Pool / Exposure"
+            text={`${pool} / ${exposure}`}
+            detail="Cash reserve and invested share under the current execution frame."
+            tone="#38bdf8"
+          />
+          <PlaceholderCard
+            label="Cooldown"
+            text={cooldown}
+            detail={current.shock_cooldown > 0 ? 'Re-entry pause after shock handling.' : 'No cooldown blocking new execution.'}
+            tone={gateTone}
+          />
+          <PlaceholderCard
+            label="Structural Gate"
+            text={structuralState}
+            detail={`Days below MA200: ${current.days_below_ma200}`}
+            tone={structuralTone}
+          />
+        </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <a href="/vr-survival" style={{ ...tabStyle(false), textDecoration: 'none' }}>
-                View Closest Patterns
-              </a>
-              <a href="/vr-survival" style={{ ...tabStyle(false), textDecoration: 'none' }}>
-                Open Historical Analog
-              </a>
-              <a href="/vr-survival" style={{ ...tabStyle(false), textDecoration: 'none' }}>
-                View Scenario Playbook
-              </a>
-            </div>
+        <div
+          style={{
+            marginTop: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(56,189,248,0.14)',
+            borderLeft: '3px solid rgba(56,189,248,0.5)',
+            borderRadius: 16,
+            padding: '0.95rem 1rem',
+          }}
+        >
+          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+            Strategy Interpretation
           </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            <PlaceholderCard label="Market Pattern" text="Not Classified Yet" />
-            <PlaceholderCard label="Snapshot" text="Current market snapshot not available" />
+          <div style={{ color: '#e5e7eb', fontSize: '0.92rem', lineHeight: 1.65 }}>
+            {interpretation}
           </div>
-        )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <a href="/vr-survival?tab=Playback" style={{ ...tabStyle(false), textDecoration: 'none' }}>
+            Open Playback
+          </a>
+          <a href="/vr-survival?tab=Backtest" style={{ ...tabStyle(false), textDecoration: 'none' }}>
+            Open Backtest
+          </a>
+        </div>
       </div>
-
-      <SuggestedPostureStrip message={patternDashboard?.posture_message} />
-
-      <div style={panelStyle()}>
-        <SectionHeader
-          eyebrow="Pattern Memory"
-          title="Closest Pattern Matches"
-          note="Current-market historical analogs from the VR pattern engine."
-        />
-        {patternDashboard?.top_matches.length ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-            {patternDashboard.top_matches.slice(0, 3).map((match) => (
-              <div key={match.pattern_id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <PlaceholderCard
-                  label={match.pattern_name}
-                  text={match.score.toFixed(2)}
-                  detail={match.explanation?.join(' | ') ?? 'Historical analog overlap only.'}
-                />
-                <a
-                  href="/vr-survival"
-                  style={{ color: '#94a3b8', fontSize: '0.8rem', textDecoration: 'none', paddingLeft: 4 }}
-                >
-                  View in Playback
-                </a>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <PlaceholderCard label="Closest Pattern Matches" text="No pattern analog available yet" />
-        )}
-      </div>
-
-      <HistoricalAnalogPanel analogs={patternDashboard?.historical_analogs} />
-
-      <ScenarioEnginePanel
-        scenarios={patternDashboard?.scenarios ?? []}
-        suggested_posture={patternDashboard?.suggested_posture}
-        historical_analogs={patternDashboard?.historical_analogs}
-      />
-
-      <PlaybackExplorerPanel playbackData={playbackData} />
-
-      <MethodologyPanel />
-
-      <div
-        style={{
-          ...panelStyle(),
-          paddingTop: '1rem',
-          color: '#94a3b8',
-          fontSize: '0.84rem',
-          lineHeight: 1.65,
-        }}
-      >
-        {vr.current.explain}
-      </div>
-
-      {/* ── VR Execution Audit (WO-SA12) ── */}
-      {vrAudit && <VrActionAuditCard payload={vrAudit} />}
     </div>
   )
 }
@@ -3050,7 +2905,12 @@ function PlaybackTab({
   const marketRows = displayedExecutionVariant.market_chart.rows
   const cycleBoundaries = displayedExecutionVariant.market_chart.cycle_boundaries
   const cycleSummaries = displayedExecutionVariant.cycle_summaries
-  const focusWindow = displayedExecutionVariant.focus_window
+  // Keep Original VR auto-focus aligned with the scenario window so the daily axis
+  // and event window stay on the same time span across playback modes.
+  const focusWindow =
+    executionMode === 'original'
+      ? executionVariant.focus_window ?? displayedExecutionVariant.focus_window
+      : displayedExecutionVariant.focus_window
   const firstCycleStartDate =
     selected.cycle_framework.cycles[0]?.cycle_start_date ??
     cycleSummaries[0]?.start_date ??
@@ -3326,9 +3186,9 @@ function PlaybackTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={panelStyle()}>
         <SectionHeader
-          eyebrow="Playback"
-          title="Historical Event Playback"
-          note="Standard remains the master archive. VR adds readiness state, leveraged interpretation, and scenario mapping."
+          eyebrow="STEP 2 OF 3"
+          title="HISTORICAL EVIDENCE"
+          note="Playback과 Backtest가 유사한 과거 사례와 전략 결과를 보여줍니다."
         />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <div style={{ display: 'grid', gap: 12, width: '100%' }}>
@@ -3337,8 +3197,27 @@ function PlaybackTab({
                 <div style={{ color: '#94a3b8', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {group.group}
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {group.items.map((event) => {
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                  {[
+                    ...group.items,
+                    ...Array.from({ length: Math.max(0, 4 - group.items.length) }, (_, index) => ({
+                      placeholder: true,
+                      key: `${group.group}-placeholder-${index}`,
+                    })),
+                  ].map((entry) => {
+                    if ('placeholder' in entry) {
+                      return (
+                        <div
+                          key={entry.key}
+                          aria-hidden="true"
+                          style={{
+                            ...playbackEventCardStyle(false),
+                            visibility: 'hidden',
+                          }}
+                        />
+                      )
+                    }
+                    const event = entry
                     const on = event.id === selected.id
                     const tone = playbackStatusTone(event.vr_support_status)
                     return (
@@ -3346,23 +3225,20 @@ function PlaybackTab({
                         key={event.id}
                         type="button"
                         onClick={() => setSelId(event.id)}
-                        style={{
-                          ...tabStyle(on),
-                          textAlign: 'left',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 4,
-                          minWidth: 220,
-                        }}
+                        style={playbackEventCardStyle(on)}
                       >
-                        <span>{event.name}</span>
-                        <span style={{ color: '#94a3b8', fontSize: '0.72rem', lineHeight: 1.4 }}>{event.suite_note}</span>
+                        <span style={{ fontSize: '0.86rem', lineHeight: 1.35 }}>{event.name}</span>
+                        <span style={{ color: '#94a3b8', fontSize: '0.69rem', lineHeight: 1.45 }}>{event.suite_note}</span>
                         <span
                           style={{
-                            alignSelf: 'flex-start',
-                            padding: '2px 8px',
+                            display: 'inline-flex',
+                            alignSelf: 'start',
+                            justifySelf: 'start',
+                            width: 'fit-content',
+                            padding: '1px 6px',
                             borderRadius: 999,
-                            fontSize: '0.72rem',
+                            fontSize: '0.62rem',
+                            lineHeight: 1.15,
                             fontWeight: 800,
                             ...tone,
                           }}
@@ -3410,13 +3286,13 @@ function PlaybackTab({
 
       <div style={panelStyle()}>
         <SectionHeader
-          eyebrow="Execution Playback"
-          title="VR Execution Playback"
+          eyebrow="Scenario Playback"
+          title="VR Response Playback"
           note={
             playbackLayer === 'cycle'
-              ? 'Cycle View summarizes pool consumption, average execution conditions, and how each two-week cycle ended.'
+              ? 'Cycle View summarizes pool consumption, average response conditions, and how each two-week cycle ended.'
               : executionMode === 'compare'
-              ? 'Compare the original grid-following VR against the scenario overlay engine across portfolio path, pool preservation, and execution behavior.'
+              ? 'Compare the original playback baseline against the scenario overlay engine across portfolio path, pool preservation, and response behavior.'
               : 'Evaluation value path and V-band only. Price and cost remain in tooltip and the lower market chart.'
           }
         />
@@ -3496,7 +3372,7 @@ function PlaybackTab({
                 Full Event Cycle Overview
               </div>
               <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 12, lineHeight: 1.6 }}>
-                This chart compresses the full event into cycle-level checkpoints so you can see how evaluation value evolved across the entire replay.
+                This chart compresses the full event into cycle-level checkpoints so you can see how response value evolved across the entire replay.
               </div>
               <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart data={cycleChartRows} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
@@ -4136,7 +4012,7 @@ function PlaybackTab({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(280px, 0.8fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(280px, 0.8fr)', gap: 12 }}>
           <div style={{ ...panelStyle({ padding: '1rem', borderRadius: 16 }), boxShadow: 'none' }}>
             <SectionHeader eyebrow="Behavior Difference" title="Structural Comparison" />
             <div style={{ display: 'grid', gap: 10 }}>
@@ -4331,10 +4207,10 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
   if (!selected) {
     return (
       <PlaceholderSection
-        eyebrow="Strategy Arena"
-        title="Strategy Comparison Arena"
+        eyebrow="Survival Strategy"
+        title="Survival Strategy Arena"
         note="Historical strategy comparison is not available yet."
-        cards={[{ label: 'Strategy Arena', text: 'No event comparison data loaded' }]}
+        cards={[{ label: 'Response Comparison', text: 'No event comparison data loaded' }]}
       />
     )
   }
@@ -4351,7 +4227,15 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
       recovery_time_days: number | null
       exposure_stability_pct: number
     }
-  }> = displayStrategyKeys.reduce((rows, strategyKey) => {
+  }> = displayStrategyKeys.reduce<Array<{
+    strategyKey: StrategyArenaKey
+    metric: {
+      final_return_pct: number
+      max_drawdown_pct: number
+      recovery_time_days: number | null
+      exposure_stability_pct: number
+    }
+  }>>((rows, strategyKey) => {
     const metric = selected.metrics[strategyKey]
     if (metric) {
       rows.push({ strategyKey, metric })
@@ -4402,9 +4286,9 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={panelStyle()}>
         <SectionHeader
-          eyebrow="Strategy Arena"
-          title="Strategy Comparison Arena"
-          note="Same-condition TQQQ stress comparison. Warning comes before execution, and Arena remains a positioning tool rather than a winner-selection engine."
+          eyebrow="STEP 3 OF 3"
+          title="생존 전략"
+          note="VR, MA200, 저점 기반 회복, Buy & Hold를 같은 스트레스 구간에 놓고 어떤 방식이 버텼는지 비교합니다."
         />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           {events.map((event) => (
@@ -4415,8 +4299,8 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           {([
-            { key: 'charts', label: 'Charts' },
-            { key: 'test_setup', label: 'Test Setup' },
+            { key: 'charts', label: '차트' },
+            { key: 'test_setup', label: '설정 설명' },
           ] as const).map((item) => (
             <button key={item.key} type="button" onClick={() => setArenaViewMode(item.key)} style={tabStyle(arenaViewMode === item.key)}>
               {item.label}
@@ -4424,20 +4308,20 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
           ))}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          <PlaceholderCard label="Source Event" text={selected.standard_event_name} detail={`${selected.start} to ${selected.end}`} />
+          <PlaceholderCard label="기준 이벤트" text={selected.standard_event_name} detail={`${selected.start} ~ ${selected.end}`} />
           <PlaceholderCard
-            label="Execution Stack"
-            text="Forecast first, execution second"
+            label="실행 구조"
+            text="맥락을 먼저 읽고, 실행은 그다음"
             detail={
               selected.vr_source === 'survival_archive'
-                ? 'The warning layer is read-only. Arena execution engines remain local, and the survival archive is used only to provide VR Original defense and Vmin-buy intent.'
-                : 'The warning layer is read-only. Arena execution engines remain local, and no survival archive is attached for the VR Original reference.'
+                ? 'Standard가 현재 시장 맥락을 담당한다. Playback과 Backtest는 읽기 전용이며, survival archive는 VR Original의 방어 규칙과 Vmin-buy 의도를 참고값으로만 제공한다.'
+                : 'Standard가 현재 시장 맥락을 담당한다. Playback과 Backtest는 읽기 전용이며, VR Original 참고를 위한 survival archive는 연결되어 있지 않다.'
             }
           />
           <PlaceholderCard
             label="Playback"
-            text="Open Event Study"
-            detail={`Use /vr-survival?tab=Playback&event=${selected.playback_event_id} to review the full playback case.`}
+            text="과거 증거 열기"
+            detail={`/vr-survival?tab=Playback&event=${selected.playback_event_id}에서 전체 Playback 사례를 확인한다.`}
           />
         </div>
       </div>
@@ -4447,9 +4331,9 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
       {warningLayer ? (
       <div style={panelStyle({ padding: '1rem 1.1rem' })}>
         <SectionHeader
-          eyebrow="Forecast Layer"
-          title="Downside Warning State"
-          note="This system detects abnormal downside behavior before executing defensive actions. Warning does not equal trading."
+          eyebrow="맥락 레이어"
+          title="하방 대응 맥락"
+          note="이 레이어는 방어 행동 전에 나타난 비정상 하방 행동을 요약한다. 매매가 아니라 검토를 위한 맥락이다."
         />
         {overlayDisplayModel ? <OverlayScoreStrip model={overlayDisplayModel} /> : null}
         <div
@@ -4468,18 +4352,18 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
           />
           <PlaceholderCard
             compact
-            label="VR Band Context"
+            label="VR 밴드 맥락"
             text={`Level ${warningLayer.trigger_metrics.vr_band_level ?? 'n/a'}`}
             detail={strategyArena?.methodology.warning_layer_rule}
           />
-          <PlaceholderCard
-            compact
-            label="Overlay Status"
-            text={warningLayer.mc_overlay ? 'Available' : 'Unavailable'}
-            detail={
-              warningLayer.mc_overlay
-                ? `Dominant MC scenario: ${warningLayer.mc_overlay.dominantMcScenario} | Current regime: ${warningLayer.mc_overlay.mcCurrentRegime}`
-                : 'Monte Carlo overlay is optional. Rule-based warning remains primary.'
+            <PlaceholderCard
+              compact
+              label="오버레이 상태"
+              text={warningLayer.mc_overlay ? '사용 가능' : '사용 불가'}
+              detail={
+                warningLayer.mc_overlay
+                  ? `우세한 MC 시나리오: ${warningLayer.mc_overlay.dominantMcScenario} | 현재 레짐: ${warningLayer.mc_overlay.mcCurrentRegime}`
+                : 'Monte Carlo 오버레이는 선택 사항이며, 규칙 기반 맥락이 우선이다.'
             }
           />
         </div>
@@ -4507,8 +4391,8 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
               <PlaceholderCard
                 compact
                 label="Overlay Use"
-                text="Interpretive Only"
-                detail="Monte Carlo overlay summarizes how similar synthetic stress paths behaved. Overlay is interpretive, not executable."
+                text="해석용"
+                detail="Monte Carlo 오버레이는 비슷한 합성 스트레스 경로가 어떻게 움직였는지를 요약한다. 해석에는 쓰이지만 실행 신호는 아니다."
               />
             </div>
           </div>
@@ -4555,7 +4439,7 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
           <PlaceholderCard
             compact
             label={BACKTEST_COPY.backtest.conditions.labels.execution}
-            text="Close signal, next-session action"
+            text="Close review, next-session action"
             detail={BACKTEST_COPY.backtest.conditions.execution}
           />
           <PlaceholderCard
@@ -4574,16 +4458,16 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
       </div>
 
       <div style={panelStyle()}>
-        <SectionHeader
-          eyebrow="Metrics"
-          title="Final Return, Max Drawdown, Recovery Time, Exposure Stability"
-          note="Arena compares seven response profiles under the same starting allocation and next-bar execution rules."
+          <SectionHeader
+          eyebrow="지표"
+          title="최종 수익률, 최대 낙폭, 회복 시간, 노출 안정성"
+          note="Arena는 동일한 시작 자본과 다음 거래일 실행 규칙 아래에서 7개 응답 프로필을 비교합니다. Recovery Time은 가장 깊은 낙폭 지점에서 출발가 100을 다시 회복하는 순간까지의 일수입니다."
         />
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Strategy', 'Final Return', 'Max Drawdown', 'Recovery Time', 'Exposure Stability'].map((header) => (
+                {['전략', '최종 수익률', '최대 낙폭', '회복 시간(100 회복)', '노출 안정성'].map((header) => (
                   <th
                     key={header}
                     style={{
@@ -4652,14 +4536,14 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             {adaptiveMetric && buyHoldMetric ? (
               <div style={{ display: 'grid', gap: 4, fontSize: '0.82rem' }}>
                 <span style={{ color: arenaDeltaTone(adaptiveDrawdownDelta ?? 0) }}>
-                  DD vs B&amp;H {formatArenaDelta(adaptiveDrawdownDelta ?? 0)}
+                  B&amp;H 대비 낙폭 {formatArenaDelta(adaptiveDrawdownDelta ?? 0)}
                 </span>
                 <span style={{ color: arenaDeltaTone(adaptiveReturnDelta ?? 0) }}>
-                  Return vs B&amp;H {formatArenaDelta(adaptiveReturnDelta ?? 0)}
+                  B&amp;H 대비 수익률 {formatArenaDelta(adaptiveReturnDelta ?? 0)}
                 </span>
               </div>
             ) : (
-              <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Adaptive Exposure is unavailable for this event.</div>
+              <div style={{ color: '#64748b', fontSize: '0.8rem' }}>이 이벤트에서는 Adaptive Exposure를 사용할 수 없습니다.</div>
             )}
           </div>
           <div
@@ -4679,11 +4563,11 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             {ma200HalfMetric ? (
               <>
                 <div style={{ color: '#94a3b8', fontSize: '0.77rem', marginTop: 6 }}>
-                  MA200 (50%) {formatSignedPercent(ma200HalfMetric.final_return_pct)} | Max DD {formatSignedPercent(ma200HalfMetric.max_drawdown_pct)}
+                  MA200 (50%) 최종 수익률 {formatSignedPercent(ma200HalfMetric.final_return_pct)} | 최대 DD {formatSignedPercent(ma200HalfMetric.max_drawdown_pct)}
                 </div>
                 {ma200Lb30HybridMetric ? (
                   <div style={{ color: '#94a3b8', fontSize: '0.77rem', marginTop: 4 }}>
-                    MA200 + LB30 {formatSignedPercent(ma200Lb30HybridMetric.final_return_pct)} | Max DD {formatSignedPercent(ma200Lb30HybridMetric.max_drawdown_pct)}
+                    MA200 + LB30 최종 수익률 {formatSignedPercent(ma200Lb30HybridMetric.final_return_pct)} | 최대 DD {formatSignedPercent(ma200Lb30HybridMetric.max_drawdown_pct)}
                   </div>
                 ) : null}
               </>
@@ -4705,11 +4589,11 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             </div>
             {lowBasedLb30Metric ? (
               <div style={{ color: '#94a3b8', fontSize: '0.77rem', marginTop: 6 }}>
-                Final return {formatSignedPercent(lowBasedLb30Metric.final_return_pct)} | Max DD {formatSignedPercent(lowBasedLb30Metric.max_drawdown_pct)}
+                최종 수익률 {formatSignedPercent(lowBasedLb30Metric.final_return_pct)} | 최대 DD {formatSignedPercent(lowBasedLb30Metric.max_drawdown_pct)}
               </div>
             ) : (
               <div style={{ color: '#64748b', fontSize: '0.77rem', marginTop: 6 }}>
-                Default low-based recovery reference for this event.
+                이 이벤트에서는 기본 저점 회복 참고안으로 사용됩니다.
               </div>
             )}
           </div>
@@ -4729,11 +4613,11 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             </div>
             {originalVrMetric ? (
               <div style={{ color: '#94a3b8', fontSize: '0.77rem', marginTop: 6 }}>
-                Final return {formatSignedPercent(originalVrMetric.final_return_pct)} | Max DD {formatSignedPercent(originalVrMetric.max_drawdown_pct)}
+                최종 수익률 {formatSignedPercent(originalVrMetric.final_return_pct)} | 최대 DD {formatSignedPercent(originalVrMetric.max_drawdown_pct)}
               </div>
             ) : (
               <div style={{ color: '#64748b', fontSize: '0.77rem', marginTop: 6 }}>
-                VR Original (Capped) is hidden for this event because no survival archive is attached.
+                이 이벤트에는 survival archive가 연결되어 있지 않아 VR Original (Capped)를 숨깁니다.
               </div>
             )}
           </div>
@@ -4857,11 +4741,16 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
       </div>
 
       <div style={panelStyle()}>
-        <SectionHeader eyebrow="Method" title="Strategy Rules Used In This Arena" />
+        <SectionHeader eyebrow="방법" title="이 Arena에서 사용하는 전략 규칙" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-          <PlaceholderCard label="MA200 (50%)" text="80 -> 50 -> 80" detail={strategyArena?.methodology.ma200_rule} />
-          <PlaceholderCard label="MA200 + LB30" text="50% MA defense + low-based recovery" detail={strategyArena?.methodology.ma200_rule} />
-          <PlaceholderCard label="LB30 / LB25" text="Adaptive downside + low-based re-risk" detail={strategyArena?.methodology.vr_source_priority} />
+          <PlaceholderCard label="MA200 (50%)" text="80% 보유 -> MA200 아래면 50% -> MA200 회복 시 80%" detail={strategyArena?.methodology.ma200_rule} />
+          <PlaceholderCard label="MA200 + LB30" text="MA200 방어 + LB30 회복 사다리" detail={strategyArena?.methodology.ma200_rule} />
+          <PlaceholderCard
+            label="바닥 / 진입 규칙"
+            text="trackedLow = 사이클 최저 종가"
+            detail="이 전략에서 말하는 바닥은 전체 기간의 절대 최저가가 아닙니다. 방어 사이클이 시작된 뒤부터 현재까지의 최저 종가를 trackedLow에 저장하고, 더 낮은 값이 나오면 바닥도 함께 갱신합니다. 그래서 30% / 40% / 50%는 고점 대비 하락률이 아니라, 그 바닥 대비 반등률입니다. 즉 +30% 반등은 바닥에서 30% 오른 가격, +40%는 바닥에서 40% 오른 가격, +50%는 바닥에서 50% 오른 가격을 뜻합니다. 진입은 이 반등 신호가 나올 때마다 25%p, 25%p, 30%p씩 나누어 들어가며, 마지막 단계는 MA200 재돌파와 함께 발생할 수 있습니다."
+          />
+          <PlaceholderCard label="LB30 / LB25" text="Adaptive downside + low-based re-risk ladder" detail={strategyArena?.methodology.vr_source_priority} />
           <PlaceholderCard label="Adaptive Exposure" text="V-shape reference" detail={strategyArena?.methodology.vr_source_priority} />
           <PlaceholderCard
             label="VR Original (Capped)"
@@ -4869,19 +4758,19 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
             detail="Archive VR defense and Vmin-buy intent are replayed on the Arena-local TQQQ path, but rebuys stay capped so the baseline remains controlled."
           />
           <PlaceholderCard
-            label="Warning Layer"
-            text="Forecast first"
+            label="경고 레이어"
+            text="맥락 우선"
             detail={strategyArena?.methodology.warning_layer_rule}
           />
           <PlaceholderCard
-            label="Vmin Handling"
-            text="Visual only"
-            detail="Vmin remains a reference band for Arena warning and low-based engines. VR Original alone is allowed to reuse archive Vmin-buy intent, but those rebuys are capped by cycle capital and cash-preservation rules."
+            label="Vmin 처리"
+            text="참고용"
+            detail="Vmin은 Arena 경고 레이어와 저점 기반 엔진에서 참고 밴드로만 사용된다. VR Original만 아카이브의 Vmin-buy 의도를 재사용할 수 있지만, 그 재매수는 사이클 자본과 현금 보존 규칙으로 상한이 걸린다."
           />
         </div>
         <div style={{ marginTop: 12 }}>
           <a href={`/vr-survival?tab=Playback&event=${selected.playback_event_id}`} style={{ ...tabStyle(false), textDecoration: 'none' }}>
-            Open Playback For {selected.label}
+            {selected.label} Playback 열기
           </a>
         </div>
       </div>
@@ -4890,21 +4779,21 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
         <>
           <div style={panelStyle()}>
             <SectionHeader
-              eyebrow="Test Setup"
-              title="Initial Conditions"
-              note="Arena compares same-condition TQQQ paths. Playback remains a separate archive replay tab."
+              eyebrow="설정 설명"
+              title="초기 조건"
+              note="Arena는 같은 조건의 TQQQ 경로를 비교한다. Playback은 별도의 아카이브 재생 탭이다."
             />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              <PlaceholderCard compact label="Asset" text="TQQQ" detail="Common leveraged instrument across this Arena event." />
-              <PlaceholderCard compact label="Initial Value" text="100" detail="Normalized starting value for every visible curve." />
-              <PlaceholderCard compact label="Date Range" text={`${selected.start} to ${selected.end}`} detail="Current selected event window." />
-              <PlaceholderCard compact label="Price Series" text="Common TQQQ series" detail="All Arena curves are compared on the same TQQQ baseline." />
-              <PlaceholderCard compact label="Comparison Basis" text="Same-condition Arena" detail="Each strategy is measured inside the same event window." />
-              <PlaceholderCard compact label="Baseline Note" text="Common start, different path" detail="All curves start from the same baseline; only paths differ." />
+              <PlaceholderCard compact label="자산" text="TQQQ" detail="이 Arena 이벤트에서 공통으로 쓰는 레버리지 종목이다." />
+              <PlaceholderCard compact label="초기값" text="100" detail="모든 보이는 곡선은 100을 기준으로 정규화되어 시작한다." />
+              <PlaceholderCard compact label="기간" text={`${selected.start} to ${selected.end}`} detail="현재 선택된 이벤트 구간이다." />
+              <PlaceholderCard compact label="가격 시계열" text="공통 TQQQ 시계열" detail="모든 Arena 곡선은 같은 TQQQ 시계열 위에서 비교된다." />
+              <PlaceholderCard compact label="비교 기준" text="같은 조건의 Arena" detail="각 전략은 동일한 이벤트 구간 안에서만 측정된다." />
+              <PlaceholderCard compact label="기준 설명" text="출발점은 같고 경로만 다르다" detail="모든 곡선은 같은 시작점에서 출발하고, 전략별 경로만 달라진다." />
               {selected.adaptive_exposure_report ? (
                 <PlaceholderCard
                   compact
-                  label="Adaptive Start"
+                  label="Adaptive 시작값"
                   text={`${selected.adaptive_exposure_report.initial_state.exposure}%`}
                   detail={selected.adaptive_exposure_report.initial_state.reason}
                 />
@@ -4912,7 +4801,7 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
               {warningLayer ? (
                 <PlaceholderCard
                   compact
-                  label="Warning Start"
+                  label="경고 시작값"
                   text={formatWarningStateLabel(warningLayer.warning_state)}
                   detail={warningLayer.warning_reason}
                 />
@@ -4921,7 +4810,7 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
           </div>
 
           <div style={panelStyle()}>
-            <SectionHeader eyebrow="Strategy Notes" title="What Each Curve Represents" />
+            <SectionHeader eyebrow="전략 메모" title="각 곡선이 의미하는 것" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
               {visibleStrategyNotes.map((strategyKey) => (
                 <PlaceholderCard
@@ -4953,7 +4842,7 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
                 'Smaller drawdown = better downside control.',
                 'Curves are compared under the same TQQQ baseline.',
                 'VR Original uses archive VR defense and Vmin-buy intent, but applies it as a controlled Arena-local baseline with capped rebuys.',
-                'Warning state is forecast-first. It prepares interpretation and comparison, but does not directly trade.',
+                'Context state is review-first. It prepares interpretation and comparison, but does not directly trade.',
               ].map((note) => (
                 <div
                   key={note}
@@ -4974,23 +4863,23 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
           </div>
 
           <div style={panelStyle()}>
-            <SectionHeader
-              eyebrow="Quick Summary"
-              title="Current Event Snapshot"
-              note={metricRows.length ? 'Uses the visible Arena metrics for this selected event.' : 'Static explanatory text only.'}
-            />
+          <SectionHeader
+            eyebrow="요약"
+            title="현재 이벤트 요약"
+            note={metricRows.length ? '선택된 이벤트의 보이는 Arena 지표를 요약한다.' : '설명용 정적 텍스트만 표시한다.'}
+          />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
               <PlaceholderCard
                 compact
                 label="Highest Final Return"
-                text={bestFinalPerformer ? STRATEGY_LABELS[bestFinalPerformer.strategyKey] : 'Metrics not available'}
-                detail={bestFinalPerformer ? `Final return ${formatSignedPercent(bestFinalPerformer.metric.final_return_pct)} | Read as a positioning outcome, not a winner.` : 'Quick summary falls back to static setup guidance.'}
+                text={bestFinalPerformer ? STRATEGY_LABELS[bestFinalPerformer.strategyKey] : '지표 없음'}
+                detail={bestFinalPerformer ? `최종 수익률 ${formatSignedPercent(bestFinalPerformer.metric.final_return_pct)} | 포지셔닝 결과로 읽어야 하며, 승자로 해석하면 안 된다.` : '빠른 요약이 없으면 정적 설정 안내를 보여준다.'}
               />
               <PlaceholderCard
                 compact
                 label="Lowest Drawdown"
-                text={lowestDrawdownPerformer ? STRATEGY_LABELS[lowestDrawdownPerformer.strategyKey] : 'Metrics not available'}
-                detail={lowestDrawdownPerformer ? `Max drawdown ${formatSignedPercent(lowestDrawdownPerformer.metric.max_drawdown_pct)}` : 'Use the charts tab for visual inspection.'}
+                text={lowestDrawdownPerformer ? STRATEGY_LABELS[lowestDrawdownPerformer.strategyKey] : '지표 없음'}
+                detail={lowestDrawdownPerformer ? `최대 낙폭 ${formatSignedPercent(lowestDrawdownPerformer.metric.max_drawdown_pct)}` : '시각 검토는 차트 탭을 사용한다.'}
               />
               <PlaceholderCard
                 compact
@@ -4998,16 +4887,16 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
                 text={
                   adaptiveMetric && buyHoldMetric
                     ? adaptiveMetric.final_return_pct > buyHoldMetric.final_return_pct
-                      ? 'Adaptive Exposure finished above Buy & Hold'
+                      ? 'Adaptive Exposure가 Buy & Hold보다 높게 끝났다'
                       : adaptiveMetric.final_return_pct < buyHoldMetric.final_return_pct
-                        ? 'Adaptive Exposure finished below Buy & Hold'
-                        : 'Adaptive Exposure matched Buy & Hold'
-                    : 'Adaptive Exposure not available'
+                        ? 'Adaptive Exposure가 Buy & Hold보다 낮게 끝났다'
+                        : 'Adaptive Exposure가 Buy & Hold와 같게 끝났다'
+                    : 'Adaptive Exposure를 사용할 수 없다'
                 }
                 detail={
                   adaptiveMetric && buyHoldMetric
-                    ? `${formatSignedPercent(adaptiveMetric.final_return_pct)} vs ${formatSignedPercent(buyHoldMetric.final_return_pct)} final return`
-                    : 'Adaptive metrics are unavailable for this event.'
+                    ? `최종 수익률 ${formatSignedPercent(adaptiveMetric.final_return_pct)} vs ${formatSignedPercent(buyHoldMetric.final_return_pct)}`
+                    : '이 이벤트에서는 Adaptive 지표를 사용할 수 없다.'
                 }
               />
               <PlaceholderCard
@@ -5022,8 +4911,8 @@ function BacktestTab({ strategyArena }: { strategyArena?: StrategyArenaView | nu
                 }
                 detail={
                   lowBasedLb30Metric && lowBasedLb25Metric
-                    ? `${formatSignedPercent(lowBasedLb30Metric.final_return_pct)} vs ${formatSignedPercent(lowBasedLb25Metric.final_return_pct)} final return`
-                    : 'This card compares the two low-based recovery ladders for the selected event.'
+                    ? `최종 수익률 ${formatSignedPercent(lowBasedLb30Metric.final_return_pct)} vs ${formatSignedPercent(lowBasedLb25Metric.final_return_pct)}`
+                    : '이 카드는 선택된 이벤트에서 두 개의 저점 회복 사다리를 비교한다.'
                 }
               />
             </div>
@@ -5111,7 +5000,7 @@ function PoolLogicTab() {
               </td>
               <td style={{ padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#cbd5e1' }}>25-35%</td>
               <td style={{ padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#cbd5e1' }}>Reduce leverage</td>
-              <td style={{ padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#cbd5e1' }}>Wait for recovery signals</td>
+              <td style={{ padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#cbd5e1' }}>Wait for recovery confirmation</td>
             </tr>
             <tr>
               <td style={{ padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#ef4444', fontWeight: 800 }}>
@@ -5140,7 +5029,7 @@ function OptionsOverlayTab() {
       <SectionHeader
         eyebrow="Advanced Overlay"
         title="Options Overlay"
-        note="Supplementary only. This tab does not override VR signals."
+        note="Supplementary only. This tab does not override VR interpretation."
       />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(220px, 1fr))', gap: 12 }}>
         <PlaceholderCard label="Put/Call Ratio" text="Advanced overlay placeholder" />
@@ -5156,7 +5045,7 @@ function PhilosophyTab({ runId }: { runId: string }) {
     <div style={panelStyle()}>
       <SectionHeader
         eyebrow="Philosophy"
-        title="VR Survival Framework"
+        title="VR Survival Lab Framework"
         note={`Loaded from vr_survival.json (${runId}).`}
       />
       <div
@@ -5170,67 +5059,11 @@ function PhilosophyTab({ runId }: { runId: string }) {
           fontSize: '0.98rem',
         }}
       >
-        <div>Standard defines the environment.</div>
-        <div>VR defines leverage exposure.</div>
-        <div style={{ marginTop: 10 }}>Standard evaluates systemic conditions.</div>
-        <div>VR controls leverage exposure and survival posture.</div>
-        <div style={{ marginTop: 10 }}>VR may turn defensive earlier than Standard.</div>
-      </div>
-    </div>
-  )
-}
-
-function LeverageStressHeatmap({ heatmapData }: { heatmapData?: ETFRoomData | null }) {
-  const leverageItems = heatmapData?.sections?.leverage?.items ?? []
-  const rows = HEATMAP_SYMBOLS.map((symbol) => {
-    const item = leverageItems.find((entry) => entry.symbol === symbol)
-    return {
-      symbol,
-      item,
-      state: classifyHeatmapState(item),
-    }
-  })
-
-  return (
-    <div style={panelStyle()}>
-      <SectionHeader
-        eyebrow="System View"
-        title="Leverage Stress Heatmap"
-        note="Green stable, yellow weak, orange fragile, red breakdown risk. Missing backend rows remain no data."
-      />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-        {rows.map((row) => {
-          const tone = heatmapTone(row.state)
-
-          return (
-            <div
-              key={row.symbol}
-              style={{
-                borderRadius: 16,
-                padding: '1rem',
-                minHeight: 132,
-                ...tone,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '0.71rem',
-                  color: '#cbd5e1',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                }}
-              >
-                {row.symbol}
-              </div>
-              <div style={{ fontSize: '1rem', fontWeight: 800, marginTop: 10 }}>{row.state}</div>
-              <div style={{ color: '#cbd5e1', fontSize: '0.8rem', lineHeight: 1.5, marginTop: 10 }}>
-                {row.item
-                  ? `20d ${row.item.ret_20d?.toFixed(1)}% | 5d ${row.item.ret_5d?.toFixed(1)}% | Vol ${row.item.vol_surge?.toFixed(2)}x`
-                  : 'No existing output row in etf_room.json'}
-              </div>
-            </div>
-          )
-        })}
+        <div>Standard detects risk.</div>
+        <div>VR studies response strategy.</div>
+        <div style={{ marginTop: 10 }}>Standard is the source of market context.</div>
+        <div>VR shows which response strategies held up.</div>
+        <div style={{ marginTop: 10 }}>{SURVIVAL_ROLE_SPLIT_COPY}</div>
       </div>
     </div>
   )
@@ -5238,44 +5071,35 @@ function LeverageStressHeatmap({ heatmapData }: { heatmapData?: ETFRoomData | nu
 
 export default function VRSurvival({
   data,
-  heatmapData,
-  patternDashboard,
   playbackData,
   strategyArena,
   initialTab,
   initialPlaybackEventId,
-  vrAudit,
   vrTimeline,
-  iaPayload,
   simParams,
 }: {
   data: VRSurvivalData
-  heatmapData?: ETFRoomData | null
-  patternDashboard?: VRDashboardPatternSummary | null
   playbackData?: VRPlaybackView | null
   strategyArena?: StrategyArenaView | null
   initialTab?: Tab
   initialPlaybackEventId?: string
-  vrAudit?: VrAuditViewPayload | null
   vrTimeline?: VrTimelineRow[] | null
-  iaPayload?: InvestorActionViewPayload | null
   simParams?: { event_id?: string; sim_start?: string; sim_capital?: string; sim_stock_pct?: string }
 }) {
-  const [tab, setTab] = useState<Tab>(TABS.includes(initialTab ?? 'Overview') ? (initialTab as Tab) : 'Overview')
+  const initialVisibleTab =
+    initialTab === 'Overview' || initialTab === 'Playback' || initialTab === 'Backtest'
+      ? initialTab
+      : 'Overview'
+  const [tab, setTab] = useState<Tab>(initialVisibleTab)
   const [fetchedPlayback, setFetchedPlayback] = useState<VRPlaybackView | null>(null)
-  const [playbackLoading, setPlaybackLoading] = useState(false)
   const [fetchedArena, setFetchedArena] = useState<StrategyArenaView | null>(null)
-  const [arenaLoading, setArenaLoading] = useState(false)
-  const [fetchedPatternDashboard, setFetchedPatternDashboard] = useState<VRDashboardPatternSummary | null>(null)
   const playbackFetchRef = useRef(false)
   const arenaFetchRef = useRef(false)
-  const patternDashboardFetchRef = useRef(false)
 
-  // Fetch playback data on mount (used by Overview, Playback, Strategy Lab tabs)
+  // Fetch playback data on mount (used by Overview and Playback tabs)
   useEffect(() => {
     if (playbackFetchRef.current) return
     playbackFetchRef.current = true
-    setPlaybackLoading(true)
     const params = new URLSearchParams()
     if (simParams?.event_id) params.set('event_id', simParams.event_id)
     if (simParams?.sim_start) params.set('sim_start', simParams.sim_start)
@@ -5286,18 +5110,6 @@ export default function VRSurvival({
       .then((r) => (r.ok ? r.json() : null))
       .then((data: VRPlaybackView | null) => setFetchedPlayback(data))
       .catch(() => {})
-      .finally(() => setPlaybackLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Fetch pattern dashboard on mount (lazy — removes SSR computation from page.tsx)
-  useEffect(() => {
-    if (patternDashboardFetchRef.current) return
-    patternDashboardFetchRef.current = true
-    fetch('/api/vr-pattern-dashboard')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: VRDashboardPatternSummary | null) => setFetchedPatternDashboard(data))
-      .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -5306,50 +5118,39 @@ export default function VRSurvival({
     if (tab !== 'Backtest') return
     if (arenaFetchRef.current) return
     arenaFetchRef.current = true
-    setArenaLoading(true)
     fetch('/api/vr-arena')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: StrategyArenaView | null) => setFetchedArena(data))
       .catch(() => {})
-      .finally(() => setArenaLoading(false))
   }, [tab])
 
   const effectivePlayback = fetchedPlayback ?? playbackData ?? null
   const effectiveArena = fetchedArena ?? strategyArena ?? null
-  const effectivePatternDashboard = fetchedPatternDashboard ?? patternDashboard ?? null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          padding: '0.35rem',
+          borderRadius: 18,
+          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(255,255,255,0.02)',
+          width: 'fit-content',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+        }}
+      >
         {TABS.map((item) => (
-          <button key={item} type="button" onClick={() => setTab(item)} style={tabStyle(tab === item)}>
+          <button key={item} type="button" onClick={() => setTab(item)} style={tabStyle(item, tab === item)}>
             {item}
           </button>
         ))}
       </div>
 
-      {/* ── Investor posture compact strip (SA17) ── */}
-      {iaPayload && (
-        <div style={{
-          display:       'flex',
-          alignItems:    'center',
-          gap:           8,
-          background:    'rgba(255,255,255,0.02)',
-          border:        '1px solid rgba(255,255,255,0.05)',
-          borderRadius:  8,
-          padding:       '5px 12px',
-          flexWrap:      'wrap',
-        }}>
-          <span style={{ color: '#4B5563', fontSize: '0.62rem', fontWeight: 700 }}>Investor posture</span>
-          <InvestorActionBadgeRow posture={iaPayload.action_posture} size="sm" />
-          {iaPayload.constraints.length > 0 && (
-            <span style={{ color: '#6B7280', fontSize: '0.62rem' }}>· {iaPayload.constraints[0]}</span>
-          )}
-        </div>
-      )}
-
       {tab === 'Overview' ? (
-        <OverviewTab data={data} patternDashboard={effectivePatternDashboard} playbackData={effectivePlayback} vrAudit={vrAudit} />
+        <OverviewTab data={data} />
       ) : null}
       {tab === 'Playback' ? (
         <PlaybackTab playbackData={effectivePlayback} initialPlaybackEventId={initialPlaybackEventId} />
@@ -5367,15 +5168,15 @@ export default function VRSurvival({
             padding: '0.75rem 1rem',
           }}>
             <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.13em', fontWeight: 600, marginBottom: 6 }}>
-              Crash Analysis · Validation Layer
+              Crash Analysis 쨌 Validation Layer
             </div>
             <div style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.55 }}>
               Use this view to validate the AI interpretation above against observed engine behavior.
-              Pattern matches and historical analogs here should confirm or challenge the scenarios in the AI panel — not replace them.
-              Discrepancies between AI scenario probabilities and historical pattern data are signal, not noise.
+              Pattern matches and historical analogs here should confirm or challenge the scenarios in the AI panel ??not replace them.
+              Discrepancies between AI scenario probabilities and historical pattern data are evidence, not noise.
             </div>
           </div>
-          <OverviewTab data={data} patternDashboard={effectivePatternDashboard} playbackData={effectivePlayback} vrAudit={vrAudit} />
+          <OverviewTab data={data} />
         </div>
       ) : null}
       {tab === 'Strategy Lab' ? (
@@ -5384,7 +5185,7 @@ export default function VRSurvival({
       {tab === 'Timeline' ? (
         <VrTimelinePanel rows={vrTimeline} useSampleData={true} />
       ) : null}
-      <LeverageStressHeatmap heatmapData={heatmapData} />
     </div>
   )
 }
+

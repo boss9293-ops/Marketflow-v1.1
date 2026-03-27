@@ -328,6 +328,7 @@ function normalizeCurve(points: Array<{ date: string; value: number; exposure: n
 
 function computeRecoveryTimeDays(curve: Array<{ equity: number }>) {
   if (!curve.length) return null
+  const baseline = curve[0].equity
   let peak = curve[0].equity
   let troughIndex = 0
   let troughDrawdown = 0
@@ -343,9 +344,9 @@ function computeRecoveryTimeDays(curve: Array<{ equity: number }>) {
 
   if (troughDrawdown === 0) return 0
 
-  const targetPeak = curve.slice(0, troughIndex + 1).reduce((best, point) => Math.max(best, point.equity), curve[0].equity)
   for (let index = troughIndex + 1; index < curve.length; index += 1) {
-    if (curve[index].equity >= targetPeak) {
+    // Recovery is measured against the starting equity baseline, not the prior peak.
+    if (curve[index].equity >= baseline) {
       return index - troughIndex
     }
   }
@@ -2344,7 +2345,7 @@ export function buildStrategyArena(input: {
         : null
     const extendedRealTqqqHistory = buildExtendedRealTqqqHistory(
       standardEvent,
-      input.standardArchive.events,
+      input.standardArchive!.events,
       visibleStart
     )
     const realTqqqDates = extendedRealTqqqHistory.map((point) => point.date)
@@ -2485,7 +2486,9 @@ export function buildStrategyArena(input: {
       if (!vals?.length) return
       const first = vals.find(v => v != null)
       const warn = (first != null && Math.abs(first - 100) > 0.5) ? ' ⚠ DOES NOT START AT 100' : ''
-      console.log(`Arena ${event.label} | ${name} | asset=TQQQ | start=${startDate} | first5=${first5(vals)}${warn}`)
+      if (process.env.ARENA_DEBUG_LOGS === '1') {
+        console.log(`Arena ${event.label} | ${name} | asset=TQQQ | start=${startDate} | first5=${first5(vals)}${warn}`)
+      }
     })
     return event
   })
@@ -2494,10 +2497,13 @@ export function buildStrategyArena(input: {
   return {
     events,
     methodology: {
-      fixed_stop_loss_rule: 'Exit after a 12% instrument drawdown from entry peak. Re-enter on MA50 reclaim with improving price.',
-      ma200_rule: 'By close, compare TQQQ against its own 200-day moving average. MA200 (50%) starts from the shared 80 / 20 Arena allocation, reduces exposure to 50% below MA200, and restores to the 80% invested cap above it. MA200 + LB30 keeps the same MA200 defense, then re-adds risk through the LB30 rebound ladder while preserving the same next-bar execution timing.',
-      vr_source_priority: 'All Arena strategies now start from the same 80% invested / 20% cash allocation. LB30 and LB25 keep the existing Adaptive downside evidence: shock (dd3/dd5), trend breakdown versus TQQQ MA200, and panic drawdown. Re-entry is low-based and cycle-bound, with per-cycle capital capped and recovery exposure constrained. Adaptive Exposure remains unchanged as the V-shape reference. VR Original now reuses archive VR defense and Vmin-buy intent on the Arena-local TQQQ path, but caps cycle rebuys at 50% total added capital and preserves at least 20% cash.',
-      warning_layer_rule: 'The warning layer quantizes downside behavior with dd3, dd5, dd6, peak drawdown expansion, MA200 distance, and VR-band context to move through NORMAL, WATCH, ALERT, DEFENSE_READY, DEFENSE_ACTIVE, and RECOVERY_MODE. It produces a scenario hint for handoff and interpretation, but it does not directly trade.',
+      fixed_stop_loss_rule: '진입 이후 고점 대비 12% 하락하면 전량 이탈하고, 다시 MA50을 회복하면서 가격 흐름이 좋아질 때만 재진입한다.',
+      ma200_rule:
+        '종가 기준으로 TQQQ가 자체 200일 이동평균선(MA200) 아래로 마감되면 MA200 (50%) 전략은 보유 비중을 50%로 줄인다. 그리고 첫 번째로 다시 MA200 위에서 종가가 마감되면 80% 투자 cap으로 복귀한다. MA200 + LB30은 여기서 끝나지 않는다. 먼저 MA200 방어로 50%까지 줄인 뒤, 같은 하락 사이클에서 기록된 최저 종가(trackedLow)를 바닥으로 삼아 바닥 대비 반등 폭을 본다. 바닥 대비 +30% 반등하면 25%p, +40% 반등하면 추가 25%p, +50% 반등하거나 MA200을 다시 회복하면 추가 30%p를 더해 최대 80% 투자 cap까지 단계적으로 복귀한다. 여기서 30/40/50은 고점 대비 하락률이 아니라 바닥 대비 반등률이다.',
+      vr_source_priority:
+        '모든 Arena 전략은 동일한 80% 투자 / 20% 현금 출발점에서 시작한다. LB30과 LB25는 Adaptive 계열에서 쓰던 하락 evidence를 그대로 유지한다. 즉 3일/5일 급락, TQQQ의 MA200 이탈, panic drawdown을 방어 근거로 사용한다. 이후의 재진입은 사이클 최저 종가를 바닥으로 삼는 low-based recovery ladder로 진행되며, 사이클당 투입 가능한 자본과 회복 중 노출 비율 모두 상한이 있다. Adaptive Exposure는 V자 회복의 기준점으로 남아 있고, VR Original은 아카이브 VR 방어와 Vmin-buy 의도를 Arena-local TQQQ 경로에 재사용하되, 사이클 추가매수는 50% 총자본 cap으로 묶고 현금은 최소 20%를 유지한다.',
+      warning_layer_rule:
+        'Warning layer는 dd3, dd5, dd6, 고점 대비 낙폭 확장, MA200 거리, VR band 맥락을 수치화해 NORMAL, WATCH, ALERT, DEFENSE_READY, DEFENSE_ACTIVE, RECOVERY_MODE를 구분한다. 다만 이 레이어는 직접 매매하지 않고, 다음 단계 해석과 핸드오프를 위한 참고 신호만 제공한다.',
     },
   }
 }

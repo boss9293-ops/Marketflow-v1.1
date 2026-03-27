@@ -1,20 +1,23 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-
-type BriefResponse = {
-  paragraphs?: string[]
-  warnings?: string[]
-  provider?: string
-  model?: string
-  fetchedAt?: string
-}
+import {
+  normalizeAiBriefing,
+  selectBriefingParagraphs,
+  selectBriefingWarnings,
+  type AiBriefing,
+} from '@/lib/aiBriefing'
+import { pickLang, useLangMode } from '@/lib/useLangMode'
+import type { UiLang } from '@/lib/uiLang'
+import { UI_TEXT } from '@/lib/uiText'
 
 type GeminiBriefingPanelProps = {
   asofDay?: string | null
+  outputLang?: UiLang
 }
 
-const CACHE_KEY_PREFIX = 'daily-briefing:gemini:'
+const CACHE_KEY_PREFIX = 'ai-brief:integrated:'
+const API_PATH = '/api/ai/integrated'
 
 const formatLocalDate = (d: Date) => {
   const y = d.getFullYear()
@@ -23,85 +26,92 @@ const formatLocalDate = (d: Date) => {
   return `${y}-${m}-${day}`
 }
 
-export default function GeminiBriefingPanel({ asofDay }: GeminiBriefingPanelProps) {
-  const [paragraphs, setParagraphs] = useState<string[]>([])
-  const [warnings, setWarnings] = useState<string[]>([])
-  const [provider, setProvider] = useState<string>('auto')
-  const [model, setModel] = useState<string>('')
+export default function GeminiBriefingPanel({ asofDay, outputLang }: GeminiBriefingPanelProps) {
+  const uiLang = useLangMode()
+  const resolvedOutputLang = outputLang ?? uiLang
+  const [briefing, setBriefing] = useState<AiBriefing | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
 
   const effectiveAsof = useMemo(() => asofDay || formatLocalDate(new Date()), [asofDay])
-  const cacheKey = useMemo(() => `${CACHE_KEY_PREFIX}${effectiveAsof}`, [effectiveAsof])
+  const cacheKey = useMemo(
+    () => `${CACHE_KEY_PREFIX}${effectiveAsof}:${resolvedOutputLang}`,
+    [effectiveAsof, resolvedOutputLang]
+  )
 
   useEffect(() => {
-    if (!effectiveAsof || !cacheKey) return
+    if (!effectiveAsof) return
+
+    let active = true
+    let cacheHit = false
+
     try {
       const cachedRaw = localStorage.getItem(cacheKey)
       if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw) as BriefResponse
-        if (Array.isArray(cached.paragraphs)) {
-          setParagraphs(cached.paragraphs)
-          setWarnings(Array.isArray(cached.warnings) ? cached.warnings : [])
-          setProvider(typeof cached.provider === 'string' ? cached.provider : 'auto')
-          setModel(typeof cached.model === 'string' ? cached.model : '')
-          return
-        }
+        setBriefing(normalizeAiBriefing(JSON.parse(cachedRaw)))
+        cacheHit = true
       }
     } catch {
       // ignore cache errors
     }
 
+    setLoading(!cacheHit)
+    setError(null)
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 20000)
-    setLoading(true)
-    setError(null)
-    fetch('/api/live-brief', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        asof: effectiveAsof,
-        forceRefresh: refreshToken > 0,
-      }),
+
+    fetch(API_PATH, {
+      headers: { Accept: 'application/json' },
       signal: controller.signal,
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to load daily review')
-        return res.json()
+        if (!res.ok) {
+          let rerunHint = ''
+          try {
+            const payload = await res.json()
+            if (payload && typeof payload === 'object' && typeof payload.rerun_hint === 'string') {
+              rerunHint = ` ${payload.rerun_hint}`
+            }
+          } catch {
+            // ignore error body parsing
+          }
+          throw new Error(`Cached integrated brief unavailable (${res.status}).${rerunHint}`)
+        }
+        return normalizeAiBriefing(await res.json())
       })
-      .then((data: BriefResponse) => {
-        setParagraphs(Array.isArray(data.paragraphs) ? data.paragraphs : [])
-        setWarnings(Array.isArray(data.warnings) ? data.warnings : [])
-        setProvider(typeof data.provider === 'string' ? data.provider : 'auto')
-        setModel(typeof data.model === 'string' ? data.model : '')
+      .then((data) => {
+        if (!active) return
+        setBriefing(data)
         try {
-          localStorage.setItem(
-            cacheKey,
-            JSON.stringify({
-              paragraphs: data.paragraphs ?? [],
-              warnings: data.warnings ?? [],
-              provider: data.provider ?? 'auto',
-              model: data.model ?? '',
-            })
-          )
+          localStorage.setItem(cacheKey, JSON.stringify(data))
         } catch {
           // ignore cache write errors
         }
       })
       .catch((err: Error) => {
+        if (!active || cacheHit) return
         setError(err.name === 'AbortError' ? 'Timeout' : err.message)
+        setBriefing(null)
       })
       .finally(() => {
+        if (!active) return
         clearTimeout(timeout)
         setLoading(false)
       })
 
     return () => {
+      active = false
       clearTimeout(timeout)
       controller.abort()
     }
-  }, [effectiveAsof, cacheKey, refreshToken])
+  }, [cacheKey, effectiveAsof, refreshToken])
+
+  const paragraphs = briefing ? selectBriefingParagraphs(briefing, resolvedOutputLang) : []
+  const warnings = briefing ? selectBriefingWarnings(briefing, resolvedOutputLang) : []
+  const provider = briefing?.provider || 'cache'
+  const model = briefing?.model || ''
 
   const handleRefresh = () => {
     if (!cacheKey) return
@@ -110,34 +120,33 @@ export default function GeminiBriefingPanel({ asofDay }: GeminiBriefingPanelProp
     } catch {
       // ignore storage errors
     }
-    setRefreshToken((v) => v + 1)
-    setParagraphs([])
-    setWarnings([])
-    setProvider('auto')
-    setModel('')
+    setBriefing(null)
     setError(null)
-    setLoading(false)
+    setLoading(true)
+    setRefreshToken((v) => v + 1)
   }
 
   if (!effectiveAsof) {
     return (
       <div style={{ fontSize: '0.78rem', color: '#9ca3af' }}>
-        Daily review unavailable (missing date).
+        {pickLang(uiLang, '일간 브리핑을 표시할 날짜가 없습니다.', 'Daily briefing unavailable (missing date).')}
       </div>
     )
   }
 
   return (
-    <div style={{
-      marginTop: 14,
-      padding: '0.75rem 0.9rem',
-      borderRadius: 10,
-      border: '1px solid rgba(255,255,255,0.08)',
-      background: 'rgba(255,255,255,0.02)',
-    }}>
+    <div
+      style={{
+        marginTop: 14,
+        padding: '0.75rem 0.9rem',
+        borderRadius: 10,
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(255,255,255,0.02)',
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', color: '#60a5fa', fontWeight: 700 }}>
-          AI DAILY REVIEW
+          {pickLang(uiLang, 'AI 통합 브리핑', 'AI Integrated Brief')}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
@@ -156,15 +165,31 @@ export default function GeminiBriefingPanel({ asofDay }: GeminiBriefingPanelProp
               cursor: 'pointer',
             }}
           >
-            Refresh
+            {UI_TEXT.common.refresh[uiLang]}
           </button>
         </div>
       </div>
-      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8, color: '#e5e7eb', fontSize: '0.78rem', lineHeight: 1.6 }}>
-        {loading && <div style={{ color: '#9ca3af' }}>Loading daily review...</div>}
-        {!loading && error && <div style={{ color: '#f87171' }}>Failed to load daily review: {error}</div>}
+      <div
+        style={{
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          color: '#e5e7eb',
+          fontSize: '0.78rem',
+          lineHeight: 1.6,
+        }}
+      >
+        {loading && <div style={{ color: '#9ca3af' }}>{UI_TEXT.common.loading[uiLang]}</div>}
+        {!loading && error && (
+          <div style={{ color: '#f87171' }}>
+            {pickLang(uiLang, '캐시된 통합 브리핑을 불러오지 못했습니다.', 'Failed to load cached integrated brief.')}: {error}
+          </div>
+        )}
         {!loading && !error && paragraphs.length === 0 && (
-          <div style={{ color: '#9ca3af' }}>Daily review is not ready yet.</div>
+          <div style={{ color: '#9ca3af' }}>
+            {pickLang(uiLang, '통합 브리핑이 아직 준비되지 않았습니다.', 'Integrated briefing is not ready yet.')}
+          </div>
         )}
         {!loading && !error && paragraphs.map((p, idx) => (
           <div key={`gemini-${idx}`}>{p}</div>

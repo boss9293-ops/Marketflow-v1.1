@@ -1,20 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { normalizeUiLang, pickLang, type UiLang } from '@/lib/uiLang'
 
-export type LangMode = 'ko' | 'en'
+export type LangMode = UiLang
 
-export function useLangMode(): LangMode {
-  const [mode, setMode] = useState<LangMode>('ko')
+export function useUiLang(initialUiLang: UiLang = 'ko'): UiLang {
+  const [mode, setMode] = useState<UiLang>(() => {
+    if (typeof document === 'undefined') return initialUiLang
+    return normalizeUiLang(document.documentElement.getAttribute('data-lang-mode'))
+  })
 
   useEffect(() => {
-    const apply = () => {
-      const v = document.documentElement.getAttribute('data-lang-mode')
-      setMode(v === 'en' ? 'en' : 'ko')
+    const sync = () => {
+      setMode(normalizeUiLang(document.documentElement.getAttribute('data-lang-mode')))
     }
-    apply()
 
-    const mo = new MutationObserver(() => apply())
+    sync()
+
+    const mo = new MutationObserver(sync)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-lang-mode'] })
     return () => mo.disconnect()
   }, [])
@@ -22,6 +26,8 @@ export function useLangMode(): LangMode {
   return mode
 }
 
-export function pickLang(mode: LangMode, ko: string, en: string): string {
-  return mode === 'ko' ? ko : en
+export function useLangMode(): UiLang {
+  return useUiLang()
 }
+
+export { pickLang }

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 
 // ── 타입 ──────────────────────────────────────────────
 interface TrailPoint { ratio: number; momentum: number }
@@ -133,15 +133,13 @@ function drawRRG(
     ctx.fillText(label, lx, ly)
   })
 
-  // 격자선
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'
-  ctx.lineWidth = 1
+  // 격자선 (1단위)
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'
+  ctx.lineWidth = 0.8
   for (let v = Math.ceil(xMin); v <= Math.floor(xMax); v++) {
-    if (v % 2 !== 0) continue
     ctx.beginPath(); ctx.moveTo(toX(v), PAD.top); ctx.lineTo(toX(v), PAD.top + plotH); ctx.stroke()
   }
   for (let v = Math.ceil(yMin); v <= Math.floor(yMax); v++) {
-    if (v % 2 !== 0) continue
     ctx.beginPath(); ctx.moveTo(PAD.left, toY(v)); ctx.lineTo(PAD.left + plotW, toY(v)); ctx.stroke()
   }
 
@@ -190,15 +188,19 @@ function drawRRG(
       const color = COLORS[s.symbol] || '#9ca3af'
       const all   = [...s.trail, s.current]
 
-      // Trail 선
+      // Trail 선 (bezier smooth)
       if (all.length > 1) {
+        const mapped = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
         ctx.beginPath()
         ctx.strokeStyle = color + '70'
         ctx.lineWidth = 1.8
-        all.forEach((pt, i) => {
-          const x = toX(pt.ratio), y = toY(pt.momentum)
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-        })
+        ctx.moveTo(mapped[0].x, mapped[0].y)
+        for (let i = 1; i < mapped.length - 1; i++) {
+          const xc = (mapped[i].x + mapped[i + 1].x) / 2
+          const yc = (mapped[i].y + mapped[i + 1].y) / 2
+          ctx.quadraticCurveTo(mapped[i].x, mapped[i].y, xc, yc)
+        }
+        ctx.lineTo(mapped[mapped.length - 1].x, mapped[mapped.length - 1].y)
         ctx.stroke()
       }
 
@@ -229,11 +231,16 @@ function drawRRG(
     })
 }
 
+// 52주 = 12mo, 26주 = 6mo, 13주 = 3mo
+const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 52 }
+
 // ── 메인 컴포넌트 ─────────────────────────────────────
 export default function RRGChart() {
   const [data,       setData]       = useState<RRGResponse | null>(null)
   const [visible,    setVisible]    = useState<Set<string>>(new Set())
-  const [tailLength, setTailLength] = useState<number>(10)
+  const [tailLength,  setTailLength]  = useState<number>(30)
+  const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('12mo')
+  const [tailOffset, setTailOffset] = useState(0)
   const canvasRef                   = useRef<HTMLCanvasElement>(null)
   const initVisibleRef              = useRef(false)
 
@@ -285,10 +292,27 @@ export default function RRGChart() {
       .catch(() => {})
   }, [])
 
+  const displaySectors = useMemo(() => {
+    if (!data?.sectors?.length) return []
+    const rp = RANGE_POINTS_W[range]
+    return data.sectors.map(s => {
+      const all  = [...s.trail, s.current]
+      const rng  = all.slice(-rp)
+      const end  = Math.max(1, rng.length - tailOffset)
+      const start = Math.max(0, end - tailLength)
+      const trail   = rng.slice(start, Math.max(0, end - 1))
+      const current = rng[Math.max(0, end - 1)] ?? s.current
+      return { ...s, trail, current }
+    })
+  }, [data, range, tailOffset, tailLength])
+
+  // Reset offset when range changes
+  useEffect(() => { setTailOffset(0) }, [range])
+
   useEffect(() => {
-    if (!data?.sectors?.length || !canvasRef.current) return
-    drawRRG(canvasRef.current, data.sectors, visible, tailLength)
-  }, [data, visible, tailLength])
+    if (!displaySectors.length || !canvasRef.current) return
+    drawRRG(canvasRef.current, displaySectors, visible, 99999)
+  }, [displaySectors, visible])
 
   useEffect(() => {
     if (initVisibleRef.current) return
@@ -300,17 +324,22 @@ export default function RRGChart() {
 
   useEffect(() => {
     const obs = new ResizeObserver(() => {
-      if (data?.sectors?.length && canvasRef.current)
-        drawRRG(canvasRef.current, data.sectors, visible, tailLength)
+      if (displaySectors.length && canvasRef.current)
+        drawRRG(canvasRef.current, displaySectors, visible, 99999)
     })
     if (canvasRef.current) obs.observe(canvasRef.current)
     return () => obs.disconnect()
-  }, [data, visible, tailLength])
+  }, [displaySectors, visible])
 
-  const sectors = data?.sectors ?? []
-  const maxTail = sectors.length > 0
-    ? Math.max(...sectors.map(s => s.trail.length))
-    : 52
+  const sectors   = data?.sectors ?? []
+  const maxTail   = sectors.length > 0
+    ? Math.min(Math.max(...sectors.map(s => s.trail.length)), 30)
+    : 30
+  const maxOffset = sectors.length > 0
+    ? Math.max(0, Math.min(...sectors.map(s =>
+        Math.min([...s.trail, s.current].length, RANGE_POINTS_W[range])
+      )) - tailLength)
+    : 0
   const ts      = data?.timestamp
     ? new Date(data.timestamp).toLocaleString('ko-KR') : ''
 
@@ -332,21 +361,43 @@ export default function RRGChart() {
           </p>
         </div>
 
-        {/* Tail Length 슬라이더 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '0.48rem 0.85rem' }}>
-          <span style={{ color: '#D7E5F6', fontSize: '0.9rem', whiteSpace: 'nowrap', fontWeight: 700 }}>Tail Length</span>
-          <input
-            type="range"
-            min={1}
-            max={maxTail}
-            value={tailLength}
-            onChange={e => setTailLength(Number(e.target.value))}
-            style={{ width: 120, accentColor: '#00D9FF', cursor: 'pointer' }}
-          />
-          <span style={{
-            color: '#67EEFF', fontWeight: 800, fontSize: '1rem',
-            minWidth: 28, textAlign: 'right',
-          }}>{tailLength}</span>
+        {/* Controls row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* Range buttons */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            {(['3mo','6mo','12mo'] as const).map(r => (
+              <button key={r} onClick={() => setRange(r)} style={{
+                padding: '4px 10px',
+                background: range === r ? 'rgba(0,217,255,0.15)' : 'rgba(255,255,255,0.05)',
+                border: range === r ? '1px solid rgba(0,217,255,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 7, color: range === r ? '#67EEFF' : '#9ca3af',
+                cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
+              }}>{r}</button>
+            ))}
+          </div>
+
+          {/* Tail length */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '0.48rem 0.85rem' }}>
+            <span style={{ color: '#D7E5F6', fontSize: '0.85rem', whiteSpace: 'nowrap', fontWeight: 700 }}>Tail</span>
+            <input type="range" min={1} max={maxTail} value={tailLength}
+              onChange={e => setTailLength(Number(e.target.value))}
+              style={{ width: 90, accentColor: '#00D9FF', cursor: 'pointer' }} />
+            <span style={{ color: '#67EEFF', fontWeight: 800, fontSize: '0.95rem', minWidth: 26, textAlign: 'right' }}>{tailLength}</span>
+          </div>
+
+          {/* Position scrubber */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '0.48rem 0.85rem' }}>
+            <span style={{ color: '#D7E5F6', fontSize: '0.85rem', whiteSpace: 'nowrap', fontWeight: 700 }}>
+              {tailOffset === 0 ? 'Now' : `-${tailOffset}w`}
+            </span>
+            <input type="range" min={0} max={maxOffset}
+              value={maxOffset - tailOffset}
+              onChange={e => setTailOffset(maxOffset - Number(e.target.value))}
+              style={{ width: 90, accentColor: '#f59e0b', cursor: 'pointer' }} />
+            <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.88rem', minWidth: 30, textAlign: 'right' }}>
+              {tailOffset === 0 ? 'NOW' : tailOffset}
+            </span>
+          </div>
         </div>
       </div>
 
