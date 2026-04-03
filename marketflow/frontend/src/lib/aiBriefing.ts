@@ -21,6 +21,22 @@ export type AiBriefing = {
   _meta?: Record<string, unknown>
 }
 
+export type AiBriefingLangView = {
+  layer: string
+  language: UiLang
+  title: string
+  summary: string
+  paragraphs: string[]
+  warnings: string[]
+  highlights: string[]
+  sources: AiBriefingSource[]
+  provider: string
+  model: string
+  generated_at: string
+  asof_day: string
+  _meta?: Record<string, unknown>
+}
+
 const DEFAULT_TITLES: Record<string, { ko: string; en: string }> = {
   std_risk: { ko: '표준 리스크 브리프', en: 'Standard Risk Brief' },
   macro: { ko: '매크로 브리프', en: 'Macro Brief' },
@@ -179,4 +195,22 @@ export function selectBriefingHighlights(briefing: AiBriefing | null | undefined
   if (!briefing) return []
   const lines = briefing.highlights?.[lang] || []
   return lines.length ? lines : briefing.highlights?.[lang === 'ko' ? 'en' : 'ko'] || []
+}
+
+export function projectAiBriefingByLang(briefing: AiBriefing, lang: UiLang): AiBriefingLangView {
+  return {
+    layer: briefing.layer,
+    language: lang,
+    title: selectBriefingTitle(briefing, lang),
+    summary: selectBriefingSummary(briefing, lang),
+    paragraphs: selectBriefingParagraphs(briefing, lang),
+    warnings: selectBriefingWarnings(briefing, lang),
+    highlights: selectBriefingHighlights(briefing, lang),
+    sources: briefing.sources || [],
+    provider: briefing.provider,
+    model: briefing.model,
+    generated_at: briefing.generated_at,
+    asof_day: briefing.asof_day,
+    _meta: briefing._meta,
+  }
 }

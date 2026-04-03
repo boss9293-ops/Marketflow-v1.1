@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   normalizeAiBriefing,
   selectBriefingParagraphs,
+  selectBriefingSummary,
   selectBriefingWarnings,
   type AiBriefing,
 } from '@/lib/aiBriefing'
-import { pickLang, useLangMode } from '@/lib/useLangMode'
+import { pickLang, useContentLang, useLangMode } from '@/lib/useLangMode'
 import type { UiLang } from '@/lib/uiLang'
 import { UI_TEXT } from '@/lib/uiText'
 
@@ -18,6 +19,21 @@ type GeminiBriefingPanelProps = {
 
 const CACHE_KEY_PREFIX = 'ai-brief:integrated:'
 const API_PATH = '/api/ai/integrated'
+const SUMMARY_TITLE = { ko: '오늘 요약', en: 'Session Summary' }
+const SECTION_TITLES = new Set([
+  '주요 지수 실적',
+  '섹터별 수익률',
+  '원자재 및 채권 시장',
+  '주요 종목 및 이슈',
+  '경제지표 및 연준',
+  '시장 포지셔닝',
+  'Major Index Performance',
+  'Sector Returns',
+  'Commodities and Bonds',
+  'Key Stocks and Issues',
+  'Macro Data and Fed',
+  'Market Positioning',
+])
 
 const formatLocalDate = (d: Date) => {
   const y = d.getFullYear()
@@ -26,9 +42,13 @@ const formatLocalDate = (d: Date) => {
   return `${y}-${m}-${day}`
 }
 
+const stripLeadingMarker = (line: string) => line.replace(/^\s*[xX×]\s+/, '').trim()
+const stripBulletMarker = (line: string) => line.replace(/^\s*[•\-]\s*/, '').trim()
+
 export default function GeminiBriefingPanel({ asofDay, outputLang }: GeminiBriefingPanelProps) {
   const uiLang = useLangMode()
-  const resolvedOutputLang = outputLang ?? uiLang
+  const contentLang = useContentLang()
+  const resolvedOutputLang = outputLang ?? contentLang
   const [briefing, setBriefing] = useState<AiBriefing | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +82,8 @@ export default function GeminiBriefingPanel({ asofDay, outputLang }: GeminiBrief
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 20000)
 
-    fetch(API_PATH, {
+    const fetchPath = `${API_PATH}?lang=${resolvedOutputLang}`
+    fetch(fetchPath, {
       headers: { Accept: 'application/json' },
       signal: controller.signal,
     })
@@ -110,8 +131,32 @@ export default function GeminiBriefingPanel({ asofDay, outputLang }: GeminiBrief
 
   const paragraphs = briefing ? selectBriefingParagraphs(briefing, resolvedOutputLang) : []
   const warnings = briefing ? selectBriefingWarnings(briefing, resolvedOutputLang) : []
-  const provider = briefing?.provider || 'cache'
-  const model = briefing?.model || ''
+  const isSectionTitle = (line: string) => SECTION_TITLES.has(line.trim())
+  const isBulletLine = (line: string) => /^\s*[•\-]\s+/.test(line)
+  const normalizedParagraphs = paragraphs.map(stripLeadingMarker).filter(Boolean)
+  const rawSummaryLine = briefing ? selectBriefingSummary(briefing, resolvedOutputLang) : ''
+  const summaryLine = stripLeadingMarker(rawSummaryLine || normalizedParagraphs[0] || '')
+  const bodyLines =
+    normalizedParagraphs.length > 0 && summaryLine && normalizedParagraphs[0] === summaryLine
+      ? normalizedParagraphs.slice(1)
+      : normalizedParagraphs
+  const sectionBlocks = useMemo(() => {
+    const blocks: Array<{ title: string; lines: string[] }> = []
+    let current: { title: string; lines: string[] } | null = null
+    for (const line of bodyLines) {
+      if (isSectionTitle(line)) {
+        current = { title: line.trim(), lines: [] }
+        blocks.push(current)
+        continue
+      }
+      if (!current) {
+        current = { title: '', lines: [] }
+        blocks.push(current)
+      }
+      current.lines.push(line)
+    }
+    return blocks.filter((block) => block.title || block.lines.length > 0)
+  }, [bodyLines])
 
   const handleRefresh = () => {
     if (!cacheKey) return
@@ -144,34 +189,26 @@ export default function GeminiBriefingPanel({ asofDay, outputLang }: GeminiBrief
         background: 'rgba(255,255,255,0.02)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: '0.72rem', letterSpacing: '0.08em', color: '#60a5fa', fontWeight: 700 }}>
-          {pickLang(uiLang, 'AI 통합 브리핑', 'AI Integrated Brief')}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
-            {provider.toUpperCase()}{model ? ` · ${model}` : ''}
-          </span>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            style={{
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'transparent',
-              color: '#e5e7eb',
-              borderRadius: 999,
-              fontSize: '0.65rem',
-              padding: '0.15rem 0.5rem',
-              cursor: 'pointer',
-            }}
-          >
-            {UI_TEXT.common.refresh[uiLang]}
-          </button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          style={{
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'transparent',
+            color: '#e5e7eb',
+            borderRadius: 999,
+            fontSize: '0.65rem',
+            padding: '0.15rem 0.5rem',
+            cursor: 'pointer',
+          }}
+        >
+          {UI_TEXT.common.refresh[uiLang]}
+        </button>
       </div>
       <div
         style={{
-          marginTop: 8,
+          marginTop: 6,
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
@@ -191,9 +228,116 @@ export default function GeminiBriefingPanel({ asofDay, outputLang }: GeminiBrief
             {pickLang(uiLang, '통합 브리핑이 아직 준비되지 않았습니다.', 'Integrated briefing is not ready yet.')}
           </div>
         )}
-        {!loading && !error && paragraphs.map((p, idx) => (
-          <div key={`gemini-${idx}`}>{p}</div>
-        ))}
+        {!loading && !error && summaryLine && (
+          <div style={{ marginTop: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
+              <span style={{ color: '#334155', fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', minWidth: 18 }}>
+                01
+              </span>
+              <div style={{ width: 20, height: 1, background: 'rgba(34,211,238,0.45)', flexShrink: 0 }} />
+              <span
+                style={{
+                  color: '#e6efff',
+                  fontSize: '1.44rem',
+                  lineHeight: 1.25,
+                  fontWeight: 900,
+                  letterSpacing: '-0.015em',
+                }}
+              >
+                {resolvedOutputLang === 'ko' ? SUMMARY_TITLE.ko : SUMMARY_TITLE.en}
+              </span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(148,163,184,0.12)' }} />
+            </div>
+            <div
+              style={{
+                marginLeft: 30,
+                padding: '0.1rem 0 0.55rem 0.2rem',
+                color: '#f1f5f9',
+                fontSize: '1.04rem',
+                lineHeight: 1.62,
+                fontWeight: 700,
+                borderLeft: '1px solid rgba(148,163,184,0.16)',
+              }}
+            >
+              {summaryLine}
+            </div>
+            <div style={{ height: 1, background: 'rgba(148,163,184,0.10)', margin: '2px 0 14px' }} />
+          </div>
+        )}
+
+        {!loading &&
+          !error &&
+          sectionBlocks.map((block, idx) => {
+            const sectionNo = String(idx + 2).padStart(2, '0')
+            const lines = block.lines.filter(Boolean)
+            const hasTitle = !!block.title
+            return (
+              <div key={`gemini-sec-${idx}`}>
+                {hasTitle && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
+                    <span style={{ color: '#334155', fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', minWidth: 18 }}>
+                      {sectionNo}
+                    </span>
+                    <div style={{ width: 20, height: 1, background: 'rgba(125,211,252,0.45)', flexShrink: 0 }} />
+                    <span
+                      style={{
+                        color: '#e2e8f0',
+                        fontSize: '1.42rem',
+                        lineHeight: 1.26,
+                        fontWeight: 900,
+                        letterSpacing: '-0.015em',
+                      }}
+                    >
+                      {block.title}
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: 'rgba(148,163,184,0.12)' }} />
+                  </div>
+                )}
+
+                <div style={{ marginLeft: 30, marginBottom: 12, borderLeft: '1px solid rgba(148,163,184,0.16)', paddingLeft: 10 }}>
+                  {lines.map((line, lineIdx) => {
+                    if (isBulletLine(line)) {
+                      return (
+                        <div
+                          key={`gemini-line-${idx}-${lineIdx}`}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '10px minmax(0,1fr)',
+                            gap: 8,
+                            alignItems: 'start',
+                            color: '#dbe7f8',
+                            fontSize: '0.97rem',
+                            lineHeight: 1.62,
+                            marginBottom: 2,
+                          }}
+                        >
+                          <span style={{ color: '#8ddcff', fontWeight: 900 }}>•</span>
+                          <span>{stripBulletMarker(line)}</span>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div
+                        key={`gemini-line-${idx}-${lineIdx}`}
+                        style={{
+                          color: '#cbd5e1',
+                          fontSize: '0.97rem',
+                          lineHeight: 1.68,
+                          marginTop: lineIdx === 0 ? 0 : 6,
+                        }}
+                      >
+                        {line}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {idx < sectionBlocks.length - 1 && (
+                  <div style={{ height: 1, background: 'rgba(148,163,184,0.10)', margin: '2px 0 14px' }} />
+                )}
+              </div>
+            )
+          })}
         {!loading && !error && warnings.length > 0 && (
           <div style={{ marginTop: 6, color: '#cbd5f5', fontSize: '0.72rem' }}>
             {warnings.map((w, idx) => (

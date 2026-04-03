@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { pickLang, useLangMode } from '@/lib/useLangMode'
+import { pickLang, useContentLang, useLangMode } from '@/lib/useLangMode'
 import type { UiLang } from '@/lib/uiLang'
 import { UI_TEXT } from '@/lib/uiText'
 import {
@@ -238,7 +238,8 @@ const computeBestWorst5d = (arr: LivePoint[], key: keyof LivePoint): BestWorst |
 
 export default function LiveTimeline({ series, currentMps, currentVix, dataDate, outputLang }: LiveTimelineProps) {
   const uiLang = useLangMode()
-  const resolvedOutputLang = outputLang ?? uiLang
+  const contentLang = useContentLang()
+  const resolvedOutputLang = outputLang ?? contentLang
   const [selectedWindow, setSelectedWindow] = useState<WindowMode>('YTD')
   const contextSeriesRaw = useMemo(() => {
     const windowStart = resolveWindowStart(series, selectedWindow)
@@ -398,7 +399,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate,
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 20000)
 
-    fetch('/api/ai/macro', {
+    fetch(`/api/ai/macro?lang=${resolvedOutputLang}`, {
       headers: { Accept: 'application/json' },
       signal: controller.signal,
     })

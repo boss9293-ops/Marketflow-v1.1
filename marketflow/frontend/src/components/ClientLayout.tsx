@@ -8,33 +8,54 @@ import { WatchlistProvider } from '@/contexts/WatchlistContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import UserPlanBadge from '@/components/subscription/UserPlanBadge'
 import LanguageModeToggle from '@/components/LanguageModeToggle'
-import { applyUiLangToDocument, persistUiLang, readStoredUiLang, type UiLang } from '@/lib/uiLang'
+import {
+  applyContentLangToDocument,
+  applyUiLangToDocument,
+  persistContentLang,
+  persistUiLang,
+  readStoredContentLang,
+  readStoredUiLang,
+  type ContentLang,
+  type UiLang,
+} from '@/lib/uiLang'
 import { pickLang } from '@/lib/useLangMode'
 import { UI_TEXT } from '@/lib/uiText'
 
 export default function ClientLayout({
   children,
   initialUiLang,
+  initialContentLang,
 }: {
   children: React.ReactNode
   initialUiLang: UiLang
+  initialContentLang: ContentLang
 }) {
   const [watchlistOpen, setWatchlistOpen] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [uiLang, setUiLang] = useState<UiLang>(initialUiLang)
+  const [contentLang, setContentLang] = useState<ContentLang>(initialContentLang)
 
   useEffect(() => {
     const saved = readStoredUiLang(initialUiLang)
     if (saved !== uiLang) {
       setUiLang(saved)
     }
+    const savedContent = readStoredContentLang(initialContentLang)
+    if (savedContent !== contentLang) {
+      setContentLang(savedContent)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialUiLang])
+  }, [initialUiLang, initialContentLang])
 
   useEffect(() => {
     applyUiLangToDocument(uiLang)
     persistUiLang(uiLang)
   }, [uiLang])
+
+  useEffect(() => {
+    applyContentLangToDocument(contentLang)
+    persistContentLang(contentLang)
+  }, [contentLang])
 
   return (
     <SessionProvider>
@@ -87,7 +108,14 @@ export default function ClientLayout({
             {/* Top-right controls */}
             <div style={{ position: 'fixed', top: 12, right: 14, zIndex: 70, display: 'flex', alignItems: 'center', gap: 8 }}>
               <UserPlanBadge />
-              <LanguageModeToggle value={uiLang} onChange={setUiLang} />
+              <LanguageModeToggle
+                value={uiLang}
+                onChange={(next) => {
+                  // Keep legacy behavior for now: UI and content language move together.
+                  setUiLang(next)
+                  setContentLang(next)
+                }}
+              />
               <button
                 onClick={() => setWatchlistOpen(true)}
                 style={{
