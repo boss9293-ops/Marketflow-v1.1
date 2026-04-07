@@ -7,7 +7,7 @@ from typing import Dict
 _CACHE: Dict[str, str] = {}
 _FILE_DIR = Path(__file__).resolve().parent
 _MARKETFLOW_ROOT = _FILE_DIR.parents[1]
-_REPO_ROOT = _FILE_DIR.parents[2]
+_REPO_ROOT = _FILE_DIR.parents[2] if len(_FILE_DIR.parents) > 2 else _FILE_DIR.parents[1]
 _PROMPTS_ROOT = _MARKETFLOW_ROOT / "prompts"
 
 
