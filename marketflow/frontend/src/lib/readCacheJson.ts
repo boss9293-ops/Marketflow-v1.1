@@ -2,6 +2,18 @@ import fs from 'fs/promises'
 import path from 'path'
 
 export async function readCacheJson<T>(filename: string, fallback: T): Promise<T> {
+  const backendUrl = process.env.FLASK_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (backendUrl) {
+    try {
+      const res = await fetch(`${backendUrl}/api/data/${filename}`, { next: { revalidate: 60 } });
+      if (res.ok) {
+        return (await res.json()) as T;
+      }
+    } catch {
+      // try fallback if fetch fails
+    }
+  }
+
   const candidates = [
     path.resolve(process.cwd(), '..', 'data', 'snapshots', filename),
     path.resolve(process.cwd(), 'data', 'snapshots', filename),
@@ -25,6 +37,18 @@ export async function readCacheJson<T>(filename: string, fallback: T): Promise<T
 }
 
 export async function readCacheJsonOrNull<T>(filename: string): Promise<T | null> {
+  const backendUrl = process.env.FLASK_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (backendUrl) {
+    try {
+      const res = await fetch(`${backendUrl}/api/data/${filename}`, { next: { revalidate: 60 } });
+      if (res.ok) {
+        return (await res.json()) as T;
+      }
+    } catch {
+      // try fallback if fetch fails
+    }
+  }
+
   const candidates = [
     path.resolve(process.cwd(), '..', 'data', 'snapshots', filename),
     path.resolve(process.cwd(), 'data', 'snapshots', filename),

@@ -314,8 +314,20 @@ app.register_blueprint(pipeline_predictive_bp)
 
 
 app.register_blueprint(pipeline_runbook_bp)
-
 app.register_blueprint(pipeline_digest_bp)
+
+@app.route('/api/data/<path:filename>')
+def serve_data_json(filename):
+    candidates = [
+        os.path.join(os.path.dirname(__file__), '..', 'data', 'snapshots', filename),
+        os.path.join(os.path.dirname(__file__), 'output', filename),
+        os.path.join(os.path.dirname(__file__), 'output', 'cache', filename)
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            with open(c, 'r', encoding='utf-8') as f:
+                return jsonify(json.load(f))
+    return jsonify({"error": "not found"}), 404
 
 
 
