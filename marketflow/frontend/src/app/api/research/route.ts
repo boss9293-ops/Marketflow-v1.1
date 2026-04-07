@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const MODEL         = 'claude-sonnet-4-6'
-const OUTPUT_DIR    = join(process.cwd(), '..', 'backend', 'output')
 
 type RouteErrorCode = 'bad_query' | 'no_api_key' | 'api_error' | 'timeout' | 'parse_error' | 'unknown'
 
@@ -24,10 +23,10 @@ function safeNum(v: unknown, fallback = 0): number {
   const n = Number(v); return Number.isFinite(n) ? n : fallback
 }
 
-function buildEngineContext(): string {
+async function buildEngineContext(): Promise<string> {
   try {
-    const r1 = readJson<Record<string, unknown>>('risk_v1.json')
-    const vr = readJson<Record<string, unknown>>('vr_survival.json')
+    const r1 = await readJson<Record<string, unknown>>('risk_v1.json')
+    const vr = await readJson<Record<string, unknown>>('vr_survival.json')
     const cur = (r1?.current as Record<string, unknown>) ?? {}
     const mr  = (r1?.market_regime as Record<string, unknown>) ?? {}
     const vc  = ((vr as Record<string, unknown>)?.current as Record<string, unknown>) ?? {}
@@ -114,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return errorResponse('bad_query', 'Query is too long (max 600 characters).', 400)
   }
 
-  const engineCtx = buildEngineContext()
+  const engineCtx = await buildEngineContext()
   const userMsg   = `Research query: ${query}\n\nCurrent engine context: ${engineCtx}`
 
   const t0 = Date.now()

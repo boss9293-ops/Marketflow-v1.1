@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 
 
 const FLASK_URL = process.env.FLASK_API_URL ?? 'http://localhost:5001'
-const OUTPUT_DIR = join(process.cwd(), '..', 'backend', 'output')
 
 async function readJson<T>(filename: string): Promise<T | null> {
   const { readCacheJson } = await import('@/lib/readCacheJson')
@@ -181,8 +180,8 @@ async function callFlask(payload: Record<string, unknown>): Promise<NextResponse
 }
 
 export async function POST(): Promise<NextResponse> {
-  const r1 = readJson<Record<string, unknown>>('risk_v1.json')
-  const vr = readJson<Record<string, unknown>>('vr_survival.json')
+  const r1 = await readJson<Record<string, unknown>>('risk_v1.json')
+  const vr = await readJson<Record<string, unknown>>('vr_survival.json')
 
   if (!r1 || !vr) {
     return errorResponse('no_data', 'Backend output files not found. Run backend scripts first.', 503)

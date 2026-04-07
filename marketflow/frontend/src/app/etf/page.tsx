@@ -1,5 +1,4 @@
-import fs from 'fs'
-import path from 'path'
+import { readCacheJson } from '@/lib/readCacheJson'
 
 export const dynamic = 'force-static'
 

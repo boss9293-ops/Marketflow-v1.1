@@ -1,5 +1,4 @@
-import fs from 'fs'
-import path from 'path'
+import { readCacheJson } from '@/lib/readCacheJson'
 import HoldingsChart from '@/components/HoldingsChart'
 
 export const dynamic = 'force-static'

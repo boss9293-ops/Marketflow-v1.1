@@ -11,7 +11,7 @@ export async function GET() {
   // 2. Fallback to sample
   const sample = await readCacheJson<{ scenarios?: Array<{ output: unknown }> } | null>('smart_analyzer_sample.json', null)
   if (sample?.scenarios?.length) {
-    return NextResponse.json({ ...sample.scenarios[0].output, _source: 'sample' })
+    return NextResponse.json({ ...(sample.scenarios[0].output as Record<string, unknown>), _source: 'sample' })
   }
 
   return NextResponse.json({ error: 'No smart analyzer data available' }, { status: 404 })
