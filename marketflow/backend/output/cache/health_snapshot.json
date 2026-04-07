@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-04-06T07:39:23",
+  "data_date": "2026-04-06",
+  "trend": {
+    "qqq_close": 584.98,
+    "sma200": 595.21,
+    "dist_pct": -1.72,
+    "sma50": 602.39,
+    "sma20": 588.69
+  },
+  "risk": {
+    "var95_1d": -1.97,
+    "cvar95_1d": -3.11,
+    "ulcer_252d": 3.29,
+    "mdd_252d": -12.19,
+    "rv20": 22.09,
+    "rv252": 22.65,
+    "vol_ratio": 0.98
+  },
+  "breadth_greed": {
+    "greed_proxy": 41.6,
+    "label": "Neutral",
+    "explain": "QQQ 20D return: -3.00% | VIX 5D change: -13.01%\nz(qqq_20d)=-1.40, z(vix_5d)=-1.06",
+    "as_of_date": "2026-04-06"
+  }
+}

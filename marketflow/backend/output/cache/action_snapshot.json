@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-04-06T09:09:42",
+  "data_date": "9/9/2025",
+  "exposure_guidance": {
+    "action_label": "Hold",
+    "exposure_band": "40–70%",
+    "reason": "Mixed trend/risk signals"
+  },
+  "portfolio": {
+    "has_holdings": true,
+    "total_value": 550366.0,
+    "day_pnl": 9194.34,
+    "cash_pct": null,
+    "top_positions": [
+      {
+        "symbol": "COST",
+        "value": 69633.0,
+        "pct": 12.65
+      },
+      {
+        "symbol": "META",
+        "value": 65369.0,
+        "pct": 11.88
+      },
+      {
+        "symbol": "TSLA",
+        "value": 41733.0,
+        "pct": 7.58
+      }
+    ]
+  },
+  "watchlist_moves": [
+    {
+      "symbol": "TSLA",
+      "name": "Tesla, Inc.",
+      "chg_pct": -5.42,
+      "badge": "OK",
+      "badge_reason": "Within normal range"
+    },
+    {
+      "symbol": "NVDA",
+      "name": "Nvidia",
+      "chg_pct": 0.93,
+      "badge": "OK",
+      "badge_reason": "Within normal range"
+    },
+    {
+      "symbol": "TQQQ",
+      "name": "ProShares UltraPro QQQ",
+      "chg_pct": 0.23,
+      "badge": "Volatile",
+      "badge_reason": "RV20 68.0 > p80 64.2"
+    }
+  ]
+}
