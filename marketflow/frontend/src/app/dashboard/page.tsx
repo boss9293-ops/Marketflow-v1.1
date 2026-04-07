@@ -252,13 +252,17 @@ async function readOutputJson<T>(filename: string, fallback: T): Promise<T> {
     path.resolve(process.cwd(), '..', 'output', filename),
     path.resolve(process.cwd(), 'output', filename),
   ]
+
   for (const candidate of candidates) {
     try {
+      console.log('[readOutputJson] try:', candidate)
       return JSON.parse(await fs.readFile(candidate, 'utf-8')) as T
-    } catch {
-      // try next
+    } catch (err) {
+      console.log('[readOutputJson] failed:', candidate, String(err))
     }
   }
+
+  console.log('[readOutputJson] fallback used for:', filename)
   return fallback
 }
 
