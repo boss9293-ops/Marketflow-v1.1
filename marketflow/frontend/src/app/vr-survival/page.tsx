@@ -99,7 +99,7 @@ export default async function VRSurvivalPage({
         <p>
           Run:{' '}
           <code style={{ background: '#111827', padding: '0.26rem 0.65rem', borderRadius: 6 }}>
-            py C:/Temp/build_vr_survival.py
+            py marketflow/backend/scripts/build_vr_survival.py
           </code>
         </p>
         <a href="/risk-v1" style={{ color: '#818cf8' }}>
