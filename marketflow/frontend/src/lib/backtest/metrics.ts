@@ -50,6 +50,7 @@ export function buildPerformanceMetrics(
     currentUpperBand: lastRow.upperBand,
     currentLowerBand: lastRow.lowerBand,
     currentPvRatio: lastRow.pvRatio,
+    currentMa200: lastRow.ma200 ?? null,
     elapsedDays: lastRow.totalDays,
     elapsedYears: lastRow.totalDays / 252,
     currentGValue: lastRow.currentGValue,

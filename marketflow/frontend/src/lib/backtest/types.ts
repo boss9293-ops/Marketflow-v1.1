@@ -1,10 +1,11 @@
 export interface StrategyInputs {
   symbol: string
   startDate: string
+  endDate: string                 // '' = no end filter
   initialCapital: number
   rebalanceDays: number
   growthRate: number
-  fixedAdd: number
+  fixedAdd: number                // per-cycle cash deposit into pool ($)
   upperMult: number
   lowerMult: number
   initialGValue: number
@@ -14,6 +15,13 @@ export interface StrategyInputs {
   initialBuyPercent: number
   targetCapMultiple: number
   allowFractionalShares: boolean
+  initialInvestAmount: number
+  cycleAllocationRate: number     // % of pool to deploy per cycle (buy cap)
+  guardMode: 'off' | 'weak' | 'moderate' | 'strong'
+  enableDdSpeedFilter: boolean
+  enableMaFilter: boolean
+  disableBuy: boolean             // true → 매수 완전 금지 (INIT_BUY 이후)
+  disableSell: boolean            // true → 매도 완전 금지
 }
 
 export interface DailyBar {
@@ -45,6 +53,12 @@ export interface PortfolioState {
   realizedPnl: number
   unrealizedPnl: number
   totalReturnPct: number
+  // Gap-based VR: request amounts computed this bar (0 = no gap)
+  buyRequest: number
+  sellRequest: number
+  // V4: Vref decomposition (set at cycle reset, constant within cycle)
+  cycleBaseEval: number    // shares × close at cycle open
+  poolContrib: number      // pool / G at cycle open  →  Vref = cycleBaseEval + poolContrib
 }
 
 export interface TradeEvent {
@@ -75,6 +89,7 @@ export interface BacktestRow extends PortfolioState {
   tradeQty: number
   buySignal: boolean
   sellSignal: boolean
+  ma200: number | null        // 200-day moving average (null if < 200 bars of history)
 }
 
 export interface BacktestSummary {
@@ -103,6 +118,7 @@ export interface PerformanceMetrics {
   currentUpperBand: number
   currentLowerBand: number
   currentPvRatio: number
+  currentMa200: number | null  // 최신 바의 MA200
   elapsedDays: number
   elapsedYears: number
   currentGValue: number

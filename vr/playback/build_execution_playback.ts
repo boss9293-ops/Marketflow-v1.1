@@ -70,6 +70,47 @@ export type ExecutionPlaybackBuildOptions = {
   enableMacroGating?: boolean  // v1.5: enable CRISIS/macro policy layer (default: true)
 }
 
+// ── VR V4: P/V → 상승률 테이블 ──────────────────────────────────────────────
+// 출처: vrGValueStrategy.ts (동일 테이블)
+// [P/V, 평가금<V 상승률, 평가금>V 상승률]  보간 없음 — floor 사용
+const PV_RATE_TABLE: ReadonlyArray<readonly [number, number, number]> = [
+  [0.00, 1.000, 1.001],
+  [0.01, 1.001, 1.005],
+  [0.05, 1.005, 1.010],
+  [0.10, 1.010, 1.015],
+  [0.15, 1.015, 1.020],
+  [0.20, 1.020, 1.025],
+  [0.25, 1.025, 1.030],
+  [0.30, 1.030, 1.035],
+  [0.35, 1.035, 1.040],
+  [0.40, 1.040, 1.045],
+  [0.45, 1.045, 1.050],
+  [0.50, 1.050, 1.055],
+  [0.55, 1.055, 1.060],
+  [0.60, 1.060, 1.065],
+  [0.65, 1.065, 1.070],
+  [0.70, 1.070, 1.075],
+  [0.75, 1.075, 1.080],
+  [0.80, 1.080, 1.085],
+  [0.85, 1.085, 1.090],
+  [0.90, 1.090, 1.095],
+  [0.95, 1.095, 1.100],
+  [1.00, 1.100, 1.105],
+  [1.05, 1.105, 1.110],
+  [1.10, 1.110, 1.115],
+] as const
+
+function lookupPvRate(pv: number, evalBelowV: boolean): number {
+  const clampedPv = Math.min(pv, 1.10)
+  let row = PV_RATE_TABLE[0]
+  for (const r of PV_RATE_TABLE) {
+    if (r[0] <= clampedPv) row = r
+    else break
+  }
+  return evalBelowV ? row[1] : row[2]
+}
+
+
 const CAP_OPTIONS: Array<{ key: CyclePoolCapOption; pct: number | null; label: string }> = [
   { key: '30', pct: 30, label: '30%' },
   { key: '40', pct: 40, label: '40%' },
@@ -1009,6 +1050,8 @@ function buildVariant(
   let buyReferenceShares = initialState.initial_share_count
   let cycleBasePortfolio = initialCapital
   let cycleBaseEvaluation = initialState.initial_share_count * basePrice
+  let cycleVref = cycleBaseEvaluation  // VR V4: P/V 테이블 기반 Vref
+  const G_VALUE = 10                   // VR V4: G=10 보수성 배수
   let cycleBasePrice = basePrice
   let activeCyclePoolUsedPct = 0
   let activeCycleBlockedBuyCount = 0
@@ -1054,6 +1097,20 @@ function buildVariant(
         cycleBaseEvaluation = shares * assetPrice
         cycleBasePrice = assetPrice
         buyReferenceShares = shares
+        // VR V4: P/V 테이블로 Vref 갱신 + ratchet
+        // ratchet: 평가금이 Vref를 초과하면 밴드도 따라 올라감
+        // (Cycle View는 cycleBaseEvaluation으로 집계하므로 동일 결과)
+        const _pvRatio = cycleVref > 0 ? poolCash / (G_VALUE * cycleVref) : 0
+        const _evalBelowV = cycleBaseEvaluation < cycleVref
+        const _rate = lookupPvRate(_pvRatio, _evalBelowV)
+        // VR V4 ratchet:
+        //   crash (eval<Vref):    snap down to cycle-start eval (밴드가 평가금 추적)
+        //   normal/recovery:      ratchet up via P/V rate
+        cycleVref = cycleVref <= 0
+          ? cycleBaseEvaluation
+          : _evalBelowV
+            ? cycleBaseEvaluation
+            : Math.max(cycleVref * _rate, cycleBaseEvaluation)
       }
     }
     else {
@@ -1072,8 +1129,8 @@ function buildVariant(
     let triggerSource: 'evaluation_vmax_gate' | 'representative_sell_ladder' | 'defense_reduction' | 'buy_vmin_recovery' | 'cycle_cap_block' | null = null
     let ladderLevelHit: number | null = null
     const preTradeEvaluationValue = Number((shares * assetPrice).toFixed(2))
-    const preTradeVminEval = Number((cycleBaseEvaluation * 0.85).toFixed(2))
-    const preTradeVmaxEval = Number((cycleBaseEvaluation * 1.15).toFixed(2))
+    const preTradeVminEval = Number((cycleVref * 0.85).toFixed(2))  // VR V4: cycleVref 기준
+    const preTradeVmaxEval = Number((cycleVref * 1.15).toFixed(2))  // VR V4: cycleVref 기준
     const sellGateOpen = preTradeEvaluationValue >= preTradeVmaxEval
 
     // Dynamic buy logic:
@@ -1098,7 +1155,7 @@ function buildVariant(
     // Execute buys: loop to handle multiple level triggers if price drops far in one day
     let buyAttempts = 0
     while (buysAllowed && poolCash > 0 && shares > 0 && buyAttempts < 10) {
-      const vminNow = cycleBaseEvaluation * 0.85
+      const vminNow = cycleVref * 0.85  // VR V4: cycleVref 기준
       const isFirstLevel = nextBuyLevelNo === 1
       const evalValue = shares * assetPrice
       const buyBasePriceNow = buyReferenceShares > 0 ? vminNow / buyReferenceShares : 0
@@ -1146,9 +1203,9 @@ function buildVariant(
             total_portfolio_value: Number((shares * assetPrice + poolCash).toFixed(2)),
             cycle_pool_used_pct: initialPoolCash > 0 ? Number(((cyclePoolUsed / initialPoolCash) * 100).toFixed(2)) : 0,
             evaluation_value: Number((shares * assetPrice).toFixed(2)),
-            vref_eval: Number(cycleBaseEvaluation.toFixed(2)),
-            vmin_eval: Number((cycleBaseEvaluation * 0.85).toFixed(2)),
-            vmax_eval: Number((cycleBaseEvaluation * 1.15).toFixed(2)),
+            vref_eval: Number(cycleVref.toFixed(2)),  // VR V4
+            vmin_eval: Number((cycleVref * 0.85).toFixed(2)),
+            vmax_eval: Number((cycleVref * 1.15).toFixed(2)),
             state_after_trade: stateAfterTrade,
           })
           nextBuyLevelNo += 1
@@ -1181,9 +1238,9 @@ function buildVariant(
           total_portfolio_value: Number((shares * assetPrice + poolCash).toFixed(2)),
           cycle_pool_used_pct: initialPoolCash > 0 ? Number(((cyclePoolUsed / initialPoolCash) * 100).toFixed(2)) : 0,
           evaluation_value: Number((shares * assetPrice).toFixed(2)),
-          vref_eval: Number(cycleBaseEvaluation.toFixed(2)),
-          vmin_eval: Number((cycleBaseEvaluation * 0.85).toFixed(2)),
-          vmax_eval: Number((cycleBaseEvaluation * 1.15).toFixed(2)),
+          vref_eval: Number(cycleVref.toFixed(2)),  // VR V4
+          vmin_eval: Number((cycleVref * 0.85).toFixed(2)),
+          vmax_eval: Number((cycleVref * 1.15).toFixed(2)),
           state_after_trade: stateAfterTrade,
         })
         tradeReason = 'buy_blocked_by_cycle_cap'
@@ -1228,9 +1285,9 @@ function buildVariant(
         total_portfolio_value: Number((shares * assetPrice + poolCash).toFixed(2)),
         cycle_pool_used_pct: initialPoolCash > 0 ? Number(((cyclePoolUsed / initialPoolCash) * 100).toFixed(2)) : 0,
         evaluation_value: Number((shares * assetPrice).toFixed(2)),
-        vref_eval: Number(cycleBaseEvaluation.toFixed(2)),
-        vmin_eval: Number((cycleBaseEvaluation * 0.85).toFixed(2)),
-        vmax_eval: Number((cycleBaseEvaluation * 1.15).toFixed(2)),
+        vref_eval: Number(cycleVref.toFixed(2)),  // VR V4
+        vmin_eval: Number((cycleVref * 0.85).toFixed(2)),
+        vmax_eval: Number((cycleVref * 1.15).toFixed(2)),
         state_after_trade: stateAfterTrade,
       })
     }
@@ -1283,9 +1340,9 @@ function buildVariant(
     const portfolioValue = Number((evaluationValue + poolCash).toFixed(2))
     const evaluationNormalized = normalizeValue(evaluationValue, cycleBaseEvaluation || 1)
     const portfolioNormalized = normalizeValue(portfolioValue, initialCapital)
-    const vrefEval = Number(cycleBaseEvaluation.toFixed(2))
-    const vminEval = Number((cycleBaseEvaluation * 0.85).toFixed(2))
-    const vmaxEval = Number((cycleBaseEvaluation * 1.15).toFixed(2))
+    const vrefEval = Number(cycleVref.toFixed(2))  // VR V4: cycleVref 기준
+    const vminEval = Number((cycleVref * 0.85).toFixed(2))
+    const vmaxEval = Number((cycleVref * 1.15).toFixed(2))
     const vrefLine = normalizeValue(cycleBasePortfolio, initialCapital)
     const vminLine = Number((vrefLine * 0.85).toFixed(2))
     const vmaxLine = Number((vrefLine * 1.15).toFixed(2))
@@ -2947,6 +3004,9 @@ function buildVariantVFinal(
 
   // Cycle-based V-band reference (portfolio value at cycle start)
   let cycleBasePortfolio = initialCapital
+  let cycleBaseEvaluation = initialState.initial_share_count * basePrice  // VR V4
+  let cycleVref = cycleBaseEvaluation                                      // VR V4: P/V ratchet
+  const G_VALUE = 10                                                       // VR V4: G=10
   let dayInCycle = 0
 
   // Counters
@@ -3057,6 +3117,16 @@ function buildVariantVFinal(
       if (cycle) {
         // Portfolio value at cycle start = V-band reference
         cycleBasePortfolio = Number((shares * assetPrice + poolCash).toFixed(2))
+        cycleBaseEvaluation = Number((shares * assetPrice).toFixed(2))
+        // VR V4 ratchet: crash → snap to eval, recovery → P/V rate
+        const _pvRatio = cycleVref > 0 ? poolCash / (G_VALUE * cycleVref) : 0
+        const _evalBelowV = cycleBaseEvaluation < cycleVref
+        const _rate = lookupPvRate(_pvRatio, _evalBelowV)
+        cycleVref = cycleVref <= 0
+          ? cycleBaseEvaluation
+          : _evalBelowV
+            ? cycleBaseEvaluation
+            : Math.max(cycleVref * _rate, cycleBaseEvaluation)
       }
     } else {
       dayInCycle += 1
@@ -3874,11 +3944,11 @@ function buildVariantVFinal(
     const poolUsedPct = initialCapital > 0
       ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
       : 0
-    // V-band: portfolio-based reference from cycle start
-    const vrefEval = Number(cycleBasePortfolio.toFixed(2))
-    const vminEval = Number((cycleBasePortfolio * 0.85).toFixed(2))
-    const vmaxEval = Number((cycleBasePortfolio * 1.15).toFixed(2))
-    const vrefLine = normalizeValue(cycleBasePortfolio, initialCapital)
+    // V-band: cycleVref 기반 (VR V4, buildVariant와 동일 로직)
+    const vrefEval = Number(cycleVref.toFixed(2))
+    const vminEval = Number((cycleVref * 0.85).toFixed(2))
+    const vmaxEval = Number((cycleVref * 1.15).toFixed(2))
+    const vrefLine = normalizeValue(cycleVref, initialCapital)
     const vminLine = Number((vrefLine * 0.85).toFixed(2))
     const vmaxLine = Number((vrefLine * 1.15).toFixed(2))
 
@@ -3947,9 +4017,9 @@ function buildVariantVFinal(
       ladder_level_hit: ladderLevelHit,
       trade_price: tradePrice,
       stock_evaluation_value: Number((sharesBefore * assetPrice).toFixed(2)),
-      vref_eval: 0,
-      vmax_eval: 0,
-      sell_gate_open: false,
+      vref_eval: vrefEval,  // VR V4
+      vmax_eval: vmaxEval,  // VR V4
+      sell_gate_open: evaluationValue >= vmaxEval,
       shares_before: sharesBefore,
       shares_after: shares,
       avg_cost_before: Number(avgCostBefore.toFixed(2)),
