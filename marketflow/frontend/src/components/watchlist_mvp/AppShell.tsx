@@ -223,6 +223,7 @@ type SectionStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 type AskStatus = 'idle' | 'submitting' | 'ready' | 'error'
 
 const WATCHLIST_QUOTE_REFRESH_MS = 20_000
+const NEWS_AUTO_REFRESH_MS = 30 * 60 * 1000  // 30분 자동갱신
 
 export default function AppShell() {
   const service = useMemo(() => createDashboardService({ mode: 'hybrid' }), [])
@@ -236,6 +237,11 @@ export default function AppShell() {
 
   const [tickerBriefs, setTickerBriefs] = useState<TickerBrief[]>([])
   const [tickerNews, setTickerNews] = useState<TickerNewsItem[]>([])
+  const [newsRefreshTick, setNewsRefreshTick] = useState(0)  // 수동 새로고침 트리거
+  const [isNewsRefreshing, setIsNewsRefreshing] = useState(false)
+  const [newsLastFetchedAt, setNewsLastFetchedAt] = useState<Date | null>(null)
+  const [todayOpen, setTodayOpen] = useState<number | null>(null)
+  const [todayClose, setTodayClose] = useState<number | null>(null)
 
   const [marketHeadlines, setMarketHeadlines] = useState<MarketHeadlineView[]>([])
   const [marketHeadlinesHealth, setMarketHeadlinesHealth] = useState<MarketHeadlinesHealth | null>(null)
@@ -394,6 +400,7 @@ export default function AppShell() {
       setBriefsError(null)
       setTimelineStatus('loading')
       setTimelineError(null)
+      setIsNewsRefreshing(true)
 
       setSelectedNewsId(null)
       setNewsDetail(null)
@@ -410,9 +417,12 @@ export default function AppShell() {
       setEvidenceStatus('idle')
       setEvidenceError(null)
 
-      const [briefsResult, newsResult] = await Promise.allSettled([
+      const [briefsResult, newsResult, ohlcvResult] = await Promise.allSettled([
         service.getTickerBriefs(selectedSymbol, selectedDateET),
         service.getTickerNews(selectedSymbol, selectedDateET),
+        fetch(`/api/vr-ohlcv/${encodeURIComponent(selectedSymbol)}`, { cache: 'no-store' })
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null),
       ])
       if (cancelled) return
 
@@ -443,13 +453,33 @@ export default function AppShell() {
             : 'Failed to load news timeline.',
         )
       }
+      // 오늘 시가/종가 추출
+      if (ohlcvResult.status === 'fulfilled' && ohlcvResult.value?.bars?.length) {
+        const bars = ohlcvResult.value.bars as Array<{ d: string; o: number; c: number }>
+        const todayBar = bars[bars.length - 1]  // 최신 바 (DESC→reversed → 마지막=오늘)
+        setTodayOpen(todayBar?.o ?? null)
+        setTodayClose(todayBar?.c ?? null)
+      }
+      setIsNewsRefreshing(false)
+      setNewsLastFetchedAt(new Date())
     }
 
     void loadSymbolData()
     return () => {
       cancelled = true
     }
-  }, [selectedDateET, initStatus, selectedSymbol, service])
+  }, [selectedDateET, initStatus, selectedSymbol, service, newsRefreshTick])
+
+  // 30분 자동갱신 (장중 + 선택 심볼 있을 때)
+  useEffect(() => {
+    if (!selectedSymbol || initStatus !== 'ready') return
+    const timer = setInterval(() => {
+      if (isRegularSessionOpenET()) {
+        setNewsRefreshTick((t) => t + 1)
+      }
+    }, NEWS_AUTO_REFRESH_MS)
+    return () => clearInterval(timer)
+  }, [selectedSymbol, initStatus])
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -590,6 +620,11 @@ export default function AppShell() {
         selectedSymbol={selectedSymbol}
         selectedItem={selectedItem}
         dateET={selectedDateET}
+        onRefreshNews={() => setNewsRefreshTick((t) => t + 1)}
+        isNewsRefreshing={isNewsRefreshing}
+        newsLastFetchedAt={newsLastFetchedAt}
+        todayOpen={todayOpen}
+        todayClose={todayClose}
         timeline={tickerNews}
         timelineStatus={timelineStatus}
         timelineError={timelineError}

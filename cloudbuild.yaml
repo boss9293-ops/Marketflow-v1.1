@@ -1,0 +1,29 @@
+steps:
+  # Step 1: Build Docker image from marketflow/backend/
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/slow-money-invest'
+      - 'marketflow/backend'
+
+  # Step 2: Push image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/slow-money-invest'
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'update'
+      - 'slow-money-invest'
+      - '--image=gcr.io/$PROJECT_ID/slow-money-invest'
+      - '--region=us-south1'
+      - '--platform=managed'
+
+images:
+  - 'gcr.io/$PROJECT_ID/slow-money-invest'

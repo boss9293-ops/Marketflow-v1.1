@@ -1,6 +1,656 @@
 {
-  "updatedAt": "2026-04-04T06:01:48.291Z",
+  "updatedAt": "2026-04-07T01:24:23.394Z",
   "headlines": [
+    {
+      "id": "mh-fh-7755054",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T23:58:54.000Z",
+      "timeET": "19:58 ET",
+      "headline": "Wall St ends higher as investors parse US-Iran negotiations, threats - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMitAFBVV95cUxPUXJrYzYxUlR4aWZ1eWJIWHRabGpZNldYUm9BYi1jdXp4Q3RTa1k0Sk9oOHN6VDdBb0dMTk5YcVdiMExzbWstWFRRWnE5UTdHY3hVb3dPTUQ2NWFHaGljX0lBcEVyS2NlNHlGWTh3UWx2bm50WHI0QzRZN3gzQWNiUEhUMFZ2STZvdVB1eEpRWkoxVWJQbnJqMVg3a3VCSWJFNmRrYWRYQ290UERuUnhiYmpjTE8?oc=5"
+    },
+    {
+      "id": "mh-fh-7754532",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T23:58:17.000Z",
+      "timeET": "19:58 ET",
+      "headline": "Trump says Tuesday deadline to make a deal with Iran is final - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPcHNCOXFuN1ZCYU9JT0pIZldjZF9FODYzOXRMU2NEWFhYY3FpXzRTRkUtem9RcnQwZnlsdWFMV3FZc2xrTVN6akl2TE01Ylh6ZkJ1OVU1RFZaakVuNVlOU2dJSEU5LXR3Y1VCNUdWNEZvOUx1cm1FX0xKWEVYeFVSM2N5R2QyaUEyZVVjcGEtVXd6R3ViLW9Da2RldHUxV0hKQ3RSWEdwMTFvcVNkQko0?oc=5"
+    },
+    {
+      "id": "mh-fh-7754844",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T23:57:51.000Z",
+      "timeET": "19:57 ET",
+      "headline": "Trump says Iran could be 'taken out' on Tuesday, Hegseth says major strikes to come - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPZ1JuNHlScmVxUm9PUGhabTBxNEtnUXZSZkwzZ2RnQ3Zrd1FWdHBhSFhQR3UxcXM4LTIxTmM4SFdhWldRdXg5Y3VRS19KZkpQUy1odHdxdEpEOGdiOHFhX1h4dldmaW4tZTNBei1URVJWRGIxblZpNXlYMDlZajR5M01DSEM2aFpoRDd6cWJHNWIzRFBfcU5sdQ?oc=5"
+    },
+    {
+      "id": "mh-yr-73d96ba9679ea0a3",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T23:50:00.000Z",
+      "timeET": "19:50 ET",
+      "headline": "Review Preview: What, Me Worry?",
+      "source": "Yahoo Finance",
+      "summary": "It a pattern that’s become all too familiar, stocks rose to start the week, but the question is whether they can stay there as the war in Iran remains a flashpoint. The Dow Jones Industrial Average and the S&P 500 both added 0.4% Monday, while the Nasdaq Composite rose 0.5%. “The real issue is that even if there’s a climbdown, or TACO, the risk environment has already shifted in a way that leaves markets exposed to sharp, disorderly moves,” warns deVere Group Chief Executive Nigel Green.",
+      "url": "https://finance.yahoo.com/m/c838a4fe-3e89-33b2-b675-1b296773a169/review-preview%3A-what%2C-me.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7756187",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T23:21:28.000Z",
+      "timeET": "19:21 ET",
+      "headline": "Saudi Arabia intercepts 7 missiles; debris falls near energy facilities - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxOMHo1enZTSm94YUpYbHRQMVhUMzgybzFseHVhWUhUSFljX24tNENhX0FZUlgzYzFVYnRzTTBFSUgzMEp0T184MndYd2dTVUpxOVhKN2c5T2pybG83UERad3VFel9wQ0FZY2JZOHUybENMdUtRd0ptUTJEUlhDd0JacEVfU2w2cEk1ZTI2UGdPSFF0cjFJOXRTbmpib3J1WlcwVEVGajZ1dzI2LUZBZHIxalVn?oc=5"
+    },
+    {
+      "id": "mh-fh-7756086",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T23:19:00.000Z",
+      "timeET": "19:19 ET",
+      "headline": "Trump seizes on rescue of downed airman to recast unpopular Iran war - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNYW0yVlFJX3NMVTU1YVlpT3BHR0NpaVI2MmxzOFpZUklRQTZTWUhXUFJJZVJGMFFsTUJCWHFPc2duSXM2V2puMTktNTYtVWRWYXZLcW5HMVZEXzNEOExFTDVEUFFHVVhuZ01mVGVsbFdNWUlRTWZubkhQUUtZZTlyZ1FQZmRKdHYtSWtQdWFxQ1ZUbDUxbl9jeHZCdFNSakw5Ym1IQ3dHT19ZWlNuajRPMHh4cWhLek42ZGc?oc=5"
+    },
+    {
+      "id": "mh-fh-7755982",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:51:10.000Z",
+      "timeET": "18:51 ET",
+      "headline": "US crude oil futures rise over $1 as Trump sharpens rhetoric on Iran - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxOWmtnNUp0TXFkQWVyRzhFVUJTVDBVMmEza3lHTnB5bEtlZnNFSEVFWWhkSTJwZU4yNDNXUXlqMm44MDl5ZGVVTHFxazVKS2plSjhOQkhaVmtUbmFGRFJqXy1TeTRkQnh2VEhIR1VUOHZxdFNNRm5oRXpiSkhkTWlwcnMwUHE4SXpPeXhEejVOc2l4OGZEWjIzVkRvY2RnNkZTLWY5QkU2MmxmaHIzOVRMUmY5NA?oc=5"
+    },
+    {
+      "id": "mh-yr-cc95180f8971fd64",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:45:17.000Z",
+      "timeET": "18:45 ET",
+      "headline": "Why Sandisk Stock Topped the Market Today",
+      "source": "Yahoo Finance",
+      "summary": "A monster price target raise for a rival brought the right kind of attention to the storage company's shares.",
+      "url": "https://www.fool.com/investing/2026/04/06/why-sandisk-stock-topped-the-market-today/?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-513094ed553ea638",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:44:08.000Z",
+      "timeET": "18:44 ET",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq futures mixed as Trump deadline for Iran deal nears",
+      "source": "Yahoo Finance",
+      "summary": "Markets are facing instability as a Trump-issued deadline for a deal with Iran fast approaches.",
+      "url": "https://finance.yahoo.com/news/live/stock-market-today-dow-sp-500-nasdaq-futures-mixed-as-trump-deadline-for-iran-deal-nears-224408431.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7756087",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:30:02.000Z",
+      "timeET": "18:30 ET",
+      "headline": "Phillips 66 faces $900 million loss as Iran crisis lifts oil prices - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxQOUd1MWo0bUxjMl90UmxqWW9BRElsRVFHSWludy12THRCN1lUSU5NUWRtcXVhWTA3T2YzUm1Wd1FBeEExZDd3SzJ5NTFMbUlNcEJSUk5wS3Q0bHZmdEFQeXpxVThNUTdDUVZLd1I3d0kyRVhJOXM4YWZUc3habWR5NlhmNGcybVk5LVhUWE0wX3NRaFcyQ0w2R1BqV3M5NGR3OU51YkhCdVZGbnpkV1pMcTBHZWd4MzZmaDhVVQ?oc=5"
+    },
+    {
+      "id": "mh-yr-e8cfca74b9fda2fb",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:29:00.000Z",
+      "timeET": "18:29 ET",
+      "headline": "Casey’s General Stores Joining S&P 500 This Week",
+      "source": "Yahoo Finance",
+      "summary": "Casey’s General Stores the Iowa-based convenience store chain, will replace medical technology company Hologic in the S&P 500 before trading opens on Thursday, S&P Dow Jones Indices said late Monday. Hologic is being acquired by affiliates of Blackstone and TPG Global in a deal expected to be completed on or about Tuesday. Barron’s reported in October that Blackstone and TPG were in advanced talks to acquire the medical device maker, although the companies declined to confirm the talks.",
+      "url": "https://finance.yahoo.com/m/ec5a70a8-cec0-394b-a2e7-1f5524a6d510/casey%E2%80%99s-general-stores.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-d342a346bd20bfed",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:27:19.000Z",
+      "timeET": "18:27 ET",
+      "headline": "Wall St ends higher as investors parse US-Iran negotiations, threats",
+      "source": "Yahoo Finance",
+      "summary": "STORY: U.S. stocks ended higher on Monday with the Nasdaq leading Wall Street's main indexes with a more than half-a-percent gain. \"The entire country can be taken out in one night.\" President Donald Trump has threatened to escalate the war if Iran fails to reopen the Strait of Hormuz. :: Majid Asgaripour/WANA But investors drew some reassurance from a report that indicated the U.S., Iran and a group of regional mediators continued to discuss terms of a potential ceasefire deal. That helped stocks edge higher, with the S&P 500 and Nasdaq gaining for the fourth consecutive session, their longest winning streaks since January. Jeff Schulze, head of economic and market strategy for ClearBridge Investments, said that while volatility will likely continue, so too should stocks' recent upward momentum. \"Investors are using the playbook of buying the geopolitical dip. When you go back to 1950, there's been over 20 military conflicts. And if you had bought the day that that conflict began, the S&P 500 has been positive 3% over the next three months and positive almost 6% over the next six months. And with the S&P 500 down almost 5% over the last month, we think that this is probably a good buying opportunity for investors, given the resilience of the U.S. economy.” Stocks on the move Monday included Soleno Therapeutics, which jumped more than 32% after Neurocrine Biosciences agreed to acquire the rare-disease drugmaker for $2.9 billion in cash. Rising bitcoin prices boosted crypto-linked firms, with U.S.-listed shares of Coinbase gaining about 2% and Strategy climbing 6.5%. And shares of memory chipmaker Seagate Technology gained 5.5% after Morgan Stanley added it to its top-pick list.",
+      "url": "https://finance.yahoo.com/video/wall-st-ends-higher-investors-222719933.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7755776",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:25:46.000Z",
+      "timeET": "18:25 ET",
+      "headline": "Jim Cramer says potential stock market bottom is tied to interest rates, not war headlines",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/06/jim-cramer-stock-market-bottom-interest-rates-war.html"
+    },
+    {
+      "id": "mh-yr-ad7f7af9105fe20a",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:21:39.000Z",
+      "timeET": "18:21 ET",
+      "headline": "UnitedHealth, Humana Among Stocks Getting a Boost From Medicare Decision",
+      "source": "Yahoo Finance",
+      "summary": "The Trump administration's decision to raise payments to Medicare insurers by 2.48% next year lifted a variety of health- and insurance-related stocks in afterhours trading Monday. To note: UnitedHealth (UNH): The health insurer's stock, a major component of the Dow Jones Industrial Average, rose 8.",
+      "url": "https://finance.yahoo.com/m/5d62440c-8190-30fb-b531-61180ba6e158/unitedhealth%2C-humana-among.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-f70ef9df027d8c31",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:15:27.000Z",
+      "timeET": "18:15 ET",
+      "headline": "Stock Market Today, April 6: Kosmos Energy Rises to 52-Week High as Shares Outpace Analyst Targets",
+      "source": "Yahoo Finance",
+      "summary": "Kosmos Energy hit a 52-week high as shares pushed past analyst targets, even as skepticism lingers over whether offshore production and oil prices can back up the rally.",
+      "url": "https://www.fool.com/coverage/stock-market-today/2026/04/06/stock-market-today-april-6-kosmos-energy-rises-to-52-week-high-as-shares-outpace-analyst-targets/?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-edb3f16b8df9a5ba",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:15:05.000Z",
+      "timeET": "18:15 ET",
+      "headline": "VirTra, Inc. (VTSI) Stock Slides as Market Rises: Facts to Know Before You Trade",
+      "source": "Yahoo Finance",
+      "summary": "VirTra, Inc. (VTSI) concluded the recent trading session at $3.66, signifying a -3.17% move from its prior day's close.",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/virtra-inc-vtsi-stock-slides-221505444.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7755363",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T22:06:33.000Z",
+      "timeET": "18:06 ET",
+      "headline": "Trump threatens jail for reporter who revealed Iran airman rescue - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxQZGtocXAxc3dkX19CUEpMOG5zMFlxQzRJdW0taTF2aUlqdnRvQjY4bzFmdUxzOEctTmx2THRSMmpPbjhFaWtGelVfVHl1dGREbFZydU9jdkpNMnNpNFF3Z05IZEVjaGFjMUNDNFdoUUFRNDJLU1RvZUNLdDNuRGR1Y2otOVFLbm1WajlVRTZwYVR0YlBFbWtnaFFVN2xQa2JBcHBkOGM3MU9JQ01RZGtoaWhPVl92NHNQOTgzdg?oc=5"
+    },
+    {
+      "id": "mh-fh-7755571",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T21:44:38.000Z",
+      "timeET": "17:44 ET",
+      "headline": "Broadcom agrees to expanded chip deals with Google, Anthropic",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/06/broadcom-agrees-to-expanded-chip-deals-with-google-anthropic.html"
+    },
+    {
+      "id": "mh-yr-0e96100b8b5186be",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T20:00:18.000Z",
+      "timeET": "16:00 ET",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq gain ahead of Trump deadline for Iran deal",
+      "source": "Yahoo Finance",
+      "summary": "Reports of a ceasefire proposal are lifting hopes for an end to US-Iran hostilities.",
+      "url": "https://finance.yahoo.com/news/live/stock-market-today-us-stock-futures-mixed-oil-dips-as-hopes-emerge-for-an-end-to-middle-east-hostilities-002656744.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-39fdefef969e23cb",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:56:39.000Z",
+      "timeET": "15:56 ET",
+      "headline": "Top Cryptocurrencies Rise; Bitcoin Tops $69,000",
+      "source": "Yahoo Finance",
+      "summary": "Major digital assets rose Monday, with Bitcoin (BTC-USD) topping $69,000. The CoinDesk Market Ind",
+      "url": "https://finance.yahoo.com/markets/crypto/articles/top-cryptocurrencies-rise-bitcoin-tops-195639317.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-66fa13699d3c2176",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:56:00.000Z",
+      "timeET": "15:56 ET",
+      "headline": "Sector Update: Energy Stocks Rise Late Afternoon",
+      "source": "Yahoo Finance",
+      "summary": "Energy stocks were higher late Monday afternoon, with the NYSE Energy Sector Index rising 0.3% and t",
+      "url": "https://finance.yahoo.com/sectors/energy/articles/sector-energy-stocks-rise-afternoon-195600550.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-022f48a84a245616",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:55:51.000Z",
+      "timeET": "15:55 ET",
+      "headline": "1 S&P 500 Stock Worth Your Attention and 2 We Find Risky",
+      "source": "Yahoo Finance",
+      "summary": "The S&P 500 (^GSPC) is home to the biggest and most well-known companies in the market, making it a go-to index for investors seeking stability. But not all large-cap stocks are created equal - some are struggling with slowing growth, declining margins, or increased competition.",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/1-p-500-stock-worth-195551822.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-d2fb4436d6638ce0",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:53:51.000Z",
+      "timeET": "15:53 ET",
+      "headline": "US Equity Indexes Rise as Trump Warns of Destruction if Strait of Hormuz Not Reopened",
+      "source": "Yahoo Finance",
+      "summary": "US equity indexes were up ahead of Monday's close amid diplomatic efforts to reach a deal with Iran",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/us-equity-indexes-rise-trump-195351803.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-07b3a7cf14ad018d",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:53:42.000Z",
+      "timeET": "15:53 ET",
+      "headline": "Why Aehr Test Systems Stock Is Skyrocketing Today",
+      "source": "Yahoo Finance",
+      "summary": "Aehr Test Systems is set to release its quarterly results tomorrow, and the stock is already seeing huge gains.",
+      "url": "https://www.fool.com/investing/2026/04/06/why-aehr-test-systems-stock-is-skyrocketing-today/?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-8a06c2c24a74d2ba",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:47:51.000Z",
+      "timeET": "15:47 ET",
+      "headline": "1 S&P 500 Stock to Research Further and 2 Facing Challenges",
+      "source": "Yahoo Finance",
+      "summary": "While the S&P 500 (^GSPC) includes industry leaders, not every stock in the index is a winner. Some companies are past their prime, weighed down by poor execution, weak financials, or structural headwinds.",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/1-p-500-stock-research-194751178.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-fe387dc1911eb7cb",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:39:51.000Z",
+      "timeET": "15:39 ET",
+      "headline": "3 Consumer Stocks with Questionable Fundamentals",
+      "source": "Yahoo Finance",
+      "summary": "Consumer discretionary businesses are levered to the highs and lows of economic cycles. Over the past six months, it seems like demand trends are working against their favor as the industry has tumbled by 6.7%. This drop was worse than the S&P 500’s 2.3% fall.",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/3-consumer-stocks-questionable-fundamentals-193951676.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-a9738fc9d9c9c6e2",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:36:14.000Z",
+      "timeET": "15:36 ET",
+      "headline": "Why Micron Stock Is Sinking Today",
+      "source": "Yahoo Finance",
+      "summary": "Micron stock is rising in response to geopolitical news, and more substantial valuation moves could be on the way this week.",
+      "url": "https://www.fool.com/investing/2026/04/06/why-micron-stock-is-sinking-today/?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-ba96de7138e3aa88",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:25:00.000Z",
+      "timeET": "15:25 ET",
+      "headline": "The Financial Stock Built for Investors Who Want Income Without the Volatility",
+      "source": "Yahoo Finance",
+      "summary": "Realty Income generates passive income from some of the world's largest companies, making it an excellent choice for investors who want low volatility.",
+      "url": "https://www.fool.com/investing/2026/04/06/the-financial-stock-built-for-investors-who-want-i/?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-76d2e43def06522e",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:09:08.000Z",
+      "timeET": "15:09 ET",
+      "headline": "Forget the Stock Market Volatility. The Fundamental Outlook Is Improving.",
+      "source": "Yahoo Finance",
+      "summary": "“One of the underappreciated developments from the first quarter is that the market absorbed a pullback while forward earnings estimates continued to move higher, a rare combination that tells us the fundamental backdrop remains better than the headlines suggest,” writes Mark Hackett, chief markets strategist for Nationwide. Ed Yardeni of Yardeni Research, who last week argued that the stock market’s pullback reached its trough on Jan. 27, sees “good value in the stock market at current levels.” The S&P 500’s forward price to earnings ratio peaked at 23 times on Oct, 27, Yardeni writes.",
+      "url": "https://finance.yahoo.com/m/5e2ec724-1e0b-31e8-b85e-c54bb6812fa9/forget-the-stock-market.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7753475",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:07:04.000Z",
+      "timeET": "15:07 ET",
+      "headline": "Iran halts two Qatar LNG tankers it previously cleared to transit Strait of Hormuz, source says - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMizgFBVV95cUxPZE5BeVdUSnFHSU5xN0gySDY2a253Y2hSUG5NOWt4d3U4bVlaR3FiS2FMZ0hiMGxjTC1WdWx0OEtrMnN5cWpJWFVBLUdkRk5scGM2cTZOczdEaGxMVG94bFdCSVFvdHVDcEwzVzdSWkIzRC1pS0E5cmx3SE1XV2FjT1NmR2xfZl9vS2hMZEF1Nm00V1UxQmJ6ajcyeDFkOUI4MEE2dnVHM25qekxDcUY2Qkw0OVlLeWJlUDlEQ2ZsRzdRcC1SSmZ0OS1QZmhzZw?oc=5"
+    },
+    {
+      "id": "mh-yr-53258770c6028879",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T19:05:38.000Z",
+      "timeET": "15:05 ET",
+      "headline": "TSX Penny Stocks To Consider In April 2026",
+      "source": "Yahoo Finance",
+      "summary": "By the end of last week, markets rebounded from the lows, and the S&P 500 and Canadian TSX indexes were positive for the week after negative returns in March. Despite ongoing uncertainty and elevated oil prices, there are signs that de-escalation and improved oil flows may be on the horizon. In this context, penny stocks—though an older market term—remain relevant as they often represent smaller or newer companies with potential growth opportunities. By focusing on those with sound financials...",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/tsx-penny-stocks-consider-april-190538193.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-652a4f3f8e0fec2d",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T18:51:51.000Z",
+      "timeET": "14:51 ET",
+      "headline": "1 Consumer Stock to Keep an Eye On and 2 We Question",
+      "source": "Yahoo Finance",
+      "summary": "Retailers are overhauling their operations as technology redefines the shopping experience. Still, demand can be volatile as the industry is exposed to the ups and downs of consumer spending. This has stirred some uncertainty lately as retail stocks have tumbled by 7.9% over the past six months. This drawdown was worse than the S&P 500’s 2.3% fall.",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/1-consumer-stock-keep-eye-185151312.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-59320638cfcf097d",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T18:50:20.000Z",
+      "timeET": "14:50 ET",
+      "headline": "Stock Market Today: Dow Up As Oil Pops; Bank Play Eyes Entry After This 'Trump Accounts' Move (Live Coverage)",
+      "source": "Yahoo Finance",
+      "summary": "The Dow Jones index rose. Netflix stock rallied on the stock market today. Early indications of Iran impact showed up in an economic report.",
+      "url": "https://finance.yahoo.com/m/1e859da6-1ca3-32a7-8cea-ebdc73ff7848/stock-market-today%3A-dow-up-as.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7754944",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T18:24:54.000Z",
+      "timeET": "14:24 ET",
+      "headline": "S&P 500 aims to extend win streak — plus, a CFO switch at one of our key names",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/06/sp-500-aims-to-extend-win-streak-plus-a-cfo-switch-at-one-of-our-key-names.html"
+    },
+    {
+      "id": "mh-fh-7754843",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T17:51:58.000Z",
+      "timeET": "13:51 ET",
+      "headline": "No longer CEO, Warren Buffett still goes into the office daily—what to do when a former boss now reports to you, work experts say",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/06/buffett-abel-berkshire-hathaway-former-boss-now-reports-to-you.html"
+    },
+    {
+      "id": "mh-fh-7754006",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T17:45:36.000Z",
+      "timeET": "13:45 ET",
+      "headline": "Four killed in Israel's Haifa after Iranian missile strike - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMirAFBVV95cUxOR3RTdkNwOHlSZXlkWUJqdXdYOXdrWEsyR00tcndjc1RCcV85OFZGU3VxYVNYRTl3aTNGUldsSTg3blI4OTRUUWlvWTlBODR1aWI5c215dlBBTWQ3a1VLRnNhNmQ2RWlOTXROcDQtYzhBaWNIellkLV9BeThsZW8zY2dNUW5zWk5ZMU1EdWZvX0xqZkdQdzRzMk1OYm1jN2NCUk0tRVAxWmxmQ1V5?oc=5"
+    },
+    {
+      "id": "mh-fh-7754740",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T17:10:09.000Z",
+      "timeET": "13:10 ET",
+      "headline": "US service sector cools in March, inflation heating up amid Iran war - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxQVDRqY0NjWnFXcGtMbVgtS0VsWU9TTEItcDFvelh4dno0d2pkT0xyYXNzOGN1OExlcTRUNVhlUWhBdnA4NTVjODZXNmRFSkp6QmQ5bE5id2ZHUUZpbjVSMGNjTzBMU1BuS1ViMmY2Q2ZVZk9xaVhiUE94Y0JZbHE5YnBMQWlIdlAzbnhYS1dFSTJGalRRcmd5ZFpxWXp6a1duSnBrOVktSHVCWEplNmJKdVdn?oc=5"
+    },
+    {
+      "id": "mh-fh-7754636",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T17:09:11.000Z",
+      "timeET": "13:09 ET",
+      "headline": "Trump says he is upset with Iran, they will pay a big price - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQUGs3eE1pQzdfX1BRQXJIZUZpWUFyUVR5TU5nWXpsNUZqZXFPV2tqYzdFb1AyVF9HNUdNM0w4U3JDTENMMjZ1VzZaZW90bmZiU29hb25vVzFlRk13Y0RHY1k3M3ZDTDdxaVFnNHp2MWtkRGNYM1R5SmtnMTVkWkRhV0xscm1EWlpjUDQ5SHRLSG1KQWxsdF9YYldHMXNZUVNVNjJYWDFGUFlZb2ZnYjdJ?oc=5"
+    },
+    {
+      "id": "mh-fh-7753901",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T17:06:50.000Z",
+      "timeET": "13:06 ET",
+      "headline": "Israeli strike kills Christian party official in Lebanon, sharpening divides over Hezbollah - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxOVC1OVmN5TTNpTFBqazNzc1pNNm5xVnBPZzdsSHBrbWs3ZWUxbEdsRjlkaGJhMlR4S0dGcEw4WVQ0c0NabjRLNjlQN0R3OFI0djdBQTdSbEpyUjM2bVVLR3NjT0FBM1lKNkV4VWs0NjU5cTVPTU52MjgwM0tmbmlNaW9LTW5Wd2hQTmp2c2tISjdab1J4ZzhqeVVWSk5naUc3SWdRTk5PWmttbEJRbWU5SzJmdmoyTWVmclhMZGI1TkprZm1pVFdKNHRhRQ?oc=5"
+    },
+    {
+      "id": "mh-fh-7754634",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T16:56:50.000Z",
+      "timeET": "12:56 ET",
+      "headline": "FDA declines to issue specific guidance on health programs' foreign drug imports",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/06/fda-says-foreign-drug.html"
+    },
+    {
+      "id": "mh-yr-5bc38e14f5d7c3bb",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T07:30:31.000Z",
+      "timeET": "03:30 ET",
+      "headline": "Stock Futures Waver as Trump Threatens Iran Power Plants",
+      "source": "Yahoo Finance",
+      "summary": "Stock futures were wavering on Monday after the long weekend, with markets digesting President Donald Trump’s latest threats against Iran. Dow Jones Industrial Average futures were down 78 points, or 0.2%. S&P 500 futures were flat and Nasdaq 100 futures were up 0.1%.",
+      "url": "https://finance.yahoo.com/m/65c66453-8a34-3c92-82f1-a8cfa768a61b/stock-futures-waver-as-trump.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7752551",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T07:04:14.000Z",
+      "timeET": "03:04 ET",
+      "headline": "Iran, US receive plan to end hostilities, immediate ceasefire, source says - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxPTEhONXJNZUExZ05kcUZvU0F4SmhCYm1IQjJGeXNmUlY1ZUdOaTZ2czA1d2lpTndlOHBKRTMwdEEzWl9FQ2dLeHVCcDFWaW1fVUx2V1h6TlVZeVV1TFdSZnhsU1A4cWl4Z3g1YVU4NDJPQ194TnBQMWVCUWh1clBVZkJ0LU9EVjA3Wm01WHhiOU9pTWIyeHNwX01YZ3JRajRNNE5XMVVFdUE4SERGWXFkMnBma0kxNXc?oc=5"
+    },
+    {
+      "id": "mh-fh-7751432",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T06:56:08.000Z",
+      "timeET": "02:56 ET",
+      "headline": "Markets on edge as Trump threatens strikes on Iranian infrastructure - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMie0FVX3lxTFAzSkt0MXdoRmJTYzZsckdKcDFhdV9jNjF0MXlZTFpOVVlab2xWR193NExqRDdhWWpFNjFSaktTcUxjUENpelZyZS1wV2lQMmg5ZF9Sdy13eFEzS1hVcDl6ZHBYUmdpbGhwUE1Edm5qU2xtWDZmZEhnZzVpZw?oc=5"
+    },
+    {
+      "id": "mh-yr-fd1c5ad7b9ccda7d",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T06:01:29.000Z",
+      "timeET": "02:01 ET",
+      "headline": "Stocks Rise on Optimism at Possible Iran Ceasefire: Markets Wrap",
+      "source": "Yahoo Finance",
+      "summary": "(Bloomberg) -- Stocks rose and crude oil pared gains as investors took some comfort on signs the impact of the six-week-old Middle East conflict may be contained, and after a report that Iran is pushing for a ceasefire.The MSCI Asia Pacific Index rose 0.2%, with advancers and decliners evenly matched in the benchmark, while technology stocks outperformed. Futures contracts for the S&P 500 Index erased earlier losses to trade 0.2% higher.Aiding sentiment was an Axios report that the US, Iran and",
+      "url": "https://finance.yahoo.com/news/trading-open-shadowed-trump-escalation-200039071.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7752447",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T05:53:00.000Z",
+      "timeET": "01:53 ET",
+      "headline": "UAE says the use of Hormuz must be guaranteed in any US-Iran deal - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxPTllPQXVoc2Q4eGRzOGpTRzNNV3F4alV0Z0Y2VWFWMmlBUERhN3hReW9wYV9PZ0MtX0FDclVIQjBfWmZBd3U0cHY4aE01M25jMzV2R2FPOUZmclhlQ0x0bHhPM2tZcncwY3lxUVRRcXFmTDlRZEU5c1VNZTR4MXFzeUFFb2I3alF3WWFCRmNoQWpKUDdKcDNmV09Qa3RHeFh6NnlEazFHcw?oc=5"
+    },
+    {
+      "id": "mh-fh-7752347",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T05:26:00.000Z",
+      "timeET": "01:26 ET",
+      "headline": "North Korea distancing itself from Iran to leave door open for US talks, Seoul says - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNU1BKeHFTYk8zbjBQYzZMa09oMGs3Y1hCekx2VTNScWRxeG9NajNaNUxGUExHczN5Zm44bjduNW00SnhsTFFTQVlJRTkyemtEVHZmeExqR1FseXpBVkhoZFpKTnNSUFFISEpnalNwN2NBekpxLW5OQWY2dlliMWRfLW1IaUdxbGVKRnRvcU9KMHZSUDN5dXBpdEZqckFtWHNXRVNvMW96MkJmYjR4VnFkN0htYXBzdGZaV2c?oc=5"
+    },
+    {
+      "id": "mh-yr-d64b6d0dc4786425",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T05:00:00.000Z",
+      "timeET": "01:00 ET",
+      "headline": "Aktsiaselts Infortar own share acquisition transactions",
+      "source": "Yahoo Finance",
+      "summary": "Aktsiaselts Infortar acquired its own shares on the Nasdaq Tallinn Stock Exchange during the period of 30 March – 2 April 2026 as follows: DateAggregated volume (pcs)Weighted average price per day (EUR)30.03.202624446,400031.03.202621746,300001.04.202620446,000002.04.202620745,954103.04.2026-- Aktsiaselts Infortar is acquiring its own shares based on the stock exchange announcement published on 20 October 2025. The share buyback programme is managed by SEB Pank AS, which will buy back shares on",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/aktsiaselts-infortar-own-share-acquisition-050000412.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7752245",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T04:49:05.000Z",
+      "timeET": "00:49 ET",
+      "headline": "Indian shares extend losing run as Iran war drags on - Reuters",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQOG5MTjh3SUJaNUVHVVRwcTlzWTVkUkZNVm5OOGZEWHRLVnJoV3luN3lyU0ItOThnVUNiOTZtdDhiekFmazlHWDkwS21fazloOEVyUVY2UzMxbllOTEc2WUR4WGZ4NkhrVTNycVU4SzZXWUM4emtta0lFTnVoeWJfMHVvejVDNWFleVIyeHNkSmMzRDYxQmJFSkdmZDA0YlRjYnd6UU8zR2UyV2xOUGZTMmNXZVJOc00?oc=5"
+    },
+    {
+      "id": "mh-yr-0d74537ca257246d",
+      "dateET": "2026-04-06",
+      "publishedAtET": "2026-04-06T04:20:00.000Z",
+      "timeET": "00:20 ET",
+      "headline": "Bitcoin’s 36% Annualized Return Since August 2020 Shows Why Zooming Out Still Wins",
+      "source": "Yahoo Finance",
+      "summary": "In CT, the easiest way to win an argument is to pick the timeframe that flatters your take. This is why Michael Say...",
+      "url": "https://www.cryptoprowl.com/releases/bitcoins-36-annualized-return-since-august-2020-shows-why-zooming-out-still-wins-4060?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-841ff02a9770a240",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:45:21.000Z",
+      "timeET": "23:45 ET",
+      "headline": "Jim Cramer Says “I Don’t Think There’s a Compelling AI Disruption Case Against Shopify”",
+      "source": "Yahoo Finance",
+      "summary": "Shopify Inc. (NASDAQ:SHOP) is among the stocks in focus as Jim Cramer reviewed the S&P 500’s top performers and the Nasdaq 100’s biggest laggards for the first quarter. Cramer highlighted why the stock declined despite “tremendous growth and impressive profitability.” He commented: Finally, there’s Shopify, down 26% in the first quarter. This one’s like AppLovin. […]",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/jim-cramer-says-don-t-034521919.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-a2d16cbf9b9cee06",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:45:11.000Z",
+      "timeET": "23:45 ET",
+      "headline": "Jim Cramer Discusses the Possibility of “End of Adobe’s Design Dominance”",
+      "source": "Yahoo Finance",
+      "summary": "Adobe Inc. (NASDAQ:ADBE) is among the stocks in focus as Jim Cramer reviewed the S&P 500’s top performers and the Nasdaq 100’s biggest laggards for the first quarter. Cramer highlighted the threats to the company, as he stated: The ninth-worst decliner is Adobe, which was down over 30% in the first quarter. But that’s really […]",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/jim-cramer-discusses-possibility-end-034511719.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-e2c54f3413aa8cfd",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:45:02.000Z",
+      "timeET": "23:45 ET",
+      "headline": "Jim Cramer Discusses Why Thomson Reuters Became an AI Casualty",
+      "source": "Yahoo Finance",
+      "summary": "Thomson Reuters Corporation (NASDAQ:TRI) is among the stocks in focus as Jim Cramer reviewed the S&P 500’s top performers and the Nasdaq 100’s biggest laggards for the first quarter. Cramer highlighted the impact of AI on the stock, as he commented: The eighth-worst name in the Nasdaq 100 was Thomson Reuters, down nearly 32%. And […]",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/jim-cramer-discusses-why-thomson-034502012.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-0f0f1b752dfe4e9a",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:44:51.000Z",
+      "timeET": "23:44 ET",
+      "headline": "Jim Cramer Says He Thinks “The Stock of DoorDash Can Be Bought Here”",
+      "source": "Yahoo Finance",
+      "summary": "DoorDash, Inc. (NASDAQ:DASH) is among the stocks in focus as Jim Cramer reviewed the S&P 500’s top performers and the Nasdaq 100’s biggest laggards for the first quarter. Cramer was bullish on the stock during the episode, as he remarked: Number seven, odd, one, DoorDash, down nearly 34% in the first quarter. That’s right, DoorDash. […]",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/jim-cramer-says-thinks-stock-034451950.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-c795ec4f391767d7",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:44:39.000Z",
+      "timeET": "23:44 ET",
+      "headline": "Jim Cramer on Intuit: “I’m Hoping That’s the Start of a Larger Comeback, and I Think It Deserves To”",
+      "source": "Yahoo Finance",
+      "summary": "Intuit Inc. (NASDAQ:INTU) is among the stocks in focus as Jim Cramer reviewed the S&P 500’s top performers and the Nasdaq 100’s biggest laggards for the first quarter. Cramer noted that he is hoping for the company’s comeback, as he commented: Sixth worst, another one I want to kind of stick my neck out a […]",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/jim-cramer-intuit-m-hoping-034439871.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-fh-7752034",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:41:00.000Z",
+      "timeET": "23:41 ET",
+      "headline": "Trump vows 'hell' for Iran if Strait stays shut, says a deal is possible - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNb1NVOGlScVVMZU1ST3hlMjZVOXJCVkNsN0t6YmM2aDd0SUdDT1NWVVdhTEY2RXNVYUlxUzV5ZXJiMlJEWTZjRFBIZ0Z4N2pKeFU1SnV3czNuOGpJY1dOMGVwZnlvbWRTd0dycEQwekU4YllaZV85c3B2UUZHRlN0eUVIQkpaTXVRSDdLR1U1UjUtUG01SUI5WENsamJuWjZYdjRpU0VYYnlJVFdna09pbFpSVllVOEk3SGFaR2g4WlRmbW5J?oc=5"
+    },
+    {
+      "id": "mh-fh-7752035",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T03:18:00.000Z",
+      "timeET": "23:18 ET",
+      "headline": "Gold falls as Iran war, robust US jobs data dim Fed rate-cut hopes - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNdkRTdjQzQjlESGtxSjVISEVvRXdtbUtwcDBxY0I4dnpseV9CQ3phb29mcEk5Zm1GZTN4ak52ZFJiWkNsTmxmT1lVQ3FhRWsyNzhPYzFGUkRiNGp0TVhQQ3BHVEpyQ3UwamtEM2hOeUEwSFUtMEhRSWN2NGZQaVRaS1lYR1BhQmE4MVFjLXdFMnRMbFJkbEViODJfUkF4bFdXRnROTHVmWGRzZFQ0WDQ4?oc=5"
+    },
+    {
+      "id": "mh-fh-7751632",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T02:16:00.000Z",
+      "timeET": "22:16 ET",
+      "headline": "US, Iran and mediators make push for 45-day ceasefire, Axios reports - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxPLXdSNWp1SGppajdvZGVFQ3U3U2JfZTBocXFiLUFNdVEyUkVqXzh5ZUpIUjFaWTdvendlZ0RxZnFYMGZLbXFHU3h0RjRoNzlxUWg4QUZYNk5hd0RZLXhPRHZ5MVBXRjR6M2R0WDZvWmc1d2psNnFydXRrcmkzQ00zNm5xZW1fUjhhczBac2VWOFduUFRnQUdmdG9xR2Jtc2ZKUWtiX1pVN3pYUzR3UmtVV0pB?oc=5"
+    },
+    {
+      "id": "mh-fh-7751735",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-06T01:11:00.000Z",
+      "timeET": "21:11 ET",
+      "headline": "Dollar steady as traders fret about escalating Iran war - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxPRm1ZXzAydjFIUk5NanVGMXNwWkdjd0F4dWFSODVaNXh1TVZOR2t5MFlWQ2FTd0RtTmYyNTFfVURBRlVzTUpFTjBvcU4xM0lVTEV5ajJsTWE5UXAxOXJST1VRMlpDal9rYlR6cHpuamM4R2ZIQ29zckhmaHlIYVRBZ0hWODVmSXVHeWlYOEpGRS1yZ181QUd1QUJTR3hYSmVxMk1yNVJnMDZVUFU?oc=5"
+    },
+    {
+      "id": "mh-fh-7751029",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-05T22:42:00.000Z",
+      "timeET": "18:42 ET",
+      "headline": "Trump invokes religious rhetoric in praise of Iran rescue, drawing criticism - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOYndIdVpnSEpCc01GbVhjLWZQeHRGS2lNRXp0ZE9saFlyY2NfTE8yb2s2NGg5Yk9tUHFEYl9ZTkYyMWgtZWU1eXJ0YXZhVjBFWHdWbEVieWcwY19LUEFOX0RLSk0yb0RuUDZIQVNxd2NLYnBpN2I0ZlNicUxpd3VwaGczMVVtTW9JdGtXQWJjVVhmNnFEMVROQ1l3QW1Wemh6V3VRb3VVaDZkbUgtTzF4WVJXaWVvY1QybldPcno4MjNjbWMzZy1F?oc=5"
+    },
+    {
+      "id": "mh-fh-7751030",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-05T22:26:00.000Z",
+      "timeET": "18:26 ET",
+      "headline": "Oil prices rise as US-Israeli war with Iran continues to disrupt supply - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxOQTFnY2M0NTVsQmJCTWJMbnJpekFQekJ4MkMzMnBVRHRuX2QzSTJ2N3RMN01QbVd3UkFvX0phNW1kbVg3dGRoS19USFRvSWhPTndPYVlJUUpDcjhfZ2ZzckstLWVwbEtocnRNZm1oZUFwQldRX0EzT2VQMHpVc2dDODdqOUF6dE9GNllRaTZPWEEzU2haS0dWZnAxR0pGSHVENU9vRW9kdm1uYUNOUVRrTXh3Uk5NQTZtbnczd0lkWGVuUQ?oc=5"
+    },
+    {
+      "id": "mh-fh-7750626",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-05T21:22:46.000Z",
+      "timeET": "17:22 ET",
+      "headline": "How a perilous US rescue mission in Iran nearly went off course - reuters.com",
+      "source": "Reuters",
+      "summary": "",
+      "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNZlB6OWpEQUtjb2V2MkhwVU1KYWRLSWpzT2tzUlVSMzdtUzNHekN4UHlVVmZUZjFGSzMwM0RSZGZfMjgyZkdoaG9kM2VsZzJXSUJuQlAzZjg0Zi1yN2hYTkxIRTFLRnhLaVYyZDhZbnpwTjM1Z25jdmc5U3JpUnk3V3B1OE9BUGlWTFdyYUhsTjJhTk9vMGk5Rk9JYUtPV2NzMVhTSGVFRldXT2Z5SEhCSGQ0LW9IQVVaYjQtekdn?oc=5"
+    },
+    {
+      "id": "mh-fh-7749819",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-05T17:16:39.000Z",
+      "timeET": "13:16 ET",
+      "headline": "The mega IPOs of SpaceX, Anthropic and OpenAI alone can't fix this stock market",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/05/cramer-ipos-of-spacex-anthropic-and-openai-alone-cant-fix-this-market.html"
+    },
+    {
+      "id": "mh-fh-7749516",
+      "dateET": "2026-04-05",
+      "publishedAtET": "2026-04-05T15:51:16.000Z",
+      "timeET": "11:51 ET",
+      "headline": "Here are the 3 big things we're watching in the stock market in the week ahead",
+      "source": "CNBC",
+      "summary": "",
+      "url": "https://www.cnbc.com/2026/04/05/here-are-the-3-big-things-were-watching-in-the-stock-market-in-the-week-ahead.html"
+    },
+    {
+      "id": "mh-yr-848f48551a223862",
+      "dateET": "2026-04-03",
+      "publishedAtET": "2026-04-04T01:48:57.000Z",
+      "timeET": "21:48 ET",
+      "headline": "Dow Jones Futures: After Strong Week, Look For This Bullish Market Signal",
+      "source": "Yahoo Finance",
+      "summary": "Futures fell as the March jobs report was much stronger than expected. Look for this stock market signal. Tesla tumbled Thursday.",
+      "url": "https://finance.yahoo.com/m/f9bb3669-1120-3897-b122-ec93fc17a8e6/dow-jones-futures%3A-after.html?.tsrc=rss"
+    },
+    {
+      "id": "mh-yr-8a72a31eff2b5b3b",
+      "dateET": "2026-04-03",
+      "publishedAtET": "2026-04-04T00:50:00.000Z",
+      "timeET": "20:50 ET",
+      "headline": "3 Reasons Stocks Might Crash Under Trump in 2026",
+      "source": "Yahoo Finance",
+      "summary": "The economic outlook has gone from bad to worse.",
+      "url": "https://www.fool.com/investing/2026/04/03/3-reasons-stocks-might-crash-under-trump-in-2026/?.tsrc=rss"
+    },
     {
       "id": "mh-yr-bc58106e01cfbecc",
       "dateET": "2026-04-03",

@@ -6,7 +6,7 @@ export default function ChartShell({
   children,
 }: {
   title: string
-  subtitle: string
+  subtitle: ReactNode
   children: ReactNode
 }) {
   return (
@@ -20,10 +20,9 @@ export default function ChartShell({
     >
       <div style={{ marginBottom: '0.75rem' }}>
         <div style={{ color: '#f8fafc', fontWeight: 700 }}>{title}</div>
-        <div style={{ color: '#8ea1b9', fontSize: '0.8rem', marginTop: 4 }}>{subtitle}</div>
+        <div style={{ color: '#cbd5e1', fontSize: '0.8rem', marginTop: 4 }}>{subtitle}</div>
       </div>
       <div style={{ width: '100%', height: 300 }}>{children}</div>
     </section>
   )
 }
-

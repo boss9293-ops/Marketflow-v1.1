@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -310,8 +310,8 @@ export default function Sidebar({
   const aside = (
     <aside
       style={{
-        width: compact ? 96 : 280,
-        minWidth: compact ? 96 : 280,
+        width: compact ? 96 : 220,
+        minWidth: compact ? 96 : 220,
         height: '100vh',
         overflowY: 'auto',
         background: 'linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-main) 100%)',

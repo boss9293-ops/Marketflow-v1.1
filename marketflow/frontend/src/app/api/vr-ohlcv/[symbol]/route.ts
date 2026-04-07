@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const FLASK_URL = process.env.FLASK_API_URL ?? 'http://localhost:5001'
 
 export async function GET(

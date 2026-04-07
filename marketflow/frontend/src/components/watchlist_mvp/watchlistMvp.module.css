@@ -616,15 +616,9 @@
 .timelineSummary {
   margin: 6px 0 0;
   color: #c7d6e8;
-  font-size: 12px;
-  line-height: 1.4;
-  max-height: calc(1.4em * 5);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
-  line-clamp: 5;
+  font-size: 14px;
+  line-height: 1.6;
   word-break: break-word;
-  overflow: hidden;
 }
 
 

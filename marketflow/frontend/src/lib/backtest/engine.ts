@@ -50,13 +50,23 @@ export function buildValidationIssues(inputs: StrategyInputs): ValidationIssue[]
   if (inputs.targetCapMultiple <= 0) {
     issues.push({ field: 'targetCapMultiple', message: 'Target cap multiple must be greater than 0.' })
   }
+  if ((inputs.initialInvestAmount ?? 0) > 0 && inputs.initialInvestAmount >= inputs.initialCapital) {
+    issues.push({ field: 'initialInvestAmount', message: 'Initial invest must be less than total capital.' })
+  }
+  if ((inputs.cycleAllocationRate ?? 50) <= 0 || (inputs.cycleAllocationRate ?? 50) > 100) {
+    issues.push({ field: 'cycleAllocationRate', message: 'Cycle allocation rate must be between 1 and 100.' })
+  }
 
   return issues
 }
 
-export function filterEligibleBars(bars: DailyBar[], startDate: string) {
+export function filterEligibleBars(bars: DailyBar[], startDate: string, endDate?: string) {
   const startTime = new Date(startDate).getTime()
-  return bars.filter((bar) => new Date(bar.date).getTime() >= startTime)
+  const endTime = endDate ? new Date(endDate).getTime() : Infinity
+  return bars.filter((bar) => {
+    const t = new Date(bar.date).getTime()
+    return t >= startTime && t <= endTime
+  })
 }
 
 export function createInitialPortfolioState(bar: DailyBar, inputs: StrategyInputs): PortfolioState {
@@ -82,6 +92,10 @@ export function createInitialPortfolioState(bar: DailyBar, inputs: StrategyInput
     realizedPnl: 0,
     unrealizedPnl: 0,
     totalReturnPct: 0,
+    buyRequest: 0,
+    sellRequest: 0,
+    cycleBaseEval: 0,
+    poolContrib: 0,
   }
 }
 
@@ -245,7 +259,22 @@ export function applyTradeRequest(
   }
 }
 
-function toBacktestRow(state: PortfolioState, trade: TradeEvent | null): BacktestRow {
+// ── MA200 pre-computation from full bars dataset ─────────────────────────────
+function buildMa200Map(bars: DailyBar[], period = 200): Map<string, number | null> {
+  const map = new Map<string, number | null>()
+  for (let i = 0; i < bars.length; i++) {
+    if (i < period - 1) {
+      map.set(bars[i].date, null)
+    } else {
+      let sum = 0
+      for (let j = i - period + 1; j <= i; j++) sum += bars[j].close
+      map.set(bars[i].date, sum / period)
+    }
+  }
+  return map
+}
+
+function toBacktestRow(state: PortfolioState, trade: TradeEvent | null, ma200: number | null): BacktestRow {
   const isBuy = trade?.action === 'INIT_BUY' || trade?.action === 'BUY'
   const isSell = trade?.action === 'SELL'
 
@@ -259,6 +288,7 @@ function toBacktestRow(state: PortfolioState, trade: TradeEvent | null): Backtes
     tradeQty: trade?.quantity ?? 0,
     buySignal: isBuy,
     sellSignal: isSell,
+    ma200,
   }
 }
 
@@ -268,7 +298,7 @@ export function runBacktest(
   hooks: BacktestEngineHooks = {},
 ): BacktestResult {
   const validationIssues = buildValidationIssues(inputs)
-  const eligibleBars = filterEligibleBars(bars, inputs.startDate)
+  const eligibleBars = filterEligibleBars(bars, inputs.startDate, inputs.endDate || undefined)
 
   if (eligibleBars.length === 0) {
     return {
@@ -315,34 +345,80 @@ export function runBacktest(
   const trades: TradeEvent[] = []
   let state = createInitialPortfolioState(eligibleBars[0], inputs)
 
+  // MA200: build from full bars (includes history before startDate)
+  const ma200Map = buildMa200Map(bars)
+
   eligibleBars.forEach((bar, index) => {
     state = markPortfolioState(state, bar, inputs, index)
 
-    const stepContext = {
-      bar,
-      index,
-      inputs,
-      state,
-      previousRow: rows[rows.length - 1] ?? null,
+    if (index === 0) {
+      // Day 0: onStart — single call, no repeat
+      const step = hooks.onStart?.({ bar, index, inputs, state, previousRow: null })
+      state = applyStatePatch(state, step?.statePatch, bar, inputs, index)
+      let trade: TradeEvent | null = null
+      if (step?.trade) {
+        const execution = applyTradeRequest(state, bar, step.trade, inputs)
+        state = execution.nextState
+        trade = execution.trade
+        if (trade) trades.push(trade)
+      }
+      rows.push(toBacktestRow(state, trade, ma200Map.get(bar.date) ?? null))
+      return
     }
 
-    const step = index === 0
-      ? hooks.onStart?.(stepContext)
-      : hooks.onBar?.(stepContext)
+    // Day 1+: onBar — repeat on same bar while strategy fires trades
+    // Allows multiple buys/sells on the same day (e.g. price drops through
+    // multiple ladder levels within one session close).
+    const MAX_TRADES_PER_BAR = 20   // safety cap against infinite loops
+    let barTrades: TradeEvent[] = []
+    let lastTrade: TradeEvent | null = null
 
-    state = applyStatePatch(state, step?.statePatch, bar, inputs, index)
+    for (let t = 0; t < MAX_TRADES_PER_BAR; t++) {
+      const step = hooks.onBar?.({
+        bar,
+        index,
+        inputs,
+        state,
+        previousRow: rows[rows.length - 1] ?? null,
+      })
 
-    let trade: TradeEvent | null = null
-    if (step?.trade) {
+      if (!step) break
+      state = applyStatePatch(state, step.statePatch, bar, inputs, index)
+
+      if (!step.trade) break   // no trade this iteration → ladder exhausted
+
       const execution = applyTradeRequest(state, bar, step.trade, inputs)
       state = execution.nextState
-      trade = execution.trade
-      if (trade) {
-        trades.push(trade)
-      }
+      if (!execution.trade) break
+      trades.push(execution.trade)
+      barTrades.push(execution.trade)
+      lastTrade = execution.trade
     }
 
-    rows.push(toBacktestRow(state, trade))
+    // For row: accumulate all buys/sells into a single summary row
+    if (barTrades.length > 1) {
+      const totalBuy  = barTrades.filter(t => t.action === 'BUY' || t.action === 'INIT_BUY').reduce((s, t) => s + t.orderAmount, 0)
+      const totalSell = barTrades.filter(t => t.action === 'SELL').reduce((s, t) => s + t.orderAmount, 0)
+      const buyQty    = barTrades.filter(t => t.action === 'BUY' || t.action === 'INIT_BUY').reduce((s, t) => s + t.quantity, 0)
+      const sellQty   = barTrades.filter(t => t.action === 'SELL').reduce((s, t) => s + t.quantity, 0)
+      const isBuy     = totalBuy > 0
+      const isSell    = totalSell > 0
+      const row: BacktestRow = {
+        ...state,
+        action:     lastTrade?.action ?? null,
+        reason:     `×${barTrades.length} trades: ` + (lastTrade?.reason ?? ''),
+        orderAmount: totalBuy + totalSell,
+        buyAmount:  totalBuy,
+        sellAmount: totalSell,
+        tradeQty:   buyQty + sellQty,
+        buySignal:  isBuy,
+        sellSignal: isSell,
+        ma200: ma200Map.get(bar.date) ?? null,
+      }
+      rows.push(row)
+    } else {
+      rows.push(toBacktestRow(state, lastTrade, ma200Map.get(bar.date) ?? null))
+    }
   })
 
   return {
