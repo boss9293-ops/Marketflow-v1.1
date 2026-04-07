@@ -87,3 +87,5 @@ tsconfig.tsbuildinfo
 # VR backtest output (로컬 전용)
 vr_backtest/
 .gstack/
+
+!marketflow/data/*.csv

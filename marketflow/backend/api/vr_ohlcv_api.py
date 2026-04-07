@@ -115,7 +115,56 @@ def vr_ohlcv(symbol: str):
         bars = [{"d": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4], "v": r[5]} for r in rows]
         return jsonify({"symbol": sym, "bars": bars, "count": len(bars), "source": "db"})
 
+    # 1.5 Local CSV fallback
+    import csv
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", f"{sym.lower()}_history.csv")
+    if os.path.exists(csv_path):
+        try:
+            bars = []
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                # Field names are usually lower case or Title case, adjust flexibly
+                date_key = next((k for k in reader.fieldnames if k and k.lower() == 'date'), 'Date')
+                open_key = next((k for k in reader.fieldnames if k and k.lower() == 'open'), 'Open')
+                high_key = next((k for k in reader.fieldnames if k and k.lower() == 'high'), 'High')
+                low_key = next((k for k in reader.fieldnames if k and k.lower() == 'low'), 'Low')
+                close_key = next((k for k in reader.fieldnames if k and k.lower() == 'close'), 'Close')
+                volume_key = next((k for k in reader.fieldnames if k and k.lower() == 'volume'), 'Volume')
+                
+                for row in reader:
+                    # Normalize date if necessary, e.g., 'MM/DD/YYYY' to 'YYYY-MM-DD'
+                    raw_d = row[date_key]
+                    if '/' in raw_d:
+                        m, d, y = raw_d.split('/')
+                        raw_d = f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+                    
+                    try:
+                        c_val = float(row[close_key])
+                        if c_val <= 0: continue
+                        bars.append({
+                            "d": raw_d,
+                            "o": float(row[open_key]) if row.get(open_key) else c_val,
+                            "h": float(row[high_key]) if row.get(high_key) else c_val,
+                            "l": float(row[low_key])  if row.get(low_key)  else c_val,
+                            "c": c_val,
+                            "v": int(float(row[volume_key])) if row.get(volume_key) else 0,
+                        })
+                    except:
+                        pass
+            
+            # Ensure ascending order
+            bars.sort(key=lambda x: x['d'])
+            # Since limit is mostly handled on DB, we just cap it here
+            if len(bars) > limit:
+                bars = bars[-limit:]
+                
+            _alpaca_cache(sym, bars) # Save it to the empty DB so we do it only once!
+            return jsonify({"symbol": sym, "bars": bars, "count": len(bars), "source": "local_csv"})
+        except Exception as e:
+            print("CSV fallback error:", e)
+
     # 2. Alpaca IEX fallback
+
     bars = _alpaca_fetch(sym)
     if bars:
         _alpaca_cache(sym, bars)
