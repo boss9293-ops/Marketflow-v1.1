@@ -19,24 +19,9 @@ from datetime import datetime
 
 # ── Path resolution ───────────────────────────────────────────────────────────
 
-def _find_root() -> str:
-    _cand = os.path.abspath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-    )
-    if os.path.exists(os.path.join(_cand, 'data', 'marketflow.db')):
-        return _cand
-    for _item in os.listdir(r'd:\Youtube_pro\000-Code_develop'):
-        _full = os.path.join(
-            r'd:\Youtube_pro\000-Code_develop', _item,
-            'us_market_complete', 'marketflow'
-        )
-        if os.path.exists(os.path.join(_full, 'data', 'marketflow.db')):
-            return _full
-    return _cand
-
-
-ROOT = _find_root()
-CACHE_DIR = os.path.join(ROOT, 'backend', 'output', 'cache')
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_SCRIPTS_DIR)
+CACHE_DIR = os.path.join(_BACKEND_DIR, 'output', 'cache')
 
 
 # ── Loaders ───────────────────────────────────────────────────────────────────

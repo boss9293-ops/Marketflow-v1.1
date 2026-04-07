@@ -19,27 +19,15 @@ if sys.platform == "win32":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
-def _find_root() -> str:
-    here = os.path.dirname(os.path.abspath(__file__))
-    for cand in [os.path.join(here, "..", ".."), os.path.join(here, "..")]:
-        cand = os.path.realpath(cand)
-        if os.path.exists(os.path.join(cand, "data", "marketflow.db")):
-            return cand
-    _dev = r"d:\Youtube_pro\000-Code_develop"
-    try:
-        for _item in os.listdir(_dev):
-            _full = os.path.join(_dev, _item, "us_market_complete", "marketflow")
-            if os.path.exists(os.path.join(_full, "data", "marketflow.db")):
-                return _full
-    except Exception:
-        pass
-    raise RuntimeError("Cannot locate project root")
-
-
-ROOT = _find_root()
-OUTPUT_DIR = os.path.join(ROOT, "backend", "output")
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_SCRIPTS_DIR)
+OUTPUT_DIR = os.path.join(_BACKEND_DIR, "output")
 CACHE_DIR = os.path.join(OUTPUT_DIR, "cache")
-DB_PATH = os.path.join(ROOT, "data", "marketflow.db")
+try:
+    from db_utils import resolve_marketflow_db as _resolve_db
+    DB_PATH = _resolve_db()
+except Exception:
+    DB_PATH = os.path.join(_BACKEND_DIR, "data", "marketflow.db")
 
 TAPE_SYMBOLS = [
     ("SPY", "S&P 500",      "indices"),

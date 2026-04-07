@@ -22,29 +22,16 @@ import datetime
 import sys
 
 
-def _find_root():
-    """Find project root that has marketflow.db (handles Korean path encoding)."""
-    _cand = os.path.abspath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-    if os.path.exists(os.path.join(_cand, 'data', 'marketflow.db')):
-        return _cand
-    _dev = r'd:\Youtube_pro\000-Code_develop'
-    try:
-        for _item in os.listdir(_dev):
-            _full = os.path.join(_dev, _item, 'us_market_complete', 'marketflow')
-            if os.path.exists(os.path.join(_full, 'data', 'marketflow.db')):
-                return _full
-    except Exception:
-        pass
-    return _cand
-
-
 # ── Paths ──────────────────────────────────────────────────────────────────────
-BASE       = _find_root()
-BACKEND    = os.path.join(BASE, 'backend')
-OUTPUT_DIR = os.path.join(BACKEND, 'output')
-CACHE_DIR  = os.path.join(BACKEND, 'output', 'cache')
-DB_PATH    = os.path.join(BASE, 'data', 'marketflow.db')
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_SCRIPTS_DIR)
+OUTPUT_DIR = os.path.join(_BACKEND_DIR, 'output')
+CACHE_DIR  = os.path.join(_BACKEND_DIR, 'output', 'cache')
+try:
+    from db_utils import resolve_marketflow_db as _resolve_db
+    DB_PATH = _resolve_db()
+except Exception:
+    DB_PATH = os.path.join(_BACKEND_DIR, 'data', 'marketflow.db')
 
 
 def load_json(filename: str):

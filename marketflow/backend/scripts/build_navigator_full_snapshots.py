@@ -15,24 +15,9 @@ import sys
 from db_utils import resolve_marketflow_db
 
 
-def _find_root():
-    _cand = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-    if os.path.exists(os.path.join(_cand, 'data', 'marketflow.db')):
-        return _cand
-    _dev = r'd:\Youtube_pro\000-Code_develop'
-    try:
-        for _item in os.listdir(_dev):
-            _full = os.path.join(_dev, _item, 'us_market_complete', 'marketflow')
-            if os.path.exists(os.path.join(_full, 'data', 'marketflow.db')):
-                return _full
-    except Exception:
-        pass
-    return _cand
-
-
-BASE = _find_root()
-BACKEND = os.path.join(BASE, 'backend')
-OUT_DIR = os.path.join(BACKEND, 'output')
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_SCRIPTS_DIR)
+OUT_DIR = os.path.join(_BACKEND_DIR, 'output')
 DB_PATH = resolve_marketflow_db(
     required_tables=("ohlcv_daily", "indicators_daily"),
     prefer_engine=True,

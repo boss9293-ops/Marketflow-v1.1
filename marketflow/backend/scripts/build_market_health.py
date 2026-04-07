@@ -9,25 +9,14 @@ import json, os, sys
 from datetime import datetime
 
 
-def _find_root() -> str:
-    cand = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-    if os.path.exists(os.path.join(cand, 'data', 'marketflow.db')):
-        return cand
-    base = r'd:\\Youtube_pro\\000-Code_develop'
-    for item in os.listdir(base):
-        full = os.path.join(base, item, 'us_market_complete', 'marketflow')
-        if os.path.exists(os.path.join(full, 'data', 'marketflow.db')):
-            return full
-    return cand
-
-
-ROOT = _find_root()
-CACHE_DIR = os.path.join(ROOT, 'backend', 'output', 'cache')
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_SCRIPTS_DIR)
+CACHE_DIR = os.path.join(_BACKEND_DIR, 'output', 'cache')
 OUTPUT_PATH = os.path.join(CACHE_DIR, 'market_health.json')
 
 
 def _load(filename: str) -> dict:
-    for p in [os.path.join(CACHE_DIR, filename), os.path.join(ROOT, 'backend', 'output', filename)]:
+    for p in [os.path.join(CACHE_DIR, filename), os.path.join(_BACKEND_DIR, 'output', filename)]:
         if os.path.exists(p):
             with open(p, 'r', encoding='utf-8') as f:
                 return json.load(f)
