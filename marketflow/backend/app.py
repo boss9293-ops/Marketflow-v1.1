@@ -332,43 +332,38 @@ MACRO_SNAPSHOT_DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 
 
 
 def _resolve_main_db_path() -> str:
-
     """Prefer the canonical marketflow/data DB, but fall back to the legacy root DB."""
-
     base_dir = os.path.dirname(__file__)
-
     candidates = [
-
         os.path.abspath(os.path.join(base_dir, '..', 'data', 'marketflow.db')),
-
         os.path.abspath(os.path.join(base_dir, '..', '..', 'data', 'marketflow.db')),
-
     ]
-
     for candidate in candidates:
-
         if os.path.exists(candidate):
-
             return candidate
-
     return candidates[0]
-
-
-
-
 
 DB_PATH = _resolve_main_db_path()
 
+def _download_db_if_missing():
+    import urllib.request
+    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) < 1000000:
+        print("Downloading marketflow.db from GitHub releases...", flush=True)
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        url = "https://github.com/boss9293-ops/Marketflow/releases/download/data-v1/marketflow.db"
+        try:
+            urllib.request.urlretrieve(url, DB_PATH)
+            print("Download complete.", flush=True)
+        except Exception as e:
+            print(f"Failed to download DB: {e}", flush=True)
+
+_download_db_if_missing()
+
 CACHE_DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'cache.db')
-
 MY_HOLDINGS_PATH = os.path.join(OUTPUT_DIR, 'my_holdings.json')
-
 MY_HOLDINGS_SNAPSHOT_PATH = os.path.join(OUTPUT_DIR, 'my_holdings_cache.json')
-
 MY_HOLDINGS_CACHE_PATH = os.path.join(os.path.dirname(__file__), '..', 'output', 'cache', 'my_holdings.json')
-
 HOLDINGS_IMPORT_SCRIPT = os.path.join(os.path.dirname(__file__), 'scripts', 'import_holdings_csv.py')
-
 SA_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'google_sa.json')
 
 
