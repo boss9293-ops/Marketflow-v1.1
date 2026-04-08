@@ -21,6 +21,7 @@ from typing import List, Tuple
 import pandas as pd
 
 from date_utils import normalize_daily_snapshot_dates
+from db_utils import resolve_marketflow_db
 
 
 def repo_root() -> str:
@@ -28,7 +29,11 @@ def repo_root() -> str:
 
 
 def db_path() -> str:
-    return os.path.join(repo_root(), "data", "marketflow.db")
+    # Prefer the DB mirror that actually has the snapshot tables ready.
+    return resolve_marketflow_db(
+        required_tables=("daily_snapshots", "signals"),
+        prefer_engine=True,
+    )
 
 
 def table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
