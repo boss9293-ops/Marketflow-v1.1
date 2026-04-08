@@ -36,7 +36,7 @@ OUTPUT_DIR = os.path.join(BACKEND_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 DB_PATH   = resolve_marketflow_db(
-    required_tables=("ohlcv_daily", "ticker_history_daily", "market_daily"),
+    required_tables=("ohlcv_daily", "ticker_history_daily"),
     prefer_engine=True,
 )
 CACHE_DB  = os.path.join(DATA_DIR, "cache.db")

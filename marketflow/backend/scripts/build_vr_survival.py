@@ -48,7 +48,20 @@ cur.execute("SELECT date, close FROM ticker_history_daily WHERE symbol='QQQ'  AN
 qqq_rows = cur.fetchall()
 cur.execute("SELECT date, close FROM ticker_history_daily WHERE symbol='TQQQ' AND close IS NOT NULL ORDER BY date")
 tqqq_rows = cur.fetchall()
+
+# Fallback to ohlcv_daily if ticker_history_daily is empty
+if not qqq_rows:
+    cur.execute("SELECT date, close FROM ohlcv_daily WHERE symbol='QQQ'  AND close IS NOT NULL ORDER BY date")
+    qqq_rows = cur.fetchall()
+if not tqqq_rows:
+    cur.execute("SELECT date, close FROM ohlcv_daily WHERE symbol='TQQQ' AND close IS NOT NULL ORDER BY date")
+    tqqq_rows = cur.fetchall()
+
 con.close()
+
+if not qqq_rows:
+    print("[ERROR] No QQQ price data found in DB — cannot build vr_survival.json", flush=True)
+    import sys; sys.exit(1)
 
 qqq_prices  = {norm_date(r[0]): r[1] for r in qqq_rows}
 tqqq_prices = {norm_date(r[0]): r[1] for r in tqqq_rows}
