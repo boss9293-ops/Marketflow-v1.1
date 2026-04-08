@@ -197,27 +197,26 @@ def pct(val: float | None, digits: int = 2) -> float | None:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _finalize_date_frame(df: pd.DataFrame) -> pd.DataFrame:
-    """Force a clean, monotonic DatetimeIndex for downstream search/slice ops."""
+    """Force a clean, monotonic DatetimeIndex for downstream search/slice ops.
+
+    Handles mixed date formats from ohlcv_daily (yfinance writes timezone-aware
+    timestamps that coexist with plain YYYY-MM-DD strings on Railway).
+    """
     if df.empty:
         return df.copy()
     out = df.copy()
-    idx = pd.to_datetime(out.index, errors="coerce")
-    idx = pd.DatetimeIndex(idx)
-    if isinstance(idx, pd.DatetimeIndex) and idx.tz is not None:
-        # tz_convert(None) strips timezone; tz_localize(None) raises on tz-aware in pandas 2+
-        try:
-            idx = idx.tz_convert(None)
-        except Exception:
-            idx = pd.DatetimeIndex(idx.tz_localize(None))
-    valid = ~idx.isna()
-    out = out.loc[valid].copy()
+    # Step 1: convert index to datetime — handles mixed tz-aware/naive strings
+    idx = pd.to_datetime(out.index, errors="coerce", utc=True)
+    # Step 2: strip timezone → naive datetime64[ns], always
+    idx = idx.tz_convert(None)
+    # Step 3: assign clean index FIRST, then filter/sort on it
+    out.index = idx
+    out = out[~idx.isna()].copy()
     if out.empty:
         return out
-    out.index = idx[valid]
     out = out[~out.index.duplicated(keep="last")].sort_index()
-    # Final guarantee: index must be DatetimeIndex
-    if not isinstance(out.index, pd.DatetimeIndex):
-        out.index = pd.DatetimeIndex(pd.to_datetime(out.index, errors="coerce"))
+    # Final cast: guarantee dtype is datetime64[ns], never object
+    out.index = pd.to_datetime(out.index, errors="coerce")
     return out
 
 
