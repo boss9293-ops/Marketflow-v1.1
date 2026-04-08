@@ -37,9 +37,18 @@ BUILDS = [
     # build_risk_alert.py needs cache.db — skip until uploaded to releases
 ]
 
-# Files that must be regenerated daily even if they exist
-DAILY_BUILDS = {"build_daily_briefing_v3.py", "build_overview.py", "build_snapshots_120d.py",
-                "build_market_tape.py", "build_market_state.py"}
+# Files that must be regenerated daily even if they exist (date-sensitive outputs)
+DAILY_BUILDS = {
+    "build_risk_v1.py",
+    "build_current_90d.py",
+    "build_vr_survival.py",
+    "build_smart_money.py",
+    "build_market_tape.py",
+    "build_overview.py",
+    "build_snapshots_120d.py",
+    "build_market_state.py",
+    "build_daily_briefing_v3.py",
+}
 
 
 def _is_today(out_path: str) -> bool:
