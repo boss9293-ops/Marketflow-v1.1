@@ -25,12 +25,14 @@ else:
 
 # ── 2. Build scripts in background (thread survives because we use Popen) ─
 BUILDS = [
-    ("build_risk_v1.py",      "risk_v1.json"),
-    ("build_vr_survival.py",  "vr_survival.json"),
-    ("build_current_90d.py",  "current_90d.json"),
-    ("build_smart_money.py",  "smart_money.json"),
-    ("build_market_tape.py",  "market_tape.json"),
-    ("build_market_state.py", "market_state.json"),
+    ("build_risk_v1.py",         "risk_v1.json"),
+    ("build_vr_survival.py",     "vr_survival.json"),
+    ("build_current_90d.py",     "current_90d.json"),
+    ("build_smart_money.py",     "smart_money.json"),
+    ("build_market_tape.py",     "market_tape.json"),
+    ("build_overview.py",        "cache/overview.json"),       # must run before market_state
+    ("build_snapshots_120d.py",  "cache/snapshots_120d.json"), # dashboard
+    ("build_market_state.py",    "market_state.json"),
     # build_risk_alert.py needs cache.db — skip until uploaded to releases
 ]
 

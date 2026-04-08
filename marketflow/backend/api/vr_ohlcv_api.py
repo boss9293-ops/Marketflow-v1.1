@@ -5,7 +5,14 @@ import urllib.request
 import urllib.parse
 import json
 from flask import Blueprint, jsonify
-from db_utils import core_db_path, canonical_symbol
+from db_utils import resolve_marketflow_db, canonical_symbol
+
+def _db_path() -> str:
+    try:
+        return resolve_marketflow_db(required_tables=('ohlcv_daily',))
+    except Exception:
+        import os
+        return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'marketflow.db')
 
 vr_ohlcv_bp = Blueprint("vr_ohlcv", __name__)
 
@@ -69,7 +76,7 @@ def _alpaca_fetch(symbol: str) -> list[dict] | None:
 def _alpaca_cache(symbol: str, bars: list[dict]) -> None:
     """받아온 bars를 ohlcv_daily에 INSERT OR IGNORE."""
     try:
-        conn = sqlite3.connect(core_db_path())
+        conn = sqlite3.connect(_db_path())
         conn.executemany(
             """INSERT OR IGNORE INTO ohlcv_daily
                (symbol, date, open, high, low, close, volume)
@@ -97,7 +104,7 @@ def vr_ohlcv(symbol: str):
 
     # 1. DB 조회
     try:
-        conn = sqlite3.connect(core_db_path())
+        conn = sqlite3.connect(_db_path())
         rows = conn.execute(
             """SELECT date, open, high, low, close, volume
                FROM ohlcv_daily

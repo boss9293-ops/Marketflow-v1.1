@@ -75,7 +75,7 @@ def build_window(conn: sqlite3.Connection, years: int, out_name: str):
 
 def main():
     print("[build_navigator_full_snapshots] Connecting to DB...")
-    print(f"  BASE: {BASE}")
+    print(f"  BASE: {_BACKEND_DIR}")
     print(f"  DB:   {DB_PATH}")
     try:
         conn = sqlite3.connect(DB_PATH)

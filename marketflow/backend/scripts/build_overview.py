@@ -128,7 +128,7 @@ def derive_risk_level(vol) -> str:
 # ── Main ───────────────────────────────────────────────────────────────────────
 def main():
     print("[build_overview] Connecting to DB...")
-    print(f"  BASE:      {BASE}")
+    print(f"  BASE:      {_BACKEND_DIR}")
     print(f"  DB_PATH:   {DB_PATH}")
 
     try:
