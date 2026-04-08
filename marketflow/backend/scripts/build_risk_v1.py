@@ -204,13 +204,20 @@ def _finalize_date_frame(df: pd.DataFrame) -> pd.DataFrame:
     idx = pd.to_datetime(out.index, errors="coerce")
     idx = pd.DatetimeIndex(idx)
     if isinstance(idx, pd.DatetimeIndex) and idx.tz is not None:
-        idx = idx.tz_localize(None)
+        # tz_convert(None) strips timezone; tz_localize(None) raises on tz-aware in pandas 2+
+        try:
+            idx = idx.tz_convert(None)
+        except Exception:
+            idx = pd.DatetimeIndex(idx.tz_localize(None))
     valid = ~idx.isna()
     out = out.loc[valid].copy()
     if out.empty:
         return out
     out.index = idx[valid]
     out = out[~out.index.duplicated(keep="last")].sort_index()
+    # Final guarantee: index must be DatetimeIndex
+    if not isinstance(out.index, pd.DatetimeIndex):
+        out.index = pd.DatetimeIndex(pd.to_datetime(out.index, errors="coerce"))
     return out
 
 
@@ -3804,10 +3811,16 @@ def main() -> None:
     entry_mask  = (level_s >= 2) & (prev_l < 2)
     entry_dates = df_sa.index[entry_mask]
 
+    # Ensure df_sa has a proper DatetimeIndex before searchsorted calls
+    if not isinstance(df_sa.index, pd.DatetimeIndex):
+        df_sa = df_sa.copy()
+        df_sa.index = pd.DatetimeIndex(pd.to_datetime(df_sa.index, errors="coerce"))
+    _sa_idx = df_sa.index  # cached DatetimeIndex for searchsorted
+
     def _fwd_ret(sig_d: pd.Timestamp, cal_days: int) -> float | None:
         sig_d = pd.Timestamp(sig_d)
-        pos0 = df_sa.index.searchsorted(sig_d)
-        posT = df_sa.index.searchsorted(sig_d + pd.Timedelta(days=cal_days))
+        pos0 = _sa_idx.searchsorted(sig_d)
+        posT = _sa_idx.searchsorted(sig_d + pd.Timedelta(days=cal_days))
         if posT >= len(df_sa):
             return None
         q0 = float(df_sa["qqq"].iloc[pos0])
@@ -3816,8 +3829,8 @@ def main() -> None:
 
     def _max_drop(sig_d: pd.Timestamp) -> float:
         sig_d = pd.Timestamp(sig_d)
-        pos0 = df_sa.index.searchsorted(sig_d)
-        posE = min(df_sa.index.searchsorted(sig_d + pd.Timedelta(days=65)), len(df_sa))
+        pos0 = _sa_idx.searchsorted(sig_d)
+        posE = min(_sa_idx.searchsorted(sig_d + pd.Timedelta(days=65)), len(df_sa))
         q0   = float(df_sa["qqq"].iloc[pos0])
         minq = float(df_sa["qqq"].iloc[pos0:posE].min()) if posE > pos0 else q0
         return round((minq / q0 - 1) * 100, 1)
