@@ -20,14 +20,16 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
 from date_utils import normalize_date_str
-
-
-def repo_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+from db_utils import db_connect, resolve_marketflow_db
 
 
 def db_path() -> str:
-    return os.path.join(repo_root(), "data", "marketflow.db")
+    # Railway: /app/data/marketflow.db
+    # Local:   marketflow/data/marketflow.db or marketflow/backend/data/marketflow.db
+    return resolve_marketflow_db(
+        required_tables=("ohlcv_daily",),
+        prefer_engine=True,
+    )
 
 
 def table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
@@ -288,7 +290,6 @@ def main() -> int:
         print("Run: python backend/scripts/init_db.py")
         return 1
 
-    from db_utils import db_connect
     conn = db_connect(path)
     try:
         validate_required_tables(conn)

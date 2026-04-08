@@ -3547,6 +3547,7 @@ def main() -> None:
     }
 
     all_dates = df.index.tolist()
+    all_ns = df.index.view("i8")
     events: list[dict] = []
     playback_events: list[dict] = []
     sim_events: list[dict] = []
@@ -3575,8 +3576,18 @@ def main() -> None:
                 tqqq_trough = float(tqqq_ev.min())
                 tqqq_drawdown = (tqqq_trough - tqqq_start) / tqqq_start * 100.0
 
-        start_idx = all_dates.index(start)
-        end_idx = int(df.index.get_indexer([end], method="ffill")[0])
+        start_ns = np.int64(pd.Timestamp(start).value)
+        end_ns = np.int64(pd.Timestamp(end).value)
+
+        start_idx = int(np.searchsorted(all_ns, start_ns, side="left"))
+        if start_idx >= len(all_ns):
+            start_idx = len(all_ns) - 1
+        elif all_ns[start_idx] != start_ns and start_idx > 0 and all_ns[start_idx] > start_ns:
+            # Defensive fallback: if exact timestamp is missing, align to nearest prior bar.
+            start_idx -= 1
+
+        # Equivalent to ffill indexer: right-most index <= event end.
+        end_idx = int(np.searchsorted(all_ns, end_ns, side="right") - 1)
         if end_idx < 0:
             raise ValueError(f"End date {end.strftime('%Y-%m-%d')} is before available data")
 
@@ -3803,6 +3814,18 @@ def main() -> None:
 
     # ── Signal Analysis ──────────────────────────────────────────────────────
     df_sa = _finalize_date_frame(df[["qqq", "score", "level"]].dropna(subset=["qqq"]).copy())
+    # Force deterministic datetime index again before signal search windows.
+    # This removes any latent object-typed index values from mixed data payloads.
+    sa_idx = pd.to_datetime(df_sa.index, errors="coerce", utc=True).tz_convert(None)
+    valid_sa = ~sa_idx.isna()
+    df_sa = df_sa.loc[valid_sa].copy()
+    sa_idx = pd.DatetimeIndex(sa_idx[valid_sa])
+    df_sa.index = sa_idx
+    if not df_sa.empty:
+        df_sa = df_sa[~df_sa.index.duplicated(keep="last")].sort_index()
+    _sa_idx = df_sa.index
+    _sa_ns = _sa_idx.view("i8")
+
     level_s  = df_sa["level"]
     prev_l   = level_s.shift(1).fillna(0)
 
@@ -3810,27 +3833,31 @@ def main() -> None:
     entry_mask  = (level_s >= 2) & (prev_l < 2)
     entry_dates = df_sa.index[entry_mask]
 
-    # Ensure df_sa has a proper DatetimeIndex before searchsorted calls
-    if not isinstance(df_sa.index, pd.DatetimeIndex):
-        df_sa = df_sa.copy()
-        df_sa.index = pd.DatetimeIndex(pd.to_datetime(df_sa.index, errors="coerce"))
-    _sa_idx = df_sa.index  # cached DatetimeIndex for searchsorted
+    def _search_pos(ts: pd.Timestamp, *, side: str = "left") -> int:
+        key_ns = np.int64(pd.Timestamp(ts).value)
+        return int(np.searchsorted(_sa_ns, key_ns, side=side))
 
     def _fwd_ret(sig_d: pd.Timestamp, cal_days: int) -> float | None:
         sig_d = pd.Timestamp(sig_d)
-        pos0 = _sa_idx.searchsorted(sig_d)
-        posT = _sa_idx.searchsorted(sig_d + pd.Timedelta(days=cal_days))
-        if posT >= len(df_sa):
+        pos0 = _search_pos(sig_d, side="left")
+        posT = _search_pos(sig_d + pd.Timedelta(days=cal_days), side="left")
+        if pos0 >= len(df_sa) or posT >= len(df_sa):
             return None
         q0 = float(df_sa["qqq"].iloc[pos0])
+        if q0 == 0.0:
+            return None
         qt = float(df_sa["qqq"].iloc[posT])
         return round((qt / q0 - 1) * 100, 2)
 
     def _max_drop(sig_d: pd.Timestamp) -> float:
         sig_d = pd.Timestamp(sig_d)
-        pos0 = _sa_idx.searchsorted(sig_d)
-        posE = min(_sa_idx.searchsorted(sig_d + pd.Timedelta(days=65)), len(df_sa))
+        pos0 = _search_pos(sig_d, side="left")
+        if pos0 >= len(df_sa):
+            return 0.0
+        posE = min(_search_pos(sig_d + pd.Timedelta(days=65), side="left"), len(df_sa))
         q0   = float(df_sa["qqq"].iloc[pos0])
+        if q0 == 0.0:
+            return 0.0
         minq = float(df_sa["qqq"].iloc[pos0:posE].min()) if posE > pos0 else q0
         return round((minq / q0 - 1) * 100, 1)
 

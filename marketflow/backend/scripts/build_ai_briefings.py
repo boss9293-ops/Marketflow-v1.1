@@ -31,8 +31,9 @@ if sys.platform == "win32":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-BACKEND_DIR = ROOT_DIR / "backend"
+SCRIPTS_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPTS_DIR.parent
+ROOT_DIR = BACKEND_DIR.parent
 OUTPUT_DIR = BACKEND_DIR / "output"
 AI_DIR = OUTPUT_DIR / "ai"
 ET_ZONE = ZoneInfo("America/New_York")
