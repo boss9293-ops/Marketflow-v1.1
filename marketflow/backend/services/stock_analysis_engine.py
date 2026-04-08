@@ -88,6 +88,38 @@ def _db_has_price_tables(path: str) -> bool:
         return False
 
 
+def _sma_from_series(price_series: list, period: int) -> Optional[float]:
+    closes = [float(p["close"]) for p in price_series[:period] if _finite(p.get("close"))]
+    if len(closes) < max(period // 2, 5):
+        return None
+    return round(sum(closes) / len(closes), 2)
+
+
+def _rsi14_from_series(price_series: list) -> Optional[float]:
+    closes = [float(p["close"]) for p in price_series[:29] if _finite(p.get("close"))]
+    if len(closes) < 15:
+        return None
+    gains, losses = [], []
+    for i in range(1, len(closes)):
+        delta = closes[i - 1] - closes[i]  # series is newest-first
+        (gains if delta > 0 else losses).append(abs(delta))
+    if not gains and not losses:
+        return None
+    avg_gain = sum(gains[-14:]) / 14
+    avg_loss = sum(losses[-14:]) / 14
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return round(100 - 100 / (1 + rs), 1)
+
+
+def _vol20_from_series(price_series: list) -> Optional[float]:
+    vols = [float(p.get("volume", 0) or 0) for p in price_series[:20] if _finite(p.get("volume"))]
+    if len(vols) < 5:
+        return None
+    return round(sum(vols) / len(vols), 0)
+
+
 def _resolve_db_path() -> str:
     base_dir = os.path.dirname(__file__)
     candidates = [
@@ -472,11 +504,11 @@ def _load_db_snapshot(symbol: str) -> Dict[str, Any]:
         "price_low_3y": min(highs_3y) if highs_3y else None,
         "price_high_5y": max(highs_5y) if highs_5y else None,
         "price_low_5y": min(highs_5y) if highs_5y else None,
-        "sma20": _safe_float(indicators["sma20"]) if indicators else None,
-        "sma50": _safe_float(indicators["sma50"]) if indicators else None,
-        "sma200": _safe_float(indicators["sma200"]) if indicators else None,
-        "rsi14": _safe_float(indicators["rsi14"]) if indicators else None,
-        "vol20": _safe_float(indicators["vol20"]) if indicators else None,
+        "sma20": _safe_float(indicators["sma20"]) if indicators and indicators["sma20"] is not None else _sma_from_series(price_series, 20),
+        "sma50": _safe_float(indicators["sma50"]) if indicators and indicators["sma50"] is not None else _sma_from_series(price_series, 50),
+        "sma200": _safe_float(indicators["sma200"]) if indicators and indicators["sma200"] is not None else _sma_from_series(price_series, 200),
+        "rsi14": _safe_float(indicators["rsi14"]) if indicators and indicators["rsi14"] is not None else _rsi14_from_series(price_series),
+        "vol20": _safe_float(indicators["vol20"]) if indicators and indicators["vol20"] is not None else _vol20_from_series(price_series),
         "name": universe["name"] if universe else None,
         "raw_sector": universe["sector"] if universe else None,
         "industry": universe["industry"] if universe else None,

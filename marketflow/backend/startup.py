@@ -1,5 +1,5 @@
 """Railway startup script — downloads DB, runs builds, starts gunicorn."""
-import os, sys, subprocess, threading, urllib.request
+import os, sys, subprocess, threading, urllib.request, datetime, json
 
 PORT = os.environ.get("PORT", "8080")
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -37,10 +37,42 @@ BUILDS = [
     # build_risk_alert.py needs cache.db — skip until uploaded to releases
 ]
 
+# Files that must be regenerated daily even if they exist
+DAILY_BUILDS = {"build_daily_briefing_v3.py", "build_overview.py", "build_snapshots_120d.py",
+                "build_market_tape.py", "build_market_state.py"}
+
+
+def _is_today(out_path: str) -> bool:
+    """Return True if file exists AND was generated for today's date."""
+    if not os.path.exists(out_path):
+        return False
+    try:
+        with open(out_path, encoding="utf-8") as f:
+            obj = json.load(f)
+        ts = obj.get("generated_at") or ""
+        if ts:
+            gen = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            today = datetime.datetime.now(datetime.timezone.utc).date()
+            if gen.date() >= today:
+                return True
+        date_fields = ["data_date", "date", "as_of"]
+        for key in date_fields:
+            val = str(obj.get(key) or "")
+            if val[:10] == str(datetime.date.today()):
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def run_builds():
     for script, outfile in BUILDS:
         out_path = os.path.join(OUTPUT, outfile)
-        if os.path.exists(out_path):
+        if script in DAILY_BUILDS:
+            if _is_today(out_path):
+                print(f"[build][SKIP-today] {script}", flush=True)
+                continue
+        elif os.path.exists(out_path):
             print(f"[build][SKIP] {script}", flush=True)
             continue
         print(f"[build] Running {script}...", flush=True)
