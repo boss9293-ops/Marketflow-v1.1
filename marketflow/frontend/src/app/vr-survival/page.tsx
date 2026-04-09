@@ -94,43 +94,35 @@ function buildFallbackSurvivalData(
   riskV1: RiskV1CurrentSnapshot,
   runId?: string,
 ): VRSurvivalData | null {
-  if (
-    riskV1.score == null &&
-    riskV1.level == null &&
-    riskV1.levelLabel == null &&
-    riskV1.date == null
-  ) {
-    return null
-  }
-
   const exposurePct =
     typeof riskV1.finalExposure === 'number'
       ? Math.max(0, Math.min(100, riskV1.finalExposure))
       : 100
   const poolPct = Math.max(0, Math.min(100, 100 - exposurePct))
-  const score = riskV1.score ?? 0
-  const level = riskV1.level ?? 0
+  const score = riskV1.score ?? 50
+  const level = riskV1.level ?? 1
   const levelLabel = riskV1.levelLabel ?? 'Unknown'
+  const today = new Date().toISOString().slice(0, 10)
 
   return {
-    run_id: runId ?? `vr_survival_fallback_${riskV1.date ?? 'unknown'}`,
+    run_id: runId ?? `vr_survival_fallback_${riskV1.date ?? today}`,
     current: {
       score,
       level,
       level_label: levelLabel,
-      state: riskV1.eventType ?? levelLabel,
+      state: riskV1.eventType ?? 'Fallback',
       pool_pct: poolPct,
       exposure_pct: exposurePct,
       survival_active: true,
       explain:
         riskV1.brief ??
-        'vr_survival.json is missing, so this page is using a fallback view built from Risk System v1.',
-      structural_state: riskV1.scoreZone ?? levelLabel,
+        'vr_survival.json is missing, so this page is using a fallback view built from Risk System v1 and placeholder playback data.',
+      structural_state: riskV1.scoreZone ?? 'Fallback',
       shock_cooldown: 0,
       days_below_ma200: riskV1.daysBelowMa200 ?? 0,
-      price: riskV1.price ?? 0,
-      ma50: riskV1.ma50 ?? 0,
-      ma200: riskV1.ma200 ?? 0,
+      price: riskV1.price ?? 1,
+      ma50: riskV1.ma50 ?? 1,
+      ma200: riskV1.ma200 ?? 1,
       dd_pct: riskV1.ddPct ?? 0,
       vol_pct: riskV1.volPct ?? 0,
       components: {
