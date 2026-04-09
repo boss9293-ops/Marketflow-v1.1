@@ -5,6 +5,14 @@ import VRSurvival, {
   VRSurvivalData,
 } from '@/components/crash/vr/VRSurvival'
 import VRRiskTracksCard           from '@/components/vr/VRRiskTracksCard'
+import { buildStrategyArena, type StrategyArenaView } from '../../../../../vr/arena/compute_strategy_arena'
+import {
+  buildVRPlaybackView,
+  type RawStandardPlaybackArchive,
+  type RawVRSurvivalPlaybackArchive,
+  type VRPlaybackEventOverrides,
+  type VRPlaybackView,
+} from '../../../../../vr/playback/vr_playback_loader'
 
 type RiskV1CurrentSnapshot = {
   score: number | null
@@ -45,6 +53,60 @@ async function readRiskV1Current(): Promise<RiskV1CurrentSnapshot> {
   }
 }
 
+type PlaybackArtifacts = {
+  playbackData: VRPlaybackView | null
+  strategyArena: StrategyArenaView | null
+}
+
+async function loadPlaybackArtifacts(simParams?: {
+  event_id?: string
+  sim_start?: string
+  sim_capital?: string
+  sim_stock_pct?: string
+}): Promise<PlaybackArtifacts> {
+  const [standardArchive, survivalArchive] = await Promise.all([
+    readCacheJson<RawStandardPlaybackArchive | null>('risk_v1_playback.json', null),
+    readCacheJson<RawVRSurvivalPlaybackArchive | null>('vr_survival_playback.json', null),
+  ])
+
+  if (!standardArchive || !survivalArchive) {
+    return { playbackData: null, strategyArena: null }
+  }
+
+  const eventOverrides: VRPlaybackEventOverrides | undefined =
+    simParams?.event_id && /^\d{4}-\d{2}$/.test(simParams.event_id)
+      ? {
+          event_id: simParams.event_id,
+          simulation_start_date: simParams.sim_start,
+          initial_capital: Number(simParams.sim_capital) || undefined,
+          stock_allocation_pct: Number(simParams.sim_stock_pct) || undefined,
+        }
+      : undefined
+
+  let playbackData: VRPlaybackView | null = null
+  let strategyArena: StrategyArenaView | null = null
+
+  try {
+    playbackData =
+      buildVRPlaybackView({
+        standardArchive,
+        survivalArchive,
+        rootDir: process.cwd(),
+        eventOverrides,
+      }) ?? null
+  } catch {
+    playbackData = null
+  }
+
+  try {
+    strategyArena = buildStrategyArena({ standardArchive, survivalArchive }) ?? null
+  } catch {
+    strategyArena = null
+  }
+
+  return { playbackData, strategyArena }
+}
+
 
 function toSingleValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
@@ -68,10 +130,6 @@ export default async function VRSurvivalPage({
 }: {
   searchParams?: { [key: string]: string | string[] | undefined }
 }) {
-  const [raw, riskV1] = await Promise.all([
-    readCacheJson<VRSurvivalData | null>('vr_survival.json', null),
-    readRiskV1Current(),
-  ])
   const requestedTab = toSingleValue(searchParams?.tab)
   const requestedEvent = toSingleValue(searchParams?.event)
   const VALID_TABS: Tab[] = ['Overview', 'Backtest', 'Playback']
@@ -91,6 +149,12 @@ export default async function VRSurvivalPage({
           sim_stock_pct: simStockPct,
         }
       : undefined
+  const [raw, riskV1, playbackArtifacts] = await Promise.all([
+    readCacheJson<VRSurvivalData | null>('vr_survival.json', null),
+    readRiskV1Current(),
+    loadPlaybackArtifacts(simParams),
+  ])
+  const { playbackData, strategyArena } = playbackArtifacts
 
   if (!raw) {
     return (
@@ -207,6 +271,8 @@ export default async function VRSurvivalPage({
 
         <VRSurvival
           data={raw}
+          playbackData={playbackData}
+          strategyArena={strategyArena}
           initialTab={initialTab}
           initialPlaybackEventId={initialPlaybackEventId}
           simParams={simParams}

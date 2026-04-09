@@ -8120,6 +8120,8 @@ function PlaybackTab({
   useEffect(() => {
 
 
+    if (!selected?.execution_playback) return
+
     const ep = selected.execution_playback
 
 
