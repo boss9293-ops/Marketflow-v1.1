@@ -220,6 +220,29 @@ def _finalize_date_frame(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _normalize_datetime_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize an arbitrary DataFrame index to a clean DatetimeIndex.
+
+    This is stricter than _finalize_date_frame because it is used for
+    externally-assembled frames where the index can be a mixed object dtype
+    (strings + Timestamps). Those frames need to be safe for label slicing.
+    """
+    if df.empty:
+        return df.copy()
+
+    out = df.copy()
+    idx = pd.to_datetime(out.index, errors="coerce", utc=True)
+    valid = ~idx.isna()
+    if not bool(valid.any()):
+        return out.iloc[0:0].copy()
+
+    out = out.loc[valid].copy()
+    idx = pd.DatetimeIndex(idx[valid]).tz_convert(None)
+    out.index = idx
+    out = out[~out.index.duplicated(keep="last")].sort_index()
+    return out
+
+
 def load_ohlcv(symbol: str) -> pd.DataFrame:
     """Load close prices from ohlcv_daily (SPY/DIA available 2024+)."""
     paths_to_try = [DB_PATH]
@@ -2704,7 +2727,8 @@ def _report_l10_backtest_windows(hy_oas_s: pd.Series, ig_oas_s: pd.Series, fsi_s
         "ig": ig_oas_s,
         "fsi": fsi_s,
         "pc": put_call_s,
-    }).sort_index()
+    })
+    df = _normalize_datetime_frame(df)
     if df.empty:
         print("[L10] backtest skipped (empty series).")
         return

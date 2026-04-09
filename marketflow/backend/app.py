@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, Response
+﻿from flask import Flask, jsonify, request, Response
 
 
 from flask_cors import CORS
@@ -61,7 +61,7 @@ import csv
 import io
 
 
-import json, os, re, sqlite3, subprocess, sys
+import json, os, re, sqlite3, subprocess, sys, threading
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scripts'))
@@ -321,12 +321,25 @@ def serve_data_json(filename):
     candidates = [
         os.path.join(os.path.dirname(__file__), '..', 'data', 'snapshots', filename),
         os.path.join(os.path.dirname(__file__), 'output', filename),
-        os.path.join(os.path.dirname(__file__), 'output', 'cache', filename)
+        os.path.join(os.path.dirname(__file__), 'output', 'cache', filename),
     ]
-    for c in candidates:
-        if os.path.exists(c):
-            with open(c, 'r', encoding='utf-8') as f:
-                return jsonify(json.load(f))
+
+    def _try_read():
+        for c in candidates:
+            if os.path.exists(c):
+                with open(c, 'r', encoding='utf-8') as f:
+                    return jsonify(json.load(f))
+        return None
+
+    data = _try_read()
+    if data is not None:
+        return data
+
+    if filename in _RISK_V1_OUTPUTS and _ensure_risk_v1_outputs():
+        data = _try_read()
+        if data is not None:
+            return data
+
     return jsonify({"error": "not found"}), 404
 
 
@@ -375,7 +388,7 @@ _download_db_if_missing()
 def _run_builds_if_needed():
     """Run core build scripts in background if output files are missing."""
     if os.environ.get('STARTUP_MANAGES_BUILDS'):
-        print('[build] startup.py owns builds — skipping app.py build thread.', flush=True)
+        print('[build] startup.py owns builds ??skipping app.py build thread.', flush=True)
         return
     import threading, subprocess as _sp
 
@@ -428,7 +441,7 @@ SA_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'google_sa.js
 
 
 
-# ?? Watchlist DB helpers ??????????????????????????????????????????????????????
+# ???? Watchlist DB helpers ????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 
 def _get_db():
@@ -671,6 +684,35 @@ def _run_backend_script(script_name: str, extra_args=None, timeout: int = 180):
     )
 
 
+_RISK_V1_OUTPUTS = {
+    'risk_v1.json',
+    'risk_v1_playback.json',
+    'risk_v1_sim.json',
+    'mss_history.json',
+}
+_RISK_V1_REFRESH_LOCK = threading.Lock()
+
+
+def _risk_v1_outputs_ready() -> bool:
+    return all(os.path.exists(os.path.join(OUTPUT_DIR, name)) for name in _RISK_V1_OUTPUTS)
+
+
+def _ensure_risk_v1_outputs(force: bool = False):
+    if not force and _risk_v1_outputs_ready():
+        return True
+
+    with _RISK_V1_REFRESH_LOCK:
+        if not force and _risk_v1_outputs_ready():
+            return True
+
+        result = _run_backend_script('build_risk_v1.py', timeout=1200)
+        if result.returncode != 0:
+            tail = (result.stdout or result.stderr or '')[-3000:]
+            print(f"[risk_v1] rebuild failed: {tail}", flush=True)
+            return False
+        return _risk_v1_outputs_ready()
+
+
 
 
 
@@ -833,7 +875,7 @@ def load_json_or_none(filename):
 
 
 
-# ── Navigator AI helpers ────────────────────────────────────────────────
+# ???? Navigator AI helpers ????????????????????????????????????????????????????????????????????????????????????????????????
 
 
 PROMPT_DIR = os.path.join(os.path.dirname(__file__), '..', 'prompts')
@@ -1114,201 +1156,58 @@ def _parse_ai_lines(text: str) -> dict:
 
     current = None
 
-
     buffer = {
-
-
         'weather': [],
-
-
         'evidence': [],
-
-
         'action': [],
-
-
         'psychology': [],
-
-
     }
-
-
-    def _strip_label_prefix(line: str) -> str:
-
-
-        cleaned = line.strip()
-
-
-        cleaned = re.sub(r'^\*{1,3}\s*', '', cleaned)
-
-
-        cleaned = cleaned.replace('：', ':')
-
-
-        cleaned = re.sub(r'^(weather|evidence|action|psychology|날씨|근거|증거|행동|심리|심리상태)\s*[:\-–—]\s*', '', cleaned, flags=re.IGNORECASE)
-
-
-        cleaned = re.sub(r'^\*{1,3}\s*', '', cleaned)
-
-
-        return cleaned.strip()
-
-
-
-
 
     label_map = {
-
-
         'weather': 'weather',
-
-
-        '날씨': 'weather',
-
-
         'evidence': 'evidence',
-
-
-        '근거': 'evidence',
-
-
-        '증거': 'evidence',
-
-
         'action': 'action',
-
-
-        '행동': 'action',
-
-
         'psychology': 'psychology',
-
-
-        '심리': 'psychology',
-
-
-        '심리상태': 'psychology',
-
-
     }
 
-
-
-
+    def _strip_label_prefix(line: str) -> str:
+        cleaned = line.strip()
+        cleaned = re.sub(r'^\*{1,3}\s*', '', cleaned)
+        cleaned = re.sub(r'^(weather|evidence|action|psychology)\s*[:\-]\s*', '', cleaned, flags=re.IGNORECASE)
+        return cleaned.strip()
 
     def _detect_label(line: str):
-
-
-        cleaned = re.sub(r'^\*{1,3}\s*', '', line.strip())
-
-
-        cleaned = cleaned.replace('：', ':')
-
-
-        m = re.match(r'^(weather|날씨|evidence|근거|증거|action|행동|psychology|심리|심리상태)\s*(?::|[\-–—])?\s*(.*)$', cleaned, flags=re.IGNORECASE)
-
-
+        cleaned = _strip_label_prefix(line)
+        m = re.match(r'^(weather|evidence|action|psychology)\s*[:\-]?\s*(.*)$', cleaned, flags=re.IGNORECASE)
         if not m:
-
-
             return None, cleaned
-
-
-        raw_label = m.group(1).lower()
-
-
-        label = label_map.get(raw_label) or label_map.get(m.group(1))  # try original case for KR
-
-
+        label = label_map.get(m.group(1).lower())
         content = m.group(2).strip()
-
-
         return label, content
 
-
-
-
-
     for raw in text.splitlines():
-
-
         line = raw.strip()
-
-
         if not line:
-
-
             continue
 
-
         label, content = _detect_label(line)
-
-
-        if content:
-
-
-            content = _strip_label_prefix(content)
-
-
-
-
-
-        if content.lower() in {'weather', 'evidence', 'action', 'psychology', '날씨', '근거', '증거', '행동', '심리', '심리상태'}:
-
-
-            content = ''
-
-
-
-
+        if not content:
+            continue
 
         if label:
-
-
             current = label
-
-
-            if content:
-
-
-                buffer[current].append(content)
-
-
-        else:
-
-
-            if current:
-
-
-                buffer[current].append(content)
-
-
-
-
+            buffer[current].append(content)
+        elif current:
+            buffer[current].append(content)
 
     for key in buffer:
-
-
         if buffer[key]:
-
-
             out[key] = "\n".join(buffer[key]).strip()
 
-
-
-
-
     if not any(out.values()):
-
-
         out['weather'] = text.strip()
 
-
     return out
-
-
-
-
 
 def load_context_news_cache():
 
@@ -3053,7 +2952,7 @@ def healthcheck():
         return jsonify(data), (200 if data.get('ok') else 503)
 
 
-    # healthcheck.json not yet generated — return minimal live check
+    # healthcheck.json not yet generated ??return minimal live check
 
 
     cache_dir = os.path.join(OUTPUT_DIR, 'cache')
@@ -3086,7 +2985,7 @@ def healthcheck():
         'schema_errors': [],
 
 
-        'warnings': ['healthcheck.json not generated — run validate_cache.py'],
+        'warnings': ['healthcheck.json not generated ??run validate_cache.py'],
 
 
     }), (200 if ok else 503)
@@ -3671,19 +3570,19 @@ def context_news():
     region = str(request.args.get('region', 'us')).lower()
 
 
-    limit = request.args.get('limit', '6')
+    limit = request.args.get('limit', '5')
 
 
     try:
 
 
-        limit_int = max(1, min(12, int(limit)))
+        limit_int = max(1, min(5, int(limit)))
 
 
     except Exception:
 
 
-        limit_int = 6
+        limit_int = 5
 
 
 
@@ -3771,6 +3670,30 @@ def context_narrative():
 
 
     force = str(request.args.get('force', 'false')).lower() in ('1', 'true', 'yes', 'y')
+
+
+    try:
+
+
+        _run_backend_script(
+
+
+            'build_context_news.py',
+
+
+            extra_args=['--region', region, '--limit', '5'],
+
+
+            timeout=180,
+
+
+        )
+
+
+    except Exception:
+
+
+        pass
 
 
     try:
@@ -4880,7 +4803,7 @@ def risk_alert():
         return jsonify(data)
 
 
-    return jsonify({'error': 'risk_alert.json not found — run build_risk_alert.py'}), 404
+    return jsonify({'error': 'risk_alert.json not found ??run build_risk_alert.py'}), 404
 
 
 
@@ -4901,70 +4824,85 @@ def risk_alert_playback():
         return jsonify(data)
 
 
-    return jsonify({'error': 'risk_alert_playback.json not found — run build_risk_alert.py'}), 404
-
+    return jsonify({'error': 'risk_alert_playback.json not found ??run build_risk_alert.py'}), 404
 
 
 
 
 @app.route('/api/risk-v1')
 
-
 def risk_v1():
-
 
     data = load_json_or_none('risk_v1.json')
 
+    if data is None and _ensure_risk_v1_outputs():
+        data = load_json_or_none('risk_v1.json')
 
     if data:
-
-
         return jsonify(data)
 
-
-    return jsonify({'error': 'risk_v1.json not found — run build_risk_v1.py'}), 404
-
-
-
+    return jsonify({'error': 'risk_v1.json not found ??run build_risk_v1.py'}), 404
 
 
 @app.route('/api/risk-v1-playback')
 
-
 def risk_v1_playback():
-
 
     data = load_json_or_none('risk_v1_playback.json')
 
+    if data is None and _ensure_risk_v1_outputs():
+        data = load_json_or_none('risk_v1_playback.json')
 
     if data:
-
-
         return jsonify(data)
 
-
-    return jsonify({'error': 'risk_v1_playback.json not found — run build_risk_v1.py'}), 404
-
-
-
+    return jsonify({'error': 'risk_v1_playback.json not found ??run build_risk_v1.py'}), 404
 
 
 @app.route('/api/risk-v1-sim')
 
-
 def risk_v1_sim():
-
 
     data = load_json_or_none('risk_v1_sim.json')
 
+    if data is None and _ensure_risk_v1_outputs():
+        data = load_json_or_none('risk_v1_sim.json')
 
     if data:
-
-
         return jsonify(data)
 
+    return jsonify({'error': 'risk_v1_sim.json not found ??run build_risk_v1.py'}), 404
 
-    return jsonify({'error': 'risk_v1_sim.json not found — run build_risk_v1.py'}), 404
+
+@app.route('/api/risk-v1/refresh', methods=['POST'])
+
+def refresh_risk_v1():
+    t0 = _time.time()
+    try:
+        risk_ok = _ensure_risk_v1_outputs(force=True)
+        current_90d = _run_backend_script('build_current_90d.py', timeout=600)
+        elapsed = round(_time.time() - t0, 1)
+
+        if not risk_ok:
+            return jsonify({
+                'ok': False,
+                'elapsed': elapsed,
+                'error': 'build_risk_v1 failed',
+                'current_90d_ok': current_90d.returncode == 0,
+            }), 500
+
+        return jsonify({
+            'ok': True,
+            'elapsed': elapsed,
+            'risk_v1_ok': True,
+            'current_90d_ok': current_90d.returncode == 0,
+            'risk_v1_ready': _risk_v1_outputs_ready(),
+            'current_90d_stdout_tail': (current_90d.stdout or '')[-2000:],
+        })
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 
 
 
@@ -5060,7 +4998,7 @@ def briefing_cards():
             if not text:
 
 
-                text = "현재 AI 브리핑 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+                text = "?熬곣뫗??AI ??곗뒧?????⑥щ턄??? ?釉띾쐞???? 嶺뚮쪇沅?쭛???鍮?? ??ル∥六??????곕뻣 ??類ｌ┣??怨삵룖?筌뤾쑴??"
 
 
                 success = False
@@ -5159,7 +5097,7 @@ def today_context():
         if not text:
 
 
-            text = "오늘 시장의 핵심 컨텍스트를 불러오지 못했습니다. 잠시 후 시도해주세요."
+            text = "???노츓 ??戮곗궋?????堉????쳜????덈콦???釉띾쐞???? 嶺뚮쪇沅?쭛???鍮?? ??ル∥六?????類ｌ┣??怨삵룖?筌뤾쑴??"
 
 
             success = False
@@ -5249,7 +5187,7 @@ def vr_survival():
         return jsonify(data)
 
 
-    return jsonify({'error': 'vr_survival.json not found — run build_vr_survival.py'}), 404
+    return jsonify({'error': 'vr_survival.json not found ??run build_vr_survival.py'}), 404
 
 
 
@@ -5270,7 +5208,7 @@ def vr_survival_playback():
         return jsonify(data)
 
 
-    return jsonify({'error': 'vr_survival_playback.json not found — run build_vr_survival.py'}), 404
+    return jsonify({'error': 'vr_survival_playback.json not found ??run build_vr_survival.py'}), 404
 
 
 
@@ -5312,7 +5250,7 @@ def mss_history_route():
         return jsonify(data)
 
 
-    return jsonify({'error': 'mss_history.json not found — run build_risk_v1.py'}), 404
+    return jsonify({'error': 'mss_history.json not found ??run build_risk_v1.py'}), 404
 
 
 
@@ -5378,7 +5316,7 @@ def daily_report():
         'generated_at': None,
 
 
-        'market_summary': {'lines': [], 'overall_tone': 'neutral', 'overall_tone_label': '?쇱“', 'gate_score': None, 'signals': []},
+        'market_summary': {'lines': [], 'overall_tone': 'neutral', 'overall_tone_label': 'neutral', 'gate_score': None, 'signals': []},
 
 
         'hot_stocks_brief': [],
@@ -5387,7 +5325,7 @@ def daily_report():
         'sector_brief': {'phase': 'unknown', 'lines': [], 'leaders': [], 'laggers': []},
 
 
-        'risk_brief': {'risk_level': 'medium', 'risk_label': '蹂댄넻', 'gate_score': None, 'lines': [], 'alerts': []},
+        'risk_brief': {'risk_level': 'medium', 'risk_label': 'medium', 'gate_score': None, 'lines': [], 'alerts': []},
 
 
         'data_coverage': {'available': 0, 'total': 8, 'pct': 0},
@@ -5834,7 +5772,7 @@ def kr_stock_chart(ticker):
 
 
 
-# ?? Watchlist endpoints ???????????????????????????????????????????????????????
+# ???? Watchlist endpoints ??????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 
 @app.route('/api/watchlist')
@@ -6791,31 +6729,24 @@ def ticker_summary():
 
 
 
-    tone = '以묐┰'
-
+    tone = 'neutral'
 
     if change_pct >= 1.5:
 
-
-        tone = '?④린 ?곸듅'
-
+        tone = 'strong_bullish'
 
     elif change_pct <= -1.5:
 
-
-        tone = '?④린 ?쎌꽭'
-
-
-
+        tone = 'strong_bearish'
 
 
     ai_brief_v1 = (
 
 
-        f"{symbol}??理쒓렐 嫄곕옒??湲곗? {change_pct:+.2f}% ?吏곸씠硫?{tone} ?먮쫫?낅땲?? "
+        f"{symbol}??癲ル슔?됭짆??癲꾧퀗???????れ삀?? {change_pct:+.2f}% ??癲ル슣????ル쵐異?{tone} ????????낇돲?? "
 
 
-        f"理쒓렐 湲곕줉???좏샇??{len(signal_items)}嫄댁씠硫? 吏?쒖? ?좏샇媛 媛숈? 諛⑺뼢?쇰줈 紐⑥씪 ??遺꾪븷 ??묒씠 ?좊━?⑸땲??"
+        f"癲ル슔?됭짆????れ삀??쎈뭄?????レ챺繹??{len(signal_items)}癲꾧퀗????ル쵐異? 癲ル슣????? ???レ챺繹먮뛽琉??쎛 ??좊즵?? ?袁⑸젻泳?떑????⑥??癲ル슢?꾤땟??????됰슣維?????????????ル깼???筌뤾퍓???"
 
 
     )
@@ -8514,7 +8445,7 @@ def backtest_symbols():
 
 
 
-# ── Strategy Simulation: TQQQ DCA Backtest ────────────────────────────────
+# ???? Strategy Simulation: TQQQ DCA Backtest ????????????????????????????????????????????????????????????????
 
 
 BT_DIR_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'backtests')
@@ -8640,7 +8571,7 @@ def tqqq_dca_run():
 
 
 
-# ── Navigator AI endpoints ──────────────────────────────────────────────
+# ???? Navigator AI endpoints ????????????????????????????????????????????????????????????????????????????????????????????
 
 
 def _handle_navigator_ai(provider: str):
@@ -8730,7 +8661,7 @@ def _handle_navigator_ai(provider: str):
     fallback = {
 
 
-        'weather': f"현재 모드는 {context_pack.get('state','').replace('_',' ')}입니다." if (context_pack.get('lang') or 'ko') == 'ko' else f"Current mode is {context_pack.get('state','').replace('_',' ')}.",
+        'weather': f"?熬곣뫗??嶺뚮ㅄ維獄??{context_pack.get('state','').replace('_',' ')}???낅퉵??" if (context_pack.get('lang') or 'ko') == 'ko' else f"Current mode is {context_pack.get('state','').replace('_',' ')}.",
 
 
         'evidence': context_pack.get('evidence_line'),
@@ -8925,7 +8856,7 @@ def navigator_ai_cache():
 def refresh_prices():
 
 
-    """On-demand OHLCV price refresh — runs update_ohlcv.py with parallel workers."""
+    """On-demand OHLCV price refresh ??runs update_ohlcv.py with parallel workers."""
 
 
     t0 = _time.time()
@@ -9171,6 +9102,12 @@ def briefing_v3_generate():
 
 
     timeout_sec = 300
+
+    # Refresh the news cache first so the briefing sees today's headlines.
+    try:
+        _run_backend_script('build_context_news.py', extra_args=['--region', 'us', '--limit', '5'], timeout=180)
+    except Exception:
+        pass
 
     script = os.path.join(os.path.dirname(__file__), 'scripts', 'build_daily_briefing_v3.py')
 
@@ -9578,6 +9515,16 @@ def briefing_v2_tavily_health():
 
 
 
+def _maybe_start_scheduler_on_import() -> None:
+    if os.environ.get("MARKETFLOW_DISABLE_SCHEDULER") == "1":
+        return
+    if __name__ != "__main__":
+        start_scheduler()
+
+
+_maybe_start_scheduler_on_import()
+
+
 if __name__ == '__main__':
 
 
@@ -9597,13 +9544,15 @@ if __name__ == '__main__':
 
 
     #app.run(port=5001, debug=debug_mode)-old
-    # 1. 포트 설정: 구글 클라우드는 PORT 환경변수를 통해 통신합니다. 
-    # 로컬 테스트 시에는 기존처럼 5001을 사용하도록 처리했습니다.
+    # 1. ???????깆젧: ??? ??????⑤베援??PORT ???삵렱?곌떠???? ????????六??紐껊퉵?? 
+    # ?β돦裕뉛쭚????裕????戮?뱺???リ옇???뚣럸?濡?뱿 5001???????濡レ┣??嶺뚳퐣瑗????곕????덈펲.
     port = int(os.environ.get("PORT", 5001))
 
-    # 2. 호스트 설정: "0.0.0.0"은 외부(구글 관제탑)에서 오는 신호를 받겠다는 뜻입니다.
-    # debug_mode는 배포 시 False로 바꾸는 것이 안전하지만, 테스트를 위해 그대로 두셔도 됩니다.
+    # 2. ?筌뤾쑬裕?????깆젧: "0.0.0.0"?? ?筌?(??? ??㉱???ろ뒅)????????노츎 ??ル쪇源???꾩룇猷꾥뜎???노츎 ???곷엷???덈펲.
+    # debug_mode???꾩룄?х뙴???False???꾩룆??????롪퍒??????깆쓧???嶺? ???裕?筌? ?熬곥굥???잙갭梨???????????紐껊퉵??
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
+
+
 
 
 
