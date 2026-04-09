@@ -25,6 +25,16 @@ type RiskV1CurrentSnapshot = {
   finalExposure: number | null
   brief: string | null
   date: string | null
+  price: number | null
+  ma50: number | null
+  ma200: number | null
+  ddPct: number | null
+  volPct: number | null
+  daysBelowMa200: number | null
+  trend: number | null
+  depth: number | null
+  vol: number | null
+  dd: number | null
 }
 
 async function readRiskV1Current(): Promise<RiskV1CurrentSnapshot> {
@@ -43,12 +53,24 @@ async function readRiskV1Current(): Promise<RiskV1CurrentSnapshot> {
       finalExposure: context?.final_exposure as number ?? null,
       brief: context?.brief as string ?? null,
       date: current?.date as string ?? null,
+      price: current?.price as number ?? null,
+      ma50: current?.ma50 as number ?? null,
+      ma200: current?.ma200 as number ?? null,
+      ddPct: current?.dd_pct as number ?? null,
+      volPct: current?.vol_pct as number ?? null,
+      daysBelowMa200: current?.days_below_ma200 as number ?? null,
+      trend: (current?.components as Record<string, unknown> | undefined)?.trend as number ?? null,
+      depth: (current?.components as Record<string, unknown> | undefined)?.depth as number ?? null,
+      vol: (current?.components as Record<string, unknown> | undefined)?.vol as number ?? null,
+      dd: (current?.components as Record<string, unknown> | undefined)?.dd as number ?? null,
     }
   } catch {
     return {
       score: null, scoreName: null, scoreZone: null, level: null,
       levelLabel: null, eventType: null, finalRisk: null,
       finalExposure: null, brief: null, date: null,
+      price: null, ma50: null, ma200: null, ddPct: null, volPct: null,
+      daysBelowMa200: null, trend: null, depth: null, vol: null, dd: null,
     }
   }
 }
@@ -56,6 +78,70 @@ async function readRiskV1Current(): Promise<RiskV1CurrentSnapshot> {
 type PlaybackArtifacts = {
   playbackData: VRPlaybackView | null
   strategyArena: StrategyArenaView | null
+}
+
+const FALLBACK_POOL_LOGIC: VRSurvivalData['pool_logic'] = {
+  level_pools: [
+    { level: 0, label: 'Normal', pool: 0, exposure: 100, color: '#22c55e' },
+    { level: 1, label: 'Caution', pool: 25, exposure: 75, color: '#f59e0b' },
+    { level: 2, label: 'Warning', pool: 50, exposure: 50, color: '#f97316' },
+    { level: 3, label: 'High Risk', pool: 75, exposure: 25, color: '#ef4444' },
+    { level: 4, label: 'Crisis', pool: 100, exposure: 0, color: '#7c3aed' },
+  ],
+}
+
+function buildFallbackSurvivalData(
+  riskV1: RiskV1CurrentSnapshot,
+  runId?: string,
+): VRSurvivalData | null {
+  if (
+    riskV1.score == null &&
+    riskV1.level == null &&
+    riskV1.levelLabel == null &&
+    riskV1.date == null
+  ) {
+    return null
+  }
+
+  const exposurePct =
+    typeof riskV1.finalExposure === 'number'
+      ? Math.max(0, Math.min(100, riskV1.finalExposure))
+      : 100
+  const poolPct = Math.max(0, Math.min(100, 100 - exposurePct))
+  const score = riskV1.score ?? 0
+  const level = riskV1.level ?? 0
+  const levelLabel = riskV1.levelLabel ?? 'Unknown'
+
+  return {
+    run_id: runId ?? `vr_survival_fallback_${riskV1.date ?? 'unknown'}`,
+    current: {
+      score,
+      level,
+      level_label: levelLabel,
+      state: riskV1.eventType ?? levelLabel,
+      pool_pct: poolPct,
+      exposure_pct: exposurePct,
+      survival_active: true,
+      explain:
+        riskV1.brief ??
+        'vr_survival.json is missing, so this page is using a fallback view built from Risk System v1.',
+      structural_state: riskV1.scoreZone ?? levelLabel,
+      shock_cooldown: 0,
+      days_below_ma200: riskV1.daysBelowMa200 ?? 0,
+      price: riskV1.price ?? 0,
+      ma50: riskV1.ma50 ?? 0,
+      ma200: riskV1.ma200 ?? 0,
+      dd_pct: riskV1.ddPct ?? 0,
+      vol_pct: riskV1.volPct ?? 0,
+      components: {
+        trend: riskV1.trend ?? 0,
+        depth: riskV1.depth ?? 0,
+        vol: riskV1.vol ?? 0,
+        dd: riskV1.dd ?? 0,
+      },
+    },
+    pool_logic: FALLBACK_POOL_LOGIC,
+  }
 }
 
 async function loadPlaybackArtifacts(simParams?: {
@@ -155,8 +241,9 @@ export default async function VRSurvivalPage({
     loadPlaybackArtifacts(simParams),
   ])
   const { playbackData, strategyArena } = playbackArtifacts
+  const effectiveRaw = raw ?? buildFallbackSurvivalData(riskV1)
 
-  if (!raw) {
+  if (!effectiveRaw) {
     return (
       <main style={{ padding: '2.6rem', color: '#94a3b8', fontFamily: 'monospace' }}>
         <h2 style={{ color: '#ef4444' }}>vr_survival.json not found</h2>
@@ -270,7 +357,7 @@ export default async function VRSurvivalPage({
         />
 
         <VRSurvival
-          data={raw}
+          data={effectiveRaw}
           playbackData={playbackData}
           strategyArena={strategyArena}
           initialTab={initialTab}
@@ -279,7 +366,7 @@ export default async function VRSurvivalPage({
         />
 
         <div style={{ fontSize: '0.75rem', color: '#475569', textAlign: 'center', paddingTop: '0.4rem' }}>
-          Generated: {raw.run_id} - VR Survival Lab
+          Generated: {effectiveRaw.run_id} - VR Survival Lab
         </div>
       </div>
     </main>
