@@ -511,7 +511,7 @@ export function buildVRPlaybackView(input: VRPlaybackBuildInput): VRPlaybackView
       fallbackStartDate: fallbackStart.date,
       fallbackStartPrice: fallbackStart.start_price,
       fallbackStartPriceSource: fallbackStart.price_source,
-    })
+    } as any)
 
     const placeholderMessages =
       supportStatus === 'pending_synthetic'
