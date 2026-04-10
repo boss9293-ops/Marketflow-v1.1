@@ -190,15 +190,10 @@ def _pick_provider() -> Tuple[str, Any]:
     if mode == "premium" and ALLOW_PAID_NEWS:
         vendor = os.environ.get("PREMIUM_VENDOR", "polygon").strip().lower() or "polygon"
         return mode, PremiumNewsProvider(vendor=vendor)
-    if mode == "yahoo":
-        return mode, YahooNewsProvider()
-    if mode == "google":
-        return mode, GoogleNewsRSSProvider()
-    if mode == "reuters":
-        return mode, ReutersRSSProvider()
-    if mode in {"composite", "broad", "hybrid"}:
-        return mode, CompositeNewsProvider()
-    return "yahoo", YahooNewsProvider()
+    # Keep production news intake multi-source by default.
+    # Single-source overrides are intentionally ignored so the brief always
+    # has enough evidence to summarize instead of collapsing onto one feed.
+    return "composite", CompositeNewsProvider()
 
 
 def _load_last_good(region: str) -> Optional[Dict[str, Any]]:
@@ -440,6 +435,11 @@ def build_context_news_cache(region: str = "us", limit: int = 5, slot: str | Non
         "slot": slot_value,
         "region": region,
         "provider": mode if mode != "premium" else f"premium:{os.environ.get('PREMIUM_VENDOR', 'polygon')}",
+        "provider_sources": (
+            [p.name for p in getattr(provider, "providers", []) if getattr(p, "name", None)]
+            if hasattr(provider, "providers")
+            else [getattr(provider, "name", mode)]
+        ),
         "news_status": status,
         "articles": [a.to_dict() for a in selected],
         "selected_count": len(selected),
