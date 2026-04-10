@@ -1,4 +1,4 @@
-"""Railway startup script ??downloads DB, runs builds, starts gunicorn."""
+"""Railway startup script: downloads DB, runs builds, starts gunicorn."""
 import os, sys, subprocess, threading, urllib.request, datetime, json
 from zoneinfo import ZoneInfo
 
@@ -21,7 +21,7 @@ os.makedirs(os.path.dirname(LIVE_DB_PATH), exist_ok=True)
 os.makedirs(os.path.join(OUTPUT, "cache"), exist_ok=True)
 os.makedirs(BUILD_LOG_DIR, exist_ok=True)
 
-# ?€?€ 1. Download DB if missing ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+# 1. Download DB if missing
 db_abs = os.path.abspath(DB_PATH)
 if not os.path.exists(db_abs) or os.path.getsize(db_abs) < 100_000_000:
     print(f"[startup] Downloading marketflow.db ...", flush=True)
@@ -111,8 +111,8 @@ if _pull_turso_db_if_configured():
     _clear_risk_outputs()
 
 
-# ?€?€ 2. Build scripts ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-# (script, output_json_or_None)  ??None means startup.py writes a stamp file
+# 2. Build scripts
+# (script, output_json_or_None)  None means startup.py writes a stamp file
 BUILDS = [
     # Data updates first -- refresh ohlcv before market_daily reads from it
     ("update_ohlcv.py",          "cache/update_ohlcv_stamp.json"),
@@ -389,7 +389,7 @@ build_thread.start()
 
 os.environ["STARTUP_MANAGES_BUILDS"] = "1"
 
-# ?€?€ 3. Start gunicorn ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+# 3. Start gunicorn
 print(f"[startup] Starting gunicorn on port {PORT}", flush=True)
 proc = subprocess.Popen([
     "gunicorn",
