@@ -137,6 +137,7 @@ export type VRPlaybackBuildInput = {
   survivalArchive: RawVRSurvivalPlaybackArchive | null
   rootDir: string
   eventOverrides?: VRPlaybackEventOverrides
+  allowDatabaseLookup?: boolean
 }
 
 function matchesPlaybackFocusEvent(
@@ -156,7 +157,10 @@ function matchesPlaybackFocusEvent(
 export function buildVRPlaybackTransportView(
   input: VRPlaybackBuildInput & { focusEventId?: string | null },
 ): VRPlaybackTransportView | null {
-  const view = buildVRPlaybackView(input)
+  const view = buildVRPlaybackView({
+    ...input,
+    allowDatabaseLookup: input.allowDatabaseLookup ?? process.env.VERCEL !== '1',
+  })
   if (!view) return null
 
   const focusEvent = view.events.find((event) => matchesPlaybackFocusEvent(event, input.focusEventId)) ?? view.events[0]
@@ -511,6 +515,7 @@ export function buildVRPlaybackView(input: VRPlaybackBuildInput): VRPlaybackView
       fallbackStartDate: fallbackStart.date,
       fallbackStartPrice: fallbackStart.start_price,
       fallbackStartPriceSource: fallbackStart.price_source,
+      allowDatabaseLookup: input.allowDatabaseLookup ?? true,
     } as any)
 
     const placeholderMessages =

@@ -23,6 +23,15 @@ type MarketRow = {
   close: number
 }
 
+const FALLBACK_CYCLE_PLACEHOLDERS = {
+  vref: null,
+  vmin: null,
+  vmax: null,
+  cycle_no: null,
+  cycle_start_date: null,
+  cycle_end_date: null,
+} as const
+
 function getDatabaseCtor() {
   const runtimeRequire = eval('require') as (name: string) => unknown
   return runtimeRequire('better-sqlite3') as new (
@@ -88,17 +97,104 @@ function buildStartOptions(input: {
     .filter((row): row is SimulationStartOption => Boolean(row))
 }
 
+function buildUnavailableScenario(input: {
+  eventId: string
+  eventStartDate: string
+  eventEndDate: string
+  overrides?: EventInitialStateOverrides
+  lookupError: string
+  fallbackStartDate?: string
+  fallbackStartPrice?: number
+  fallbackStartPriceSource?: SimulationStartOption['price_source']
+}): EventInitializationScenario {
+  const fallbackStartDate = input.fallbackStartDate ?? input.eventStartDate
+  const fallbackStartPrice =
+    typeof input.fallbackStartPrice === 'number' && Number.isFinite(input.fallbackStartPrice) && input.fallbackStartPrice > 0
+      ? Number(input.fallbackStartPrice.toFixed(2))
+      : null
+
+  if (fallbackStartPrice != null) {
+    const initialState = deriveInitialPosition({
+      startPrice: fallbackStartPrice,
+      overrides: input.overrides,
+    })
+    const validation = validateInitialState({
+      simulationStartDate: fallbackStartDate,
+      initialState,
+      overrides: input.overrides,
+    })
+
+    return {
+      event_id: input.eventId,
+      ticker: 'TQQQ',
+      event_start_date: input.eventStartDate,
+      event_end_date: input.eventEndDate,
+      simulation_start_date: fallbackStartDate,
+      default_warmup_trading_days: 0,
+      requested_warmup_trading_days: EVENT_INITIAL_STATE_DEFAULTS.warmupTradingDays,
+      initial_state: initialState,
+      available_start_options: [
+        {
+          date: fallbackStartDate,
+          start_price: fallbackStartPrice,
+          price_source: input.fallbackStartPriceSource ?? 'synthetic_tqqq_3x',
+        },
+      ],
+      validation,
+      manual_start_price_override_allowed: true,
+      cycle_placeholders: FALLBACK_CYCLE_PLACEHOLDERS,
+    }
+  }
+
+  return {
+    event_id: input.eventId,
+    ticker: 'TQQQ',
+    event_start_date: input.eventStartDate,
+    event_end_date: input.eventEndDate,
+    simulation_start_date: input.overrides?.simulation_start_date ?? null,
+    default_warmup_trading_days: 0,
+    requested_warmup_trading_days: EVENT_INITIAL_STATE_DEFAULTS.warmupTradingDays,
+    initial_state: null,
+    available_start_options: [],
+    validation: {
+      valid: false,
+      errors: [input.lookupError],
+    },
+    lookup_error: input.lookupError,
+    manual_start_price_override_allowed: true,
+    cycle_placeholders: FALLBACK_CYCLE_PLACEHOLDERS,
+  }
+}
+
 export function initializeEventState(input: {
   rootDir: string
   eventId: string
   eventStartDate: string
   eventEndDate: string
   overrides?: EventInitialStateOverrides
+  fallbackStartDate?: string
+  fallbackStartPrice?: number
+  fallbackStartPriceSource?: SimulationStartOption['price_source']
+  allowDatabaseLookup?: boolean
 }): EventInitializationScenario {
-  const DatabaseCtor = getDatabaseCtor()
-  const db = new DatabaseCtor(resolveDbPath(input.rootDir), { readonly: true, fileMustExist: true })
+  if (input.allowDatabaseLookup === false) {
+    return buildUnavailableScenario({
+      eventId: input.eventId,
+      eventStartDate: input.eventStartDate,
+      eventEndDate: input.eventEndDate,
+      overrides: input.overrides,
+      lookupError: 'Historical lookup skipped in this runtime.',
+      fallbackStartDate: input.fallbackStartDate ?? input.overrides?.simulation_start_date ?? input.eventStartDate,
+      fallbackStartPrice: input.fallbackStartPrice,
+      fallbackStartPriceSource: input.fallbackStartPriceSource,
+    })
+  }
 
+  let db: BetterSqlite3Database | null = null
   try {
+    const DatabaseCtor = getDatabaseCtor()
+    db = new DatabaseCtor(resolveDbPath(input.rootDir), { readonly: true, fileMustExist: true })
+
     const qqqRows = mapRows(
       db.prepare(`
         SELECT date, close
@@ -159,17 +255,29 @@ export function initializeEventState(input: {
       validation,
       lookup_error: lookupError,
       manual_start_price_override_allowed: true,
-      cycle_placeholders: {
-        vref: null,
-        vmin: null,
-        vmax: null,
-        cycle_no: null,
-        cycle_start_date: null,
-        cycle_end_date: null,
-      },
+      cycle_placeholders: FALLBACK_CYCLE_PLACEHOLDERS,
     }
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.message
+        ? `Historical lookup unavailable in this runtime: ${error.message}`
+        : 'Historical lookup unavailable in this runtime.'
+    return buildUnavailableScenario({
+      eventId: input.eventId,
+      eventStartDate: input.eventStartDate,
+      eventEndDate: input.eventEndDate,
+      overrides: input.overrides,
+      lookupError: reason,
+      fallbackStartDate: input.fallbackStartDate ?? input.overrides?.simulation_start_date ?? input.eventStartDate,
+      fallbackStartPrice: input.fallbackStartPrice,
+      fallbackStartPriceSource: input.fallbackStartPriceSource,
+    })
   } finally {
-    db.close()
+    try {
+      db?.close()
+    } catch {
+      // Ignore close errors when the database never opened successfully.
+    }
   }
 }
 
