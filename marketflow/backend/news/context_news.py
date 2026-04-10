@@ -55,6 +55,8 @@ PROMO_TEXT_PATTERNS = [
     re.compile(r"paid content", re.IGNORECASE),
 ]
 ALLOW_PAID_NEWS = os.environ.get("NEWS_ALLOW_PAID_SOURCES", "false").strip().lower() in {"1", "true", "yes", "y"}
+NEWS_LOOKBACK_DAYS = max(1, min(7, int(os.environ.get("NEWS_LOOKBACK_DAYS", "3") or 3)))
+NEWS_MIN_SELECTED = max(1, min(10, int(os.environ.get("NEWS_MIN_SELECTED", "3") or 3)))
 ET_ZONE = ZoneInfo("America/New_York")
 MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
@@ -145,12 +147,42 @@ def _article_score(article: Article, now_utc: datetime) -> float:
     except Exception:
         pub_dt = now_utc - timedelta(days=2)
     age_hours = (now_utc - pub_dt).total_seconds() / 3600.0
-    recency = 3.0 if age_hours <= 6 else (2.0 if age_hours <= 24 else (1.0 if age_hours <= 48 else 0.0))
+    recency = 3.0 if age_hours <= 6 else (2.0 if age_hours <= 24 else (1.0 if age_hours <= 72 else 0.0))
     pub_weight = 0.0
     for name, w in PREFERRED_PUBLISHER_BONUS.items():
         if name.lower() in _source_text(article).lower():
             pub_weight = max(pub_weight, w)
     return keyword_hits * 2.0 + recency + pub_weight
+
+
+def _lookback_days_for_slot(slot: str | None) -> int:
+    slot_value = (slot or "").strip().lower()
+    if slot_value == "preopen":
+        return min(7, max(NEWS_LOOKBACK_DAYS + 1, 4))
+    if slot_value in {"morning", "close"}:
+        return NEWS_LOOKBACK_DAYS
+    return max(NEWS_LOOKBACK_DAYS, 3)
+
+
+def _dedupe_articles(articles: List[Article]) -> List[Article]:
+    deduped: Dict[str, Article] = {}
+    for article in articles:
+        key = (
+            (article.id or "").strip().lower()
+            or (article.url or "").strip().lower()
+            or (article.title or "").strip().lower()
+        )
+        if not key:
+            continue
+        prev = deduped.get(key)
+        if prev is None:
+            deduped[key] = article
+            continue
+        prev_score = getattr(prev, "score", 0.0) or 0.0
+        current_score = getattr(article, "score", 0.0) or 0.0
+        if current_score >= prev_score:
+            deduped[key] = article
+    return list(deduped.values())
 
 
 def _pick_provider() -> Tuple[str, Any]:
@@ -310,22 +342,39 @@ def build_context_news_cache(region: str = "us", limit: int = 5, slot: str | Non
     raw_articles: List[Article] = []
     status = "SensorOnly"
     error = None
+    lookback_days = _lookback_days_for_slot(slot_value)
+    fetch_errors: List[str] = []
 
     try:
-        raw_articles = provider.fetch_top_news(
-            region=region,
-            tickers=["SPY", "QQQ", "IWM", "DIA", "^VIX", "TLT", "HYG", "BTC-USD", "GLD"],
-            topics=["macro", "rates", "liquidity", "volatility"],
-            date_from=today,
-            date_to=today,
-            limit=max(10, limit),
-        )
-        raw_articles = [a for a in raw_articles if _article_score(a, now_utc) > -100]
-        for a in raw_articles:
-            a.score = _article_score(a, now_utc)
-        raw_articles.sort(key=lambda x: x.score, reverse=True)
+        candidate_articles: List[Article] = []
+        candidate_limit = max(10, limit)
+        for days_back in range(lookback_days):
+            date_from = (now_et - timedelta(days=days_back)).strftime("%Y-%m-%d")
+            try:
+                window_articles = provider.fetch_top_news(
+                    region=region,
+                    tickers=["SPY", "QQQ", "IWM", "DIA", "^VIX", "TLT", "HYG", "BTC-USD", "GLD"],
+                    topics=["macro", "rates", "liquidity", "volatility"],
+                    date_from=date_from,
+                    date_to=today,
+                    limit=candidate_limit,
+                )
+            except Exception as e:
+                fetch_errors.append(f"{date_from}:{e}")
+                continue
+            for article in window_articles:
+                score = _article_score(article, now_utc)
+                if score <= -100:
+                    continue
+                article.score = score
+                candidate_articles.append(article)
+            if len(candidate_articles) >= candidate_limit * 2:
+                break
+        raw_articles = _dedupe_articles(candidate_articles)
+        raw_articles = [a for a in raw_articles if getattr(a, "score", 0.0) > -100]
+        raw_articles.sort(key=lambda x: getattr(x, "score", 0.0), reverse=True)
         selected = raw_articles[:limit]
-        status = "Fresh" if len(selected) >= 4 else ("Partial" if len(selected) > 0 else "SensorOnly")
+        status = "Fresh" if len(selected) >= max(4, NEWS_MIN_SELECTED) else ("Partial" if len(selected) > 0 else "SensorOnly")
     except Exception as e:
         error = str(e)
 
@@ -333,11 +382,17 @@ def build_context_news_cache(region: str = "us", limit: int = 5, slot: str | Non
     if not selected:
         cached_headlines = _load_frontend_headlines()
         if cached_headlines:
-            latest_date = str(cached_headlines[0].get("dateET") or "").strip()
-            if latest_date:
+            recent_dates: List[str] = []
+            for row in cached_headlines:
+                date_et = str(row.get("dateET") or "").strip()
+                if date_et and date_et not in recent_dates:
+                    recent_dates.append(date_et)
+                if len(recent_dates) >= min(2, lookback_days):
+                    break
+            if recent_dates:
                 cached_headlines = [
                     row for row in cached_headlines
-                    if str(row.get("dateET") or "").strip() == latest_date
+                    if str(row.get("dateET") or "").strip() in recent_dates
                 ]
             fallback_articles = _articles_from_frontend_headlines(cached_headlines)
             for a in fallback_articles:
@@ -346,7 +401,7 @@ def build_context_news_cache(region: str = "us", limit: int = 5, slot: str | Non
             fallback_articles.sort(key=lambda x: x.score, reverse=True)
             selected = fallback_articles[:limit]
             if selected:
-                status = "Fresh" if len(selected) >= 4 else "Partial"
+                status = "Fresh" if len(selected) >= max(4, NEWS_MIN_SELECTED) else "Partial"
 
     # Fallback to last-good cache if no news selected.
     if not selected:
@@ -391,6 +446,8 @@ def build_context_news_cache(region: str = "us", limit: int = 5, slot: str | Non
             "used_last_good": status == "Stale",
             "sensor_only": status == "SensorOnly",
             "error": error,
+            "fetch_errors": fetch_errors[:4],
+            "lookback_days": lookback_days,
         },
     }
 
