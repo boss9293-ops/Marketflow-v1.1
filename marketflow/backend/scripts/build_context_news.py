@@ -5,12 +5,41 @@ import os
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-for candidate in (
-    os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..")),  # repo root when run locally
-    os.path.abspath(os.path.join(SCRIPT_DIR, "..")),        # Railway /app when scripts are flattened
-):
-    if os.path.isdir(os.path.join(candidate, "backend")) and candidate not in sys.path:
-        sys.path.insert(0, candidate)
+
+
+def _bootstrap_backend_root() -> None:
+    search_roots = [
+        SCRIPT_DIR,
+        os.path.dirname(SCRIPT_DIR),
+        os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..")),
+        os.getcwd(),
+    ]
+    target_rel = os.path.join("backend", "news", "context_news.py")
+    seen: set[str] = set()
+    for root in search_roots:
+        current = os.path.abspath(root)
+        while current and current not in seen:
+            seen.add(current)
+            if os.path.exists(os.path.join(current, target_rel)):
+                if current not in sys.path:
+                    sys.path.insert(0, current)
+                return
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+
+    # Last-resort fallbacks for local dev / Railway flattening.
+    for fallback in (
+        os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..")),
+        os.path.abspath(os.path.join(SCRIPT_DIR, "..")),
+        os.getcwd(),
+    ):
+        if fallback not in sys.path:
+            sys.path.insert(0, fallback)
+
+
+_bootstrap_backend_root()
 
 from backend.news.context_news import build_context_news_cache
 

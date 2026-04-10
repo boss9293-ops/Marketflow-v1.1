@@ -23,8 +23,44 @@ from typing import List, Optional, Tuple
 # ── Paths (must match DATA_DIR in build_risk_v1.py) ───────────────────────────
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.dirname(SCRIPTS_DIR)
-DATA_DIR    = os.path.join(BACKEND_DIR, "..", "data")
-OUTPUT_DIR  = os.path.join(BACKEND_DIR, "output", "cache")
+
+
+def _bootstrap_backend_root() -> str:
+    search_roots = [
+        SCRIPTS_DIR,
+        BACKEND_DIR,
+        os.path.abspath(os.path.join(SCRIPTS_DIR, "..", "..")),
+        os.getcwd(),
+    ]
+    target_rel = os.path.join("backend", "collectors", "collect_cboe.py")
+    seen: set[str] = set()
+    for root in search_roots:
+        current = os.path.abspath(root)
+        while current and current not in seen:
+            seen.add(current)
+            if os.path.exists(os.path.join(current, target_rel)):
+                if current not in sys.path:
+                    sys.path.insert(0, current)
+                return current
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+
+    # Last-resort fallbacks for local dev / Railway flattening.
+    for fallback in (
+        os.path.abspath(os.path.join(SCRIPTS_DIR, "..", "..")),
+        BACKEND_DIR,
+        os.getcwd(),
+    ):
+        if fallback not in sys.path:
+            sys.path.insert(0, fallback)
+    return os.path.abspath(os.path.join(SCRIPTS_DIR, "..", ".."))
+
+
+ROOT_DIR = _bootstrap_backend_root()
+DATA_DIR    = os.path.join(ROOT_DIR, "data")
+OUTPUT_DIR  = os.path.join(ROOT_DIR, "backend", "output", "cache")
 
 CACHE_DB    = os.path.abspath(os.path.join(DATA_DIR, "cache.db"))
 OUTPUT_JSON = os.path.join(OUTPUT_DIR, "cache_series.json")
@@ -46,11 +82,6 @@ FRED_SERIES = {
     "FSI":    "STLFSI4",
     "VIX":    "VIXCLS",
 }
-
-ROOT_DIR = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
-for _path in (ROOT_DIR, BACKEND_DIR):
-    if _path not in sys.path:
-        sys.path.insert(0, _path)
 
 from backend.collectors.collect_cboe import run as collect_cboe
 
