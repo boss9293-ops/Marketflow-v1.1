@@ -8,11 +8,13 @@ import {
 } from '../../../../../../vr/playback/vr_playback_loader'
 
 export async function GET(request: Request) {
+  let debugMode = false
+
   try {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
     const playbackEventId = searchParams.get('playback_event_id')
-    const debugMode = searchParams.get('debug') === '1'
+    debugMode = searchParams.get('debug') === '1'
     const simStart = searchParams.get('sim_start') ?? undefined
     const simCapital = searchParams.get('sim_capital')
     const simStockPct = searchParams.get('sim_stock_pct')
