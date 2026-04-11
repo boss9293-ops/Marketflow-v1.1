@@ -1,8 +1,8 @@
 {
-  "last_updated": "2026-03-31T00:00:00",
+  "last_updated": "2026-04-11T00:00:00",
   "pages": {
     "briefing": {
-      "auto": { "active": "auto/briefing/v1.0.0_market_briefing.md", "versions": ["v1.0.0"] },
+      "auto": { "active": "auto/briefing/v2.0.0_market_briefing.md", "versions": ["v2.0.0"] },
       "user_req": { "active": [] }
     },
     "macro_brief": {

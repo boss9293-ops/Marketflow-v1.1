@@ -26,12 +26,32 @@ export type BriefingV3RiskCheck = {
   color: string
 }
 
+export type DailyBriefingV3PromptMeta = {
+  page?: string
+  version?: string
+  key?: string
+  source?: string
+  fallback_used?: boolean
+}
+
+export type DailyBriefingV3Freshness = {
+  status: 'fresh' | 'lagging' | 'stale' | 'unknown'
+  lag_days: number | null
+  current_et_date: string
+  source_data_date: string
+  overview_latest_date?: string
+  market_state_generated_at?: string
+  warning?: string
+}
+
 export type DailyBriefingV3Data = {
   generated_at: string
   data_date: string
   slot?: string
   model: string
   tokens: { input: number; output: number; cost_usd: number }
+  freshness?: DailyBriefingV3Freshness
+  prompt?: DailyBriefingV3PromptMeta
   hook: string
   hook_ko?: string
   sections: BriefingV3Section[]
@@ -98,6 +118,32 @@ function formatDateKey(iso: string): string {
 function pick(en: string, ko: string | undefined, lang: Lang): string {
   if (lang === 'ko' && ko) return ko
   return en
+}
+
+function formatFreshnessBadge(freshness: DailyBriefingV3Freshness | undefined, uiLang: Lang): { text: string; color: string } | null {
+  if (!freshness || freshness.status === 'fresh' || freshness.status === 'unknown') return null
+  const lag = typeof freshness.lag_days === 'number' ? `${freshness.lag_days}d` : '--'
+  if (freshness.status === 'stale') {
+    return {
+      text: pickUiLang(uiLang, `소스 지연 ${lag}`, `Source stale ${lag}`),
+      color: '#ef4444',
+    }
+  }
+  return {
+    text: pickUiLang(uiLang, `소스 지연 ${lag}`, `Source lagging ${lag}`),
+    color: '#f59e0b',
+  }
+}
+
+function formatPromptBadge(prompt: DailyBriefingV3PromptMeta | undefined, uiLang: Lang): { text: string; color: string } | null {
+  if (!prompt || !prompt.version) return null
+  const source = prompt.source === 'registry'
+    ? pickUiLang(uiLang, '프롬프트 registry', 'Prompt registry')
+    : pickUiLang(uiLang, '프롬프트 fallback', 'Prompt fallback')
+  return {
+    text: `${source} ${prompt.version}`,
+    color: prompt.fallback_used ? '#f59e0b' : '#7dd3fc',
+  }
 }
 
 const MONO_FONT = 'var(--font-terminal-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
@@ -317,13 +363,15 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
   const rc = data.risk_check
   const summaryLine = pick(data.one_line, data.one_line_ko, lang).trim()
   const hookLine = pick(data.hook, data.hook_ko, lang).trim()
-  const heroLabel = lang === 'en' ? BRIEF_UI_TEXT.marketHook.en : BRIEF_UI_TEXT.oneLine.ko
+  const heroLabel = pickUiLang(uiLang, BRIEF_UI_TEXT.marketHook.ko, BRIEF_UI_TEXT.marketHook.en)
   const heroLine = hookLine || summaryLine
   const generatedDateKey = formatDateKey(data.generated_at)
   const marketDateKey = String(data.data_date || '').trim()
   const titleDateKey = generatedDateKey || marketDateKey
   const showAsOfDate = marketDateKey && marketDateKey !== titleDateKey
   const slotLabel = formatSlotLabel(data.slot, uiLang)
+  const freshnessBadge = formatFreshnessBadge(data.freshness, uiLang)
+  const promptBadge = formatPromptBadge(data.prompt, uiLang)
 
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', padding: '28px 24px 48px',
@@ -348,6 +396,8 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
             {pickUiLang(uiLang, BRIEF_UI_TEXT.generatedLabel.ko, BRIEF_UI_TEXT.generatedLabel.en)} {formatDate(data.generated_at)} | {formatTime(data.generated_at)} |{' '}
             {slotLabel && <><span style={{ color: '#64748b' }}>{slotLabel}</span> | </>}
             {showAsOfDate && <><span style={{ color: '#64748b' }}>{pickUiLang(uiLang, `기준 ${marketDateKey}`, `as of ${marketDateKey}`)}</span> | </>}
+            {freshnessBadge && <><span style={{ color: freshnessBadge.color }}>{freshnessBadge.text}</span> | </>}
+            {promptBadge && <><span style={{ color: promptBadge.color }}>{promptBadge.text}</span> | </>}
             <span style={{ color: '#cbd5e1' }}>{data.model}</span>
           </div>
         </div>
