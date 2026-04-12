@@ -96,6 +96,8 @@ def _clear_risk_outputs() -> None:
         "risk_v1_sim.json",
         "mss_history.json",
         "current_90d.json",
+        "soxx_context.json",
+        "soxx_survival_playback.json",
         "vr_survival.json",
     ]:
         target = os.path.join(OUTPUT, rel_path)
@@ -126,6 +128,8 @@ BUILDS = [
     ("build_risk_v1.py",         "risk_v1.json"),
     ("build_vr_survival.py",     "vr_survival.json"),
     ("build_current_90d.py",     "current_90d.json"),
+    ("build_soxx_context.py",    "soxx_context.json"),
+    ("build_soxx_survival_playback.py", "soxx_survival_playback.json"),
     ("build_smart_money.py",     "smart_money.json"),
     ("build_market_tape.py",     "market_tape.json"),
     ("build_overview.py",        "cache/overview.json"),
@@ -160,6 +164,8 @@ DAILY_BUILDS = {
     "build_cache_series.py",
     "build_risk_v1.py",
     "build_current_90d.py",
+    "build_soxx_context.py",
+    "build_soxx_survival_playback.py",
     "build_vr_survival.py",
     "build_smart_money.py",
     "build_market_tape.py",

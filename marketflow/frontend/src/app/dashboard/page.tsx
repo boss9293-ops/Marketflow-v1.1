@@ -152,6 +152,7 @@ const DASHBOARD_UI = {
   labelDivergence: { ko: 'Divergence', en: 'Divergence' },
   labelPattern: { ko: 'Pattern', en: 'Pattern' },
   labelVrPosture: { ko: 'VR posture', en: 'VR posture' },
+  emotionTitle: { ko: '오늘의 시장 심리', en: 'Today\'s Market Emotion' },
 } as const
 
 const DASHBOARD_ENGINE = {
@@ -200,21 +201,53 @@ const DASHBOARD_ENGINE = {
     ko: '16:30 ET - Close audit: rebalance only if signal drift persists.',
     en: '16:30 ET - Close audit: rebalance only if signal drift persists.',
   },
-  leverageDeRiskLabel: { ko: 'DE-RISK LEVERAGE', en: 'DE-RISK LEVERAGE' },
+  leverageDeRiskLabel: { ko: '🔴 DE-RISK LEVERAGE (위험)', en: '🔴 DE-RISK LEVERAGE (Risk)' },
   leverageDeRiskLine: {
-    ko: 'Use smaller size, wait for breadth confirmation before adding leverage.',
-    en: 'Use smaller size, wait for breadth confirmation before adding leverage.',
+    ko: '하락 변동성 확대 구간입니다. 지지선이 확인되기 전까지 추가 하락 리스크가 큽니다.',
+    en: 'High downside volatility. Wait for support before considering entries.',
   },
-  leverageMeasuredLabel: { ko: 'MEASURED LEVERAGE', en: 'MEASURED LEVERAGE' },
+  leverageDeRiskAction: {
+    ko: '고변동성 레버리지(TQQQ, SOXL) 비중을 적극 축소하고 현금을 확보하세요. 현재는 생존(Survival)이 우선인 구간입니다.',
+    en: 'Actively reduce high-beta leverage (TQQQ, SOXL) and build cash buffers. Focus on survival.',
+  },
+  leverageMeasuredLabel: { ko: '🟡 MEASURED LEVERAGE (주의)', en: '🟡 MEASURED LEVERAGE (Caution)' },
   leverageMeasuredLine: {
-    ko: 'Keep leverage tactical and avoid overnight concentration.',
-    en: 'Keep leverage tactical and avoid overnight concentration.',
+    ko: '방향성 탐색 구간입니다. 매크로 이슈에 따른 장중 변동성에 유의하세요.',
+    en: 'Directional chop zone. Watch out for macro-driven intraday volatility.',
   },
-  leverageAllowedLabel: { ko: 'LEVERAGE ALLOWED', en: 'LEVERAGE ALLOWED' },
+  leverageMeasuredAction: {
+    ko: '현재는 단기 트레이딩으로만 접근할 시기입니다. 섣부른 물타기를 피하고, 레버리지 ETF의 오버나잇(밤샘 보유) 비중을 평소의 절반 이하로 줄이시길 권장합니다.',
+    en: 'Stick to tactical intraday trading. Avoid premature averaging down, and cut overnight leverage ETF exposure in half.',
+  },
+  leverageAllowedLabel: { ko: '🟢 LEVERAGE ALLOWED (양호)', en: '🟢 LEVERAGE ALLOWED (Constructive)' },
   leverageAllowedLine: {
-    ko: 'Trend support is constructive, but entries should still be staged.',
-    en: 'Trend support is constructive, but entries should still be staged.',
+    ko: '상승 추세가 확인되었습니다. TQQQ와 SOXL의 점진적 비중 확대를 고려할 수 있는 구간입니다.',
+    en: 'Uptrend confirmed. Consider gradual scaling into TQQQ and SOXL.',
   },
+  leverageAllowedAction: {
+    ko: '조정 시 분할 매수로 TQQQ, SOXL의 평균 단가를 관리하세요. 시장 폭(Breadth) 지표가 강세를 보이므로 홀딩(오버나잇) 전략이 유효합니다.',
+    en: 'Buy on dips to manage TQQQ/SOXL cost basis. Breadth is strong, so holding overnight is a valid strategy.',
+  },
+  leverageDirectionTitle: { ko: '방향성 및 위험도', en: 'Direction & Risk' },
+  leverageActionTitle: { ko: 'TQQQ & SOXL 대처법', en: 'TQQQ & SOXL Action Plan' },
+  leverageTqqqStateTitle: { ko: '현재 TQQQ 상태', en: 'Current TQQQ State' },
+  tqqqStateText: {
+    ko: '최근 {{days}}일간 누적 {{drop}} 하락을 기록 중입니다. {{rebound}} 구간이며, {{signal}} {{direction}}',
+    en: 'Recording a {{drop}} drop over {{days}} days. Currently in {{rebound}} stage. {{signal}} {{direction}}',
+  },
+  tqqqStatePositive: {
+    ko: '현재 {{rebound}} 상승 중입니다. 긍정적인 모멘텀을 유지하고 있습니다. {{direction}}',
+    en: 'Currently up {{rebound}}. Maintaining positive momentum. {{direction}}',
+  },
+  tqqqDirectionDown: { ko: '3~5일 전 대비 낙폭이 깊어지며 하락세가 가속화되고 있습니다.', en: 'Drawdown is deepening compared to 3-5 days ago, accelerating downside.' },
+  tqqqDirectionUp: { ko: '3~5일 전 대비 낙폭을 회복하며 단기 반등세가 나타나고 있습니다.', en: 'Recovering from 3-5 day drawdowns, showing short-term bounce.' },
+  tqqqDirectionDownSlight: { ko: '5일 전보다 낙폭이 커진 상태로, 하방 압력이 남아있습니다.', en: 'Drawdown is worse than 5 days ago; downward pressure remains.' },
+  tqqqDirectionUpSlight: { ko: '5일 전보다는 낙폭을 축소하며 지지력을 테스트 중입니다.', en: 'Drawdown has improved since 5 days ago, testing support levels.' },
+  tqqqDirectionSideways: { ko: '최근 3~5일간 뚜렷한 방향성 없이 횡보하는 모습입니다.', en: 'Choppy sideways movement over the last 3-5 days without clear direction.' },
+  emotionHigh: { ko: '🥶 극도의 공포 (Risk Level: HIGH)', en: '🥶 Extreme Fear (Risk Level: HIGH)' },
+  emotionLow: { ko: '🤩 탐욕 및 기대 (Risk Level: LOW)', en: '🤩 Greed & Relief (Risk Level: LOW)' },
+  emotionMediumCaution: { ko: '😰 불안 및 경계 (Risk Level: MEDIUM)', en: '😰 Caution (Risk Level: MEDIUM)' },
+  emotionMediumRelief: { ko: '😌 안도 및 관망 (Risk Level: MEDIUM)', en: '😌 Relief & Hold (Risk Level: MEDIUM)' },
   tqqqMeta: {
     ko: 'TQQQ DD {{dd}} - Bottom: {{bottom}} - Rebound: {{rebound}}',
     en: 'TQQQ DD {{dd}} - Bottom: {{bottom}} - Rebound: {{rebound}}',
@@ -742,18 +775,62 @@ export default async function DashboardPage() {
           label: engineText(contentLang, DASHBOARD_ENGINE.leverageDeRiskLabel),
           toneClassName: styles.pillRed,
           line: engineText(contentLang, DASHBOARD_ENGINE.leverageDeRiskLine),
+          action: engineText(contentLang, DASHBOARD_ENGINE.leverageDeRiskAction),
         }
       : riskLevel === 'MEDIUM'
         ? {
             label: engineText(contentLang, DASHBOARD_ENGINE.leverageMeasuredLabel),
             toneClassName: styles.pillAmber,
             line: engineText(contentLang, DASHBOARD_ENGINE.leverageMeasuredLine),
+            action: engineText(contentLang, DASHBOARD_ENGINE.leverageMeasuredAction),
           }
         : {
             label: engineText(contentLang, DASHBOARD_ENGINE.leverageAllowedLabel),
             toneClassName: styles.pillGreen,
             line: engineText(contentLang, DASHBOARD_ENGINE.leverageAllowedLine),
+            action: engineText(contentLang, DASHBOARD_ENGINE.leverageAllowedAction),
           }
+
+  let emotionBadge = ''
+  if (riskLevel === 'HIGH') {
+    emotionBadge = engineText(contentLang, DASHBOARD_ENGINE.emotionHigh)
+  } else if (riskLevel === 'LOW') {
+    emotionBadge = engineText(contentLang, DASHBOARD_ENGINE.emotionLow)
+  } else {
+    if (gateScore != null && gateScore < 40) {
+      emotionBadge = engineText(contentLang, DASHBOARD_ENGINE.emotionMediumCaution)
+    } else {
+      emotionBadge = engineText(contentLang, DASHBOARD_ENGINE.emotionMediumRelief)
+    }
+  }
+
+  let directionText = ''
+  if (tqqqDd1 != null && tqqqDd3 != null && tqqqDd5 != null) {
+    if (tqqqDd1 < tqqqDd3 && tqqqDd3 < tqqqDd5) {
+      directionText = engineText(contentLang, DASHBOARD_ENGINE.tqqqDirectionDown)
+    } else if (tqqqDd1 > tqqqDd3 && tqqqDd3 > tqqqDd5) {
+      directionText = engineText(contentLang, DASHBOARD_ENGINE.tqqqDirectionUp)
+    } else if (tqqqDd1 < tqqqDd5) {
+      directionText = engineText(contentLang, DASHBOARD_ENGINE.tqqqDirectionDownSlight)
+    } else if (tqqqDd1 > tqqqDd5) {
+      directionText = engineText(contentLang, DASHBOARD_ENGINE.tqqqDirectionUpSlight)
+    } else {
+      directionText = engineText(contentLang, DASHBOARD_ENGINE.tqqqDirectionSideways)
+    }
+  }
+
+  const tqqqStateMsg = dropToBottomPct != null && dropToBottomPct < 0 && daysSinceBottom != null
+    ? engineText(contentLang, DASHBOARD_ENGINE.tqqqStateText, {
+        days: daysSinceBottom,
+        drop: formatPct1(dropToBottomPct),
+        rebound: engineText(contentLang, DASHBOARD_ENGINE.reboundStage, { stage: reboundStage }),
+        signal: bottomSignal !== engineText(contentLang, DASHBOARD_ENGINE.bottomSignalNone) ? bottomSignal : reboundSignal,
+        direction: directionText,
+      })
+    : engineText(contentLang, DASHBOARD_ENGINE.tqqqStatePositive, {
+        rebound: formatPct1(reboundFromBottomPct),
+        direction: directionText,
+      })
 
   const bulletLines =
     (contentLang === 'ko' ? dailyBriefing.bullets?.ko : dailyBriefing.bullets?.en)
@@ -826,39 +903,30 @@ export default async function DashboardPage() {
 
             <article className={styles.card}>
               <p className={styles.kicker}>{uiText(uiLang, DASHBOARD_UI.cardLeverage)}</p>
-              <h3 className={styles.headline}>{leverageMode.label}</h3>
-              <span className={`${styles.pill} ${leverageMode.toneClassName}`}>{leverageMode.label}</span>
-              <p className={styles.teaser}>{leverageMode.line}</p>
-              <p className={styles.meta}>
-                {engineText(contentLang, DASHBOARD_ENGINE.tqqqMeta, {
-                  dd: vrTqqqDd != null ? `${vrTqqqDd.toFixed(1)}%` : '--',
-                  bottom: bottomSignal,
-                  rebound: reboundSignal,
-                })}
-              </p>
-              <p className={styles.meta}>
-                {engineText(contentLang, DASHBOARD_ENGINE.tqqqDd135, {
-                  dd1: formatPct1(tqqqDd1),
-                  dd3: formatPct1(tqqqDd3),
-                  dd5: formatPct1(tqqqDd5),
-                })}
-              </p>
-              <p className={styles.meta}>
-                {engineText(contentLang, DASHBOARD_ENGINE.tqqqPeakBottom, {
-                  drop: formatPct1(dropToBottomPct),
-                  rebound: formatPct1(reboundFromBottomPct),
-                  bottomMeta: bottomDate
-                    ? engineText(contentLang, DASHBOARD_ENGINE.bottomMeta, {
-                        bottomDate,
-                        days: daysSinceBottom ?? 0,
-                      })
-                    : '',
-                })}
-              </p>
-              <p className={styles.meta}>{engineText(contentLang, DASHBOARD_ENGINE.reboundStage, { stage: reboundStage })}</p>
-              {topPattern ? <p className={styles.meta}>{uiText(uiLang, DASHBOARD_UI.labelPattern)}: {toTeaser(topPattern, 64)}</p> : null}
-              {vrPosture.length ? <p className={styles.meta}>{uiText(uiLang, DASHBOARD_UI.labelVrPosture)}: {toTeaser(vrPosture.slice(0, 2).join(' / '), 92)}</p> : null}
-              <div className={styles.linkRow}>
+              <h3 className={styles.headline} style={{ marginBottom: '0.5rem' }}>{leverageMode.label}</h3>
+              
+              <div style={{ marginTop: '0.75rem' }}>
+                <p className={styles.meta} style={{ fontWeight: 'bold', color: 'var(--fg-primary, #f8fafc)' }}>
+                  🔹 {engineText(contentLang, DASHBOARD_ENGINE.leverageDirectionTitle)}:
+                </p>
+                <p className={styles.teaser}>{leverageMode.line}</p>
+              </div>
+
+              <div style={{ marginTop: '0.75rem' }}>
+                <p className={styles.meta} style={{ fontWeight: 'bold', color: 'var(--fg-primary, #f8fafc)' }}>
+                  🔹 {engineText(contentLang, DASHBOARD_ENGINE.leverageActionTitle)}:
+                </p>
+                <p className={styles.teaser}>{leverageMode.action}</p>
+              </div>
+
+              <div style={{ marginTop: '0.75rem' }}>
+                <p className={styles.meta} style={{ fontWeight: 'bold', color: 'var(--fg-primary, #f8fafc)' }}>
+                  🔹 {engineText(contentLang, DASHBOARD_ENGINE.leverageTqqqStateTitle)} (DD {vrTqqqDd != null ? `${vrTqqqDd.toFixed(1)}%` : '--'}):
+                </p>
+                <p className={styles.teaser}>{tqqqStateMsg}</p>
+              </div>
+
+              <div className={styles.linkRow} style={{ marginTop: '1rem' }}>
                 <Link href="/vr-survival" className={styles.linkPrimary}>
                   {uiText(uiLang, DASHBOARD_UI.openLeverageLens)}
                 </Link>
@@ -891,10 +959,30 @@ export default async function DashboardPage() {
 
             <article className={`${styles.card} ${styles.cardNews}`}>
               <p className={styles.kicker}>{uiText(uiLang, DASHBOARD_UI.cardNews)}</p>
-              <h3 className={styles.headline}>{toTeaser(headline, 95)}</h3>
-              <p className={styles.teaser}>{teaser}</p>
-              <p className={styles.meta}>{uiText(uiLang, DASHBOARD_UI.whyMatters)}: {whyMatters}</p>
-              <div className={styles.linkRow}>
+              
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                <p className={styles.headline} style={{ fontSize: '1.05rem', margin: 0 }}>
+                  {uiText(uiLang, DASHBOARD_UI.emotionTitle)}: {emotionBadge}
+                </p>
+              </div>
+
+              <ul className={styles.list} style={{ marginBottom: '1rem' }}>
+                {bulletLines.slice(0, 3).map((row, idx) => (
+                  <li className={styles.listItem} key={`news-bullet-${idx}`}>
+                    <span className={styles.dot} />
+                    <span className={styles.teaser}>{toTeaser(row, 120)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <p className={styles.meta} style={{ fontWeight: 'bold', color: 'var(--fg-primary, #f8fafc)', marginBottom: '0.25rem' }}>
+                  💡 {uiText(uiLang, DASHBOARD_UI.whyMatters)}:
+                </p>
+                <p className={styles.teaser}>{whyMatters}</p>
+              </div>
+
+              <div className={styles.linkRow} style={{ marginTop: '1rem' }}>
                 <Link href="/briefing" className={styles.linkPrimary}>
                   {uiText(uiLang, DASHBOARD_UI.fullBriefing)}
                 </Link>

@@ -1,9 +1,11 @@
 ﻿import type { CSSProperties } from 'react'
 import { readCacheJson } from '@/lib/readCacheJson'
+import { type Current90dCache } from '@/lib/vrLive'
 import VRSurvival, {
   type Tab,
   VRSurvivalData,
 } from '@/components/crash/vr/VRSurvival'
+import SoxlLeadershipPanel, { type SoxxContextPayload } from '@/components/crash/vr/SoxlLeadershipPanel'
 import VRRiskTracksCard           from '@/components/vr/VRRiskTracksCard'
 import { buildStrategyArena, type StrategyArenaView } from '../../../../../vr/arena/compute_strategy_arena'
 import {
@@ -191,6 +193,39 @@ function toSingleValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
+function buildAssetHref(
+  nextAsset: 'tqqq' | 'soxl',
+  params: {
+    tab?: string | string[]
+    event?: string | string[]
+    sim_event?: string | string[]
+    sim_start?: string | string[]
+    sim_capital?: string | string[]
+    sim_stock_pct?: string | string[]
+  },
+) {
+  const search = new URLSearchParams()
+  search.set('asset', nextAsset)
+
+  if (nextAsset === 'tqqq') {
+    const tab = toSingleValue(params.tab)
+    const event = toSingleValue(params.event)
+    const simEvent = toSingleValue(params.sim_event)
+    const simStart = toSingleValue(params.sim_start)
+    const simCapital = toSingleValue(params.sim_capital)
+    const simStockPct = toSingleValue(params.sim_stock_pct)
+
+    if (tab) search.set('tab', tab)
+    if (event) search.set('event', event)
+    if (simEvent) search.set('sim_event', simEvent)
+    if (simStart) search.set('sim_start', simStart)
+    if (simCapital) search.set('sim_capital', simCapital)
+    if (simStockPct) search.set('sim_stock_pct', simStockPct)
+  }
+
+  return `?${search.toString()}`
+}
+
 const NAV_ITEMS = [
   { href: '/risk-v1', label: 'Standard (QQQ)', accent: '#f59e0b', border: 'rgba(245,158,11,0.26)', bg: 'rgba(245,158,11,0.08)' },
   { href: '/backtest', label: 'Backtests', accent: '#38bdf8', border: 'rgba(56,189,248,0.26)', bg: 'rgba(56,189,248,0.08)' },
@@ -199,7 +234,7 @@ const NAV_ITEMS = [
 ] as const
 
 const ROLE_SPLIT_COPY =
-  'Standard는 위험을 감지하고, VR은 그 상황에서 어떤 대응 전략이 유효했는지를 보여줍니다.'
+  'Standard는 위험을 감지하고, Live는 현재 움직임을 보여주며, VR은 그 구간에서 어떤 대응 전략이 유효했는지를 보여줍니다.'
 
 const NON_SIGNAL_COPY =
   '이 엔진은 실시간 매수·매도 신호를 제공하지 않습니다. 시장 대응 방법을 이해하기 위한 참고 도구입니다.'
@@ -209,10 +244,15 @@ export default async function VRSurvivalPage({
 }: {
   searchParams?: { [key: string]: string | string[] | undefined }
 }) {
+  const assetParam = toSingleValue(searchParams?.asset)
+  const asset = assetParam === 'soxl' ? 'soxl' : 'tqqq'
+  const isSoxl = asset === 'soxl'
+  
   const requestedTab = toSingleValue(searchParams?.tab)
+  const normalizedRequestedTab = requestedTab === 'Overview' ? 'Live' : requestedTab
   const requestedEvent = toSingleValue(searchParams?.event)
-  const VALID_TABS: Tab[] = ['Overview', 'Backtest', 'Playback']
-  const initialTab: Tab = (requestedTab && VALID_TABS.includes(requestedTab as Tab)) ? (requestedTab as Tab) : 'Overview'
+  const VALID_TABS: Tab[] = ['Live', 'Backtest', 'Playback']
+  const initialTab: Tab = (normalizedRequestedTab && VALID_TABS.includes(normalizedRequestedTab as Tab)) ? (normalizedRequestedTab as Tab) : 'Live'
   const initialPlaybackEventId =
     requestedEvent && /^\d{4}-\d{2}$/.test(requestedEvent) ? requestedEvent : undefined
   const simEventId = toSingleValue(searchParams?.sim_event)
@@ -228,15 +268,25 @@ export default async function VRSurvivalPage({
           sim_stock_pct: simStockPct,
         }
       : undefined
-  const [raw, riskV1, playbackArtifacts] = await Promise.all([
+  const [raw, riskV1, current90d, playbackArtifacts, soxxContext] = await Promise.all([
     readCacheJson<VRSurvivalData | null>('vr_survival.json', null),
     readRiskV1Current(),
+    readCacheJson<Current90dCache | null>('current_90d.json', null),
     loadPlaybackArtifacts(simParams, initialPlaybackEventId),
+    isSoxl
+      ? readCacheJson<SoxxContextPayload | null>('soxx_context.json', null)
+      : Promise.resolve(null),
   ])
   const { playbackData, strategyArena } = playbackArtifacts
   const effectiveRaw = raw ?? buildFallbackSurvivalData(riskV1)
+  const heroSubtitle = isSoxl
+    ? 'SOXL은 장기 보유 자산이 아니라 반도체 리더십과 breadth를 읽는 전술 자산입니다.'
+    : 'TQQQ/SOXL의 현재 움직임을 먼저 보고, Playback과 Backtest로 근거를 확인하는 생존 분석 엔진'
+  const heroBody = isSoxl
+    ? 'SOXX는 별도 앵커 스트립으로 떼어 두고, 아래 차트에서 NVDA, TSM, AVGO, MU, AMD, 그리고 AMAT/LRCX/KLAC basket이 실제로 리더십을 확인하는지 봅니다.'
+    : '이 시스템은 VR(Value Rebalancing) 전략을 기반으로, 하락장에서의 대응 방식을 연구하는 시뮬레이션 엔진입니다. 지금은 live motion을 먼저 보여주고, Playback과 Backtest는 그 판단의 근거를 확인하는 증거 레이어로 사용합니다.'
 
-  if (!effectiveRaw) {
+  if (!effectiveRaw && asset === 'tqqq') {
     return (
       <main style={{ padding: '2.6rem', color: '#94a3b8', fontFamily: 'monospace' }}>
         <h2 style={{ color: '#ef4444' }}>vr_survival.json not found</h2>
@@ -268,19 +318,21 @@ export default async function VRSurvivalPage({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              MARKETFLOW - SURVIVAL LAB
+              {isSoxl ? 'MARKETFLOW - SEMICONDUCTOR RESEARCH' : 'MARKETFLOW - SURVIVAL LAB'}
             </div>
             <h1 style={{ fontSize: '2.3rem', fontWeight: 900, color: '#f8fafc', margin: '0.35rem 0 0' }}>
-              VR Survival Lab
+              {isSoxl ? 'Semiconductor Regime Monitor' : 'VR Survival Lab'}
             </h1>
             <div style={{ fontSize: '0.92rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 760 }}>
-              Crash 대응 전략을 미리 경험하는 시뮬레이션 엔진
+              {heroSubtitle}
             </div>
             <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: 10, lineHeight: 1.75, maxWidth: 860 }}>
-              이 시스템은 VR(Value Rebalancing) 전략을 기반으로, 하락장에서의 대응 방식을 연구하는 시뮬레이션 엔진입니다. 평상시에는 VR 규칙에 따라 운용되며, Vmin 붕괴 이후와 같은 지속적인 하락 국면에서는 과거 시장 이벤트를 기반으로 다양한 시나리오를 분석하여, 투자자가 대응 전략을 이해하고 준비할 수 있도록 돕습니다.
+              {heroBody}
             </div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 860 }}>
-              {NON_SIGNAL_COPY}
+              {isSoxl
+                ? '이 화면은 매수/매도 신호가 아니라, 반도체 사이클과 외부 민감도를 읽는 리서치 브리프입니다.'
+                : NON_SIGNAL_COPY}
             </div>
           </div>
 
@@ -303,64 +355,107 @@ export default async function VRSurvivalPage({
           </div>
         </div>
 
-        <div style={{ fontSize: '0.66rem', color: '#7dd3fc', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>
-          STEP 1 OF 3 — MARKET CONDITION (STANDARD)
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)',
-            gap: 12,
-            alignItems: 'stretch',
-          }}
-        >
-          <VRRiskTracksCard snapshot={riskV1} />
-
-          <div
+        {/* Asset Switcher (TQQQ vs SOXL) */}
+        <div style={{ display: 'flex', gap: 12, margin: '0.5rem 0' }}>
+          <a
+            href={buildAssetHref('tqqq', searchParams ?? {})}
             style={{
-              borderRadius: 14,
-              border: '1px solid rgba(56,189,248,0.16)',
-              background: 'linear-gradient(180deg, rgba(8,16,28,0.96), rgba(7,11,18,0.98))',
-              padding: '1.05rem 1.1rem',
-              display: 'grid',
-              gap: 10,
-              boxShadow: '0 0 0 1px rgba(56,189,248,0.08) inset',
+              padding: '0.75rem 1.5rem',
+              borderRadius: 8,
+              fontSize: '1.05rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              color: asset === 'tqqq' ? '#f8fafc' : '#94a3b8',
+              background: asset === 'tqqq' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${asset === 'tqqq' ? 'rgba(56,189,248,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              transition: 'all 0.2s ease',
             }}
           >
-            <div style={{ fontSize: '0.72rem', color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 800 }}>
-              What VR Does
-            </div>
-            <div style={{ fontSize: '1.02rem', color: '#f8fafc', lineHeight: 1.7, fontWeight: 800 }}>
-              VR은 시장을 예측하는 엔진이 아니라, 하락장에서 어떻게 살아남는지를 보여주는 엔진입니다.
-            </div>
-            <div style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.7 }}>
-              정답을 지시하지 않습니다. 대신 가능한 대응 방법과 그 결과를 비교해 보여줍니다.
-            </div>
-            <div style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: 1.65 }}>
-              {ROLE_SPLIT_COPY}
-            </div>
-          </div>
+            🔴 TQQQ (NASDAQ-100)
+          </a>
+          <a
+            href={buildAssetHref('soxl', searchParams ?? {})}
+            style={{
+              padding: '0.75rem 1.5rem',
+              borderRadius: 8,
+              fontSize: '1.05rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              color: asset === 'soxl' ? '#f8fafc' : '#94a3b8',
+              background: asset === 'soxl' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${asset === 'soxl' ? 'rgba(56,189,248,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            🔵 SOXL (Semiconductor & AI)
+          </a>
         </div>
 
-        <FlowDivider
-          step="STEP 2 OF 3"
-          label="HISTORICAL EVIDENCE"
-          desc="Playback과 Backtest가 유사한 과거 사례와 전략 결과를 보여줍니다."
-        />
+        {asset === 'tqqq' ? (
+          <>
+            <div style={{ fontSize: '0.66rem', color: '#7dd3fc', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>
+              STEP 1 OF 3 — MARKET CONDITION (STANDARD)
+            </div>
 
-        <VRSurvival
-          data={effectiveRaw}
-          playbackData={playbackData}
-          strategyArena={strategyArena}
-          initialTab={initialTab}
-          initialPlaybackEventId={initialPlaybackEventId}
-          simParams={simParams}
-        />
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)',
+                gap: 12,
+                alignItems: 'stretch',
+              }}
+            >
+              <VRRiskTracksCard snapshot={riskV1} />
 
-        <div style={{ fontSize: '0.75rem', color: '#475569', textAlign: 'center', paddingTop: '0.4rem' }}>
-          Generated: {effectiveRaw.run_id} - VR Survival Lab
-        </div>
+              <div
+                style={{
+                  borderRadius: 14,
+                  border: '1px solid rgba(56,189,248,0.16)',
+                  background: 'linear-gradient(180deg, rgba(8,16,28,0.96), rgba(7,11,18,0.98))',
+                  padding: '1.05rem 1.1rem',
+                  display: 'grid',
+                  gap: 10,
+                  boxShadow: '0 0 0 1px rgba(56,189,248,0.08) inset',
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 800 }}>
+                  What VR Does
+                </div>
+                <div style={{ fontSize: '1.02rem', color: '#f8fafc', lineHeight: 1.7, fontWeight: 800 }}>
+                  VR은 시장을 예측하는 엔진이 아니라, 하락장에서 어떻게 살아남는지를 보여주는 엔진입니다.
+                </div>
+                <div style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: 1.7 }}>
+                  정답을 지시하지 않습니다. 대신 가능한 대응 방법과 그 결과를 비교해 보여줍니다.
+                </div>
+                <div style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: 1.65 }}>
+                  {ROLE_SPLIT_COPY}
+                </div>
+              </div>
+            </div>
+
+            <FlowDivider
+              step="STEP 2 OF 3"
+              label="LIVE + EVIDENCE"
+              desc="Live는 현재 TQQQ 움직임과 DD를 보여주고, Playback과 Backtest는 그 해석의 근거를 확인합니다."
+            />
+
+            <VRSurvival
+              data={effectiveRaw!}
+              current90d={current90d}
+              playbackData={playbackData}
+              strategyArena={strategyArena}
+              initialTab={initialTab}
+              initialPlaybackEventId={initialPlaybackEventId}
+              simParams={simParams}
+            />
+
+            <div style={{ fontSize: '0.75rem', color: '#475569', textAlign: 'center', paddingTop: '0.4rem' }}>
+              Generated: {effectiveRaw?.run_id ?? 'Unknown'} - VR Survival Lab
+            </div>
+          </>
+        ) : (
+          <SoxlLeadershipPanel context={soxxContext} />
+        )}
       </div>
     </main>
   )

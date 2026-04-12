@@ -8,11 +8,13 @@ compact timeline without hitting the database at request time.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+from statistics import pstdev
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
@@ -41,6 +43,58 @@ def norm_date(value: str) -> str:
         parts = value.split('/')
         return f"{int(parts[2]):04d}-{int(parts[0]):02d}-{int(parts[1]):02d}"
     return value
+
+
+def rolling_mean(values, window):
+    out = [None] * len(values)
+    for i in range(window - 1, len(values)):
+        window_vals = values[i - window + 1 : i + 1]
+        if any(v is None for v in window_vals):
+            continue
+        out[i] = round(sum(window_vals) / window, 4)
+    return out
+
+
+def rolling_rsi(values, period=14):
+    out = [None] * len(values)
+    for i in range(period, len(values)):
+        window_vals = values[i - period : i + 1]
+        if any(v is None for v in window_vals):
+            continue
+        gains = []
+        losses = []
+        for j in range(1, len(window_vals)):
+            delta = window_vals[j] - window_vals[j - 1]
+            gains.append(max(delta, 0.0))
+            losses.append(max(-delta, 0.0))
+        avg_gain = sum(gains) / period
+        avg_loss = sum(losses) / period
+        if avg_loss == 0:
+            out[i] = 100.0
+        else:
+            rs = avg_gain / avg_loss
+            out[i] = round(100 - (100 / (1 + rs)), 2)
+    return out
+
+
+def rolling_realized_vol(values, window=20):
+    out = [None] * len(values)
+    for i in range(window, len(values)):
+        window_vals = values[i - window : i + 1]
+        if any(v is None for v in window_vals):
+            continue
+        returns = []
+        for j in range(1, len(window_vals)):
+            prev = window_vals[j - 1]
+            cur = window_vals[j]
+            if prev == 0:
+                returns = []
+                break
+            returns.append((cur / prev) - 1.0)
+        if len(returns) != window:
+            continue
+        out[i] = round(pstdev(returns) * math.sqrt(252) * 100, 2)
+    return out
 
 
 def load_json(fname: str):
@@ -101,6 +155,13 @@ for i in range(n):
         tqqq_dd[i] = None
 
 
+tqqq_ma20_arr = rolling_mean(tqqq_cl, 20)
+tqqq_ma50_arr = rolling_mean(tqqq_cl, 50)
+tqqq_ma200_arr = rolling_mean(tqqq_cl, 200)
+tqqq_rsi14_arr = rolling_rsi(tqqq_cl, 14)
+tqqq_rv20_arr = rolling_realized_vol(tqqq_cl, 20)
+
+
 # 3. Last 90 trading days
 WIN = 90
 disp_start = max(0, n - WIN)
@@ -121,6 +182,7 @@ rv1_pb = []
 for i in disp_idx:
     d = all_dates[i]
     q = qqq_cl[i]
+    tc = tqqq_cl[i]
     m5 = ma50_arr[i]
     m200 = ma200_arr[i]
 
@@ -135,6 +197,12 @@ for i in disp_idx:
             'qqq_n': qqq_n,
             'ma50_n': ma50_n,
             'ma200_n': ma200_n,
+            'tqqq_close': round(tc, 2) if tc is not None else None,
+            'tqqq_ma20': tqqq_ma20_arr[i],
+            'tqqq_ma50': tqqq_ma50_arr[i],
+            'tqqq_ma200': tqqq_ma200_arr[i],
+            'tqqq_rsi14': tqqq_rsi14_arr[i],
+            'tqqq_rv20': tqqq_rv20_arr[i],
             'dd': qqq_dd[i],
             'tqqq_dd': tqqq_dd[i],
             'score': h.get('score'),
@@ -182,6 +250,12 @@ for pos, i in enumerate(disp_idx):
             'qqq_n': qqq_n,
             'ma50_n': ma50_n,
             'ma200_n': ma200_n,
+            'tqqq_close': round(tc, 2) if tc is not None else None,
+            'tqqq_ma20': tqqq_ma20_arr[i],
+            'tqqq_ma50': tqqq_ma50_arr[i],
+            'tqqq_ma200': tqqq_ma200_arr[i],
+            'tqqq_rsi14': tqqq_rsi14_arr[i],
+            'tqqq_rv20': tqqq_rv20_arr[i],
             'dd_pct': qqq_dd[i],
             'score': score,
             'level': level,

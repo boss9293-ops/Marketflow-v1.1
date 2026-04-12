@@ -19,6 +19,7 @@ const MODULE_DEFS = [
   { id: 'macro_build', file: 'current_90d.json', expected_interval: 1440, impact: ['risk_build', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
   { id: 'risk_build', file: 'risk_v1.json', expected_interval: 1440, impact: ['vr_build', 'ai_std_risk', 'ai_integrated'], category: 'Build Layer', stage: 'BUILD' },
   { id: 'vr_build', file: 'vr_survival.json', expected_interval: 1440, impact: ['dashboard'], category: 'Build Layer', stage: 'BUILD' },
+  { id: 'soxx_context', file: 'soxx_context.json', expected_interval: 1440, impact: ['frontend_api', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
   { id: 'snapshot_build', file: 'snapshots_full_5y.json', expected_interval: 1440, impact: ['dashboard'], category: 'Build Layer', stage: 'BUILD' },
 
   { id: 'ai_std_risk', file: 'ai/std_risk/latest.json', expected_interval: 720, impact: ['dashboard_ai'], category: 'AI Layer', stage: 'AI' },
@@ -70,6 +71,16 @@ function generateMaintenanceGuide(name: string, status: string, impact: string[]
       possible_causes: ['upstream input missing', 'build script failed', 'schema mismatch'],
       check_steps: ['Verify input timestamps', 'Check the build log', 'Confirm schema validation passes'],
       related_files: ['backend/output/risk_v1.json', 'backend/scripts/build_risk_v1.py'],
+      impact,
+    };
+  }
+
+  if (name.includes('soxx') || name.includes('soxl')) {
+    return {
+      issue_summary: `${name} semiconductor context missing or stale`,
+      possible_causes: ['ohlcv_daily missing SOXX rows', 'build script failed', 'DB sync lag', 'schema mismatch'],
+      check_steps: ['Check SOXX rows in ohlcv_daily', 'Run backend/scripts/build_soxx_context.py', 'Confirm backend/output/soxx_context.json exists'],
+      related_files: ['backend/output/soxx_context.json', 'backend/scripts/build_soxx_context.py'],
       impact,
     };
   }

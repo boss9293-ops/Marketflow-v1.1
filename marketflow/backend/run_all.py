@@ -40,6 +40,8 @@ SCRIPT_TIMEOUTS: dict[str, int] = {
     "build_navigator_full_snapshots.py": 600, # 10 min — 2Y/5Y snapshot series
     "rrg_calculator.py":           120,  #  2 min — RRG via yfinance
     "build_tqqq_dca.py":           120,  #  2 min — DCA backtest compute
+    "build_soxx_context.py":       300,
+    "build_soxx_survival_playback.py": 600,
 }
 
 SCRIPT_TIMEOUTS["build_ai_briefings.py"] = 300
@@ -98,6 +100,8 @@ SCRIPTS = [
     ("build_risk_v1.py",     "Build Risk v1 (Standard Risk System)"),
     ("build_risk_alert.py",  "Build Risk Alert System (Crash Engine)"),
     ("build_current_90d.py",  "Build Current 90-Day Playback (cur90)"),
+    ("build_soxx_context.py", "Build SOXX Semiconductor Context"),
+    ("build_soxx_survival_playback.py", "Build SOXX Survival Playback Archive"),
     ("build_vr_pattern_dashboard.py", "Build VR Pattern Dashboard Cache"),
     ("build_macro_snapshot.py", "Build Macro Layer v2 Snapshot"),
     ("build_validation_snapshot.py", "Build Macro Validation Auto-Guard Snapshot"),

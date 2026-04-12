@@ -407,6 +407,8 @@ def _run_builds_if_needed():
             ('build_risk_v1.py',     os.path.join(_out, 'risk_v1.json')),
             ('build_risk_alert.py',  os.path.join(_out, 'risk_alert.json')),
             ('build_current_90d.py', os.path.join(_out, 'current_90d.json')),
+            ('build_soxx_context.py', os.path.join(_out, 'soxx_context.json')),
+            ('build_soxx_survival_playback.py', os.path.join(_out, 'soxx_survival_playback.json')),
             ('build_smart_money.py', os.path.join(_out, 'smart_money.json')),
             ('build_market_tape.py', os.path.join(_out, 'market_tape.json')),
             ('build_market_state.py', os.path.join(_out, 'market_state.json')),
@@ -739,6 +741,8 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'risk_alert.json': ('build_risk_alert.py', 600),
     'risk_alert_playback.json': ('build_risk_alert.py', 600),
     'current_90d.json': ('build_current_90d.py', 600),
+    'soxx_context.json': ('build_soxx_context.py', 300),
+    'soxx_survival_playback.json': ('build_soxx_survival_playback.py', 600),
     'smart_money.json': ('build_smart_money.py', 300),
     'market_tape.json': ('build_market_tape.py', 300),
     'market_state.json': ('build_market_state.py', 300),
@@ -5427,6 +5431,30 @@ def vr_survival_playback():
 
 
 
+@app.route('/api/soxx-survival-playback')
+
+
+def soxx_survival_playback():
+
+
+    data = load_json_or_none('soxx_survival_playback.json')
+
+
+    if data is None and _ensure_data_artifact('soxx_survival_playback.json'):
+        data = load_json_or_none('soxx_survival_playback.json')
+
+
+    if data:
+
+
+        return jsonify(data)
+
+
+    return jsonify({'error': 'soxx_survival_playback.json not found - run build_soxx_survival_playback.py'}), 404
+
+
+
+
 @app.route('/api/current-90d')
 
 
@@ -5443,6 +5471,24 @@ def current_90d():
 
 
     return jsonify({'error': 'current_90d.json not found - run build_current_90d.py'}), 404
+
+
+@app.route('/api/soxx-context')
+
+
+def soxx_context():
+
+
+    data = load_json_or_none('soxx_context.json')
+
+
+    if data:
+
+
+        return jsonify(data)
+
+
+    return jsonify({'error': 'soxx_context.json not found - run build_soxx_context.py'}), 404
 
 
 

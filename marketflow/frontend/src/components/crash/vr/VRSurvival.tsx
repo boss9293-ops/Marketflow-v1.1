@@ -70,6 +70,20 @@ import type { VrTimelineRow } from '../../../lib/formatVrTimeline'
 
 import {
 
+  buildLiveMotionModel,
+  LIVE_DRAWDOWN_BASIS_OPTIONS,
+
+  type Current90dCache,
+  type LiveDrawdownBasis,
+
+  type LiveMotionModel,
+
+  type LiveSignalTone,
+
+} from '../../../lib/vrLive'
+
+import {
+
   buildVariantForCap,
 
   buildExecutionPlayback,
@@ -3228,11 +3242,11 @@ type StrategyArenaView = {
 
 
 
-const TABS = ['Overview', 'Playback', 'Backtest'] as const
+const TABS = ['Live', 'Playback', 'Backtest'] as const
 
 export type Tab =
 
-  | 'Overview'
+  | 'Live'
 
   | 'Playback'
 
@@ -4117,7 +4131,7 @@ function panelStyle(extra?: CSSProperties): CSSProperties {
 
 const TAB_TONES: Record<string, { idle: string; active: string; border: string; glow: string; text: string; activeText: string }> = {
 
-  Overview: {
+  Live: {
 
     idle: 'rgba(255,255,255,0.03)',
 
@@ -4219,7 +4233,7 @@ function tabStyle(tabOrActive: Tab | boolean, activeMaybe?: boolean): CSSPropert
 
   const active = Boolean(activeMaybe)
 
-  const tone = TAB_TONES[tabOrActive] ?? TAB_TONES.Overview
+  const tone = TAB_TONES[tabOrActive] ?? TAB_TONES.Live
 
   return {
 
@@ -4487,6 +4501,89 @@ function PlaceholderCard({
 
 
 
+function TrendSparklineCard({
+  label,
+  value,
+  detail,
+  tone,
+  series,
+  compact,
+}: {
+  label: string
+  value: string
+  detail?: string
+  tone?: string
+  series: Array<number | null>
+  compact?: boolean
+}) {
+  const accent = tone ?? '#94a3b8'
+  const points = series.filter((entry): entry is number => typeof entry === 'number' && Number.isFinite(entry))
+  const min = points.length > 0 ? Math.min(...points) : 0
+  const max = points.length > 0 ? Math.max(...points) : 1
+  const span = Math.max(max - min, 1e-6)
+  const polylinePoints = points
+    .map((point, index) => {
+      const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * 100
+      const y = 100 - ((point - min) / span) * 100
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(' ')
+  const lastPoint = points.length ? points[points.length - 1] : null
+  const lastX = points.length <= 1 ? 0 : 100
+  const lastY = lastPoint == null ? 100 : 100 - ((lastPoint - min) / span) * 100
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))',
+        border: `1px solid ${accent}33`,
+        borderRadius: 16,
+        padding: compact ? '0.8rem 0.85rem' : '0.95rem 1rem',
+        boxShadow: `0 0 0 1px ${accent}10 inset, 0 10px 24px rgba(0,0,0,0.08)`,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+        <div
+          style={{
+            fontSize: '0.72rem',
+            color: accent,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontWeight: 800,
+          }}
+        >
+          {label}
+        </div>
+        <div style={{ color: '#f8fafc', fontSize: '0.92rem', fontWeight: 800 }}>{value}</div>
+      </div>
+
+      <div style={{ marginTop: 8, height: compact ? 38 : 48 }}>
+        <svg viewBox="0 0 100 36" preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+          <line x1="0" y1="30" x2="100" y2="30" stroke="rgba(255,255,255,0.06)" />
+          {polylinePoints ? (
+            <polyline
+              points={polylinePoints}
+              fill="none"
+              stroke={accent}
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+          {lastPoint != null ? <circle cx={lastX} cy={lastY} r="1.8" fill={accent} /> : null}
+        </svg>
+      </div>
+
+      {detail ? (
+        <div style={{ marginTop: 8, color: '#94a3b8', fontSize: compact ? '0.76rem' : '0.8rem', lineHeight: 1.45 }}>
+          {detail}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+
 function PlaceholderSection({
 
 
@@ -4587,6 +4684,239 @@ function formatSignedPercent(value: number) {
 
 
 
+
+
+function liveToneColor(tone: LiveSignalTone) {
+  switch (tone) {
+    case 'danger':
+      return '#fb7185'
+    case 'watch':
+      return '#f59e0b'
+    case 'recovery':
+      return '#38bdf8'
+    case 'safe':
+      return '#34d399'
+    case 'escape':
+      return '#34d399'
+    default:
+      return '#94a3b8'
+  }
+}
+
+
+function formatLivePrice(value: number | null) {
+
+
+  if (value == null || !Number.isFinite(value)) return 'n/a'
+
+
+  return new Intl.NumberFormat('en-US', {
+
+
+    style: 'currency',
+
+
+    currency: 'USD',
+
+
+    maximumFractionDigits: 2,
+
+
+  }).format(value)
+
+
+}
+
+
+function formatSignedNumber(value: number) {
+
+
+  return `${value >= 0 ? '+' : ''}${value.toFixed(1)}`
+
+
+}
+
+
+function toneForRsi(value: number | null) {
+
+
+  if (value == null) return '#94a3b8'
+
+
+  if (value <= 30) return '#fb7185'
+
+
+  if (value <= 40) return '#f59e0b'
+
+
+  if (value <= 55) return '#7dd3fc'
+
+
+  if (value <= 65) return '#34d399'
+
+
+  return '#22c55e'
+
+
+}
+
+
+function toneForVolatility(value: number | null, delta: number | null) {
+
+
+  if (value == null) return '#94a3b8'
+
+
+  if (delta != null && delta > 4) return '#fb7185'
+
+
+  if (value >= 70) return '#fb7185'
+
+
+  if (value >= 55) return '#f59e0b'
+
+
+  if (delta != null && delta <= -3) return '#34d399'
+
+
+  if (value >= 40) return '#7dd3fc'
+
+
+  return '#34d399'
+
+
+}
+
+
+function formatLiveDateLabel(value?: string | number | null) {
+  if (value == null) return 'n/a'
+
+  const raw = String(value)
+  const normalized = /^\d{4}-\d{2}-\d{2}/.test(raw) ? `${raw.slice(0, 10)}T00:00:00Z` : raw
+  const date = new Date(normalized)
+
+  if (!Number.isNaN(date.getTime())) {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(date)
+  }
+
+  return raw
+}
+
+
+function LiveMotionTooltip({
+  active,
+  payload,
+  label,
+  compact,
+  basisLabel,
+}: {
+  active?: boolean
+  payload?: Array<{ name?: string; value?: number | null; color?: string; payload?: Record<string, unknown> }>
+  label?: string | number
+  compact?: boolean
+  basisLabel?: string
+}) {
+  if (!active || !payload?.length) return null
+
+  const source = (payload.find((entry) => entry.payload)?.payload ?? {}) as Record<string, unknown>
+  const readNumber = (key: string) => {
+    const value = source[key]
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
+  }
+
+  const rows = [
+    { label: 'TQQQ', value: readNumber('tqqqClose'), color: '#f97316', format: formatLivePrice },
+    { label: 'MA20', value: readNumber('tqqqMa20'), color: '#22d3ee', format: formatLivePrice },
+    { label: 'MA50', value: readNumber('tqqqMa50'), color: '#38bdf8', format: formatLivePrice },
+    { label: 'MA200', value: readNumber('tqqqMa200'), color: '#a78bfa', format: formatLivePrice },
+    {
+      label: basisLabel ? `DD (${basisLabel})` : 'DD',
+      value: readNumber('selectedDrawdownPct'),
+      color: '#fb7185',
+      format: (value: number | null) => (value == null ? 'n/a' : formatSignedPercent(value)),
+    },
+    {
+      label: 'RSI14',
+      value: readNumber('tqqqRsi14'),
+      color: '#f59e0b',
+      format: (value: number | null) => (value == null ? 'n/a' : value.toFixed(1)),
+    },
+    {
+      label: 'RV20',
+      value: readNumber('tqqqRv20'),
+      color: '#60a5fa',
+      format: (value: number | null) => (value == null ? 'n/a' : `${value.toFixed(1)}%`),
+    },
+  ]
+
+  const eventType = typeof source.eventType === 'string' ? source.eventType : null
+  const inEvent = typeof source.inEvent === 'boolean' ? source.inEvent : null
+  const selectedDrawdownPeak = readNumber('selectedDrawdownPeak')
+  const selectedDrawdownPeakDate = typeof source.selectedDrawdownPeakDate === 'string' ? source.selectedDrawdownPeakDate : null
+
+  return (
+    <div
+      style={{
+        background: '#0f172a',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        padding: compact ? '0.7rem 0.8rem' : '0.9rem 1rem',
+        minWidth: compact ? 240 : 280,
+        boxShadow: '0 12px 28px rgba(0,0,0,0.24)',
+      }}
+    >
+      <div style={{ color: '#f8fafc', fontSize: '0.82rem', fontWeight: 800, marginBottom: 6 }}>
+        {formatLiveDateLabel(label)}
+      </div>
+
+      {basisLabel ? (
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginBottom: 8 }}>
+          DD basis: {basisLabel}
+        </div>
+      ) : null}
+
+      <div style={{ display: 'grid', gap: 6 }}>
+        {rows.map((row) => (
+          <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cbd5e1', fontSize: '0.78rem' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: row.color, boxShadow: `0 0 0 3px ${row.color}20` }} />
+              {row.label}
+            </div>
+            <div style={{ color: '#f8fafc', fontSize: '0.8rem', fontWeight: 800 }}>
+              {row.format(row.value)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selectedDrawdownPeak != null || eventType || inEvent != null ? (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            color: '#94a3b8',
+            fontSize: '0.74rem',
+            lineHeight: 1.5,
+          }}
+        >
+          {selectedDrawdownPeak != null ? (
+            <div>
+              Peak {formatLivePrice(selectedDrawdownPeak)}
+              {selectedDrawdownPeakDate ? ` on ${formatLiveDateLabel(selectedDrawdownPeakDate)}` : ''}
+            </div>
+          ) : null}
+          {eventType ? <div>Event: {eventType}</div> : null}
+          {inEvent != null ? <div>{inEvent ? 'Inside event window' : 'Outside event window'}</div> : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 
 function formatRecoveryDays(value: number | null) {
@@ -7721,172 +8051,427 @@ function MethodologyPanel() {
 
 
 
-function OverviewTab({ data }: { data: VRSurvivalData }) {
-
+function LiveTab({
+  data,
+  current90d,
+  compact = false,
+}: {
+  data: VRSurvivalData
+  current90d?: Current90dCache | null
+  compact?: boolean
+}) {
+  const [basis, setBasis] = useState<LiveDrawdownBasis>('peak90')
+  const live = useMemo<LiveMotionModel>(() => buildLiveMotionModel(current90d, basis), [current90d, basis])
+  const basisMeta = LIVE_DRAWDOWN_BASIS_OPTIONS.find((option) => option.value === basis) ?? LIVE_DRAWDOWN_BASIS_OPTIONS[0]
   const current = data.current
+  const postureLabel = `${current.level_label} · ${current.state}`
+  const hasLiveRows = live.rows.length > 0
+  const summaryTone = liveToneColor(live.phaseTone)
+  const latest = live.latest
+  const windowLabel =
+    live.windowStart || live.windowEnd
+      ? `${formatLiveDateLabel(live.windowStart)} → ${formatLiveDateLabel(live.windowEnd)}`
+      : 'n/a'
+  const generatedLabel = formatLiveDateLabel(live.generated)
+  const tradingDaysLabel = live.tradingDays == null ? 'n/a' : `${live.tradingDays} sessions`
+  const latestChange1dLabel = live.latestChange1dPct == null ? 'n/a' : formatSignedPercent(live.latestChange1dPct)
+  const latestChange3dLabel = live.latestChange3dPct == null ? 'n/a' : formatSignedPercent(live.latestChange3dPct)
+  const latestChange5dLabel = live.latestChange5dPct == null ? 'n/a' : formatSignedPercent(live.latestChange5dPct)
+  const latestPriceLabel = formatLivePrice(live.latestClose)
+  const latestMa20Label = formatLivePrice(live.latestMa20)
+  const latestMa50Label = formatLivePrice(live.latestMa50)
+  const latestMa200Label = formatLivePrice(live.latestMa200)
+  const latestRsiLabel = live.latestRsi14 == null ? 'n/a' : live.latestRsi14.toFixed(1)
+  const latestRsiDeltaLabel = live.latestRsiDelta5d == null ? 'n/a' : formatSignedNumber(live.latestRsiDelta5d)
+  const latestRvLabel = live.latestRv20 == null ? 'n/a' : `${live.latestRv20.toFixed(1)}%`
+  const latestRvDeltaLabel = live.latestRvDelta5d == null ? 'n/a' : formatSignedNumber(live.latestRvDelta5d)
+  const latestRsiTone = toneForRsi(live.latestRsi14)
+  const latestRvTone = toneForVolatility(live.latestRv20, live.latestRvDelta5d)
+  const selectedDrawdownLabel = live.latestDrawdownLabel
+  const selectedDrawdownPeakLabel = formatLivePrice(live.selectedDrawdownPeak)
+  const selectedDrawdownPeakDateLabel = live.selectedDrawdownPeakDate ? formatLiveDateLabel(live.selectedDrawdownPeakDate) : 'n/a'
+  const reboundLabel = live.reboundFromTroughPct == null ? 'n/a' : formatSignedPercent(live.reboundFromTroughPct)
+  const troughLabel = live.trough?.selectedDrawdownPct == null ? 'n/a' : formatSignedPercent(live.trough.selectedDrawdownPct)
+  const chartHeight = compact ? 220 : 290
+  const sparklineWindow = live.rows.slice(-20)
+  const rsiTrend = sparklineWindow.map((row) => row.tqqqRsi14)
+  const rvTrend = sparklineWindow.map((row) => row.tqqqRv20)
 
-  const pool = `${current.pool_pct.toFixed(0)}%`
-
-  const exposure = `${current.exposure_pct.toFixed(0)}%`
-
-  const cooldown = current.shock_cooldown > 0 ? `${current.shock_cooldown}d` : 'Open'
-
-  const stateTone = current.survival_active ? '#34d399' : '#f59e0b'
-
-  const gateTone = current.shock_cooldown > 0 ? '#fb7185' : '#38bdf8'
-
-  const structuralState = current.structural_state ?? 'n/a'
-
-  const structuralTone = structuralState.toLowerCase().includes('shock')
-
-    ? '#fb7185'
-
-    : structuralState.toLowerCase().includes('recovery')
-
-      ? '#22c55e'
-
-      : '#cbd5e1'
-
-  const interpretation =
-
-    current.explain?.trim() ||
-
-    'Standard market context is translated into VR execution posture and replay links.'
-
-
-
-  return (
-
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-      <div style={panelStyle({ borderColor: 'rgba(56,189,248,0.2)' })}>
-
+  if (!hasLiveRows) {
+    return (
+      <div style={panelStyle({ borderColor: 'rgba(251,146,60,0.2)' })}>
         <SectionHeader
-
-          eyebrow="Execution Context"
-
-          title="VR Strategy Context"
-
-          note="Standard owns market condition. VR converts that state into exposure, pool, cooldown, and replay navigation."
-
-          tone="#60a5fa"
-
+          eyebrow={compact ? 'Crash Validation' : 'Live Motion'}
+          title="TQQQ Live Motion"
+          note={`Live cache is not ready yet. VR posture: ${postureLabel}. Refresh risk-v1 cache to populate the motion tape.`}
+          tone="#f59e0b"
         />
 
-
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-
+        <div style={{ display: 'grid', gap: 10 }}>
           <PlaceholderCard
-
-            label="Execution State"
-
-            text={current.survival_active ? 'Active' : 'Standby'}
-
-            detail={current.survival_active ? 'VR posture is live.' : 'VR posture is waiting for confirmation.'}
-
-            tone={stateTone}
-
+            label="Live Cache"
+            text="current_90d.json missing"
+            detail="TQQQ motion and DD will appear after the 90D cache is rebuilt."
+            tone="#f59e0b"
           />
-
           <PlaceholderCard
-
-            label="Pool / Exposure"
-
-            text={`${pool} / ${exposure}`}
-
-            detail="Cash reserve and invested share under the current execution frame."
-
-            tone="#38bdf8"
-
+            label="VR Posture"
+            text={postureLabel}
+            detail={`Pool ${current.pool_pct.toFixed(0)}% · Exposure ${current.exposure_pct.toFixed(0)}%`}
+            tone={current.survival_active ? '#34d399' : '#f59e0b'}
           />
-
-          <PlaceholderCard
-
-            label="Cooldown"
-
-            text={cooldown}
-
-            detail={current.shock_cooldown > 0 ? 'Re-entry pause after shock handling.' : 'No cooldown blocking new execution.'}
-
-            tone={gateTone}
-
-          />
-
-          <PlaceholderCard
-
-            label="Structural Gate"
-
-            text={structuralState}
-
-            detail={`Days below MA200: ${current.days_below_ma200}`}
-
-            tone={structuralTone}
-
-          />
-
         </div>
+      </div>
+    )
+  }
 
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={panelStyle({ borderColor: `${summaryTone}40` })}>
+        <SectionHeader
+          eyebrow={compact ? 'Crash Validation' : 'Live Motion'}
+          title="TQQQ Live Motion"
+          note={
+            compact
+              ? `Crash analysis uses the same live tape. VR posture: ${postureLabel}. DD basis: ${basisMeta.label}.`
+              : `Live motion first. VR posture: ${postureLabel}. Playback and Backtest remain the evidence layers. DD basis: ${basisMeta.label}.`
+          }
+          tone={summaryTone}
+        />
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          {LIVE_DRAWDOWN_BASIS_OPTIONS.map((option) => {
+            const active = option.value === basis
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setBasis(option.value)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '0.48rem 0.75rem',
+                  borderRadius: 999,
+                  border: `1px solid ${active ? `${summaryTone}66` : 'rgba(255,255,255,0.1)'}`,
+                  background: active ? `${summaryTone}18` : 'rgba(255,255,255,0.03)',
+                  color: active ? '#f8fafc' : '#cbd5e1',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: active ? `0 0 0 1px ${summaryTone}22 inset` : 'none',
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: active ? summaryTone : '#64748b' }} />
+                {option.label}
+                <span style={{ color: '#94a3b8', fontWeight: 700 }}>{option.lookback}D</span>
+              </button>
+            )
+          })}
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', lineHeight: 1.5 }}>
+            {basisMeta.description}
+          </div>
+        </div>
 
         <div
-
           style={{
-
-            marginTop: 12,
-
-            background: 'rgba(255,255,255,0.03)',
-
-            border: '1px solid rgba(56,189,248,0.14)',
-
-            borderLeft: '3px solid rgba(56,189,248,0.5)',
-
-            borderRadius: 16,
-
-            padding: '0.95rem 1rem',
-
+            display: 'grid',
+            gridTemplateColumns: compact ? '1fr' : 'minmax(0, 1.24fr) minmax(320px, 0.76fr)',
+            gap: 12,
+            alignItems: 'start',
           }}
-
         >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div
+              style={{
+                borderRadius: 16,
+                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))',
+                padding: '0.95rem 1rem 0.85rem',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.12)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  marginBottom: 10,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.74rem', color: '#7dd3fc', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 800 }}>
+                    Live price tape
+                  </div>
+                  <div style={{ color: '#f8fafc', fontSize: '1rem', fontWeight: 800, marginTop: 4 }}>
+                    TQQQ / MA20 / MA50 / MA200 / DD
+                  </div>
+                </div>
 
-          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.5, textAlign: 'right' }}>
+                  <div>{windowLabel}</div>
+                  <div>{generatedLabel} · {tradingDaysLabel}</div>
+                </div>
+              </div>
 
-            Strategy Interpretation
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
+                <PlaceholderCard
+                  label="TQQQ"
+                  text={latestPriceLabel}
+                  detail={`MA20 ${latestMa20Label} · MA50 ${latestMa50Label} · MA200 ${latestMa200Label}`}
+                  tone="#f97316"
+                  compact
+                />
+                <PlaceholderCard
+                  label={`DD (${basisMeta.label})`}
+                  text={selectedDrawdownLabel}
+                  detail={`Peak ${selectedDrawdownPeakLabel} on ${selectedDrawdownPeakDateLabel}`}
+                  tone="#fb7185"
+                  compact
+                />
+                <PlaceholderCard
+                  label="RSI14"
+                  text={latestRsiLabel}
+                  detail={`5D Δ ${latestRsiDeltaLabel} · <30 danger · 30-40 watch · >55 safe`}
+                  tone={latestRsiTone}
+                  compact
+                />
+                <PlaceholderCard
+                  label="RV20"
+                  text={latestRvLabel}
+                  detail={`5D Δ ${latestRvDeltaLabel} · rising risk · falling cooling`}
+                  tone={latestRvTone}
+                  compact
+                />
+                <PlaceholderCard
+                  label="Phase"
+                  text={live.phaseLabel}
+                  detail={live.phaseDetail}
+                  tone={summaryTone}
+                  compact
+                />
+              </div>
 
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                {[
+                  { label: 'TQQQ', color: '#f97316' },
+                  { label: 'MA20', color: '#22d3ee' },
+                  { label: 'MA50', color: '#38bdf8' },
+                  { label: 'MA200', color: '#a78bfa' },
+                  { label: `DD (${basisMeta.label})`, color: '#fb7185' },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '0.42rem 0.7rem',
+                      borderRadius: 999,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: '#e2e8f0',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, boxShadow: `0 0 0 4px ${item.color}20` }} />
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+
+              <ResponsiveContainer width="100%" height={chartHeight}>
+                <ComposedChart data={live.rows} margin={{ top: 8, right: 14, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#94a3b8', fontSize: 11 }}
+                    tickFormatter={(value: string | number) => formatLiveDateLabel(value)}
+                    minTickGap={18}
+                  />
+                  <YAxis
+                    yAxisId="price"
+                    tick={{ fill: '#94a3b8', fontSize: 11 }}
+                    width={44}
+                    tickFormatter={(value: number) => `${Math.round(value)}`}
+                    domain={['dataMin - 5', 'dataMax + 5']}
+                  />
+                  <YAxis
+                    yAxisId="dd"
+                    orientation="right"
+                    tick={{ fill: '#94a3b8', fontSize: 11 }}
+                    width={44}
+                    tickFormatter={(value: number) => `${value}%`}
+                    domain={[-100, 10]}
+                  />
+                  <Tooltip content={<LiveMotionTooltip compact={compact} basisLabel={basisMeta.label} />} />
+                  <ReferenceLine yAxisId="dd" y={0} stroke="rgba(148,163,184,0.28)" />
+                  <ReferenceLine yAxisId="dd" y={-10} stroke="rgba(251,191,36,0.28)" strokeDasharray="4 4" />
+                  <ReferenceLine yAxisId="dd" y={-20} stroke="rgba(251,113,133,0.3)" strokeDasharray="4 4" />
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="tqqqClose"
+                    name="TQQQ"
+                    stroke="#f97316"
+                    strokeWidth={2.4}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="tqqqMa20"
+                    name="MA20"
+                    stroke="#22d3ee"
+                    strokeWidth={1.8}
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="tqqqMa50"
+                    name="MA50"
+                    stroke="#38bdf8"
+                    strokeWidth={1.9}
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="tqqqMa200"
+                    name="MA200"
+                    stroke="#a78bfa"
+                    strokeWidth={1.9}
+                    dot={false}
+                  />
+                  <Area
+                    yAxisId="dd"
+                    type="monotone"
+                    dataKey="selectedDrawdownPct"
+                    name="DD"
+                    stroke="#fb7185"
+                    strokeWidth={1.5}
+                    fill="rgba(251,113,133,0.18)"
+                    fillOpacity={0.18}
+                    dot={false}
+                    baseValue={0}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: 10 }}>
+              <PlaceholderCard
+                label="Direction"
+                text={live.directionLabel}
+                detail={`1D ${latestChange1dLabel} · 3D ${latestChange3dLabel} · 5D ${latestChange5dLabel}`}
+                tone={liveToneColor(live.signals.crash.tone)}
+                compact
+              />
+              <PlaceholderCard
+                label="Trend"
+                text={latestPriceLabel}
+                detail={`MA20 ${latestMa20Label} · MA50 ${latestMa50Label} · MA200 ${latestMa200Label}`}
+                tone={summaryTone}
+                compact
+              />
+              <PlaceholderCard
+                label="Trough / Rebound"
+                text={troughLabel}
+                detail={`Trough ${live.trough ? formatLiveDateLabel(live.trough.date) : 'n/a'} · Rebound ${reboundLabel} · ${live.daysSinceTrough == null ? 'n/a' : `${live.daysSinceTrough}d`}`}
+                tone={liveToneColor(live.signals.bottom.tone)}
+                compact
+              />
+              <PlaceholderCard
+                label="Window"
+                text={windowLabel}
+                detail={`Generated ${generatedLabel} · ${tradingDaysLabel}`}
+                tone="#94a3b8"
+                compact
+              />
+            </div>
           </div>
 
-          <div style={{ color: '#e5e7eb', fontSize: '0.92rem', lineHeight: 1.65 }}>
-
-            {interpretation}
-
+          <div style={{ display: 'grid', gap: 10 }}>
+            <PlaceholderCard
+              label={live.signals.crash.label}
+              text={live.signals.crash.value}
+              detail={live.signals.crash.detail}
+              tone={liveToneColor(live.signals.crash.tone)}
+              compact
+            />
+            <PlaceholderCard
+              label={live.signals.bottom.label}
+              text={live.signals.bottom.value}
+              detail={live.signals.bottom.detail}
+              tone={liveToneColor(live.signals.bottom.tone)}
+              compact
+            />
+            <PlaceholderCard
+              label={live.signals.safe.label}
+              text={live.signals.safe.value}
+              detail={live.signals.safe.detail}
+              tone={liveToneColor(live.signals.safe.tone)}
+              compact
+            />
+            <PlaceholderCard
+              label={live.signals.escape.label}
+              text={live.signals.escape.value}
+              detail={live.signals.escape.detail}
+              tone={liveToneColor(live.signals.escape.tone)}
+              compact
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(146px, 1fr))', gap: 10 }}>
+              <TrendSparklineCard
+                label="RSI14 Trend"
+                value={latestRsiLabel}
+                detail={`20 sessions · ${latestRsiDeltaLabel} vs 5D`}
+                tone={latestRsiTone}
+                series={rsiTrend}
+                compact
+              />
+              <TrendSparklineCard
+                label="RV20 Trend"
+                value={latestRvLabel}
+                detail={`20 sessions · ${latestRvDeltaLabel} vs 5D`}
+                tone={latestRvTone}
+                series={rvTrend}
+                compact
+              />
+            </div>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(148,163,184,0.12)',
+                borderRadius: 16,
+                padding: '0.95rem 1rem',
+                color: '#cbd5e1',
+                lineHeight: 1.7,
+                fontSize: '0.9rem',
+              }}
+            >
+              <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                Live interpretation
+              </div>
+              <div>
+                The tape tracks actual TQQQ price, moving averages, RSI, and realized volatility first, then uses the selected DD basis to warn about crash pressure, bottom formation, safety, and escape attempts.
+              </div>
+              <div style={{ marginTop: 10, color: '#94a3b8', fontSize: '0.82rem' }}>
+                Basis {basisMeta.label} · Current VR posture: {postureLabel}
+              </div>
+              <div style={{ marginTop: 8, color: '#94a3b8', fontSize: '0.82rem' }}>
+                Latest {latest ? formatLiveDateLabel(latest.date) : 'n/a'} · Price {latestPriceLabel} · RSI14 {latestRsiLabel} · RV20 {latestRvLabel}
+              </div>
+            </div>
           </div>
-
         </div>
-
-
-
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-
-          <a href="/vr-survival?tab=Playback" style={{ ...tabStyle(false), textDecoration: 'none' }}>
-
-            Open Playback
-
-          </a>
-
-          <a href="/vr-survival?tab=Backtest" style={{ ...tabStyle(false), textDecoration: 'none' }}>
-
-            Open Backtest
-
-          </a>
-
-        </div>
-
       </div>
-
     </div>
-
   )
-
 }
 
 
@@ -14217,6 +14802,8 @@ export default function VRSurvival({
 
   data,
 
+  current90d,
+
   playbackData,
 
   strategyArena,
@@ -14232,6 +14819,8 @@ export default function VRSurvival({
 }: {
 
   data: VRSurvivalData
+
+  current90d?: Current90dCache | null
 
   playbackData?: VRPlaybackView | null
 
@@ -14249,11 +14838,11 @@ export default function VRSurvival({
 
   const initialVisibleTab =
 
-    initialTab === 'Overview' || initialTab === 'Playback' || initialTab === 'Backtest'
+    initialTab === 'Live' || initialTab === 'Playback' || initialTab === 'Backtest'
 
       ? initialTab
 
-      : 'Overview'
+      : 'Live'
 
   const [tab, setTab] = useState<Tab>(initialVisibleTab)
 
@@ -14267,7 +14856,7 @@ export default function VRSurvival({
 
 
 
-  // Fetch playback data on mount (used by Overview and Playback tabs)
+  // Fetch playback data on mount (used by Live and Playback tabs)
 
   useEffect(() => {
 
@@ -14380,9 +14969,9 @@ export default function VRSurvival({
 
 
 
-      {tab === 'Overview' ? (
+      {tab === 'Live' ? (
 
-        <OverviewTab data={data} />
+        <LiveTab data={data} current90d={current90d} />
 
       ) : null}
 
@@ -14445,7 +15034,7 @@ export default function VRSurvival({
 
           </div>
 
-          <OverviewTab data={data} />
+          <LiveTab data={data} current90d={current90d} compact />
 
         </div>
 
