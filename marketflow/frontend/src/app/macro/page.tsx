@@ -276,36 +276,63 @@ async function readLiveMarketSeries(): Promise<{ rows: MarketHistoryRow[]; lastD
     // better-sqlite3 not available in this environment
   }
 
-  // 2차: Railway 백엔드 API (프로덕션 Vercel)
+  // 2차: Turso DB 직접 쿼리 (프로덕션 Vercel — Railway API가 없어도 동작)
   try {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_API ||
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      'https://marketflow-production-09df.up.railway.app'
-    const res = await fetch(`${backendUrl}/api/market/series?days=400`, {
-      cache: 'no-store',
-      next: { revalidate: 0 },
-    })
-    if (res.ok) {
-      const data = await res.json() as Array<{ date?: string; qqq_close?: number | null; tqqq_close?: number | null; vix?: number | null }>
-      const rows: MarketHistoryRow[] = data
-        .filter((r) => typeof r.date === 'string')
-        .map((r) => ({
-          date: r.date as string,
-          qqq_n: typeof r.qqq_close === 'number' ? r.qqq_close : null,
-          tqqq_n: typeof r.tqqq_close === 'number' ? r.tqqq_close : null,
-          vix: typeof r.vix === 'number' ? r.vix : null,
-        }))
-      const lastDate = rows.length ? rows[rows.length - 1].date : null
-      return { rows, lastDate }
+    const { getTursoClient } = await import('@/lib/tursoClient')
+    const turso = getTursoClient()
+    if (turso) {
+      // 최신 날짜 기준으로 400일치 조회
+      const latestRes = await turso.execute(
+        "SELECT MAX(date) AS lastDate FROM ohlcv_daily WHERE symbol = 'QQQ'"
+      )
+      const lastDate = latestRes.rows[0]?.lastDate as string | null
+      if (lastDate) {
+        const startDate = shiftIsoDate(lastDate, -400)
+        const [qqqRes, tqqqRes, vixRes] = await Promise.all([
+          turso.execute({
+            sql: 'SELECT date, close FROM ohlcv_daily WHERE symbol = ? AND date >= ? ORDER BY date',
+            args: ['QQQ', startDate],
+          }),
+          turso.execute({
+            sql: 'SELECT date, close FROM ohlcv_daily WHERE symbol = ? AND date >= ? ORDER BY date',
+            args: ['TQQQ', startDate],
+          }),
+          turso.execute({
+            sql: 'SELECT date, vix FROM market_daily WHERE date >= ? AND vix IS NOT NULL ORDER BY date',
+            args: [startDate],
+          }),
+        ])
+
+        const tqqqByDate = new Map<string, number>(
+          tqqqRes.rows
+            .filter((r) => typeof r.date === 'string' && typeof r.close === 'number')
+            .map((r) => [r.date as string, r.close as number])
+        )
+        const vixByDate = new Map<string, number>(
+          vixRes.rows
+            .filter((r) => typeof r.date === 'string' && typeof r.vix === 'number')
+            .map((r) => [r.date as string, r.vix as number])
+        )
+
+        const rows: MarketHistoryRow[] = qqqRes.rows
+          .filter((r) => typeof r.date === 'string' && typeof r.close === 'number')
+          .map((r) => ({
+            date: r.date as string,
+            qqq_n: r.close as number,
+            tqqq_n: tqqqByDate.get(r.date as string) ?? null,
+            vix: vixByDate.get(r.date as string) ?? null,
+          }))
+
+        if (rows.length > 0) return { rows, lastDate }
+      }
     }
   } catch {
-    // Railway API unavailable
+    // Turso unavailable
   }
 
   return { rows: [], lastDate: null }
 }
+
 
 export default async function MacroPage({ searchParams }: { searchParams: { tab?: string } }) {
   const currentTab = (String(searchParams.tab || 'status') as 'status' | 'validation')
