@@ -234,6 +234,8 @@ function drawRRG(
 // 52주 = 12mo, 26주 = 6mo, 13주 = 3mo
 const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 52 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+
 // ── 메인 컴포넌트 ─────────────────────────────────────
 export default function RRGChart() {
   const [data,       setData]       = useState<RRGResponse | null>(null)
@@ -280,7 +282,7 @@ export default function RRGChart() {
   }
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/rrg')
+    fetch(`${API_BASE}/api/rrg`)
       .then(r => r.json())
       .then((d: RawRRGResponse) => {
         const normalized: RRGResponse = {

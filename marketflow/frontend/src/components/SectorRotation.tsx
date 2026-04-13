@@ -96,12 +96,14 @@ function PerformanceChart({
   )
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+
 export default function SectorRotation() {
   const [data, setData] = useState<SectorPerformanceResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/sector-performance')
+    fetch(`${API_BASE}/api/sector-performance`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()

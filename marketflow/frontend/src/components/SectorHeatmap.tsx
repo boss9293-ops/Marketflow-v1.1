@@ -10,11 +10,13 @@ interface Sector {
   strength: string
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+
 export default function SectorHeatmap() {
   const [data, setData] = useState<{ sectors: Sector[] } | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/sectors')
+    fetch(`${API_BASE}/api/sectors`)
       .then(r => r.json())
       .then(setData)
       .catch(() => {})
