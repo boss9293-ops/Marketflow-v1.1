@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, ReferenceLine, CartesianGrid, ReferenceArea,
 } from 'recharts'
 
-const API = 'http://localhost:5001'
+const API = process.env.NEXT_PUBLIC_BACKEND_API || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type LevelInfo = { level: number; label: string; range: string; color: string; action: string }

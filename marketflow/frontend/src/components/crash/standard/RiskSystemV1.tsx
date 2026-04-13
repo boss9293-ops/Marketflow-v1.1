@@ -1,5 +1,7 @@
 'use client'
 
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
+
 import { useState, useMemo, useEffect } from 'react'
 import MonteCarloInterpretationCard from '@/components/MonteCarloInterpretationCard'
 import { buildStandardInterpretationDisplayModel } from '@/lib/standard/buildStandardInterpretationDisplayModel'
@@ -1021,7 +1023,7 @@ function OverviewTab({
   // Auto-fetch on mount
   useEffect(() => {
     setCur90Loading(true)
-    fetch('http://localhost:5001/api/current-90d')
+    fetch(`${API_BASE}/api/current-90d`)
       .then(r => r.json())
       .then(d => { setCur90Pts(d.risk_v1?.playback ?? []) })
       .catch(() => {})
@@ -1032,7 +1034,7 @@ function OverviewTab({
   useEffect(() => {
     if (chartMode !== 'long-term' || ltPts.length > 0) return
     setLtLoading(true)
-    fetch('http://localhost:5001/api/mss-history')
+    fetch(`${API_BASE}/api/mss-history`)
       .then(r => r.json())
       .then(d => { setLtPts(d.data ?? []) })
       .catch(() => {})
