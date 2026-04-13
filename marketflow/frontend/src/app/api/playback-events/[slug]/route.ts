@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import path from 'path'
-import { promises as fs } from 'fs'
+import { resolveBackendBaseUrl } from '@/lib/backendApi'
 
 type Params = {
   params: {
@@ -14,16 +13,24 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: 'invalid slug' }, { status: 400 })
   }
 
-  const filePath = path.resolve(process.cwd(), '..', 'content', 'playback-events', `${slug}.md`)
   try {
-    const markdown = await fs.readFile(filePath, 'utf-8')
+    const BACKEND_URL = resolveBackendBaseUrl()
+    const res = await fetch(`${BACKEND_URL}/api/playback-events/${slug}`, {
+      cache: 'no-store',
+    })
+    
+    if (!res.ok) {
+      return NextResponse.json({ error: 'not found' }, { status: res.status })
+    }
+    
+    const markdown = await res.text()
     return new NextResponse(markdown, {
       headers: {
         'Content-Type': 'text/markdown; charset=utf-8',
         'Cache-Control': 'no-store',
       },
     })
-  } catch {
-    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  } catch (err) {
+    return NextResponse.json({ error: 'failed to fetch playback event' }, { status: 500 })
   }
 }

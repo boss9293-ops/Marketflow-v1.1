@@ -756,6 +756,8 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'vr_pattern_dashboard.json': ('build_vr_pattern_dashboard.py', 180),
     'vr_survival.json': ('build_vr_survival.py', 600),
     'vr_survival_playback.json': ('build_vr_survival.py', 600),
+    'condition_study_2018.json': ('build_condition_study.py', 600),
+    'macro_layer.json': ('macro_fred4_pipeline.py', 600),
 }
 _DATA_BUILD_LOCKS: dict[str, threading.Lock] = {}
 _DATA_BUILD_LOCKS_GUARD = threading.Lock()
@@ -5074,6 +5076,20 @@ def risk_v1_playback():
         return jsonify(data)
 
     return jsonify({'error': 'risk_v1_playback.json not found ??run build_risk_v1.py'}), 404
+
+
+@app.route('/api/playback-events/<slug>')
+def get_playback_event(slug):
+    content_dir = os.path.join(_BACKEND_DIR, '..', 'content', 'playback-events')
+    file_path = os.path.join(content_dir, f"{slug}.md")
+    
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return Response(content, mimetype='text/markdown')
+    else:
+        return Response(f"Markdown for {slug} not found.", status=404, mimetype='text/plain')
+
 
 
 @app.route('/api/risk-v1-sim')
@@ -9774,7 +9790,27 @@ def briefing_v2_tavily_health():
 
 
 
-def _maybe_start_scheduler_on_import() -> None:
+def 
+@app.route('/api/ticker-brief', methods=['GET'])
+def get_ticker_brief():
+    symbol = request.args.get('symbol', '').upper().strip()
+    if not symbol:
+        return jsonify({'error': 'symbol required'}), 400
+    import glob as _glob
+    cache_dir = os.path.join(os.path.dirname(__file__), 'output', 'cache', 'ticker_briefs', symbol)
+    pattern = os.path.join(cache_dir, '*.json')
+    files = sorted(_glob.glob(pattern), reverse=True)[:4]
+    briefs = []
+    for fp in files:
+        try:
+            with open(fp, 'r', encoding='utf-8') as f:
+                briefs.append(json.load(f))
+        except Exception:
+            pass
+    return jsonify({'symbol': symbol, 'briefs': briefs})
+
+
+_maybe_start_scheduler_on_import() -> None:
     if os.environ.get("MARKETFLOW_DISABLE_SCHEDULER") == "1":
         return
     if __name__ != "__main__":
