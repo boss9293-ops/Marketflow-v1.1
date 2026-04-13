@@ -34,4 +34,13 @@ SERIES_REGISTRY: dict[str, SeriesDef] = {
     "GLD": SeriesDef("GLD", "YAHOO", "usd", "D", "GLD close"),
     "HYG": SeriesDef("HYG", "YAHOO", "usd", "D", "credit proxy"),
     "LQD": SeriesDef("LQD", "YAHOO", "usd", "D", "credit proxy"),
+    "SEMI_IPG": SeriesDef("SEMI_IPG", "FRED", "index", "M", "IPG3344S"),
+    "SEMI_CAPUT": SeriesDef("SEMI_CAPUT", "FRED", "pct", "M", "CAPUTLG3344S"),
+    "SEMI_CAPACITY": SeriesDef("SEMI_CAPACITY", "FRED", "index", "M", "CAPG3344S"),
+    "SEMI_NEW_ORDERS": SeriesDef("SEMI_NEW_ORDERS", "FRED", "index", "M", "A34SNO"),
+    "SEMI_SHIPMENTS": SeriesDef("SEMI_SHIPMENTS", "FRED", "index", "M", "A34SVS"),
+    "SEMI_INVENTORIES": SeriesDef("SEMI_INVENTORIES", "FRED", "index", "M", "A34STI"),
+    "SEMI_INV_SHIP": SeriesDef("SEMI_INV_SHIP", "FRED", "ratio", "M", "A34SIS"),
+    "SEMI_UNFILLED": SeriesDef("SEMI_UNFILLED", "FRED", "index", "M", "A34SUO"),
+    "SEMI_RIW": SeriesDef("SEMI_RIW", "FRED", "index", "M", "RIWG3344S"),
 }

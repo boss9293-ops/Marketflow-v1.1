@@ -31,6 +31,15 @@ FRED_SERIES: Dict[str, str] = {
     "DGS10": "DGS10",
     "USD_BROAD": "DTWEXBGS",
     "BTC": "CBBTCUSD",
+    "SEMI_IPG": "IPG3344S",
+    "SEMI_CAPUT": "CAPUTLG3344S",
+    "SEMI_CAPACITY": "CAPG3344S",
+    "SEMI_NEW_ORDERS": "A34SNO",
+    "SEMI_SHIPMENTS": "A34SVS",
+    "SEMI_INVENTORIES": "A34STI",
+    "SEMI_INV_SHIP": "A34SIS",
+    "SEMI_UNFILLED": "A34SUO",
+    "SEMI_RIW": "RIWG3344S",
 }
 
 META: Dict[str, Dict[str, str]] = {
@@ -47,6 +56,27 @@ META: Dict[str, Dict[str, str]] = {
     "DGS10": {"unit": "pct", "freq": "D", "notes": "10Y treasury"},
     "USD_BROAD": {"unit": "index", "freq": "D", "notes": "Broad dollar index (proxy)"},
     "BTC": {"unit": "usd", "freq": "D", "notes": "Bitcoin price (Coindesk via FRED CBBTCUSD)"},
+    "SEMI_IPG": {"unit": "index", "freq": "M", "notes": "FRED semiconductor industrial production"},
+    "SEMI_CAPUT": {"unit": "pct", "freq": "M", "notes": "FRED semiconductor capacity utilization"},
+    "SEMI_CAPACITY": {"unit": "index", "freq": "M", "notes": "FRED semiconductor capacity index"},
+    "SEMI_NEW_ORDERS": {"unit": "index", "freq": "M", "notes": "FRED semiconductor new orders"},
+    "SEMI_SHIPMENTS": {"unit": "index", "freq": "M", "notes": "FRED semiconductor shipments"},
+    "SEMI_INVENTORIES": {"unit": "index", "freq": "M", "notes": "FRED semiconductor inventories"},
+    "SEMI_INV_SHIP": {"unit": "ratio", "freq": "M", "notes": "FRED inventories to shipments ratio"},
+    "SEMI_UNFILLED": {"unit": "index", "freq": "M", "notes": "FRED unfilled orders"},
+    "SEMI_RIW": {"unit": "index", "freq": "M", "notes": "FRED relative importance"},
+}
+
+HISTORY_START_BY_SYMBOL: Dict[str, str] = {
+    "SEMI_IPG": "1980-01-01",
+    "SEMI_CAPUT": "1980-01-01",
+    "SEMI_CAPACITY": "1980-01-01",
+    "SEMI_NEW_ORDERS": "1980-01-01",
+    "SEMI_SHIPMENTS": "1980-01-01",
+    "SEMI_INVENTORIES": "1980-01-01",
+    "SEMI_INV_SHIP": "1980-01-01",
+    "SEMI_UNFILLED": "1980-01-01",
+    "SEMI_RIW": "1980-01-01",
 }
 
 
@@ -103,7 +133,8 @@ def run() -> dict:
 
     for symbol, series_id in FRED_SERIES.items():
         try:
-            rows = fetch_fred_series(series_id, start_date=start_date)
+            effective_start_date = HISTORY_START_BY_SYMBOL.get(symbol, start_date)
+            rows = fetch_fred_series(series_id, start_date=effective_start_date)
             quality = "OK" if len(rows) > 50 else ("PARTIAL" if len(rows) > 0 else "NA")
             points = [
                 SeriesPoint(symbol=symbol, date=d, value=v, source="FRED", asof=asof, quality=quality)

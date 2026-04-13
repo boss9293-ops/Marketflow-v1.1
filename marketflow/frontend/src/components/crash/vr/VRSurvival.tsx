@@ -6119,6 +6119,9 @@ function CycleStartPanel({
 function CycleFrameworkPanel({ framework }: { framework: VRPlaybackEventView['cycle_framework'] }) {
 
 
+  const [cyclesVisible, setCyclesVisible] = useState(true)
+
+
   const snapshot = framework.snapshot
 
 
@@ -6152,63 +6155,84 @@ function CycleFrameworkPanel({ framework }: { framework: VRPlaybackEventView['cy
         />
 
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ marginBottom: 12 }}>
+
+          <button
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#7dd3fc',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              padding: '4px 0',
+              textAlign: 'left',
+              fontWeight: 500,
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            onClick={() => setCyclesVisible(!cyclesVisible)}
+          >
+            {cyclesVisible ? '▼' : '▶'} All Cycles ({framework.cycles.length})
+          </button>
+
+          {cyclesVisible && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginTop: 8 }}>
 
 
-          {framework.cycles.map((cycle) => (
+              {framework.cycles.map((cycle) => (
 
 
-            <div
+                <div
 
 
-              key={cycle.cycle_no}
+                  key={cycle.cycle_no}
 
 
-              style={{
+                  style={{
 
 
-                ...tabStyle(cycle.is_active_cycle),
+                    ...tabStyle(cycle.is_active_cycle),
 
 
-                display: 'flex',
+                    display: 'flex',
 
 
-                flexDirection: 'column',
+                    flexDirection: 'column',
 
 
-                gap: 4,
+                    gap: 4,
 
 
-                minWidth: 148,
+                    cursor: 'default',
 
 
-                cursor: 'default',
+                  }}
 
 
-              }}
+                >
 
 
-            >
+                  <span>{`Cycle ${cycle.cycle_no}`}</span>
 
 
-              <span>{`Cycle ${cycle.cycle_no}`}</span>
+                  <span style={{ fontSize: '0.72rem', color: cycle.is_active_cycle ? '#e5e7eb' : '#94a3b8' }}>
 
 
-              <span style={{ fontSize: '0.72rem', color: cycle.is_active_cycle ? '#e5e7eb' : '#94a3b8' }}>
+                    {cycle.cycle_start_date} - {cycle.cycle_end_date}
 
 
-                {cycle.cycle_start_date} - {cycle.cycle_end_date}
+                  </span>
 
 
-              </span>
+                </div>
+
+
+              ))}
 
 
             </div>
-
-
-          ))}
-
-
+          )}
         </div>
 
 

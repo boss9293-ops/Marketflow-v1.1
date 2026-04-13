@@ -118,6 +118,12 @@ CHART_SERIES_CONFIG = [
     {"key": "amd", "label": "AMD", "color": "#c084fc", "strokeWidth": 2.1},
 ]
 
+SUPPLY_DEMAND_OUTLOOK_SERIES_CONFIG = [
+    {"key": "demand", "label": "Industry Demand (Gartner)", "color": "#f472b6", "strokeWidth": 2.8},
+    {"key": "fab_spend", "label": "300mm Fab Spend (SEMI)", "color": "#7dd3fc", "strokeWidth": 2.4},
+    {"key": "memory_spend", "label": "Memory Equipment Spend (SEMI)", "color": "#34d399", "strokeWidth": 2.2, "dash": "5 4"},
+]
+
 SERIES_COLUMNS = ["close", "ma20", "ma50", "ma200", "dist_ma20_pct", "dist_ma50_pct", "dist_ma200_pct", "dd_pct", "vol20_pct", "ret_1d_pct", "ret_5d_pct", "ret_20d_pct", "ret_60d_pct", "ret_252d_pct", "above_ma200", "trend_stack"]
 
 
@@ -468,6 +474,215 @@ def build_earnings_overlay(calendar: dict[str, Any], as_of_date: str) -> dict[st
     }
 
 
+def build_supply_demand_outlook(as_of_date: str) -> dict[str, Any]:
+    """
+    Build a 3-4 year semiconductor supply/demand outlook from public forecast anchors.
+
+    Demand anchors:
+      - Gartner 2025 semiconductor revenue: $805.3B
+      - Gartner 2026 semiconductor revenue forecast: $1.3202T
+      - Gartner 2027 semiconductor revenue forecast: $1.5545T
+
+    Supply anchors:
+      - SEMI 300mm fab equipment spending: $133B / $151B / $155B / $172B for 2026-2029
+      - SEMI installed 300mm capacity: +6% in 2026, then roughly +7% annually through 2029
+      - SEMI memory equipment spending: +13% / +18% / +3% / +25% for 2026-2029
+
+    The card set intentionally keeps public demand data explicit through 2027 and uses
+    supply-side measures to show how the cycle may loosen into 2028-2029.
+    """
+
+    demand_2025 = 805.3
+    demand_2026 = 1320.2
+    demand_2027 = 1554.5
+
+    fab_spend_2026 = 133.0
+    fab_spend_2027 = 151.0
+    fab_spend_2028 = 155.0
+    fab_spend_2029 = 172.0
+
+    memory_spend_2026 = 100.0
+    memory_spend_2027 = round(memory_spend_2026 * 1.18, 1)
+    memory_spend_2028 = round(memory_spend_2027 * 1.03, 1)
+    memory_spend_2029 = round(memory_spend_2028 * 1.25, 1)
+
+    capacity_2026 = 100.0
+    capacity_2027 = round(capacity_2026 * 1.07, 1)
+    capacity_2028 = round(capacity_2027 * 1.07, 1)
+    capacity_2029 = round(capacity_2028 * 1.07, 1)
+
+    demand_index_2026 = 100.0
+    demand_index_2027 = round((demand_2027 / demand_2026) * 100.0, 1)
+    fab_spend_index_2027 = round((fab_spend_2027 / fab_spend_2026) * 100.0, 1)
+    fab_spend_index_2028 = round((fab_spend_2028 / fab_spend_2026) * 100.0, 1)
+    fab_spend_index_2029 = round((fab_spend_2029 / fab_spend_2026) * 100.0, 1)
+
+    return {
+        "state": "TIGHT_THROUGH_2027",
+        "headline": "AI demand outruns public supply forecasts through 2027, while fab investment keeps rising into 2029.",
+        "summary": (
+            "Gartner sees semiconductor revenue jumping to $1.32T in 2026 and $1.55T in 2027, "
+            "while SEMI still shows 300mm fab equipment spending climbing through 2029. "
+            "That means the cycle stays constructive, but leverage should remain tactical."
+        ),
+        "cards": [
+            {
+                "label": "Industry demand 2026",
+                "state": "TIGHT",
+                "value": "$1.32T",
+                "detail": "Gartner: 2026 semiconductor revenue forecast, +64% YoY versus 2025 actual $805.3B. AI semis are ~30% of 2026 revenue.",
+                "tone": "danger",
+            },
+            {
+                "label": "Demand runway 2027",
+                "state": "STILL STRONG",
+                "value": "$1.55T",
+                "detail": "Gartner: 2027 forecast implies another +17.8% YoY, with memory price relief not expected until late 2027.",
+                "tone": "watch",
+            },
+            {
+                "label": "TSMC / AI proxy",
+                "state": "EXPANDING",
+                "value": "~25% CAGR",
+                "detail": "TSMC has said total revenue can compound around 25% through 2029, while AI accelerator revenue grows in the mid-to-high 50s CAGR range.",
+                "tone": "good",
+            },
+            {
+                "label": "Supply capex & capacity",
+                "state": "RISING",
+                "value": "$611B / +6->7%",
+                "detail": "SEMI: 300mm fab equipment spending totals $611B in 2026-2029, and installed 300mm capacity grows 6% in 2026 and roughly 7% annually through 2029.",
+                "tone": "info",
+            },
+        ],
+        "chart": {
+            "basis": "base100",
+            "as_of": as_of_date,
+            "note": "Public demand forecasts currently run through 2027; supply-side spending and capacity extend to 2029.",
+            "series": SUPPLY_DEMAND_OUTLOOK_SERIES_CONFIG,
+            "rows": [
+                {
+                    "date": "2026-01-01",
+                    "demand": demand_index_2026,
+                    "fab_spend": 100.0,
+                    "memory_spend": memory_spend_2026,
+                    "capacity": capacity_2026,
+                },
+                {
+                    "date": "2027-01-01",
+                    "demand": demand_index_2027,
+                    "fab_spend": fab_spend_index_2027,
+                    "memory_spend": memory_spend_2027,
+                    "capacity": capacity_2027,
+                },
+                {
+                    "date": "2028-01-01",
+                    "demand": None,
+                    "fab_spend": fab_spend_index_2028,
+                    "memory_spend": memory_spend_2028,
+                    "capacity": capacity_2028,
+                },
+                {
+                    "date": "2029-01-01",
+                    "demand": None,
+                    "fab_spend": fab_spend_index_2029,
+                    "memory_spend": memory_spend_2029,
+                    "capacity": capacity_2029,
+                },
+            ],
+        },
+        "sources": [
+            {
+                "name": "Gartner semiconductor revenue forecast",
+                "details": "2025 actual $805.3B, 2026 forecast $1.3202T, 2027 forecast $1.5545T.",
+            },
+            {
+                "name": "SEMI 300mm fab equipment forecast",
+                "details": "2026 $133B, 2027 $151B, 2028 $155B, 2029 $172B.",
+            },
+            {
+                "name": "SEMI installed 300mm capacity",
+                "details": "+6% in 2026 and roughly +7% annually from 2027 through 2029.",
+            },
+            {
+                "name": "SEMI memory equipment spending",
+                "details": "+13% / +18% / +3% / +25% for 2026 / 2027 / 2028 / 2029.",
+            },
+        ],
+        "notes": [
+            "Demand forecasts are public through 2027, so 2028-2029 demand is shown only as supply-side pressure and not extrapolated as a hard revenue forecast.",
+            "TSMC's long-term CAGR statement is a leadership proxy, not a true industry forecast.",
+            "This block is intentionally forward-looking: it is meant to answer whether SOXL stays tactical into the next 3-4 years.",
+        ],
+    }
+
+
+def build_runway_view(
+    as_of_date: str,
+    supply_demand_outlook: dict[str, Any],
+    ai_cycle_stage: str,
+    lead_state: str,
+    macro_phase: str,
+    earnings_state: str,
+) -> dict[str, Any]:
+    """
+    Lightweight runway estimate for how long the current AI/semi boom can stay constructive.
+
+    This is intentionally directional, not a precise peak call:
+      - demand remains explicit through 2027
+      - supply-side capex/capacity continues into 2029
+      - leverage should therefore stay tactical even when the setup is constructive
+    """
+
+    outlook_state = str(supply_demand_outlook.get("state") or "UNKNOWN").upper()
+    if outlook_state == "TIGHT_THROUGH_2027":
+        runway_state = "TIGHT_THROUGH_2027"
+        horizon = "2027+"
+        stance = "constructive / tactical"
+        confidence = "moderate"
+        next_review = "2026 Q3 earnings / capex updates"
+    else:
+        runway_state = outlook_state or "UNKNOWN"
+        horizon = "2027+"
+        stance = "constructive / tactical"
+        confidence = "moderate"
+        next_review = "Next earnings / capex update"
+
+    headline = "Boom runway likely extends through 2027, with supply relief only starting to matter into 2028-2029."
+    summary = (
+        "Public demand forecasts stay explicit through 2027 while fab investment and installed capacity keep rising into 2029. "
+        "That leaves a constructive runway for the industry, but SOXL should stay tactical because the market can price the path early."
+    )
+
+    signals = [
+        "Demand forecasts remain explicit through 2027",
+        "Supply-side spending and capacity extend through 2029",
+        "SOXL can reprice the runway ahead of fundamentals",
+    ]
+
+    implication = "SOXX can be held; SOXL stays tactical."
+    if ai_cycle_stage == "CONTRACTION":
+        implication = "SOXX needs repair; SOXL stays defensive."
+        stance = "repair / defense"
+        confidence = "low"
+    elif lead_state == "LEADING" and macro_phase not in {"STRESS", "DEFENSIVE"} and earnings_state not in {"EMPTY", "LIGHT"}:
+        implication = "SOXX can be held; SOXL stays tactical."
+        confidence = "moderate"
+
+    return {
+        "as_of": as_of_date,
+        "state": runway_state,
+        "horizon": horizon,
+        "stance": stance,
+        "headline": headline,
+        "summary": summary,
+        "next_review": next_review,
+        "confidence": confidence,
+        "signals": signals,
+        "implication": implication,
+    }
+
+
 def classify_cycle_stage_v1(
     row: pd.Series,
     price_score: Optional[float],
@@ -549,8 +764,8 @@ def classify_action_v1(
 
     if stage == "MONETIZATION":
         return (
-            "AI theme can be held",
-            f"SOXX, macro, and the catalyst calendar are aligned. Blended score {format_number(blended_score, 1)} with {macro_phase} backdrop supports controlled overnight exposure.",
+            "SOXX can be held; SOXL stays tactical",
+            f"SOXX, macro, and the catalyst calendar are aligned. Blended score {format_number(blended_score, 1)} with {macro_phase} backdrop supports controlled exposure through the current runway, but not full-size leverage.",
         )
 
     if stage == "EXPECTATION":
@@ -698,25 +913,25 @@ def classify_cycle_stage(row: pd.Series) -> tuple[str, str]:
 def classify_action(stage: str, soxx_dd_pct: Optional[float], rs_60d_vs_qqq_pct: Optional[float]) -> tuple[str, str]:
     if stage == "CONTRACTION" or (soxx_dd_pct is not None and soxx_dd_pct <= -20):
         return (
-            "SOXL 매수 보류, 딥 조정 대기",
-            "SOXX가 구조적으로 약하고 하방 스트레스가 커서 SOXL 신규 진입을 멈추는 구간입니다.",
+            "SOXL stays defensive; SOXX needs repair",
+            "SOXX is in contraction or a deep drawdown. Keep leverage off until structure repairs and breadth widens.",
         )
 
     if stage == "MONETIZATION" and (rs_60d_vs_qqq_pct or 0) > 0:
         return (
-            "AI 호황 지속, SOXL 오버나잇 비중 확대",
-            "SOXX가 MA200 위에서 QQQ 대비 아웃퍼폼을 유지하고 있어 홀딩 전제가 더 강합니다.",
+            "SOXX can be held; SOXL stays tactical",
+            "SOXX, macro, and the catalyst calendar are aligned. The backdrop supports controlled exposure through the current runway, but not full-size leverage.",
         )
 
     if stage == "OVERINVESTMENT":
         return (
-            "추격보다 방어, SOXL 비중은 보수적으로",
-            "SOXX는 강하지만 과열 구간일 수 있어 신규 추격보다 현금 방어를 우선합니다.",
+            "Protect gains, do not chase",
+            "SOXX is extended, macro is still supportive, and the earnings window is active. Keep SOXL size tight and prioritize defense.",
         )
 
     return (
-        "기대감 구간, SOXL은 선택적 접근",
-        "구조는 유지되지만 확인 신호가 더 필요하므로 비중과 기간을 보수적으로 가져갑니다.",
+        "Wait for proof",
+        "Structure is constructive, but confirmation is still forming. Use SOXX as the anchor and keep SOXL tactical.",
     )
 
 
@@ -1035,6 +1250,7 @@ def build_context(history_window: int) -> dict[str, Any]:
     price_cycle_stage, price_cycle_explanation = classify_cycle_stage(current_row)
     macro_overlay = build_macro_overlay(macro_snapshot)
     earnings_overlay = build_earnings_overlay(earnings_calendar, current_date)
+    supply_demand_outlook = build_supply_demand_outlook(current_date)
     ai_cycle_score, ai_cycle_stage, ai_cycle_explanation, guidance_bundle = build_ai_cycle_v1(
         current_row,
         price_cycle_score,
@@ -1049,6 +1265,14 @@ def build_context(history_window: int) -> dict[str, Any]:
     soxx_ma200_state = classify_ma200_state(safe_number(current_row.get("soxx_close")), safe_number(current_row.get("soxx_ma200")))
     macro_phase = str(macro_overlay.get("phase") or "--")
     earnings_state = str(earnings_overlay.get("state") or "--")
+    runway = build_runway_view(
+        current_date,
+        supply_demand_outlook,
+        ai_cycle_stage,
+        lead_state,
+        macro_phase,
+        earnings_state,
+    )
 
     leader_return_map = {
         "nvda": safe_number(current_row.get("nvda_ret_60d_pct")),
@@ -1181,9 +1405,9 @@ def build_context(history_window: int) -> dict[str, Any]:
             "detail": guidance_bundle["detail"],
         },
         "brief": {
-            "version": "v1",
-            "headline": "SOXL is a semiconductor regime monitor, not a generic leverage hold.",
-            "summary": "Track AI CAPEX density, industry structure, and external sensitivity before using leverage.",
+            "version": "v3",
+            "headline": "SOXL is a semiconductor tactical board, not a generic leverage hold.",
+            "summary": "Track 3-4Y supply/demand, industry structure, and external sensitivity before using leverage. The current boom still looks constructive through 2027, but SOXL should remain tactical because the market can price the runway early.",
             "regime": {
                 "label": ai_cycle_stage,
                 "score": ai_cycle_score,
@@ -1192,13 +1416,14 @@ def build_context(history_window: int) -> dict[str, Any]:
                 "earnings_state": earnings_state,
                 "lead_state": lead_state,
             },
+            "runway": runway,
             "sensitivity": {
                 "headline": "Rates, volatility, capex crowding, and relative strength are the main swing factors.",
                 "items": [
                     {
                         "label": "Rates / volatility",
                         "state": str(macro_overlay.get("state") or macro_phase),
-                        "detail": f"Phase {macro_phase} · VRI {format_number(macro_overlay.get('vri'), 1)} · MPS {format_number(macro_overlay.get('mps'), 1)}",
+                        "detail": f"Phase {macro_phase} | VRI {format_number(macro_overlay.get('vri'), 1)} | MPS {format_number(macro_overlay.get('mps'), 1)}",
                     },
                     {
                         "label": "AI capex density",
@@ -1208,12 +1433,12 @@ def build_context(history_window: int) -> dict[str, Any]:
                     {
                         "label": "QQQ relative strength",
                         "state": lead_state,
-                        "detail": f"SOXX vs QQQ 60D {format_pct(current_row.get('rs_60d_vs_qqq_pct'), 1)} · 252D {format_pct(current_row.get('rs_252d_vs_qqq_pct'), 1)}",
+                        "detail": f"SOXX vs QQQ 60D {format_pct(current_row.get('rs_60d_vs_qqq_pct'), 1)} | 252D {format_pct(current_row.get('rs_252d_vs_qqq_pct'), 1)}",
                     },
                     {
                         "label": "SOXL stress",
                         "state": guard_band,
-                        "detail": f"Proxy DD {format_pct(soxx_proxy_dd, 1)} · SOXX DD {format_pct(soxx_dd, 1)}",
+                        "detail": f"Proxy DD {format_pct(soxx_proxy_dd, 1)} | SOXX DD {format_pct(soxx_dd, 1)}",
                     },
                 ],
             },
@@ -1223,12 +1448,12 @@ def build_context(history_window: int) -> dict[str, Any]:
                     {
                         "label": "NVIDIA",
                         "state": "CORE",
-                        "detail": f"60D {format_pct(peer_snapshots['NVDA'].get('ret_60d_pct'), 1)} · still the reference point for AI compute demand.",
+                        "detail": f"60D {format_pct(peer_snapshots['NVDA'].get('ret_60d_pct'), 1)} | still the reference point for AI compute demand.",
                     },
                     {
                         "label": "TSMC / packaging",
                         "state": "BOTTLENECK",
-                        "detail": f"60D {format_pct(peer_snapshots['TSM'].get('ret_60d_pct'), 1)} · CoWoS, HBM, and power delivery matter.",
+                        "detail": f"60D {format_pct(peer_snapshots['TSM'].get('ret_60d_pct'), 1)} | CoWoS, HBM, and power delivery matter.",
                     },
                     {
                         "label": "Hyperscaler custom silicon",
@@ -1236,6 +1461,11 @@ def build_context(history_window: int) -> dict[str, Any]:
                         "detail": "Google, Microsoft, Meta, and AWS are broadening the demand map with inference-oriented chips.",
                     },
                 ],
+            },
+            "outlook": {
+                "headline": supply_demand_outlook["headline"],
+                "summary": supply_demand_outlook["summary"],
+                "state": supply_demand_outlook["state"],
             },
             "action": {
                 "headline": guidance_bundle["headline"],
@@ -1306,7 +1536,7 @@ def build_context(history_window: int) -> dict[str, Any]:
     }
 
     return {
-        "schema_version": "soxx_context_v4",
+        "schema_version": "soxx_context_v6",
         "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "generated_at": now_iso(),
         "data_as_of": current_date,
@@ -1325,6 +1555,8 @@ def build_context(history_window: int) -> dict[str, Any]:
         "current": current,
         "leadership": leadership_chart["summary"],
         "leadership_chart": leadership_chart,
+        "supply_demand_outlook": supply_demand_outlook,
+        "runway": runway,
         "history": history,
         "thresholds": {
             "soxx_dd": {"watch": -5, "caution": -10, "defense": -20},
@@ -1333,7 +1565,7 @@ def build_context(history_window: int) -> dict[str, Any]:
         },
         "model": {
             "name": "semi_cycle_leadership_map",
-            "version": "v3",
+            "version": "v5",
             "inputs": [
                 "SOXX price action",
                 "QQQ relative strength",
@@ -1352,6 +1584,8 @@ def build_context(history_window: int) -> dict[str, Any]:
                 "Macro overlay comes from macro_snapshot_latest.json.",
                 "Earnings overlay uses the next 45 days of AI/semi earnings as a confirmation proxy, not a true revisions feed.",
                 "Leadership chart normalizes SOXX, NVDA, TSM, AVGO, MU, AMD, and an AMAT/LRCX/KLAC basket to base 100.",
+                "Supply/demand outlook uses Gartner semiconductor revenue forecasts and SEMI 300mm fab equipment/capacity outlooks.",
+                "Runway view summarizes the 2027+ boom horizon and the 2028-2029 supply build-out.",
             ],
         },
         "notes": [
@@ -1359,6 +1593,8 @@ def build_context(history_window: int) -> dict[str, Any]:
             "AI Cycle Score v1 blends price, macro, and earnings overlay layers.",
             "SOXL proxy drawdown is estimated from SOXX drawdown x 3.",
             "The leadership chart focuses on SOXX, NVDA, TSM, AVGO, MU, AMD, and the AMAT/LRCX/KLAC basket.",
+            "The supply/demand outlook block is built from official Gartner and SEMI forecast anchors through 2029.",
+            "The runway block is a lightweight estimate of how long the current boom can stay constructive.",
         ],
     }
 
@@ -1397,3 +1633,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

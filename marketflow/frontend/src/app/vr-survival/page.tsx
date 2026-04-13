@@ -6,6 +6,7 @@ import VRSurvival, {
   VRSurvivalData,
 } from '@/components/crash/vr/VRSurvival'
 import SoxlLeadershipPanel, { type SoxxContextPayload } from '@/components/crash/vr/SoxlLeadershipPanel'
+import SoxlPlaybackPanel, { type SoxxSurvivalPlaybackArchive } from '@/components/crash/vr/SoxlPlaybackPanel'
 import VRRiskTracksCard           from '@/components/vr/VRRiskTracksCard'
 import { buildStrategyArena, type StrategyArenaView } from '../../../../../vr/arena/compute_strategy_arena'
 import {
@@ -206,9 +207,10 @@ function buildAssetHref(
 ) {
   const search = new URLSearchParams()
   search.set('asset', nextAsset)
+  const tab = toSingleValue(params.tab)
+  if (tab) search.set('tab', tab)
 
   if (nextAsset === 'tqqq') {
-    const tab = toSingleValue(params.tab)
     const event = toSingleValue(params.event)
     const simEvent = toSingleValue(params.sim_event)
     const simStart = toSingleValue(params.sim_start)
@@ -247,6 +249,7 @@ export default async function VRSurvivalPage({
   const assetParam = toSingleValue(searchParams?.asset)
   const asset = assetParam === 'soxl' ? 'soxl' : 'tqqq'
   const isSoxl = asset === 'soxl'
+  const soxlTab = toSingleValue(searchParams?.tab) === 'Playback' ? 'Playback' : 'Live'
   
   const requestedTab = toSingleValue(searchParams?.tab)
   const normalizedRequestedTab = requestedTab === 'Overview' ? 'Live' : requestedTab
@@ -268,7 +271,7 @@ export default async function VRSurvivalPage({
           sim_stock_pct: simStockPct,
         }
       : undefined
-  const [raw, riskV1, current90d, playbackArtifacts, soxxContext] = await Promise.all([
+  const [raw, riskV1, current90d, playbackArtifacts, soxxContext, soxxPlaybackArchive] = await Promise.all([
     readCacheJson<VRSurvivalData | null>('vr_survival.json', null),
     readRiskV1Current(),
     readCacheJson<Current90dCache | null>('current_90d.json', null),
@@ -276,14 +279,17 @@ export default async function VRSurvivalPage({
     isSoxl
       ? readCacheJson<SoxxContextPayload | null>('soxx_context.json', null)
       : Promise.resolve(null),
+    isSoxl
+      ? readCacheJson<SoxxSurvivalPlaybackArchive | null>('soxx_survival_playback.json', null)
+      : Promise.resolve(null),
   ])
   const { playbackData, strategyArena } = playbackArtifacts
   const effectiveRaw = raw ?? buildFallbackSurvivalData(riskV1)
   const heroSubtitle = isSoxl
-    ? 'SOXL은 장기 보유 자산이 아니라 반도체 리더십과 breadth를 읽는 전술 자산입니다.'
+    ? 'SOXL은 기본적으로 보유(Hold) 관점에서 읽되, SOXX를 앵커로 두고 breadth와 수급이 맞을 때만 전술적으로 다룹니다.'
     : 'TQQQ/SOXL의 현재 움직임을 먼저 보고, Playback과 Backtest로 근거를 확인하는 생존 분석 엔진'
   const heroBody = isSoxl
-    ? 'SOXX는 별도 앵커 스트립으로 떼어 두고, 아래 차트에서 NVDA, TSM, AVGO, MU, AMD, 그리고 AMAT/LRCX/KLAC basket이 실제로 리더십을 확인하는지 봅니다.'
+    ? 'AI 반도체 사이클은 두 단계를 거칩니다: ① First-wave excitement (GPU 주문 폭증) → ② Monetization Reset (수익화 재평가). 이 페이지는 현재 어느 단계에 있는지, SOXL 레버리지를 쓸 수 있는지를 판단하기 위한 5단계 분석입니다. 읽는 순서는: 1) Runway(전망) 2) Cycle Drivers(원인) 3) Supply/Demand(수급) 4) Leadership(확산도) 5) Decision Rules(결정). SOXX는 장기 보유, SOXL은 First-wave 초기 + 넓은 수급 우위 확인 + 리더십 확산이 명확할 때만 전술적으로 사용합니다. Reset 구간에서는 업황이 양호해도 자본 보존이 우선입니다. Live 탭은 현재 사이클 단계, Playback 탭은 과거 Reset 구간에서 SOXL이 왜 손실을 봤는지를 보여줍니다.'
     : '이 시스템은 VR(Value Rebalancing) 전략을 기반으로, 하락장에서의 대응 방식을 연구하는 시뮬레이션 엔진입니다. 지금은 live motion을 먼저 보여주고, Playback과 Backtest는 그 판단의 근거를 확인하는 증거 레이어로 사용합니다.'
 
   if (!effectiveRaw && asset === 'tqqq') {
@@ -331,7 +337,7 @@ export default async function VRSurvivalPage({
             </div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 860 }}>
               {isSoxl
-                ? '이 화면은 매수/매도 신호가 아니라, 반도체 사이클과 외부 민감도를 읽는 리서치 브리프입니다.'
+                ? '이 화면은 매수/매도 신호가 아니라, 반도체 사이클과 외부 민감도를 읽는 리서치 브리프입니다. 기본 결론은 Hold, 예외적으로만 SOXL 전술 비중을 조정합니다.'
                 : NON_SIGNAL_COPY}
             </div>
           </div>
@@ -454,7 +460,57 @@ export default async function VRSurvivalPage({
             </div>
           </>
         ) : (
-          <SoxlLeadershipPanel context={soxxContext} />
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
+                marginBottom: '0.85rem',
+              }}
+            >
+              <div style={{ display: 'grid', gap: 4 }}>
+                <div style={{ fontSize: '0.72rem', color: '#7dd3fc', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>
+                  SOXL View Modes
+                </div>
+                <div style={{ fontSize: '0.88rem', color: '#cbd5e1', lineHeight: 1.65, maxWidth: 780 }}>
+                  <b style={{ color: '#7dd3fc' }}>Live</b> — 현재 반도체 사이클의 위치(레짐)와 SOXL 전술 판단을 보여줍니다. 먼저 이 탭으로 "지금 어디에 있는가"를 읽으세요.
+                  {'  '}<b style={{ color: '#a78bfa' }}>Playback</b> — 과거 SOXX 충격 구간에서 SOXL 대응이 어떻게 작동했는지 역사적 증거를 확인합니다. "왜 Hold가 기본값인지"를 이해하는 데 필요한 부록입니다.
+                </div>
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, border: '1px solid rgba(148, 163, 184, 0.16)', background: 'rgba(15, 23, 42, 0.72)', overflow: 'hidden' }}>
+                {[
+                  { label: 'Live', active: soxlTab === 'Live' },
+                  { label: 'Playback', active: soxlTab === 'Playback' },
+                ].map((item) => (
+                  <a
+                    key={item.label}
+                    href={buildAssetHref('soxl', { ...searchParams, tab: item.label })}
+                    style={{
+                      padding: '0.62rem 0.95rem',
+                      minWidth: 104,
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      color: item.active ? '#08111f' : '#e2e8f0',
+                      background: item.active
+                        ? 'linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%)'
+                        : 'transparent',
+                      fontSize: '0.78rem',
+                      fontWeight: 900,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      borderRight: item.label === 'Live' ? '1px solid rgba(148,163,184,0.12)' : 'none',
+                    }}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+            {soxlTab === 'Playback' ? <SoxlPlaybackPanel archive={soxxPlaybackArchive} /> : <SoxlLeadershipPanel context={soxxContext} />}
+          </>
         )}
       </div>
     </main>
