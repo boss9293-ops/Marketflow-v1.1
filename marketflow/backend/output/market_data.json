@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-11T07:00:08.923410",
+  "timestamp": "2026-04-13T07:00:06.616433",
   "indices": {
     "SPY": {
       "name": "S&P 500",
@@ -25,8 +25,8 @@
   "volatility": {
     "^VIX": {
       "name": "VIX",
-      "price": 19.23,
-      "change_pct": -1.33
+      "price": 21.32,
+      "change_pct": 10.87
     }
   },
   "bonds": {
@@ -49,40 +49,40 @@
   "currencies": {
     "DX-Y.NYB": {
       "name": "Dollar Index",
-      "price": 98.65,
-      "change_pct": -0.17
+      "price": 98.96,
+      "change_pct": 0.32
     },
     "EURUSD=X": {
       "name": "EUR/USD",
       "price": 1.17,
-      "change_pct": 0.6
+      "change_pct": -0.05
     },
     "USDJPY=X": {
       "name": "USD/JPY",
-      "price": 159.24,
-      "change_pct": 0.38
+      "price": 159.85,
+      "change_pct": 0.46
     },
     "KRW=X": {
       "name": "USD/KRW",
-      "price": 1482.7,
-      "change_pct": 0.64
+      "price": 1489.38,
+      "change_pct": 1.09
     }
   },
   "commodities": {
     "GC=F": {
       "name": "Gold",
-      "price": 4761.9,
-      "change_pct": -0.63
+      "price": 4730.4,
+      "change_pct": -0.66
     },
     "CL=F": {
       "name": "Crude Oil",
-      "price": 96.57,
-      "change_pct": -1.33
+      "price": 104.09,
+      "change_pct": 7.79
     },
     "BTC-USD": {
       "name": "Bitcoin",
-      "price": 72923.17,
-      "change_pct": -0.08
+      "price": 70948.03,
+      "change_pct": 0.28
     }
   }
 }

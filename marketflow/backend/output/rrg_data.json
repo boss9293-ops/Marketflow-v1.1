@@ -1,19 +1,15 @@
 {
-  "timestamp": "2026-04-09T17:32:31.708573",
+  "timestamp": "2026-04-13T07:04:34.294190",
   "benchmark": "SPY",
   "sectors": [
     {
       "symbol": "XLK",
       "name": "Technology",
       "current": {
-        "ratio": 101.6205,
-        "momentum": 100.7207
+        "ratio": 102.0344,
+        "momentum": 101.1309
       },
       "trail": [
-        {
-          "ratio": 104.7854,
-          "momentum": 102.1217
-        },
         {
           "ratio": 103.5325,
           "momentum": 98.8043
@@ -199,21 +195,17 @@
           "momentum": 101.3577
         }
       ],
-      "price": 142.07,
-      "change": 30.02
+      "price": 142.62,
+      "change": 33.33
     },
     {
       "symbol": "XLV",
       "name": "Healthcare",
       "current": {
-        "ratio": 96.8654,
-        "momentum": 98.2867
+        "ratio": 95.7378,
+        "momentum": 97.1426
       },
       "trail": [
-        {
-          "ratio": 89.0942,
-          "momentum": 96.6325
-        },
         {
           "ratio": 90.7255,
           "momentum": 101.8311
@@ -399,21 +391,17 @@
           "momentum": 99.2831
         }
       ],
-      "price": 149.33,
-      "change": 0.03
+      "price": 147.31,
+      "change": 1.64
     },
     {
       "symbol": "XLF",
       "name": "Financials",
       "current": {
-        "ratio": 99.788,
-        "momentum": 100.1929
+        "ratio": 98.8659,
+        "momentum": 99.267
       },
       "trail": [
-        {
-          "ratio": 99.0662,
-          "momentum": 98.127
-        },
         {
           "ratio": 98.6183,
           "momentum": 99.5478
@@ -599,21 +587,17 @@
           "momentum": 100.3584
         }
       ],
-      "price": 51.33,
-      "change": 4.5
+      "price": 50.77,
+      "change": 4.64
     },
     {
       "symbol": "XLE",
       "name": "Energy",
       "current": {
-        "ratio": 98.7385,
-        "momentum": 92.1801
+        "ratio": 98.1913,
+        "momentum": 91.6693
       },
       "trail": [
-        {
-          "ratio": 93.8405,
-          "momentum": 99.0291
-        },
         {
           "ratio": 93.4756,
           "momentum": 99.6112
@@ -799,21 +783,17 @@
           "momentum": 89.5096
         }
       ],
-      "price": 57.33,
-      "change": 31.14
+      "price": 56.94,
+      "change": 26.87
     },
     {
       "symbol": "XLY",
       "name": "Consumer Discretionary",
       "current": {
-        "ratio": 98.5202,
-        "momentum": 101.1073
+        "ratio": 98.6972,
+        "momentum": 101.289
       },
       "trail": [
-        {
-          "ratio": 102.7909,
-          "momentum": 101.9019
-        },
         {
           "ratio": 101.6912,
           "momentum": 98.9302
@@ -999,21 +979,17 @@
           "momentum": 99.7484
         }
       ],
-      "price": 112.74,
-      "change": 9.63
+      "price": 112.89,
+      "change": 14.78
     },
     {
       "symbol": "XLP",
       "name": "Consumer Staples",
       "current": {
-        "ratio": 96.2822,
-        "momentum": 98.1376
+        "ratio": 95.2118,
+        "momentum": 97.0465
       },
       "trail": [
-        {
-          "ratio": 94.565,
-          "momentum": 96.7446
-        },
         {
           "ratio": 96.5258,
           "momentum": 102.0735
@@ -1199,21 +1175,17 @@
           "momentum": 96.4675
         }
       ],
-      "price": 83.45,
-      "change": 0.71
+      "price": 82.37,
+      "change": 3.6
     },
     {
       "symbol": "XLI",
       "name": "Industrials",
       "current": {
-        "ratio": 100.2515,
-        "momentum": 100.8488
+        "ratio": 99.96,
+        "momentum": 100.5555
       },
       "trail": [
-        {
-          "ratio": 102.352,
-          "momentum": 99.9802
-        },
         {
           "ratio": 102.4529,
           "momentum": 100.0986
@@ -1399,21 +1371,17 @@
           "momentum": 99.0073
         }
       ],
-      "price": 172.19,
-      "change": 28.26
+      "price": 171.52,
+      "change": 30.8
     },
     {
       "symbol": "XLB",
       "name": "Materials",
       "current": {
-        "ratio": 100.2163,
-        "momentum": 98.2444
+        "ratio": 100.782,
+        "momentum": 98.7991
       },
       "trail": [
-        {
-          "ratio": 96.8314,
-          "momentum": 98.188
-        },
         {
           "ratio": 98.1538,
           "momentum": 101.3657
@@ -1599,21 +1567,17 @@
           "momentum": 99.0733
         }
       ],
-      "price": 51.67,
-      "change": 17.67
+      "price": 51.96,
+      "change": 20.87
     },
     {
       "symbol": "XLRE",
       "name": "Real Estate",
       "current": {
-        "ratio": 99.5582,
-        "momentum": 98.588
+        "ratio": 99.8065,
+        "momentum": 98.8338
       },
       "trail": [
-        {
-          "ratio": 95.4305,
-          "momentum": 96.3103
-        },
         {
           "ratio": 95.1985,
           "momentum": 99.7569
@@ -1799,21 +1763,17 @@
           "momentum": 99.9759
         }
       ],
-      "price": 42.73,
-      "change": 0.61
+      "price": 42.82,
+      "change": 3.31
     },
     {
       "symbol": "XLU",
       "name": "Utilities",
       "current": {
-        "ratio": 100.6606,
-        "momentum": 97.1693
+        "ratio": 100.3554,
+        "momentum": 96.8747
       },
       "trail": [
-        {
-          "ratio": 97.2641,
-          "momentum": 97.0181
-        },
         {
           "ratio": 98.4789,
           "momentum": 101.2489
@@ -1999,21 +1959,17 @@
           "momentum": 96.9921
         }
       ],
-      "price": 47.15,
-      "change": 22.01
+      "price": 46.96,
+      "change": 19.08
     },
     {
       "symbol": "XLC",
       "name": "Communication Services",
       "current": {
-        "ratio": 98.5769,
-        "momentum": 98.9941
+        "ratio": 98.3867,
+        "momentum": 98.8031
       },
       "trail": [
-        {
-          "ratio": 99.6353,
-          "momentum": 99.6656
-        },
         {
           "ratio": 100.5826,
           "momentum": 100.9507
@@ -2199,8 +2155,8 @@
           "momentum": 100.8576
         }
       ],
-      "price": 114.27,
-      "change": 13.94
+      "price": 113.95,
+      "change": 17.99
     }
   ]
 }

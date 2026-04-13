@@ -682,7 +682,7 @@ export default function SoxlLeadershipPanel({ context }: { context: SoxxContextP
         >
           <div>
             <div style={{ fontSize: '0.68rem', color: '#fcd34d', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>
-              런웨이 / 전망 기간
+              L1. Runway(전망)
             </div>
             <h3 style={{ margin: '0.35rem 0 0', fontSize: '1.08rem', color: '#fef3c7', fontWeight: 900 }}>
               {runway.headline ?? '붐 런웨이는 2027년까지 이어질 가능성이 높습니다'}
@@ -786,7 +786,8 @@ export default function SoxlLeadershipPanel({ context }: { context: SoxxContextP
       {outlook ? (
         <section style={{ display: 'grid', gap: 12, marginTop: '1rem' }}>
           <div style={{ padding: '0 0.5rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#f8fafc', fontWeight: 800 }}>L3. 3-4Y Supply / Demand Outlook (사이클 러닝웨이)</h3>
+            <div style={{ fontSize: '0.68rem', color: '#7dd3fc', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>L3. Supply/Demand Outlook</div>
+            <h3 style={{ margin: '0.3rem 0 0', fontSize: '1.08rem', color: '#f8fafc', fontWeight: 800 }}>3-4Y 수급 전망 (사이클 러닝웨이)</h3>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
               장기 수급 전망입니다. AI 수요가 계속 공급을 앞서갈 것인가, CAPEX 확충 속도는 얼마나 빠를 것인가를 결정하는 층입니다.{' '}
               <b>핵심</b>: 이 층이 긍정적이어도, 현재는 Monetization Reset(수익화 재평가) 단계일 수 있으므로, 단기 조정 리스크는 여전합니다. catches up into 2028-2029.
@@ -875,7 +876,7 @@ export default function SoxlLeadershipPanel({ context }: { context: SoxxContextP
         }}
       >
         <div>
-          <div style={{ fontSize: '0.75rem', color: '#fcd34d', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 900 }}>
+          <div style={{ fontSize: '0.68rem', color: '#fcd34d', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 900 }}>
             L5. Decision Rules / Action Layer
           </div>
           <p style={{ margin: '0.45rem 0 0', fontSize: '1.05rem', lineHeight: 1.6, color: '#fef3c7', fontWeight: 700 }}>
@@ -893,7 +894,7 @@ export default function SoxlLeadershipPanel({ context }: { context: SoxxContextP
             Capex/Revenue &gt; 1.5x는 수익성 재평가 가속화 신호. 거시 충격 확률 상승 또는 SOXX MA200 이탈 시 즉시 Hold로 복귀합니다.
           </div>
           <div>
-            <b>Current Guard Band:</b> <Badge label={current?.risk?.soxl_guard_band ?? 'UNKNOWN'} tone="danger" />
+            <b>Current Guard Band:</b> <Badge label={current?.risk?.soxl_guard_band ?? 'UNKNOWN'} tone={(() => { const v = String(current?.risk?.soxl_guard_band ?? '').toUpperCase(); if (v.includes('GREEN')) return 'good' as const; if (v.includes('YELLOW') || v.includes('AMBER')) return 'warn' as const; if (v.includes('RED')) return 'danger' as const; if (v.includes('ORANGE')) return 'watch' as const; return 'neutral' as const; })()} />
             <span style={{ marginLeft: 8, color: '#fbbf24' }}>
               ATR Volatility Constraint: Proxy {formatPct(current?.risk?.soxl_proxy_dd_pct, 1)}
             </span>

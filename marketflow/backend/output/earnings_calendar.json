@@ -1,11 +1,27 @@
 {
-  "generated_at": "2026-04-09T17:30:12",
+  "generated_at": "2026-04-13T07:00:39",
   "source": "yfinance",
   "earnings": [
     {
       "ticker": "JNJ",
       "name": "Johnson & Johnson",
       "date": "2026-04-14",
+      "estimate": null,
+      "actual": null,
+      "surprise_pct": null
+    },
+    {
+      "ticker": "JPM",
+      "name": "JP Morgan Chase & Co.",
+      "date": "2026-04-14",
+      "estimate": null,
+      "actual": null,
+      "surprise_pct": null
+    },
+    {
+      "ticker": "NFLX",
+      "name": "Netflix",
+      "date": "2026-04-16",
       "estimate": null,
       "actual": null,
       "surprise_pct": null
@@ -19,6 +35,14 @@
       "surprise_pct": null
     },
     {
+      "ticker": "GEV",
+      "name": "GE Vernova",
+      "date": "2026-04-22",
+      "estimate": null,
+      "actual": null,
+      "surprise_pct": null
+    },
+    {
       "ticker": "DLR",
       "name": "Digital Realty",
       "date": "2026-04-23",
@@ -27,8 +51,8 @@
       "surprise_pct": null
     },
     {
-      "ticker": "INTC",
-      "name": "Intel",
+      "ticker": "FIX",
+      "name": "Comfort Systems USA",
       "date": "2026-04-23",
       "estimate": null,
       "actual": null,
@@ -67,14 +91,6 @@
       "surprise_pct": null
     },
     {
-      "ticker": "TER",
-      "name": "Teradyne",
-      "date": "2026-04-29",
-      "estimate": null,
-      "actual": null,
-      "surprise_pct": null
-    },
-    {
       "ticker": "KLAC",
       "name": "KLA Corporation",
       "date": "2026-04-29",
@@ -83,8 +99,8 @@
       "surprise_pct": null
     },
     {
-      "ticker": "AMZN",
-      "name": "Amazon.com, Inc.",
+      "ticker": "MRK",
+      "name": "Merck & Company, Inc.",
       "date": "2026-04-30",
       "estimate": null,
       "actual": null,
@@ -99,25 +115,33 @@
       "surprise_pct": null
     },
     {
-      "ticker": "MRK",
-      "name": "Merck & Company, Inc.",
+      "ticker": "AMZN",
+      "name": "Amazon.com, Inc.",
       "date": "2026-04-30",
       "estimate": null,
       "actual": null,
       "surprise_pct": null
     },
     {
-      "ticker": "AAPL",
-      "name": "Apple Inc.",
+      "ticker": "PPL",
+      "name": "PPL Corporation",
       "date": "2026-04-30",
       "estimate": null,
       "actual": null,
       "surprise_pct": null
     },
     {
-      "ticker": "MPWR",
-      "name": "Monolithic Power Systems",
+      "ticker": "SNDK",
+      "name": "Sandisk",
       "date": "2026-04-30",
+      "estimate": null,
+      "actual": null,
+      "surprise_pct": null
+    },
+    {
+      "ticker": "AEP",
+      "name": "American Electric Power",
+      "date": "2026-05-05",
       "estimate": null,
       "actual": null,
       "surprise_pct": null
@@ -131,33 +155,9 @@
       "surprise_pct": null
     },
     {
-      "ticker": "LITE",
-      "name": "LITE",
-      "date": "2026-05-05",
-      "estimate": null,
-      "actual": null,
-      "surprise_pct": null
-    },
-    {
-      "ticker": "ANET",
-      "name": "Arista Networks",
-      "date": "2026-05-05",
-      "estimate": null,
-      "actual": null,
-      "surprise_pct": null
-    },
-    {
-      "ticker": "WDC",
-      "name": "Western Digital",
+      "ticker": "ATO",
+      "name": "Atmos Energy",
       "date": "2026-05-06",
-      "estimate": null,
-      "actual": null,
-      "surprise_pct": null
-    },
-    {
-      "ticker": "Q",
-      "name": "Qnity Electronics",
-      "date": "2026-05-12",
       "estimate": null,
       "actual": null,
       "surprise_pct": null
@@ -179,17 +179,9 @@
       "surprise_pct": null
     },
     {
-      "ticker": "DELL",
-      "name": "Dell Technologies",
+      "ticker": "MRVL",
+      "name": "MRVL",
       "date": "2026-05-28",
-      "estimate": null,
-      "actual": null,
-      "surprise_pct": null
-    },
-    {
-      "ticker": "CIEN",
-      "name": "Ciena",
-      "date": "2026-06-04",
       "estimate": null,
       "actual": null,
       "surprise_pct": null

@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-04-09T17:31:30.823614",
+  "timestamp": "2026-04-13T07:02:12.720862",
   "spy": {
-    "bullish_probability": 89.7,
+    "bullish_probability": 60.2,
     "direction": "Bullish",
-    "confidence": "High"
+    "confidence": "Medium"
   },
   "qqq": {
-    "bullish_probability": 70,
+    "bullish_probability": 64.6,
     "direction": "Bullish",
-    "confidence": "High"
+    "confidence": "Medium"
   }
 }

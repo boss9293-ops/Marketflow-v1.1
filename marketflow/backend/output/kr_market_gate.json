@@ -1,13 +1,13 @@
 {
-  "status": "GREEN",
-  "gate_score": 100,
-  "recommendation": "Risk-on environment. Favor stronger KR leaders.",
+  "status": "YELLOW",
+  "gate_score": 47,
+  "recommendation": "Mixed market. Be selective with position sizing.",
   "kospi": {
-    "change_pct": 6.87
+    "change_pct": -0.86
   },
   "kosdaq": {
-    "change_pct": 5.12
+    "change_pct": 0.57
   },
-  "usd_krw": 1474.17,
-  "generated_at": "2026-04-09T17:30:14.941187"
+  "usd_krw": 1489.48,
+  "generated_at": "2026-04-13T07:00:42.289468"
 }

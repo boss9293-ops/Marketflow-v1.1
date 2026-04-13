@@ -1,0 +1,729 @@
+{
+  "asof": "2026-03-20T12:10:27Z",
+  "snapshot_date": "2026-03-20",
+  "series": {
+    "HY_OAS": {
+      "symbol": "HY_OAS",
+      "source": "FRED",
+      "unit": "bp",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=BAMLH0A0HYM2; ICE BofA HY OAS",
+      "latest": {
+        "value": 3.2,
+        "date": "2026-03-18"
+      }
+    },
+    "VIX": {
+      "symbol": "VIX",
+      "source": "FRED",
+      "unit": "index",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=VIXCLS; CBOE VIX close (FRED VIXCLS)",
+      "latest": {
+        "value": 25.09,
+        "date": "2026-03-18"
+      }
+    },
+    "WALCL": {
+      "symbol": "WALCL",
+      "source": "FRED",
+      "unit": "usd",
+      "freq": "W",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=WALCL; Fed balance sheet",
+      "latest": {
+        "value": 6655939.0,
+        "date": "2026-03-18"
+      }
+    },
+    "M2SL": {
+      "symbol": "M2SL",
+      "source": "FRED",
+      "unit": "usd",
+      "freq": "M",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "PARTIAL",
+      "notes": "fred_series_id=M2SL; US M2 (monthly)",
+      "latest": {
+        "value": 22442.1,
+        "date": "2026-01-01"
+      }
+    },
+    "M2": {
+      "symbol": "M2SL",
+      "source": "FRED",
+      "unit": "usd",
+      "freq": "M",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "PARTIAL",
+      "notes": "fred_series_id=M2SL; US M2 (monthly)",
+      "latest": {
+        "value": 22442.1,
+        "date": "2026-01-01"
+      }
+    },
+    "RRP": {
+      "symbol": "RRP",
+      "source": "FRED",
+      "unit": "usd",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=RRPONTSYD; ON RRP (RRPONTSYD)",
+      "latest": {
+        "value": 0.637,
+        "date": "2026-03-19"
+      }
+    },
+    "EFFR": {
+      "symbol": "EFFR",
+      "source": "FRED",
+      "unit": "pct",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=EFFR; Effective Fed Funds Rate",
+      "latest": {
+        "value": 3.64,
+        "date": "2026-03-18"
+      }
+    },
+    "DFII10": {
+      "symbol": "DFII10",
+      "source": "FRED",
+      "unit": "pct",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=DFII10; 10Y TIPS real yield",
+      "latest": {
+        "value": 1.86,
+        "date": "2026-03-18"
+      }
+    },
+    "DGS2": {
+      "symbol": "DGS2",
+      "source": "FRED",
+      "unit": "pct",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=DGS2; 2Y treasury",
+      "latest": {
+        "value": 3.76,
+        "date": "2026-03-18"
+      }
+    },
+    "DGS10": {
+      "symbol": "DGS10",
+      "source": "FRED",
+      "unit": "pct",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=DGS10; 10Y treasury",
+      "latest": {
+        "value": 4.26,
+        "date": "2026-03-18"
+      }
+    },
+    "USD_BROAD": {
+      "symbol": "USD_BROAD",
+      "source": "FRED",
+      "unit": "index",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=DTWEXBGS; Broad dollar index (proxy)",
+      "latest": {
+        "value": 120.5518,
+        "date": "2026-03-13"
+      }
+    },
+    "BTC": {
+      "symbol": "BTC",
+      "source": "FRED",
+      "unit": "usd",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:25Z",
+      "quality": "OK",
+      "notes": "fred_series_id=CBBTCUSD; Bitcoin price (Coindesk via FRED CBBTCUSD)",
+      "latest": {
+        "value": 69858.95,
+        "date": "2026-03-19"
+      }
+    },
+    "PUT_CALL": {
+      "symbol": "PUT_CALL",
+      "source": "PROXY",
+      "unit": "ratio",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:45Z",
+      "quality": "PARTIAL",
+      "notes": "PROXY derived from VIX (monotonic mapping). original error=RuntimeError('Too few CSV rows from Stooq for CBOE PC.')",
+      "latest": {
+        "value": 1.4027,
+        "date": "2026-03-18"
+      }
+    },
+    "TQQQ": {
+      "symbol": "TQQQ",
+      "source": "STOOQ",
+      "unit": "usd",
+      "freq": "D",
+      "last_updated": "2026-03-20T12:06:41Z",
+      "quality": "NA",
+      "notes": "ERROR: RuntimeError('Unexpected Stooq CSV format: tqqq.us'); ticker=tqqq.us",
+      "latest": {
+        "value": 47.53,
+        "date": "2026-03-06"
+      }
+    }
+  },
+  "computed": {
+    "PUT_CALL": {
+      "value": 94.89,
+      "state": "Stress",
+      "status": "Stress",
+      "quality": "PARTIAL",
+      "quality_effective": "PARTIAL",
+      "fallback_vix_only": false,
+      "pc_5d_ma": 1.4027,
+      "pc_30d_chg": 0.144,
+      "p_pc": 0.9675,
+      "p_pc_chg": 0.9055,
+      "level_score": 96.75,
+      "chg_score": 90.55,
+      "source": "PROXY"
+    },
+    "CSI": {
+      "value": 66.66,
+      "state": "Watch",
+      "status": "Watch",
+      "quality": "OK",
+      "quality_effective": "OK",
+      "fallback_weight_zero": false,
+      "hy_oas_level_bp": 3.2,
+      "hy_oas_30d_chg_bp": 0.34,
+      "p_hy_oas": 0.5172,
+      "p_hy_oas_chg": 0.8906,
+      "level_score": 51.72,
+      "chg_score": 89.06
+    },
+    "RPI": {
+      "value": 23.93,
+      "state": "Normal",
+      "status": "Normal",
+      "quality": "OK",
+      "quality_effective": "OK",
+      "yield_curve_spread": 0.5,
+      "inversion_flag": false,
+      "inversion_severity": "NORMAL",
+      "components": {
+        "EFFR": {
+          "value": 3.64,
+          "score": 8.46
+        },
+        "DFII10": {
+          "value": 1.86,
+          "score": 42.67
+        },
+        "YC_10_2": {
+          "value": 0.5,
+          "score": 25.96
+        }
+      }
+    },
+    "LPI": {
+      "value": 26.77,
+      "state": "Normal",
+      "status": "Normal",
+      "quality": "OK",
+      "quality_effective": "OK",
+      "dxy_30d_change": 3.0917,
+      "dxy_pressure": "MEDIUM",
+      "components": {
+        "WALCL_30D_CHG": {
+          "value": 66406.0,
+          "score": 0.7
+        },
+        "M2_30D_CHG": {
+          "value": 1472.2,
+          "score": 7.14
+        },
+        "RRP_LEVEL": {
+          "value": 0.64,
+          "score": 1.54
+        },
+        "USD_30D_CHG": {
+          "value": 3.0917,
+          "score": 97.88
+        }
+      }
+    },
+    "VRI": {
+      "value": 89.7,
+      "state": "Stress",
+      "status": "Stress",
+      "quality": "OK",
+      "quality_effective": "OK",
+      "components": {
+        "VIX_LEVEL": {
+          "value": 25.09,
+          "score": 96.14
+        },
+        "VIX_5D_CHG": {
+          "value": 0.86,
+          "score": 70.34
+        },
+        "PUT_CALL": {
+          "pc_5d_ma": 1.4027,
+          "pc_30d_chg": 0.144,
+          "score": 94.89,
+          "state": "Stress",
+          "quality": "PARTIAL",
+          "source": "PROXY"
+        },
+        "blend": {
+          "vri_old": 88.4,
+          "w_vri_old": 0.8,
+          "w_put_call": 0.2
+        }
+      }
+    },
+    "MPS": {
+      "value": 47.78,
+      "state": "Normal",
+      "status": "Normal",
+      "quality_effective": "OK",
+      "breakdown": {
+        "LPI": 26.77,
+        "RPI": 23.93,
+        "VRI": 89.7,
+        "CSI": 66.66,
+        "weights": {
+          "LPI": 0.35,
+          "RPI": 0.25,
+          "VRI": 0.25,
+          "CSI": 0.15
+        },
+        "contrib": {
+          "LPI": 9.3695,
+          "RPI": 5.9825,
+          "VRI": 22.425,
+          "CSI": 9.999
+        }
+      }
+    },
+    "SHOCK": {
+      "value": 73.73,
+      "probability_30d": 44.24,
+      "state": "Elevated",
+      "quality_effective": "OK",
+      "drivers": [
+        "VRI",
+        "CSI",
+        "REALIZED_VOL"
+      ],
+      "components": {
+        "weights": {
+          "VRI": 0.35,
+          "CSI": 0.3,
+          "RV20": 0.2,
+          "DD_VEL": 0.15
+        },
+        "scores": {
+          "VRI": 89.7,
+          "CSI": 66.66,
+          "REALIZED_VOL": 56.04,
+          "DD_VELOCITY": 74.18
+        },
+        "percentiles": {
+          "VRI": 0.897,
+          "CSI": 0.6666,
+          "REALIZED_VOL": 0.5604,
+          "DD_VELOCITY": 0.7418
+        },
+        "raw": {
+          "realized_vol_20d": 0.010724,
+          "dd_velocity_10d": 0.014125
+        },
+        "contrib": {
+          "VRI": 31.39,
+          "CSI": 20.0,
+          "REALIZED_VOL": 11.21,
+          "DD_VELOCITY": 11.13
+        },
+        "fallback": {
+          "csi_weight_zero": false
+        }
+      }
+    },
+    "PHASE": {
+      "phase": "Expansion",
+      "progress": 0.0,
+      "gate_score": 54.91,
+      "drivers": [
+        "VRI",
+        "CSI",
+        "RPI"
+      ],
+      "contrib": {
+        "VRI": 26.91,
+        "CSI": 16.66,
+        "RPI": 5.98,
+        "LPI": 5.35
+      },
+      "stale_blocked": false,
+      "rules": {
+        "shock": "VRI>=90 OR (VRI>=80 AND CSI>=80)",
+        "contraction": "gate>=70",
+        "slowdown": "gate>=55",
+        "health_block": "any quality_effective==STALE -> forced Slowdown",
+        "weights": {
+          "VRI": 0.3,
+          "CSI": 0.25,
+          "RPI": 0.25,
+          "LPI": 0.2
+        },
+        "sensor_state_thresholds": {
+          "watch": 60,
+          "stress": 80
+        },
+        "percentile_band_thresholds": {
+          "watch": 66,
+          "risk": 85
+        }
+      },
+      "reasons": [
+        "Gate 54.91/100, progress 0.0%.",
+        "Drivers: VRI, CSI, RPI."
+      ]
+    },
+    "DEFENSIVE": {
+      "mode": "OFF",
+      "label": "OFF",
+      "recommended": true,
+      "reasons": [
+        "Phase=Expansion -> OFF."
+      ],
+      "gate": {
+        "phase": "Expansion",
+        "mps": 47.78,
+        "csi": 66.66,
+        "stale_blocked": false,
+        "thresholds": {
+          "mps_watch": 70,
+          "mps_on": 80,
+          "csi_watch": 70,
+          "csi_on": 80
+        }
+      }
+    },
+    "DEFENSIVE_TRIGGER": {
+      "trigger_level": "None",
+      "conditions_all": {
+        "yield_inverted": false,
+        "cs_expanding": false,
+        "dxy_surge": true,
+        "vri_expanding": false,
+        "pc_fear": true
+      },
+      "conditions_met": [
+        "dxy_surge",
+        "pc_fear"
+      ],
+      "inputs": {
+        "yield_curve_spread": 0.5,
+        "hy_oas_30d_change_bp": 34.0,
+        "dxy_30d_change": 3.0917,
+        "vri_state": "Stress",
+        "put_call_5d_ma": 1.4027
+      },
+      "rules": {
+        "L1": "yield_inverted AND cs_expanding AND dxy_surge",
+        "L2": "L1 AND vri_expanding AND pc_fear",
+        "thresholds": {
+          "credit_30d_change_bp": 60.0,
+          "dxy_30d_change_pct": 3.0,
+          "put_call_5d_ma": 1.2
+        }
+      }
+    },
+    "PUBLIC_CONTEXT": {
+      "note": "Read-only context layer. No effect on engine scores.",
+      "rows": [
+        {
+          "key": "FED_FUNDS",
+          "label": "Fed Funds",
+          "source": "FRED",
+          "value": 3.64,
+          "change_30d": 0.0,
+          "direction": "FLAT",
+          "status": "Normal",
+          "percentile": 8.46,
+          "unit": "%"
+        },
+        {
+          "key": "UST10Y",
+          "label": "10Y",
+          "source": "FRED",
+          "value": 4.26,
+          "change_30d": 0.21,
+          "direction": "UP",
+          "status": "Normal",
+          "percentile": 59.38,
+          "unit": "%"
+        },
+        {
+          "key": "UST2Y",
+          "label": "2Y",
+          "source": "FRED",
+          "value": 3.76,
+          "change_30d": 0.33,
+          "direction": "UP",
+          "status": "Normal",
+          "percentile": 25.06,
+          "unit": "%"
+        },
+        {
+          "key": "YC_2Y10Y",
+          "label": "2Y-10Y",
+          "source": "Derived",
+          "value": 0.5,
+          "change_30d": -0.12,
+          "direction": "DOWN",
+          "status": "Normal",
+          "percentile": 25.96,
+          "unit": "%"
+        },
+        {
+          "key": "M2",
+          "label": "M2",
+          "source": "FRED",
+          "value": 22442.1,
+          "change_30d": 1472.2,
+          "direction": "UP",
+          "status": "Normal",
+          "percentile": 2.86,
+          "unit": "bn"
+        },
+        {
+          "key": "HY_OAS",
+          "label": "HY OAS",
+          "source": "FRED",
+          "value": 3.2,
+          "change_30d": 0.34,
+          "direction": "UP",
+          "status": "Normal",
+          "percentile": 51.72,
+          "unit": "%"
+        },
+        {
+          "key": "VIX",
+          "label": "VIX",
+          "source": "CBOE/FRED",
+          "value": 25.09,
+          "change_30d": 4.8,
+          "direction": "UP",
+          "status": "Risk",
+          "percentile": 96.14,
+          "unit": "idx"
+        }
+      ]
+    },
+    "XCONF_GLOBAL": {
+      "label": "BTC-M2 Lead/Lag (Reference)",
+      "state": "Stress",
+      "best_lag_weeks": 12,
+      "corr_6w": -0.0454,
+      "corr_12w": -0.3319,
+      "corr_best": -0.3319,
+      "note": "Reference-only signal. Not included in MPS/PHASE/DEFENSIVE."
+    },
+    "BTC_M2": {
+      "label": "BTC-M2 Liquidity Overlay (Aux)",
+      "aux_only": true,
+      "no_score": true,
+      "m2_mode": "monthly_step_ffill",
+      "m2_frequency": "monthly",
+      "btc_30d_roc": 3.9701,
+      "btc_90d_roc": -20.6293,
+      "m2_yoy": 4.2863,
+      "m2_3m_roc": 0.8176,
+      "ratio": 3.11285263,
+      "divergence": -24.9156,
+      "state": "Stress",
+      "rules": {
+        "normal_abs_lt": 10,
+        "watch_abs_gte": 10,
+        "stress_abs_gte": 20
+      },
+      "note": "Context-only auxiliary overlay. Not included in MPS/PHASE/DEFENSIVE/SHOCK."
+    }
+  },
+  "health": {
+    "asof": "2026-03-20T12:10:27Z",
+    "series": {
+      "VIX": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">60m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "HY_OAS": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "WALCL": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">4320m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "M2SL": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">4320m",
+        "base_quality": "PARTIAL",
+        "quality_effective": "PARTIAL",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "RRP": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "EFFR": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "DFII10": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "DGS2": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "DGS10": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "USD_BROAD": {
+        "age_minutes": 4.05,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "OK",
+        "quality_effective": "OK",
+        "last_updated": "2026-03-20T12:06:25Z",
+        "source": "FRED"
+      },
+      "PUT_CALL": {
+        "age_minutes": 3.72,
+        "stale": false,
+        "stale_rule": ">2880m",
+        "base_quality": "PARTIAL",
+        "quality_effective": "PARTIAL",
+        "last_updated": "2026-03-20T12:06:45Z",
+        "source": "PROXY"
+      },
+      "TQQQ": {
+        "age_minutes": 3.78,
+        "stale": false,
+        "stale_rule": ">60m",
+        "base_quality": "NA",
+        "quality_effective": "NA",
+        "last_updated": "2026-03-20T12:06:41Z",
+        "source": "STOOQ"
+      }
+    },
+    "summary": {
+      "stale_count": 0,
+      "any_stale": false
+    }
+  },
+  "quality_summary": {
+    "LPI": "OK",
+    "RPI": "OK",
+    "VRI": "OK",
+    "CSI": "OK",
+    "PUT_CALL": "PARTIAL"
+  },
+  "meta": {
+    "policy_path": "D:\\Youtube_pro\\000-Code_develop\\주식분석\\us_market_complete\\marketflow\\config\\macro_policy.json",
+    "policy_loaded": true,
+    "sensor_latency_ms": {
+      "VIX": 11.46,
+      "PUT_CALL": 8.02,
+      "HY_OAS": 2.72,
+      "WALCL": 3.51,
+      "M2SL": 1.94,
+      "RRP": 5.83,
+      "EFFR": 4.83,
+      "DFII10": 5.77,
+      "DGS2": 4.14,
+      "DGS10": 3.86,
+      "USD_BROAD": 3.75,
+      "QQQ": 3.62,
+      "BTC": 14.23,
+      "TQQQ": 5.54
+    },
+    "data_age_summary": {
+      "VIX": 4.05,
+      "HY_OAS": 4.05,
+      "WALCL": 4.05,
+      "M2SL": 4.05,
+      "RRP": 4.05,
+      "EFFR": 4.05,
+      "DFII10": 4.05,
+      "DGS2": 4.05,
+      "DGS10": 4.05,
+      "USD_BROAD": 4.05,
+      "PUT_CALL": 3.72,
+      "TQQQ": 3.78
+    },
+    "build_time_ms": 520.77
+  }
+}

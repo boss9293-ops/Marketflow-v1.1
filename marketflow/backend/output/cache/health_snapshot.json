@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-04-09T17:35:56",
-  "data_date": "2026-04-09",
+  "generated_at": "2026-04-13T07:08:27",
+  "data_date": "2026-04-13",
   "trend": {
-    "qqq_close": 610.19,
-    "sma200": 596.31,
-    "dist_pct": 2.33,
-    "sma50": 600.97,
-    "sma20": 587.95
+    "qqq_close": 611.07,
+    "sma200": 597.02,
+    "dist_pct": 2.35,
+    "sma50": 600.16,
+    "sma20": 589.51
   },
   "risk": {
-    "var95_1d": -1.98,
-    "cvar95_1d": -3.11,
-    "ulcer_252d": 3.26,
+    "var95_1d": -1.95,
+    "cvar95_1d": -3.06,
+    "ulcer_252d": 3.22,
     "mdd_252d": -12.19,
-    "rv20": 24.41,
-    "rv252": 21.25,
-    "vol_ratio": 1.15
+    "rv20": 23.38,
+    "rv252": 17.5,
+    "vol_ratio": 1.34
   },
   "breadth_greed": {
-    "greed_proxy": 87.1,
+    "greed_proxy": 100.0,
     "label": "Greed",
-    "explain": "QQQ 20D return: 0.41% | VIX 5D change: -22.16%\nz(qqq_20d)=-0.24, z(vix_5d)=-1.72",
-    "as_of_date": "2026-04-09"
+    "explain": "QQQ 20D return: 2.31% | VIX 5D change: -22.16%\nz(qqq_20d)=0.39, z(vix_5d)=-1.73",
+    "as_of_date": "2026-04-13"
   }
 }
