@@ -185,11 +185,12 @@ async function readLiveMpsSnapshots(): Promise<{ byDate: Map<string, number>; la
 
   // 2차: Railway 백엔드 API (프로덕션 Vercel)
   try {
-    const backendUrl =
+    const rawUrl =
       process.env.NEXT_PUBLIC_BACKEND_API ||
       process.env.BACKEND_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
       'https://marketflow-production-09df.up.railway.app'
+    const backendUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
     const res = await fetch(`${backendUrl}/api/macro/snapshots?limit=400`, {
       cache: 'no-store',
     })

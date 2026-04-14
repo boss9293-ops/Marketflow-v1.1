@@ -2,7 +2,11 @@ const LOCAL_BACKEND_URL = 'http://localhost:5001'
 const DEFAULT_PRODUCTION_BACKEND_URL = 'https://marketflow-production-09df.up.railway.app'
 
 function normalizeBaseUrl(value: string): string {
-  return value.replace(/\/+$/, '')
+  const trimmed = value.replace(/\/+$/, '').trim()
+  if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return `https://${trimmed}`
+  }
+  return trimmed
 }
 
 export function resolveBackendBaseUrl(): string {
