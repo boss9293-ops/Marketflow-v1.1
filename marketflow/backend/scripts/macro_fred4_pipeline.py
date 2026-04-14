@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
-ROOT = Path(__file__).resolve().parents[2]
-BACKEND_DIR = ROOT / "backend"
+SCRIPTS_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPTS_DIR.parent
 CONFIG_DIR = BACKEND_DIR / "config"
 OUTPUT_CACHE_DIR = BACKEND_DIR / "output" / "cache"
 

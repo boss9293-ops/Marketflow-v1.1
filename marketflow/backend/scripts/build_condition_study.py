@@ -15,25 +15,22 @@ import numpy as np
 import pandas as pd
 
 
-def repo_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+def backend_dir() -> str:
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def sys_path_bootstrap() -> None:
     import sys
-    root = repo_root()
-    backend_dir = os.path.join(root, "backend")
-    if backend_dir not in sys.path:
-        sys.path.insert(0, backend_dir)
-    if root not in sys.path:
-        sys.path.insert(0, root)
+    b_dir = backend_dir()
+    if b_dir not in sys.path:
+        sys.path.insert(0, b_dir)
 
 
 def output_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "condition_study_2018.json")
+    return os.path.join(backend_dir(), "output", "condition_study_2018.json")
 
 
 def data_path(name: str) -> str:
-    return os.path.join(repo_root(), "data", name)
+    return os.path.join(backend_dir(), "data", name)
 
 
 def load_price_csv(path: str) -> Optional[pd.Series]:
