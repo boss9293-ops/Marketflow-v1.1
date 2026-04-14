@@ -9787,19 +9787,18 @@ def briefing_v2_tavily_health():
         }), 200
 
 
-
-
-
-
 @app.route('/api/ticker-brief', methods=['GET'])
 def get_ticker_brief():
     symbol = request.args.get('symbol', '').upper().strip()
     if not symbol:
         return jsonify({'error': 'symbol required'}), 400
+    
     import glob as _glob
+    # 파일 경로를 안전하게 조인
     cache_dir = os.path.join(os.path.dirname(__file__), 'output', 'cache', 'ticker_briefs', symbol)
     pattern = os.path.join(cache_dir, '*.json')
     files = sorted(_glob.glob(pattern), reverse=True)[:4]
+    
     briefs = []
     for fp in files:
         try:
@@ -9809,47 +9808,29 @@ def get_ticker_brief():
             pass
     return jsonify({'symbol': symbol, 'briefs': briefs})
 
-
+# 이 함수는 정의만 해둡니다.
 def _maybe_start_scheduler_on_import() -> None:
     if os.environ.get("MARKETFLOW_DISABLE_SCHEDULER") == "1":
         return
+    # 메인 실행 파일이 아닐 때(예: gunicorn 등 외부에 의해 호출될 때) 스케줄러 시작
     if __name__ != "__main__":
         start_scheduler()
 
-
-def _maybe_start_scheduler_on_import()
-
+# ⚠️ 기존에 에러를 유발하던 'def _maybe_start_scheduler_on_import()' 호출 줄은 삭제했습니다.
 
 if __name__ == '__main__':
-
-
+    # 출력 디렉토리 생성
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-
     debug_mode = True
-
-
+    
+    # Flask 디버그 모드 시 리로더에 의해 두 번 실행되는 것을 방지
     should_start_scheduler = (os.environ.get('WERKZEUG_RUN_MAIN') == 'true') or (not debug_mode)
 
-
     if should_start_scheduler:
-
-
         start_scheduler()
 
-
-    #app.run(port=5001, debug=debug_mode)-old
-    # 1. ???????깆젧: ??? ??????⑤베援??PORT ???삵렱?곌떠???? ????????六??紐껊퉵?? 
-    # ?β돦裕뉛쭚????裕????戮?뱺???リ옇???뚣럸?濡?뱿 5001???????濡レ┣??嶺뚳퐣瑗????곕????덈펲.
+    # 포트 및 호스트 설정
     port = int(os.environ.get("PORT", 5001))
-
-    # 2. ?筌뤾쑬裕?????깆젧: "0.0.0.0"?? ?筌?(??? ??㉱???ろ뒅)????????노츎 ??ル쪇源???꾩룇猷꾥뜎???노츎 ???곷엷???덈펲.
-    # debug_mode???꾩룄?х뙴???False???꾩룆??????롪퍒??????깆쓧???嶺? ???裕?筌? ?熬곥굥???잙갭梨???????????紐껊퉵??
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
-
-
-
-
-
-
 
