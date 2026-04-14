@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 import { normalizeTicker } from '@/lib/stockAnalysis'
+import TickerBriefPanel from '@/components/news/TickerBriefPanel'
 
 type BriefItem = {
   id: string
@@ -127,6 +128,10 @@ export default function NewsPage() {
             No high-quality news matched the current filters yet.
           </section>
         )}
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-4">
+          <TickerBriefPanel symbol={normalizedTicker} />
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-2">
           {(loading ? Array.from({ length: 4 }) : briefs).map((item, index) => {
             if (loading) {
