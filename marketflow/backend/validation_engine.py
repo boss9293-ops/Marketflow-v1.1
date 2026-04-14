@@ -16,10 +16,10 @@ except ModuleNotFoundError:
     import utils.macro_calc as mc
 
 # Absolute paths for imports to work if run as script or from app
-ROOT = Path(__file__).resolve().parents[1]
-BACKEND_DIR = ROOT / "backend"
+# validation_engine.py lives inside backend/ both locally and on server (/app/)
+BACKEND_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = BACKEND_DIR / "config"
-DB_PATH = ROOT / "data" / "marketflow.db"
+DB_PATH = BACKEND_DIR.parent / "data" / "marketflow.db"
 
 class ValidationEngine:
     WINDOWS = {
