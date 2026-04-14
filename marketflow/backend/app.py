@@ -5080,15 +5080,18 @@ def risk_v1_playback():
 
 @app.route('/api/playback-events/<slug>')
 def get_playback_event(slug):
-    content_dir = os.path.join(_BACKEND_DIR, '..', 'content', 'playback-events')
-    file_path = os.path.join(content_dir, f"{slug}.md")
-    
-    if os.path.exists(file_path):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return Response(content, mimetype='text/markdown')
-    else:
-        return Response(f"Markdown for {slug} not found.", status=404, mimetype='text/plain')
+    # Search multiple candidate paths (local dev vs Railway container layout)
+    candidate_dirs = [
+        os.path.join(_BACKEND_DIR, 'content', 'playback-events'),      # Railway: /app/content/
+        os.path.join(_BACKEND_DIR, '..', 'content', 'playback-events'), # local: marketflow/content/
+    ]
+    for content_dir in candidate_dirs:
+        file_path = os.path.join(content_dir, f"{slug}.md")
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8-sig') as f:
+                content = f.read()
+            return Response(content, mimetype='text/markdown')
+    return Response(f"Markdown for {slug} not found.", status=404, mimetype='text/plain')
 
 
 
