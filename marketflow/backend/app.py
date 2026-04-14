@@ -9790,7 +9790,7 @@ def briefing_v2_tavily_health():
 
 
 
-def 
+
 @app.route('/api/ticker-brief', methods=['GET'])
 def get_ticker_brief():
     symbol = request.args.get('symbol', '').upper().strip()
@@ -9810,14 +9810,14 @@ def get_ticker_brief():
     return jsonify({'symbol': symbol, 'briefs': briefs})
 
 
-_maybe_start_scheduler_on_import() -> None:
+def _maybe_start_scheduler_on_import() -> None:
     if os.environ.get("MARKETFLOW_DISABLE_SCHEDULER") == "1":
         return
     if __name__ != "__main__":
         start_scheduler()
 
 
-_maybe_start_scheduler_on_import()
+def _maybe_start_scheduler_on_import()
 
 
 if __name__ == '__main__':
