@@ -192,7 +192,6 @@ async function readLiveMpsSnapshots(): Promise<{ byDate: Map<string, number>; la
       'https://marketflow-production-09df.up.railway.app'
     const res = await fetch(`${backendUrl}/api/macro/snapshots?limit=400`, {
       cache: 'no-store',
-      next: { revalidate: 0 },
     })
     if (res.ok) {
       const data = await res.json() as Array<{ snapshot_date?: string; mps?: number | null }>
