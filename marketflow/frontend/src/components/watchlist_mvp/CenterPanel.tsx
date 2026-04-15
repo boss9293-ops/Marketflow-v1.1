@@ -224,38 +224,6 @@ const scoreNewsItem = (
   return score
 }
 
-const selectRelevantNewsItems = (
-  items: TickerNewsItem[],
-  symbol: string,
-  companyName?: string,
-): TickerNewsItem[] => {
-  const scored = items.map((item, index) => ({
-    item,
-    index,
-    score: scoreNewsItem(item, symbol, companyName),
-  }))
-
-  const keepAtLeast = Math.min(5, scored.length)
-  let selected = scored.filter((entry) => entry.score >= 1)
-
-  if (selected.length < keepAtLeast) {
-    const ranked = [...scored]
-      .sort((a, b) => b.score - a.score || a.index - b.index)
-      .filter((entry) => !selected.some((picked) => picked.item.id === entry.item.id))
-    selected = selected.concat(ranked.slice(0, keepAtLeast - selected.length))
-  }
-
-  if (selected.length > 12) {
-    selected = [...selected]
-      .sort((a, b) => b.score - a.score || a.index - b.index)
-      .slice(0, 12)
-  }
-
-  return selected
-    .sort((a, b) => a.index - b.index)
-    .map((entry) => entry.item)
-}
-
 const buildMarketLead = (
   symbol: string,
   todayOpen: number | null,
@@ -476,11 +444,11 @@ export default function CenterPanel({
   const [synthKO, setSynthKO] = useState<Map<string, string>>(new Map())
   const [isSynthesizingEN, setIsSynthesizingEN] = useState(false)
   const [isSynthesizingKO, setIsSynthesizingKO] = useState(false)
-  const [digestEN, setDigestEN] = useState<string>('')
-  const [digestKO, setDigestKO] = useState<string>('')
   const digestGenerationRef = useRef(0)
   const synthENRequested = useRef<Set<string>>(new Set())
   const synthKORequested = useRef<Set<string>>(new Set())
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [synthSignal, setSynthSignal] = useState<Map<string, 'bull' | 'bear' | 'neutral'>>(new Map())
 
   const [exportStatus, setExportStatus] = useState<ExportUiStatus>('idle')
   const [exportFeedback, setExportFeedback] = useState<string | null>(null)
@@ -495,133 +463,127 @@ export default function CenterPanel({
     setLangMode('EN')
     setIsSynthesizingEN(false)
     setIsSynthesizingKO(false)
-    setDigestEN('')
-    setDigestKO('')
+    setExpandedItems(new Set())
+    setSynthSignal(new Map())
   }, [dateET, selectedSymbol])
 
-  // EN ?먮룞 ?⑹꽦 (?щ낵/?댁뒪 濡쒕뱶 ??
+  // EN auto synthesis — one call per date group
   useEffect(() => {
-    const allItems = groupedTimeline.flatMap(g => g.items)
-    const pending = allItems.filter(item => !synthENRequested.current.has(item.id))
-    if (!pending.length) return
-    pending.forEach(item => synthENRequested.current.add(item.id))
-    const selectedPending = selectRelevantNewsItems(
-      pending,
-      selectedSymbol,
-      selectedItem?.companyName,
+    const pendingGroups = groupedTimeline.filter(g =>
+      g.items.some(item => !synthENRequested.current.has(item.id))
     )
-    if (!selectedPending.length) return
+    if (!pendingGroups.length) return
     const requestGeneration = digestGenerationRef.current
     const requestSymbol = selectedSymbol
-    const requestDateET = dateET
     setIsSynthesizingEN(true)
-    const run = async () => {
+    const runAll = async () => {
       try {
-        const payload = selectedPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
-        const digestPrice = todayClose ?? parseLooseNumber(selectedItem?.lastPrice)
-        const digestChangePct = parseLooseNumber(selectedItem?.changePercent)
-        const res = await fetch('/api/terminal/news-synthesize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            symbol: requestSymbol,
-            companyName: selectedItem?.companyName ?? '',
-            dateET: requestDateET,
-            price: digestPrice,
-            changePct: digestChangePct,
-            session: 'auto',
-            items: payload,
-            lang: 'en',
-            marketContext: newsMarketContext,
-          }),
-        })
-        if (!res.ok) return
-        const data = await res.json() as { results: Array<{ id: string; text: string }>; digest?: string | null }
-        if (digestGenerationRef.current !== requestGeneration) return
-        setSynthEN(prev => {
-          const next = new Map(prev)
-          for (const r of data.results) {
-            next.set(r.id, r.text.trim())
-          }
-          return next
-        })
-        if (typeof data.digest === 'string' && data.digest.trim()) {
-          setDigestEN(data.digest.trim())
-        }
+        await Promise.allSettled(pendingGroups.map(async (group) => {
+          const groupPending = group.items.filter(item => !synthENRequested.current.has(item.id))
+          if (!groupPending.length) return
+          groupPending.forEach(item => synthENRequested.current.add(item.id))
+          const isToday = group.dateKey === dateET
+          const digestPrice = isToday ? (todayClose ?? parseLooseNumber(selectedItem?.lastPrice)) : null
+          const digestChangePct = isToday ? parseLooseNumber(selectedItem?.changePercent) : null
+          const payload = groupPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
+          const res = await fetch('/api/terminal/news-synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              symbol: requestSymbol,
+              companyName: selectedItem?.companyName ?? '',
+              dateET: group.dateKey,
+              price: digestPrice,
+              changePct: digestChangePct,
+              session: 'auto',
+              items: payload,
+              lang: 'en',
+              marketContext: newsMarketContext,
+            }),
+          })
+          if (!res.ok || digestGenerationRef.current !== requestGeneration) return
+          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string }> }
+          if (digestGenerationRef.current !== requestGeneration) return
+          setSynthEN(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) next.set(r.id, r.text.trim())
+            return next
+          })
+          setSynthSignal(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) {
+              const sig = r.signal === 'bull' || r.signal === 'bear' ? r.signal : 'neutral'
+              next.set(r.id, sig)
+            }
+            return next
+          })
+        }))
       } catch { /* ignore */ } finally {
-        if (digestGenerationRef.current === requestGeneration) {
-          setIsSynthesizingEN(false)
-        }
+        if (digestGenerationRef.current === requestGeneration) setIsSynthesizingEN(false)
       }
     }
-    void run()
+    void runAll()
   }, [groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose])
 
   // KR 踰꾪듉 ?대┃ ???쒓뎅???⑹꽦
+  // KO synthesis — one call per date group (triggered on langMode=KR)
   useEffect(() => {
     if (langMode !== 'KR') return
-    const allItems = groupedTimeline.flatMap(g => g.items)
-    const pending = allItems.filter(item => !synthKORequested.current.has(item.id))
-    if (!pending.length) return
-    pending.forEach(item => synthKORequested.current.add(item.id))
-    const selectedPending = selectRelevantNewsItems(
-      pending,
-      selectedSymbol,
-      selectedItem?.companyName,
+    const pendingGroups = groupedTimeline.filter(g =>
+      g.items.some(item => !synthKORequested.current.has(item.id))
     )
-    if (!selectedPending.length) return
+    if (!pendingGroups.length) return
     const requestGeneration = digestGenerationRef.current
     const requestSymbol = selectedSymbol
-    const requestDateET = dateET
     setIsSynthesizingKO(true)
-    const run = async () => {
+    const runAll = async () => {
       try {
-        const payload = selectedPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
-        const digestPrice = todayClose ?? parseLooseNumber(selectedItem?.lastPrice)
-        const digestChangePct = parseLooseNumber(selectedItem?.changePercent)
-        const res = await fetch('/api/terminal/news-synthesize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            symbol: requestSymbol,
-            companyName: selectedItem?.companyName ?? '',
-            dateET: requestDateET,
-            price: digestPrice,
-            changePct: digestChangePct,
-            session: 'auto',
-            items: payload,
-            lang: 'ko',
-            marketContext: newsMarketContext,
-          }),
-        })
-        if (!res.ok) return
-        const data = await res.json() as { results: Array<{ id: string; text: string }>; digest?: string | null }
-        if (digestGenerationRef.current !== requestGeneration) return
-        setSynthKO(prev => {
-          const next = new Map(prev)
-          for (const r of data.results) {
-            next.set(r.id, r.text.trim())
-          }
-          return next
-        })
-        if (typeof data.digest === 'string' && data.digest.trim()) {
-          setDigestKO(data.digest.trim())
-        }
+        await Promise.allSettled(pendingGroups.map(async (group) => {
+          const groupPending = group.items.filter(item => !synthKORequested.current.has(item.id))
+          if (!groupPending.length) return
+          groupPending.forEach(item => synthKORequested.current.add(item.id))
+          const isToday = group.dateKey === dateET
+          const digestPrice = isToday ? (todayClose ?? parseLooseNumber(selectedItem?.lastPrice)) : null
+          const digestChangePct = isToday ? parseLooseNumber(selectedItem?.changePercent) : null
+          const payload = groupPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
+          const res = await fetch('/api/terminal/news-synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              symbol: requestSymbol,
+              companyName: selectedItem?.companyName ?? '',
+              dateET: group.dateKey,
+              price: digestPrice,
+              changePct: digestChangePct,
+              session: 'auto',
+              items: payload,
+              lang: 'ko',
+              marketContext: newsMarketContext,
+            }),
+          })
+          if (!res.ok || digestGenerationRef.current !== requestGeneration) return
+          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string }> }
+          if (digestGenerationRef.current !== requestGeneration) return
+          setSynthKO(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) next.set(r.id, r.text.trim())
+            return next
+          })
+          setSynthSignal(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) {
+              const sig = r.signal === 'bull' || r.signal === 'bear' ? r.signal : 'neutral'
+              if (!prev.has(r.id)) next.set(r.id, sig)
+            }
+            return next
+          })
+        }))
       } catch { /* ignore */ } finally {
-        if (digestGenerationRef.current === requestGeneration) {
-          setIsSynthesizingKO(false)
-        }
+        if (digestGenerationRef.current === requestGeneration) setIsSynthesizingKO(false)
       }
     }
-    void run()
+    void runAll()
   }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose])
-
-  const activeDigestText = useMemo(() => {
-    if (langMode === 'KR') {
-      return digestKO || digestEN || (isSynthesizingKO ? '...' : isSynthesizingEN ? '...' : '')
-    }
-    return digestEN || digestKO || (isSynthesizingEN ? '...' : isSynthesizingKO ? '...' : '')
-  }, [digestEN, digestKO, isSynthesizingEN, isSynthesizingKO, langMode])
 
   useEffect(() => {
     setExportStatus('idle')
@@ -645,51 +607,47 @@ export default function CenterPanel({
   return (
     <section className={`${styles.panel} ${styles.centerPanel}`}>
       <header className={styles.panelHeader}>
-        <p className={styles.panelLabel}>Portfolio Summary</p>
         <div className={styles.selectedHeaderRow}>
-          <h2 className={styles.panelTitle}>{selectedSymbol || '---'} - Daily Brief Workspace</h2>
-          <span className={styles.symbolChip}>{dateLabel}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
-            {newsLastFetchedAt && (
-              <span style={{ fontSize: '0.68rem', color: '#475569' }}>
-                {new Intl.DateTimeFormat('en-US', {
-                  timeZone: 'America/New_York',
-                  hour: '2-digit', minute: '2-digit', hour12: false,
-                }).format(newsLastFetchedAt)} ET
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <h2 className={styles.symbolTitle}>{selectedSymbol || '---'}</h2>
+            {selectedItem?.lastPrice && (
+              <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>
+                — ${selectedItem.lastPrice}
               </span>
             )}
+            {selectedItem?.changePercent && (
+              <span style={{
+                fontSize: '0.88rem', fontWeight: 700, letterSpacing: '0.02em',
+                color: selectedItem.changePercent.startsWith('-') ? '#f87171' : '#4ade80',
+              }}>
+                · {selectedItem.changePercent}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: 'auto' }}>
             <button
               onClick={() => setLangMode(m => m === 'EN' ? 'KR' : 'EN')}
-              title="?쒓뎅???곸뼱 ?꾪솚"
               style={{
-                background: langMode === 'KR' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${langMode === 'KR' ? 'rgba(56,189,248,0.45)' : 'rgba(255,255,255,0.15)'}`,
-                borderRadius: 6,
-                color: langMode === 'KR' ? '#7dd3fc' : '#64748b',
-                cursor: 'pointer',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                padding: '0.2rem 0.55rem',
-                letterSpacing: '0.05em',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: langMode === 'KR' ? '#38bdf8' : '#64748b',
+                fontSize: '0.78rem', fontWeight: 600, padding: 0,
+                letterSpacing: '0.02em',
               }}
             >
-              {(langMode === 'EN' ? isSynthesizingEN : isSynthesizingKO) ? '...' : langMode}
+              {(langMode === 'EN' ? isSynthesizingEN : isSynthesizingKO) ? '...' : langMode === 'KR' ? '영어로 보기 →' : '한글로 보기 →'}
             </button>
             <button
               onClick={onRefreshNews}
               disabled={isNewsRefreshing || isRefreshLocked}
-              title={isRefreshLocked ? 'Weekend / holiday refresh locked' : 'News refresh'}
+              title={isRefreshLocked ? 'Weekend / holiday refresh locked' : 'Refresh news'}
               style={{
-                background: 'rgba(56,189,248,0.08)',
+                background: 'none',
                 border: '1px solid rgba(56,189,248,0.25)',
-                borderRadius: 6,
+                borderRadius: 5,
                 color: isNewsRefreshing || isRefreshLocked ? '#475569' : '#38bdf8',
                 cursor: isNewsRefreshing || isRefreshLocked ? 'not-allowed' : 'pointer',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                padding: '0.2rem 0.55rem',
-                letterSpacing: '0.04em',
-                transition: 'opacity 0.15s',
+                fontSize: '0.70rem', fontWeight: 600,
+                padding: '0.18rem 0.5rem',
                 opacity: isNewsRefreshing || isRefreshLocked ? 0.5 : 1,
               }}
             >
@@ -697,69 +655,125 @@ export default function CenterPanel({
             </button>
           </div>
         </div>
+        <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b', fontWeight: 500, letterSpacing: '0.01em' }}>
+          {dateLabel}
+        </p>
       </header>
 
       <div className={styles.centerFeed}>
         <div className={styles.stack}>
           <div>
-            {activeDigestText && (
-              <section
-                className={styles.panelStateBox}
-                style={{
-                  whiteSpace: 'pre-wrap',
-                  lineHeight: 1.5,
-                  marginBottom: '1rem',
-                  borderColor: 'rgba(56,189,248,0.25)',
-                }}
-              >
-                <p style={{ margin: 0, marginBottom: '0.45rem', fontSize: '0.72rem', letterSpacing: '0.08em', color: '#38bdf8', textTransform: 'uppercase' }}>
-                  {langMode === 'KR' ? '일일 서사' : 'Daily Narrative'}
-                </p>
-                <div>{activeDigestText}</div>
-              </section>
-            )}
             {timelineStatus === 'loading' && (
-              <div className={styles.panelStateBox}>Loading symbol news timeline from real API data...</div>
+              <div className={styles.panelStateBox}>Loading news...</div>
             )}
             {timelineStatus === 'error' && timelineError && (
               <div className={styles.panelStateBoxError}>{timelineError}</div>
             )}
             {(timelineStatus === 'ready' || timelineStatus === 'empty') && (
               <div className={styles.timelineList}>
-                {groupedTimeline.map((group) => (
+                {groupedTimeline.map((group, groupIndex) => (
                   <section key={group.dateKey} className={styles.timelineDateGroup}>
                     <p className={styles.timelineDateHeader}>{group.dateLabel}</p>
                     {group.items.length ? (
-                      group.items.map((item) => {
-                        const isActive = selectedNewsId === item.id
+                      (() => {
+                        // Only render items that have been synthesized
+                        const displayItems = group.items.filter(item =>
+                          synthEN.has(item.id) || synthKO.has(item.id)
+                        )
+                        if (displayItems.length === 0) {
+                          return (
+                            <div style={{ padding: '0.75rem 0', color: '#475569', fontSize: '0.74rem', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.04em' }}>
+                              {(isSynthesizingEN || isSynthesizingKO) ? 'Analyzing...' : null}
+                            </div>
+                          )
+                        }
+                        return displayItems.map((item, itemIndex) => {
                         const briefText = [item.headline, item.summary].filter(Boolean).join(' ')
                         const synthText = langMode === 'KR'
-                          ? (synthKO.get(item.id) ?? (isSynthesizingKO ? '...' : (synthEN.get(item.id) ?? briefText)))
-                          : (synthEN.get(item.id) ?? (isSynthesizingEN ? '...' : briefText))
-                        const cleanedSynthText = synthText === '...' ? synthText : stripLeadingTerminalNumbering(synthText)
-                        const narrativeText =
-                          cleanedSynthText === '...'
-                            ? cleanedSynthText
-                            : `${marketLead} ${cleanedSynthText}`.trim()
+                          ? (synthKO.get(item.id) ?? (synthEN.get(item.id) ?? briefText))
+                          : (synthEN.get(item.id) ?? briefText)
+                        const bodyText = stripLeadingTerminalNumbering(synthText)
+                        const isFirstItem = groupIndex === 0 && itemIndex === 0
+                        const isExpanded = isFirstItem || expandedItems.has(item.id)
+                        const timeLabel = item.timeET ? item.timeET + ' EDT' : ''
+                        const signal = synthSignal.get(item.id)
+                        const signalColor = signal === 'bull' ? '#4ade80' : signal === 'bear' ? '#f87171' : '#94a3b8'
+                        const signalBg = signal === 'bull' ? 'rgba(34,197,94,0.1)' : signal === 'bear' ? 'rgba(239,68,68,0.1)' : 'rgba(148,163,184,0.08)'
+                        const signalLabel = signal === 'bull' ? (langMode === 'KR' ? '강세' : 'BULL') : signal === 'bear' ? (langMode === 'KR' ? '약세' : 'BEAR') : (langMode === 'KR' ? '중립' : 'NEUTRAL')
                         return (
-                          <button
+                          <div
                             key={item.id}
-                            type="button"
-                            className={`${styles.timelineItem} ${isActive ? styles.timelineItemActive : ''}`}
-                            onClick={() => onSelectNews(item)}
+                            style={isFirstItem ? {
+                              padding: '1rem',
+                              marginBottom: '0.75rem',
+                              background: 'rgba(15,23,42,0.55)',
+                              border: '1px solid rgba(148,163,184,0.12)',
+                              borderRadius: 6,
+                            } : {
+                              padding: '0.75rem 0',
+                              borderBottom: '1px solid rgba(148,163,184,0.06)',
+                            }}
                           >
-                            <div className={styles.timelineTop}>
-                              <span className={styles.timelineTime}>{item.timeET}</span>
-                              <span className={styles.timelineAction}>Open {'>'}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                              {timeLabel && (
+                                <p style={{
+                                  margin: 0,
+                                  fontSize: isFirstItem ? '0.75rem' : '0.70rem',
+                                  color: isFirstItem ? '#64748b' : '#475569',
+                                  fontFamily: 'var(--font-mono, monospace)',
+                                  letterSpacing: '0.06em',
+                                }}>
+                                  {timeLabel}
+                                </p>
+                              )}
+                              {signal && (
+                                <span style={{
+                                  fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em',
+                                  padding: '0.08rem 0.38rem', borderRadius: 3,
+                                  color: signalColor, background: signalBg,
+                                  border: `1px solid ${signalColor}40`,
+                                  fontFamily: 'var(--font-mono, monospace)',
+                                }}>
+                                  {signalLabel}
+                                </span>
+                              )}
                             </div>
-                            <p className={styles.timelineSummary}>
-                              {narrativeText}
+                            <p style={{
+                              margin: 0,
+                              fontSize: isFirstItem ? '0.92rem' : '0.86rem',
+                              lineHeight: 1.7,
+                              color: isFirstItem ? '#e2e8f0' : '#94a3b8',
+                              overflow: isExpanded ? 'visible' : 'hidden',
+                              display: isExpanded ? 'block' : '-webkit-box',
+                              WebkitLineClamp: isExpanded ? undefined : 3,
+                              WebkitBoxOrient: isExpanded ? undefined : 'vertical',
+                            }}>
+                              {bodyText}
                             </p>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedItems(prev => {
+                                  const n = new Set(prev)
+                                  if (n.has(item.id)) n.delete(item.id)
+                                  else n.add(item.id)
+                                  return n
+                                })
+                              }}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: '#475569', fontSize: '0.70rem', padding: '0.3rem 0 0',
+                                fontWeight: 600, letterSpacing: '0.03em',
+                              }}
+                            >
+                              {isExpanded ? 'Less' : '...More'}
+                            </button>
+                          </div>
                         )
-                      })
+                        })
+                      })()
                     ) : (
-                      <div className={styles.panelStateBox}>No 09:30 / 16:30 checkpoint item captured for this date.</div>
+                      <div className={styles.panelStateBox}>No checkpoint items for this date.</div>
                     )}
                   </section>
                 ))}

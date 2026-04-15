@@ -59,6 +59,15 @@
   line-height: 1.25;
 }
 
+.symbolTitle {
+  margin: 0;
+  font-size: 22px;
+  color: #f1f5f9;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
 .panelSubtle {
   margin: 6px 0 0;
   font-size: 11px;

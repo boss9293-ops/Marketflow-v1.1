@@ -37,6 +37,7 @@ type SynthesizeRequest = {
 type SynthesizedItem = {
   id: string
   text: string
+  signal?: 'bull' | 'bear' | 'neutral'
 }
 
 type ItemBlock = {
@@ -45,7 +46,7 @@ type ItemBlock = {
 }
 
 const MAX_ITEMS_PER_BATCH = 20
-const LOW_DENSITY_ITEM_THRESHOLD = 2
+const LOW_DENSITY_ITEM_THRESHOLD = 0
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 const OPENAI_API = 'https://api.openai.com/v1/chat/completions'
@@ -249,15 +250,7 @@ const selectRelevantItems = (
     score: scoreNewsItem(item, symbol, companyName),
   }))
 
-  const keepAtLeast = Math.min(5, scored.length)
   let selected = scored.filter((entry) => entry.score >= 1)
-
-  if (selected.length < keepAtLeast) {
-    const ranked = [...scored]
-      .sort((a, b) => b.score - a.score || a.index - b.index)
-      .filter((entry) => !selected.some((picked) => picked.item.id === entry.item.id))
-    selected = selected.concat(ranked.slice(0, keepAtLeast - selected.length))
-  }
 
   if (selected.length > 12) {
     selected = [...selected]
@@ -577,6 +570,7 @@ const buildNarrativePlan = (
 
 type DigestResult = {
   text: string
+  signal?: 'bull' | 'bear' | 'neutral'
 }
 
 const getCurrentEtDate = (): string =>
@@ -596,10 +590,11 @@ const buildDigestSystemPrompt = (lang: 'ko' | 'en'): string =>
         'Write a 5 to 7 line market brief in a Terminal X style.',
         'Line 1 must include price, time, and change.',
         'Line 2 must describe the intraday progression or timeline flow.',
-        'Later lines should cover the main catalyst, institutional or flow context, numbers or relative view, confidence tone, and risk.',
+        'Later lines must name the specific news events that drove the price: analyst upgrades/downgrades, earnings beats/misses, product launches, legal rulings, or management comments. Be concrete. Market index comparisons are secondary.',
         'The final line must be the forward risk or checkpoint.',
         'Keep the tone dense, analytical, and explanation-first.',
-        'Return JSON only in this exact shape: {"text":"..."}',
+        'Add a signal field: "bull" if the overall session is net positive, "bear" if net negative, "neutral" if mixed.',
+        'Return JSON only in this exact shape: {"text":"...","signal":"bull|bear|neutral"}',
       ].join('\n')
     : [
         'You are an institutional financial terminal editor.',
@@ -608,10 +603,11 @@ const buildDigestSystemPrompt = (lang: 'ko' | 'en'): string =>
         'Write a 5 to 7 line market brief in a Terminal X style.',
         'Line 1 must include price, time, and change.',
         'Line 2 must describe the intraday progression or timeline flow.',
-        'Later lines should cover the main catalyst, institutional or flow context, numbers or relative view, confidence tone, and risk.',
+        'Later lines must name the specific news events that drove the price: analyst upgrades/downgrades, earnings beats/misses, product launches, legal rulings, or management comments. Be concrete. Market index comparisons are secondary.',
         'The final line must be the forward risk or checkpoint.',
         'Keep the tone dense, analytical, and explanation-first.',
-        'Return JSON only in this exact shape: {"text":"..."}',
+        'Add a signal field: "bull" if the overall session is net positive, "bear" if net negative, "neutral" if mixed.',
+        'Return JSON only in this exact shape: {"text":"...","signal":"bull|bear|neutral"}',
       ].join('\n')
 
 const buildDigestPrompt = (
@@ -647,8 +643,8 @@ const buildDigestPrompt = (
     'Use the rendered narrative draft and narrative spine as the only primary sources.',
     'Do not repeat headlines or mention raw items.',
     'The output should read like a Terminal X daily note: explanation-first, not headline-first.',
-    'Use the spine fields in this priority order: PRICE, TIMELINE, CATALYST, INSTITUTION, NUMBERS, RELATIVE_VIEW, CONFIDENCE, RISK.',
-    'Keep the narrative anchored to price action, intraday progression, relative view, confidence tone, numbers, and forward risk.',
+    'Use the spine fields in this priority order: PRICE, CATALYST, TIMELINE, NUMBERS, RISK. Name the actual news events. Reference INSTITUTION or RELATIVE_VIEW only if they directly explain the price move.',
+    'Keep the narrative anchored to specific news events, price reaction, and concrete numbers. Reference market indices only if the stock moved against the tape.',
     'The rendered draft is the preferred shape; improve fluency, but keep the causal chain and line order.',
     'Return JSON only: {"text":"..."}',
     '',
@@ -667,14 +663,15 @@ const buildSystemPrompt = (_lang: 'ko' | 'en'): string =>
     'Treat the batch as a compact evidence pack, not isolated clips; if several items point to the same catalyst, connect them into one storyline.',
     'Do not repeat the headline verbatim. Use the headline and summary to explain why the item matters to the stock.',
     'Each item should be 3 to 5 sentences, not a headline fragment.',
-    'Include one main catalyst, one or two secondary factors, a counterpoint or risk when possible, and one forward checkpoint.',
+    'Lead with the actual news event (what was announced, upgraded, beaten, or decided). Then explain the price reaction and context. Include one specific forward risk or checkpoint.',
     'Korean outputs should target 300 to 400 characters excluding spaces. English outputs should target around 600 characters excluding spaces.',
     'If marketContext is provided, use it only to explain the news reaction; do not mechanically restate it.',
     'Morning-like items should emphasize premarket/open implications.',
     'Afternoon-like items should emphasize close/session reaction and the next checkpoint.',
     'Avoid hype, sensational language, and unsupported speculation.',
     'If evidence is thin, note that fresh material is limited without collapsing into a headline.',
-    'Return JSON only in this exact shape: {"items":[{"id":"...","text":"..."}]}',
+    'Add a signal field per item: "bull" if net positive for stock price, "bear" if net negative, "neutral" if mixed.',
+    'Return JSON only in this exact shape: {"items":[{"id":"...","text":"...","signal":"bull|bear|neutral"}]}',
   ].join('\n')
 
 const buildDigestRetryPrompt = (
@@ -686,23 +683,16 @@ const buildDigestRetryPrompt = (
 
   if (lang === 'ko') {
     return [
-      '이전 출력은 Terminal X 스타일 기준을 충족하지 못했다.',
-      `실패 사유: ${reasons}`,
+      'The previous Korean digest output failed Terminal X quality check.',
+      `Failure reasons: ${reasons}`,
       '',
-      '다시 작성하라.',
-      '',
-      '조건:',
-      '- 한국어',
-      '- JSON만 반환',
-      '- 5~7줄',
-      '- 첫 줄에 가격, 시각, 등락률 포함',
-      '- 둘째 줄은 intraday progression 또는 timeline flow를 설명할 것',
-      '- 뉴스 제목 반복 금지',
-      '- 원인, 보조 요인, 상대 비교, confidence, 리스크, 관전 포인트를 모두 담아라',
-      '- 마지막 줄은 반드시 리스크 또는 다음 관전 포인트로 끝낼 것',
-      '- 설명형 문장으로 쓰고 헤드라인처럼 끊지 말 것',
-      '',
-      '기존 의도는 유지하되, 더 설명적이고 Terminal X 수준의 길이로 다시 써라.',
+      'Rewrite entirely in Korean.',
+      'Requirements: Korean output only. JSON only. 5 to 7 lines.',
+      'Line 1: price, time (ET), and change percentage.',
+      'Line 2: intraday progression or timeline flow in Korean.',
+      'Remaining lines: name the specific news events that drove the price in Korean.',
+      'Final line: risk or next checkpoint in Korean.',
+      'Write dense explanation-first Korean prose.',
       '',
       originalPrompt,
     ].join('\n')
@@ -721,7 +711,7 @@ const buildDigestRetryPrompt = (
     '- First line must include price, time, and change',
     '- Second line must describe intraday progression or timeline flow',
     '- Do not repeat headlines',
-    '- Include a main catalyst, secondary factor, relative view, confidence tone, risk, and a forward checkpoint',
+    '- Lead with the specific news event (what was announced or decided). Add a secondary factor, then risk and a concrete forward checkpoint.',
     '- The final line must close on risk or the next checkpoint',
     '- Write dense explanation-first prose',
     '',
@@ -909,18 +899,20 @@ const buildUserPrompt = (
 
   if (lang === 'ko') {
     return [
-      `醫낅ぉ: ${symbol}`,
-      `?뚯궗紐? ${companyNameBlock}`,
-      `?쒖옣 留λ씫: ${marketContextBlock}`,
+      `Symbol: ${symbol}`,
+      `Company: ${companyNameBlock}`,
+      `Market context: ${marketContextBlock}`,
       '',
-      '?꾨옒 ?댁뒪 ??ぉ?ㅼ쓣 媛???ぉ蹂꾨줈 Terminal X ?ㅽ??쇱쓽 吏㏃?留?諛???믪? ?ㅻ챸??硫붾え濡?諛붽퓭??',
+      'Translate each news item below into fluent Korean in Terminal X financial style.',
+      'Write 3 to 4 Korean sentences per item. Do not copy the headline verbatim.',
+      'Lead with the actual news event (what was announced or decided).',
+      'Connect related items sharing the same catalyst into one storyline.',
       layerHint,
-      '??batch??媛숈? 醫낅ぉ???섎윭???곌뎄 ?⑦궎吏?대?濡? 鍮꾩듂??珥됰ℓ???쒕줈 ??뼱???섎굹???ㅽ넗由щ줈 ?뺣━?대룄 ?쒕떎.',
-      '媛???ぉ? 3~4臾몄옣?쇰줈 ?곌퀬, ?댁뒪 ?쒕ぉ??洹몃?濡?蹂듭궗?섏? 留먭퀬, ?듭떖 珥됰ℓ? 蹂댁“ ?붿씤, 由ъ뒪???먮뒗 愿???ъ씤?몃? ?먯뿰?ㅻ읇寃???뼱??',
-      '?쒖옣 留λ씫???덈뜑?쇰룄 媛寃⑹쓣 諛섎났?섏? 留먭퀬, 洹??댁뒪媛 ?꾩옱 醫낅ぉ ?먮쫫???대뼡 ?섎??몄? ?ㅻ챸?섎뒗 ?곕쭔 ?쒖슜?섎씪.',
-      '?꾩묠 ?깃꺽(session_hint=morning)?대㈃ ?꾨━留덉폆/珥덈컲 ?몄뀡 ?댁꽍?? ?ㅽ썑 ?깃꺽(session_hint=afternoon)?대㈃ ?μ쨷 諛섏쓳怨??ㅼ쓬 泥댄겕?ъ씤?몃? ??遺꾨챸???쒕윭?대씪.',
-      '異쒕젰? JSON留??덉슜?섎ŉ, 諛섎뱶???낅젰 ?쒖꽌瑜??좎??섍퀬 媛?id瑜?洹몃?濡??⑤씪.',
-      '?뺤떇: {"items":[{"id":"...","text":"..."}]}',
+      'Use market context only to explain price reaction, not to repeat it.',
+      'Morning items: emphasize premarket and open implications in Korean.',
+      'Afternoon items: emphasize session reaction and next checkpoint in Korean.',
+      'Add a signal field per item: "bull" if net positive, "bear" if net negative, "neutral" if mixed.',
+      'Output Korean language only. Return JSON: {"items":[{"id":"...","text":"...","signal":"bull|bear|neutral"}]}',
       '',
       'EVENT CARDS (Layer 1-2, scored evidence pack):',
       eventCardsBlock,
@@ -979,7 +971,9 @@ const parseResponseItems = (raw: string, batch: NewsInputItem[]): SynthesizedIte
               ? entry.id.trim()
               : batch[index]?.id ?? `item-${index}`
             const text = typeof entry.text === 'string' ? entry.text.trim() : ''
-            return { id, text }
+            const rawSignal = (entry as Record<string, unknown>).signal
+            const signal = rawSignal === 'bull' || rawSignal === 'bear' ? rawSignal : 'neutral'
+            return { id, text, signal } as SynthesizedItem
           }
           return null
         })
@@ -1061,20 +1055,14 @@ const buildRetryPrompt = (
 
   if (lang === 'ko') {
     return [
-      '이전 출력은 Terminal X 스타일 기준을 충족하지 못했다.',
-      `실패 사유: ${reasons}`,
+      'The previous Korean item output failed Terminal X quality check.',
+      `Failure reasons: ${reasons}`,
       '',
-      '다시 작성하라.',
-      '',
-      '조건:',
-      '- 한국어',
-      '- JSON만 반환',
-      '- 3~5문장',
-      '- 헤드라인처럼 짧게 쓰지 말 것',
-      '- 원인, 보조 요인, 리스크 또는 관전 포인트를 모두 포함할 것',
-      '- 설명형 문장으로 작성할 것',
-      '',
-      '기존 의도는 유지하되, 더 설명적이고 Terminal X 수준의 길이로 다시 써라.',
+      'Rewrite in Korean.',
+      'Requirements: Korean only. JSON only. 3 to 5 sentences per item.',
+      'Lead with the actual news event in Korean.',
+      'Include: main catalyst, secondary factor, risk or checkpoint.',
+      'Write dense explanation-first Korean prose.',
       '',
       originalPrompt,
     ].join('\n')
@@ -1108,29 +1096,27 @@ const buildFallbackText = (
   lang: 'ko' | 'en',
   sessionHint: 'morning' | 'afternoon',
 ): string => {
-  const headline = compactEventLabel(item.summary || item.headline || (lang === 'ko' ? '?대떦 ?댁뒪' : 'This item'))
+  const headline = compactEventLabel(item.summary || item.headline || (lang === 'ko' ? '해당 뉴스' : 'This item'))
   const summary = item.summary.trim()
 
   if (lang === 'ko') {
-    const lead =
-      sessionHint === 'morning'
-        ? `${headline}????珥덈컲 ?먮쫫?먯꽌 ?댁꽍???꾩슂媛 ?덈떎.`
-        : `${headline}????留덇컧 ?댄썑 ?댁꽍???꾩슂媛 ?덈떎.`
-    const body = summary
-      ? `${summary} ?쒕졆???좉퇋 ?щ즺???쒗븳?곸씠硫? 愿???쒖옣 ?먮쫫怨??섍툒 蹂?붽? 異붽? ?댁꽍??湲곗????쒕떎.`
-      : '?쒕졆???좉퇋 ?щ즺???쒗븳?곸씠硫? 愿???쒖옣 ?먮쫫怨??섍툒 蹂?붽? 異붽? ?댁꽍??湲곗????쒕떎.'
-    const watch =
-      sessionHint === 'morning'
-        ? '?쒖옣? ?대궇 異붽? ?댁뒪? 珥덈컲 ?섍툒 諛섏쓳??二쇱떆?섍퀬 ?덈떎.'
-        : '?쒖옣? ?ㅼ쓬 嫄곕옒??異붽? ?댁뒪? ?낆쥌 ?먮쫫???뺤씤???꾨쭩?대떎.'
-    return `${lead} ${body} ${watch}`
+    const koHead = sessionHint === 'morning'
+      ? `${headline} — 장 초반 흐름에서 읽어야 할 이슈다.`
+      : `${headline} — 장 마감 전후로 평가가 필요한 이슈다.`
+    const koBody = summary
+      ? `${summary} 륙렷한 새 재료는 제한적이며, 시장 흐름과 포지션이 핵심 변수로 남아 있다.`
+      : '륙렷한 새 재료는 제한적이며, 시장 흐름과 포지션이 핵심 변수로 남아 있다.'
+    const koWatch = sessionHint === 'morning'
+      ? '시장은 오늘 추가 뉴스의 초반 세션 반응을 주시하고 있다.'
+      : '시장은 다음 거래일 추가 뉴스의 최종 흐름을 확인할 전망이다.'
+    return `${koHead} ${koBody} ${koWatch}`
   }
 
   const lead =
     sessionHint === 'morning'
       ? `${headline} should be read against the early-session tape.`
       : `${headline} should be read against the closing tape.`
-  const body = summary
+  const body = summary && summary !== headline
     ? `${summary} Fresh material appears limited, so the broader market tone and positioning remain the key context.`
     : 'Fresh material appears limited, so the broader market tone and positioning remain the key context.'
   const watch =
@@ -1359,104 +1345,152 @@ async function callOpenAI(
   return text
 }
 
+const KO_NAMES: Record<string, string> = {
+  TSLA: '테슬라', NVDA: '엔비디아', AAPL: '애플', MSFT: '마이크로소프트',
+  GOOGL: '구글', GOOG: '구글', META: '메타', AMZN: '아마존', NFLX: '넷플릭스',
+  AMD: 'AMD', INTC: '인텔', COIN: '코인베이스', PLTR: '팔란티어',
+  SOXL: 'SOXL', TQQQ: 'TQQQ', SQQQ: 'SQQQ', SPY: 'S&P500 ETF', QQQ: '나스닥100 ETF',
+  MSTR: '마이크로스트래티지', MARA: '마라홀딩스', RIOT: '라이엇플랫폼스',
+  SMCI: 'SMCI', CRWD: '크라우드스트라이크', SNOW: '스노우플레이크',
+  UBER: '우버', SHOP: '쇼피파이', ABNB: '에어비앤비', SQ: '블록',
+}
+
+// Module-level synthesis cache: key = "{symbol}:{dateET}:{lang}"
+const synthCache = new Map<string, { result: SynthesizedItem[]; cachedAt: number }>()
+const SYNTH_CACHE_TTL_MS = 8 * 60 * 60 * 1000 // 8 hours
+
+function getSynthCacheKey(symbol: string, dateET: string, lang: string) {
+  return `${symbol}:${dateET}:${lang}`
+}
+
+function cleanSynthCache(keepDateET: string) {
+  const cutoff = Date.now() - SYNTH_CACHE_TTL_MS
+  for (const [key, entry] of synthCache) {
+    if (entry.cachedAt < cutoff || !key.includes(`:${keepDateET}:`)) {
+      synthCache.delete(key)
+    }
+  }
+}
+
+const buildBriefSystemPrompt = (): string =>
+  [
+    'You are a Korean financial terminal editor.',
+    'Write a Korean news summary (~500 characters) for the given stock.',
+    'The first sentence is provided — copy it exactly as the opening, then continue in Korean.',
+    'Focus only on specific news events that moved the stock: analyst upgrades/downgrades, earnings, product launches, regulatory decisions, or management comments. Name the source when given.',
+    'Do not mention S&P 500, Nasdaq, or other index comparisons.',
+    'Write 2-3 dense explanation-first Korean paragraphs.',
+    'Return JSON: {"text":"<summary>","signal":"bull|bear|neutral"}',
+    '"bull" if catalysts are net positive for the stock, "bear" if net negative, "neutral" if mixed.',
+  ].join('\n')
+
+const buildBriefSystemPromptEN = (): string =>
+  [
+    'You are an institutional financial terminal editor.',
+    'Write an English news summary (~500 characters) for the given stock.',
+    'The first sentence is provided — copy it exactly as the opening, then continue in English.',
+    'Focus only on specific news events that moved the stock: analyst upgrades/downgrades, earnings, product launches, regulatory decisions, or management comments. Name the source when given.',
+    'Do not mention S&P 500, Nasdaq, or other index comparisons.',
+    'Write 2-3 dense explanation-first paragraphs.',
+    'Return JSON: {"text":"<summary>","signal":"bull|bear|neutral"}',
+    '"bull" if catalysts are net positive for the stock, "bear" if net negative, "neutral" if mixed.',
+  ].join('\n')
+
+const buildBriefUserPrompt = (
+  symbol: string,
+  leadSentence: string,
+  items: NewsInputItem[],
+  dateET: string,
+  lang: 'ko' | 'en',
+): string => {
+  const itemLines = items
+    .slice(0, 15)
+    .map(it => `${it.timeET || ''} — ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`)
+    .join('\n')
+  return [
+    `Symbol: ${symbol}`,
+    `Date: ${dateET}`,
+    lang === 'ko' ? 'Output language: Korean' : 'Output language: English',
+    '',
+    'News items:',
+    itemLines,
+    '',
+    `Start your summary with exactly: "${leadSentence}"`,
+  ].join('\n')
+}
+
 async function synthesizeBatch(
   symbol: string,
   batch: NewsInputItem[],
   lang: 'ko' | 'en',
   marketContext?: string,
   companyName?: string,
+  price?: number | null,
+  changePct?: number | null,
+  dateET?: string,
 ): Promise<SynthesizedItem[]> {
-  const selectedBatch = selectRelevantItems(batch, symbol, companyName)
-  if (selectedBatch.length <= LOW_DENSITY_ITEM_THRESHOLD) {
-    return selectedBatch.map((item, index) => ({
-      id: item.id,
-      text: buildFallbackText(
-        item,
-        lang,
-        inferSessionHint(item.timeET || (index % 2 === 0 ? '09:30' : '16:30')),
-      ),
-    }))
+  const selected = selectRelevantItems(batch, symbol, companyName)
+  if (selected.length === 0) return []
+
+  // Build price-lead first sentence
+  const direction = (changePct ?? 0) > 0 ? 'up' : (changePct ?? 0) < 0 ? 'down' : 'unchanged'
+  const priceStr = price != null ? ` at $${price.toFixed(2)}` : ''
+  const pctStr = changePct != null ? ` ${(changePct > 0 ? '+' : '') + changePct.toFixed(2)}%` : ''
+  const koName = KO_NAMES[symbol] || (companyName ? companyName.replace(/\s*(Inc|Corp|Ltd|LLC|Co)\.?$/i, '') : symbol)
+  const koDir = (changePct ?? 0) > 0 ? '상승' : (changePct ?? 0) < 0 ? '하락' : '보합'
+  const koPct = changePct != null ? `${Math.abs(changePct).toFixed(2)}%` : ''
+  const koPrice = price != null ? ` $${price.toFixed(2)}에` : ''
+  const leadSentence = lang === 'ko'
+    ? `${koName}(${symbol})는 ${koPct} ${koDir}하며${koPrice} 마감했다,`
+    : `${symbol} closed ${direction}${pctStr}${priceStr},`
+
+  // Check cache
+  const effectiveDateET = dateET || getCurrentEtDate()
+  const cacheKey = getSynthCacheKey(symbol, effectiveDateET, lang)
+  const cached = synthCache.get(cacheKey)
+  if (cached && Date.now() - cached.cachedAt < SYNTH_CACHE_TTL_MS) {
+    return cached.result
   }
+  cleanSynthCache(effectiveDateET)
 
-  const items = buildItemBlocks(selectedBatch)
-  const eventCards = buildEventCards(items, symbol, companyName)
-  const narrativePlan = buildNarrativePlan(eventCards, symbol, companyName, marketContext)
-  const systemPrompt = buildSystemPrompt(lang)
-  const baseUserPrompt = buildUserPrompt(
-    symbol,
-    items,
-    lang,
-    marketContext,
-    companyName,
-    JSON.stringify(eventCards, null, 2),
-    JSON.stringify(narrativePlan, null, 2),
-  )
-
-  const providers: Array<() => Promise<string>> = [
-    () => callAnthropic(systemPrompt, baseUserPrompt),
-    () => callOpenAI(systemPrompt, baseUserPrompt),
-  ]
+  const systemPrompt = lang === 'ko' ? buildBriefSystemPrompt() : buildBriefSystemPromptEN()
+  const userPrompt = buildBriefUserPrompt(symbol, leadSentence, selected, effectiveDateET, lang)
 
   let raw: string | null = null
-  let parsed: SynthesizedItem[] | null = null
-  let validation = { passed: false, reasons: ['uninitialized'] }
-  let bestCandidate: SynthesizedItem[] | null = null
-
-  for (const [providerIndex, provider] of providers.entries()) {
+  for (const provider of [
+    () => callAnthropic(systemPrompt, userPrompt),
+    () => callOpenAI(systemPrompt, userPrompt),
+  ]) {
     try {
       raw = await provider()
-      parsed = parseResponseItems(raw, selectedBatch)
-      if (!parsed) {
-        continue
-      }
-      bestCandidate = parsed
-      validation = validateResponseItems(parsed, lang)
-      if (validation.passed) {
-        return parsed
-      }
-
-      const retryPrompt = buildRetryPrompt(baseUserPrompt, validation.reasons, lang)
-      const retryRaw = providerIndex === 0
-        ? await callAnthropic(systemPrompt, retryPrompt)
-        : await callOpenAI(systemPrompt, retryPrompt)
-      const retryParsed = parseResponseItems(retryRaw, selectedBatch)
-      if (!retryParsed) {
-        continue
-      }
-      bestCandidate = retryParsed
-      const retryValidation = validateResponseItems(retryParsed, lang)
-      if (retryValidation.passed) {
-        return retryParsed
-      }
-      validation = retryValidation
+      if (raw) break
     } catch (err) {
-      console.error('[news-synthesize] provider failed:', err)
-      continue
+      console.error('[news-synthesize] provider error:', err)
     }
   }
 
-  if (bestCandidate?.length === selectedBatch.length) {
-    return bestCandidate.map((item, index) => {
-      const itemValidation = validateResponseItem(item.text, lang)
-      if (itemValidation.passed) {
-        return item
-      }
-      const sourceItem = selectedBatch[index] ?? item
-      return {
-        id: sourceItem.id,
-        text: buildFallbackText(
-          sourceItem,
-          lang,
-          inferSessionHint(sourceItem.timeET || (index % 2 === 0 ? '09:30' : '16:30')),
-        ),
-      }
-    })
+  if (!raw) {
+    return [{ id: selected[0].id, text: leadSentence, signal: 'neutral' as const }]
   }
 
-  return selectedBatch.map((item, index) => ({
-    id: item.id,
-    text: buildFallbackText(item, lang, inferSessionHint(item.timeET || (index % 2 === 0 ? '09:30' : '16:30'))),
-  }))
+  // Parse JSON response
+  try {
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (match) {
+      const parsed = JSON.parse(match[0]) as Record<string, unknown>
+      const text = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
+      const rawSig = parsed.signal
+      const signal: 'bull' | 'bear' | 'neutral' =
+        rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
+      const result1 = [{ id: selected[0].id, text, signal }]
+      synthCache.set(cacheKey, { result: result1, cachedAt: Date.now() })
+      return result1
+    }
+  } catch {}
+
+  const result2 = [{ id: selected[0].id, text: raw.trim(), signal: 'neutral' as const }]
+  synthCache.set(cacheKey, { result: result2, cachedAt: Date.now() })
+  return result2
 }
 
 export async function POST(req: Request) {
@@ -1475,6 +1509,15 @@ export async function POST(req: Request) {
   const session = body.session === 'morning' || body.session === 'afternoon' ? body.session : 'auto'
   const price = typeof body.price === 'number' && Number.isFinite(body.price) ? body.price : null
   const changePct = typeof body.changePct === 'number' && Number.isFinite(body.changePct) ? body.changePct : null
+
+  // Non-trading day guard (weekends)
+  if (dateET) {
+    const d = new Date(dateET + 'T12:00:00Z')
+    const dow = d.getUTCDay() // 0=Sun, 6=Sat
+    if (dow === 0 || dow === 6) {
+      return NextResponse.json({ results: [], digest: null, digestSignal: null, meta: { inputItems: 0, selectedItems: 0, digestAvailable: false, skipped: true } })
+    }
+  }
 
   if (!symbol) {
     return NextResponse.json({ error: 'Missing symbol.' }, { status: 400 })
@@ -1500,25 +1543,18 @@ export async function POST(req: Request) {
       lang,
       marketContext || undefined,
       companyName || undefined,
-    )
-    const digest = await synthesizeDigest(
-      symbol,
-      batch,
-      lang,
-      marketContext || undefined,
-      companyName || undefined,
       price,
       changePct,
       dateET || undefined,
-      session,
     )
     return NextResponse.json({
       results,
-      digest: digest?.text ?? null,
+      digest: results[0]?.text ?? null,
+      digestSignal: results[0]?.signal ?? null,
       meta: {
         inputItems: batch.length,
         selectedItems: results.length,
-        digestAvailable: Boolean(digest?.text),
+        digestAvailable: results.length > 0,
       },
     })
   } catch (err) {

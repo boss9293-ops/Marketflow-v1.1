@@ -183,7 +183,13 @@ const isNewsRefreshAllowedET = (now: Date = new Date()): boolean => {
 }
 
 const getLatestTradingDateET = (now: Date = new Date()): ETDateString => {
+  const { hour, minute } = getEtClockParts(now)
+  const currentMinutes = hour * 60 + minute
+  // Before market close: show previous trading day (today's data not complete yet)
   const cursor = new Date(now)
+  if (currentMinutes < MARKET_CLOSE_MINUTES_ET) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
   for (let i = 0; i < 10; i += 1) {
     const { year, month, day, weekday } = getEtClockParts(cursor)
     const candidate = toYmd(year, month, day)

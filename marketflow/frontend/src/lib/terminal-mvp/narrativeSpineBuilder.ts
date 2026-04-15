@@ -113,23 +113,21 @@ export function buildNarrativeSpine(input: NarrativeSpineInput): NarrativeSpine 
   ])
   const numbersPhrase = numberSnippets.length
     ? `Numbers in view: ${numberSnippets.join(', ')}.`
-    : 'Numbers remain mixed, with the tape still waiting for a cleaner confirmation.'
+    : ''
 
   const catalystPhrase = thesis || `${symbol} is trading on clustered catalysts and tape-sensitive positioning.`
 
   const institutionPhrase = analystCluster
-    ? `Analysts remain active with ${analystCluster.count} linked updates around valuation and expectations.`
+    ? `Analysts flagged ${analystCluster.count} linked updates.`
     : macroCluster
-      ? `Macro and rates remain the key institutional read-through.`
-      : secondary
-        ? `Institutional positioning is still being shaped by ${secondary.summary.toLowerCase()}.`
-        : `Institutional positioning remains cautious as the tape digests the latest catalysts.`
+      ? `Macro catalysts in play.`
+      : ''
 
   const relativePhrase = relativeView?.line
-    || `${symbol} remains tied to the broader tape while peers still set the tone.`
+    || ''
 
   const confidencePhrase = confidence?.line
-    || `Confidence: mixed; the tape has signal, but the conviction is not absolute yet.`
+    || ''
 
   const riskSource = firstNonPrimaryCluster(clusters, primary?.clusterId)
     ?? priceActionCluster
@@ -143,11 +141,11 @@ export function buildNarrativeSpine(input: NarrativeSpineInput): NarrativeSpine 
     if ((changePct ?? 0) < 0) {
       return base
         ? `Risk: further pressure from ${base.toLowerCase()} could extend downside.`
-        : 'Risk: further rate pressure or profit-taking could extend downside.'
+        : ''
     }
     return base
       ? `Risk: any fade in ${base.toLowerCase()} could cap follow-through.`
-      : 'Risk: any fade in follow-through or renewed valuation pressure could cap upside.'
+      : ''
   })()
 
   return {
