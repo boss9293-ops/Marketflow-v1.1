@@ -467,8 +467,9 @@ export default function CenterPanel({
     setSynthSignal(new Map())
   }, [dateET, selectedSymbol])
 
-  // EN auto synthesis — one call per date group
+  // EN auto synthesis — only when EN mode
   useEffect(() => {
+    if (langMode !== 'EN') return
     const pendingGroups = groupedTimeline.filter(g =>
       g.items.some(item => !synthENRequested.current.has(item.id))
     )
@@ -523,7 +524,7 @@ export default function CenterPanel({
       }
     }
     void runAll()
-  }, [groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose])
+  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose])
 
   // KR 踰꾪듉 ?대┃ ???쒓뎅???⑹꽦
   // KO synthesis — one call per date group (triggered on langMode=KR)
@@ -676,9 +677,9 @@ export default function CenterPanel({
                     <p className={styles.timelineDateHeader}>{group.dateLabel}</p>
                     {group.items.length ? (
                       (() => {
-                        // Only render items that have been synthesized
+                        // Only render items that have been synthesized in active lang
                         const displayItems = group.items.filter(item =>
-                          synthEN.has(item.id) || synthKO.has(item.id)
+                          langMode === 'KR' ? synthKO.has(item.id) : synthEN.has(item.id)
                         )
                         if (displayItems.length === 0) {
                           return (
