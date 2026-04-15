@@ -439,7 +439,7 @@ export default function CenterPanel({
       }))
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
   }, [currentEtDate, currentEtMinutes, dateET, timeline])
-  const [langMode, setLangMode] = useState<'EN' | 'KR'>('EN')
+  const [langMode, setLangMode] = useState<'EN' | 'KR'>('KR')
   const [synthEN, setSynthEN] = useState<Map<string, string>>(new Map())
   const [synthKO, setSynthKO] = useState<Map<string, string>>(new Map())
   const [isSynthesizingEN, setIsSynthesizingEN] = useState(false)
