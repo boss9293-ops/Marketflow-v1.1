@@ -1376,8 +1376,11 @@ const buildBriefSystemPrompt = (): string =>
   [
     'You are a Korean financial terminal editor.',
     'Write a Korean news summary (~500 characters) for the given stock.',
-    'The first sentence is provided — copy it exactly as the opening, then continue in Korean.',
-    'Focus only on specific news events that moved the stock: analyst upgrades/downgrades, earnings, product launches, regulatory decisions, or management comments. Name the source when given.',
+    'The FIRST sentence must follow this exact pattern:',
+    '  {회사명}({심볼})는 [핵심 이벤트/촉매]로 X% 상승/하락하며 $Y에 마감했다.',
+    'Fill [핵심 이벤트/촉매] with the single most important catalyst from the news (15자 이내, 명사형 어구).',
+    'Example: "넷플릭스(NFLX)는 1분기 실적 발표 기대감으로 3.02% 상승하며 $106.28에 마감했다."',
+    'Focus only on specific news events: analyst upgrades/downgrades, earnings, product launches, regulatory decisions, or management comments. Name the source when given.',
     'Do not mention S&P 500, Nasdaq, or other index comparisons.',
     'Write 2-3 dense explanation-first Korean paragraphs.',
     'Return JSON: {"text":"<summary>","signal":"bull|bear|neutral"}',
@@ -1396,12 +1399,41 @@ const buildBriefSystemPromptEN = (): string =>
     '"bull" if catalysts are net positive for the stock, "bear" if net negative, "neutral" if mixed.',
   ].join('\n')
 
-const buildBriefUserPrompt = (
+const buildBriefUserPromptKO = (
+  symbol: string,
+  koName: string,
+  koPct: string,
+  koDir: string,
+  koPrice: string,
+  items: NewsInputItem[],
+  dateET: string,
+): string => {
+  const itemLines = items
+    .slice(0, 15)
+    .map(it => `${it.timeET || ''} — ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`)
+    .join('\n')
+  const template = koPct
+    ? `${koName}(${symbol})는 [핵심 이벤트]로 ${koPct} ${koDir}하며${koPrice} 마감했다.`
+    : `${koName}(${symbol})는 [핵심 이벤트]로 장을 마쳤다.`
+  return [
+    `Symbol: ${symbol}`,
+    `Company: ${koName}`,
+    `Date: ${dateET}`,
+    'Output language: Korean',
+    '',
+    'News items:',
+    itemLines,
+    '',
+    `First sentence template (fill [핵심 이벤트] with the main catalyst, 15자 이내):`,
+    `"${template}"`,
+  ].join('\n')
+}
+
+const buildBriefUserPromptEN = (
   symbol: string,
   leadSentence: string,
   items: NewsInputItem[],
   dateET: string,
-  lang: 'ko' | 'en',
 ): string => {
   const itemLines = items
     .slice(0, 15)
@@ -1410,7 +1442,7 @@ const buildBriefUserPrompt = (
   return [
     `Symbol: ${symbol}`,
     `Date: ${dateET}`,
-    lang === 'ko' ? 'Output language: Korean' : 'Output language: English',
+    'Output language: English',
     '',
     'News items:',
     itemLines,
@@ -1454,7 +1486,9 @@ async function synthesizeBatch(
   cleanSynthCache(effectiveDateET)
 
   const systemPrompt = lang === 'ko' ? buildBriefSystemPrompt() : buildBriefSystemPromptEN()
-  const userPrompt = buildBriefUserPrompt(symbol, leadSentence, selected, effectiveDateET, lang)
+  const userPrompt = lang === 'ko'
+    ? buildBriefUserPromptKO(symbol, koName, koPct, koDir, koPrice, selected, effectiveDateET)
+    : buildBriefUserPromptEN(symbol, leadSentence, selected, effectiveDateET)
 
   let raw: string | null = null
   for (const provider of [
