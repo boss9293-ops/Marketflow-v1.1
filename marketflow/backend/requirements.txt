@@ -19,3 +19,5 @@ langgraph
 tavily-python
 gunicorn
 libsql
+google-auth
+google-api-python-client
