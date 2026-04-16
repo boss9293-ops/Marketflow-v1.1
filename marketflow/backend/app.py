@@ -1,4 +1,5 @@
-﻿from flask import Flask, jsonify, request, Response
+import sys
+from flask import Flask, jsonify, request, Response
 
 
 from flask_cors import CORS
@@ -9818,8 +9819,75 @@ def _maybe_start_scheduler_on_import() -> None:
     # 메인 실행 파일이 아닐 때(예: gunicorn 등 외부에 의해 호출될 때) 스케줄러 시작
     if __name__ != "__main__":
         start_scheduler()
+        _start_auto_import_thread()
 
 # ⚠️ 기존에 에러를 유발하던 'def _maybe_start_scheduler_on_import()' 호출 줄은 삭제했습니다.
+
+
+def _auto_import_holdings_from_sheets() -> None:
+    """
+    앱 시작 시 GOOGLE_SHEETS_ID 환경변수가 있으면 자동으로 Google Sheet import 실행.
+    Railway 재배포 후 JSON 파일이 초기화되어도 자동 복구됨.
+    GOOGLE_SHEETS_TABS env var로 임포트 탭 지정 (기본: sheet1~sheet8).
+    """
+    sheet_id = os.environ.get("GOOGLE_SHEETS_ID", "").strip()
+    if not sheet_id:
+        return
+
+    sa_json = _get_sa_json()
+    if not sa_json:
+        print("[auto-import] GOOGLE_SERVICE_ACCOUNT_JSON not set, skipping.")
+        return
+
+    # 캐시가 이미 최신이면 (6시간 이내) 스킵
+    cache_path = MY_HOLDINGS_SNAPSHOT_PATH
+    if os.path.exists(cache_path):
+        import time
+        age_hours = (time.time() - os.path.getmtime(cache_path)) / 3600
+        if age_hours < 6:
+            print(f"[auto-import] Cache is fresh ({age_hours:.1f}h old), skipping.")
+            return
+
+    tabs = os.environ.get("GOOGLE_SHEETS_TABS", "sheet1,sheet2,sheet3,sheet4,sheet5,sheet6,sheet7,sheet8")
+    print(f"[auto-import] Starting Google Sheets import: sheet_id={sheet_id}, tabs={tabs}")
+
+    try:
+        scripts_dir = os.path.join(os.path.dirname(__file__), "scripts")
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+        env["GOOGLE_SERVICE_ACCOUNT_JSON"] = sa_json
+
+        r1 = subprocess.run(
+            [sys.executable, "-X", "utf8",
+             os.path.join(scripts_dir, "import_holdings_tabs.py"),
+             "--sheet_id", sheet_id, "--tabs", tabs],
+            capture_output=True, text=True, env=env, timeout=300,
+        )
+        if r1.returncode != 0:
+            print(f"[auto-import] import_holdings_tabs failed: {r1.stderr[-300:]}")
+            return
+
+        r2 = subprocess.run(
+            [sys.executable, "-X", "utf8", os.path.join(scripts_dir, "build_holdings_ts_cache.py")],
+            capture_output=True, text=True, env=env, timeout=120,
+        )
+        r3 = subprocess.run(
+            [sys.executable, "-X", "utf8", os.path.join(scripts_dir, "build_my_holdings_cache_from_ts.py")],
+            capture_output=True, text=True, env=env, timeout=120,
+        )
+        print(f"[auto-import] Done. ts={r2.returncode} snapshot={r3.returncode}")
+    except Exception as e:
+        print(f"[auto-import] Error: {e}")
+
+
+def _start_auto_import_thread() -> None:
+    """gunicorn/Railway 환경에서 백그라운드 스레드로 자동 import 실행."""
+    if os.environ.get("GOOGLE_SHEETS_ID", "").strip():
+        import threading
+        t = threading.Thread(target=_auto_import_holdings_from_sheets, daemon=True, name="auto-import-holdings")
+        t.start()
+
 
 if __name__ == '__main__':
     # 출력 디렉토리 생성
