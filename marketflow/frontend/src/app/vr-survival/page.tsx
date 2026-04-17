@@ -241,8 +241,36 @@ const NAV_ITEMS = [
 const ROLE_SPLIT_COPY =
   'Standard는 위험을 감지하고, Live는 현재 움직임을 보여주며, VR은 그 구간에서 어떤 대응 전략이 유효했는지를 보여줍니다.'
 
-const NON_SIGNAL_COPY =
-  '이 엔진은 실시간 매수·매도 신호를 제공하지 않습니다. 시장 대응 방법을 이해하기 위한 참고 도구입니다.'
+const HERO_TEXT = {
+  tqqq: {
+    subtitle: {
+      en: 'See live TQQQ/SOXL movement first, then confirm your reasoning with Playback and Backtest — a survival analysis engine.',
+      ko: 'TQQQ/SOXL의 현재 움직임을 먼저 보고, Playback과 Backtest로 근거를 확인하는 생존 분석 엔진',
+    },
+    body: {
+      en: 'This system is a simulation engine built on the VR (Value Rebalancing) strategy for studying market responses in downturns. It shows live motion first, then uses Playback and Backtest as evidence layers to validate judgment.',
+      ko: '이 시스템은 VR(Value Rebalancing) 전략을 기반으로, 하락장에서의 대응 방식을 연구하는 시뮬레이션 엔진입니다. 지금은 live motion을 먼저 보여주고, Playback과 Backtest는 그 판단의 근거를 확인하는 증거 레이어로 사용합니다.',
+    },
+    disclaimer: {
+      en: 'This engine does not provide real-time buy/sell signals. It is a reference tool for understanding how to respond to market conditions.',
+      ko: '이 엔진은 실시간 매수·매도 신호를 제공하지 않습니다. 시장 대응 방법을 이해하기 위한 참고 도구입니다.',
+    },
+  },
+  soxl: {
+    subtitle: {
+      en: 'Read SOXL from a hold perspective using SOXX as anchor — trade tactically only when breadth and flow align.',
+      ko: 'SOXL은 기본적으로 보유(Hold) 관점에서 읽되, SOXX를 앵커로 두고 breadth와 수급이 맞을 때만 전술적으로 다룹니다.',
+    },
+    body: {
+      en: "The AI semiconductor cycle unfolds in two phases: ① First-wave excitement (GPU order surge) → ② Monetization Reset (revenue reassessment). This 5-step analysis determines which phase we're in and whether SOXL leverage is warranted. Read in order: 1) Runway 2) Cycle Drivers 3) Supply/Demand 4) Leadership 5) Decision Rules. Hold SOXX long-term; use SOXL tactically only when First-wave onset + broad supply advantage + leadership breadth are all confirmed. Capital preservation first during Reset phases.",
+      ko: 'AI 반도체 사이클은 두 단계를 거칩니다: ① First-wave excitement (GPU 주문 폭증) → ② Monetization Reset (수익화 재평가). 이 페이지는 현재 어느 단계에 있는지, SOXL 레버리지를 쓸 수 있는지를 판단하기 위한 5단계 분석입니다. 읽는 순서는: 1) Runway(전망) 2) Cycle Drivers(원인) 3) Supply/Demand(수급) 4) Leadership(확산도) 5) Decision Rules(결정). SOXX는 장기 보유, SOXL은 First-wave 초기 + 넓은 수급 우위 확인 + 리더십 확산이 명확할 때만 전술적으로 사용합니다. Reset 구간에서는 업황이 양호해도 자본 보존이 우선입니다.',
+    },
+    disclaimer: {
+      en: 'This view is a research brief for reading semiconductor cycles and external sensitivity — not a buy/sell signal. Default conclusion is Hold; adjust SOXL tactical weight only in exceptional cases.',
+      ko: '이 화면은 매수/매도 신호가 아니라, 반도체 사이클과 외부 민감도를 읽는 리서치 브리프입니다. 기본 결론은 Hold, 예외적으로만 SOXL 전술 비중을 조정합니다.',
+    },
+  },
+} as const
 
 export default async function VRSurvivalPage({
   searchParams,
@@ -289,12 +317,11 @@ export default async function VRSurvivalPage({
   ])
   const { playbackData, strategyArena } = playbackArtifacts
   const effectiveRaw = raw ?? buildFallbackSurvivalData(riskV1)
-  const heroSubtitle = isSoxl
-    ? 'SOXL은 기본적으로 보유(Hold) 관점에서 읽되, SOXX를 앵커로 두고 breadth와 수급이 맞을 때만 전술적으로 다룹니다.'
-    : 'TQQQ/SOXL의 현재 움직임을 먼저 보고, Playback과 Backtest로 근거를 확인하는 생존 분석 엔진'
-  const heroBody = isSoxl
-    ? 'AI 반도체 사이클은 두 단계를 거칩니다: ① First-wave excitement (GPU 주문 폭증) → ② Monetization Reset (수익화 재평가). 이 페이지는 현재 어느 단계에 있는지, SOXL 레버리지를 쓸 수 있는지를 판단하기 위한 5단계 분석입니다. 읽는 순서는: 1) Runway(전망) 2) Cycle Drivers(원인) 3) Supply/Demand(수급) 4) Leadership(확산도) 5) Decision Rules(결정). SOXX는 장기 보유, SOXL은 First-wave 초기 + 넓은 수급 우위 확인 + 리더십 확산이 명확할 때만 전술적으로 사용합니다. Reset 구간에서는 업황이 양호해도 자본 보존이 우선입니다. Live 탭은 현재 사이클 단계, Playback 탭은 과거 Reset 구간에서 SOXL이 왜 손실을 봤는지를 보여줍니다.'
-    : '이 시스템은 VR(Value Rebalancing) 전략을 기반으로, 하락장에서의 대응 방식을 연구하는 시뮬레이션 엔진입니다. 지금은 live motion을 먼저 보여주고, Playback과 Backtest는 그 판단의 근거를 확인하는 증거 레이어로 사용합니다.'
+  const cl = contentLang
+  const heroText = isSoxl ? HERO_TEXT.soxl : HERO_TEXT.tqqq
+  const heroSubtitle = heroText.subtitle[cl]
+  const heroBody = heroText.body[cl]
+  const disclaimer = heroText.disclaimer[cl]
 
   if (!effectiveRaw && asset === 'tqqq') {
     return (
@@ -340,9 +367,7 @@ export default async function VRSurvivalPage({
               {heroBody}
             </div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 860 }}>
-              {isSoxl
-                ? '이 화면은 매수/매도 신호가 아니라, 반도체 사이클과 외부 민감도를 읽는 리서치 브리프입니다. 기본 결론은 Hold, 예외적으로만 SOXL 전술 비중을 조정합니다.'
-                : NON_SIGNAL_COPY}
+              {disclaimer}
             </div>
           </div>
 
