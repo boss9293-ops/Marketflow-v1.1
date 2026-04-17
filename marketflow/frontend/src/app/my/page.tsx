@@ -136,6 +136,16 @@ type MarketIndicesPayload = {
   error?: string
 }
 
+type PortfolioNarrativeMeta = {
+  cached?: boolean
+  cache_mode?: string
+  cache_date?: string
+  analysis_date?: string
+  generated_at?: string
+  saved_at?: string
+  cache_tab?: string
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
 
 function panelStyle() {
@@ -160,6 +170,13 @@ function fmtMoney(v?: number | null) {
 function fmtPct(v?: number | null) {
   if (typeof v !== 'number' || Number.isNaN(v)) return '-'
   const text = `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+  return text
+}
+
+function fmtDateOnly(value?: string | null) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (text.length >= 10) return text.slice(0, 10)
   return text
 }
 
@@ -442,6 +459,9 @@ export default function MyPage() {
   const [credsLoading, setCredsLoading] = useState(false)
   const [credsOpen, setCredsOpen] = useState(false)
   const [portfolioNarrative, setPortfolioNarrative] = useState<StructuredNarrative | null>(null)
+  const [portfolioNarrativeMeta, setPortfolioNarrativeMeta] = useState<PortfolioNarrativeMeta | null>(null)
+  const [portfolioNarrativeLoading, setPortfolioNarrativeLoading] = useState(false)
+  const portfolioNarrativeAbortRef = useRef<AbortController | null>(null)
   const [marketIndices, setMarketIndices] = useState<MarketIndicesPayload | null>(null)
 
   async function fetchHoldings() {
@@ -1141,11 +1161,14 @@ export default function MyPage() {
     ],
   )
 
-  useEffect(() => {
-    if (loading) return
+  async function loadPortfolioNarrative(forceRefresh = false) {
+    if (loading || tabsLoading || !activePositionsTab) return
 
+    portfolioNarrativeAbortRef.current?.abort()
     const controller = new AbortController()
+    portfolioNarrativeAbortRef.current = controller
     let active = true
+    setPortfolioNarrativeLoading(true)
     setPortfolioNarrative(null)
 
     const fallbackPayload = {
@@ -1218,72 +1241,89 @@ export default function MyPage() {
       tqqq:
         pnlTone === 'plus'
           ? 'Treat TQQQ as a separate tactical sleeve, not part of the core basket.'
-            : 'Keep TQQQ separate from the core basket until the structure improves.',
+          : 'Keep TQQQ separate from the core basket until the structure improves.',
       footerLabel: 'RISK FLAGS',
     }
 
-    const loadPortfolioNarrative = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/api/narrative/portfolio`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            portfolio_data: activeTabPortfolioData,
-            engine_data: {
-              tab_name: activePositionsTab || null,
-              as_of_date: activeTabSummary.as_of_date,
-              total_equity: activeTabSummary.total_equity,
-              total_cost: activeTabSummary.total_cost,
-              total_pnl: activeTabSummary.total_pnl,
-              total_pnl_pct: activeTabSummary.total_pnl_pct,
-              today_pnl: activeTabSummary.today_pnl,
-              today_pnl_pct: activeTabSummary.today_pnl_pct,
-              cash: activeTabSummary.cash,
-              cash_ratio_pct: activeTabSummary.cash_ratio_pct,
-              top_weight_symbol: topWeight?.symbol || null,
-              top_weight_pct: topWeight?.pct ?? null,
-              top3_weight_pct: top3WeightPct,
-              concentration_tone: concentrationTone,
-              diversification_text: diversificationText,
-              pnl_tone: pnlTone,
-            },
-          }),
-          cache: 'no-store',
-          signal: controller.signal,
-        })
+    try {
+      const response = await fetch(`${API_BASE}/api/narrative/portfolio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          force_refresh: forceRefresh,
+          portfolio_data: activeTabPortfolioData,
+          engine_data: {
+            tab_name: activePositionsTab || null,
+            as_of_date: activeTabSummary.as_of_date,
+            total_equity: activeTabSummary.total_equity,
+            total_cost: activeTabSummary.total_cost,
+            total_pnl: activeTabSummary.total_pnl,
+            total_pnl_pct: activeTabSummary.total_pnl_pct,
+            today_pnl: activeTabSummary.today_pnl,
+            today_pnl_pct: activeTabSummary.today_pnl_pct,
+            cash: activeTabSummary.cash,
+            cash_ratio_pct: activeTabSummary.cash_ratio_pct,
+            top_weight_symbol: topWeight?.symbol || null,
+            top_weight_pct: topWeight?.pct ?? null,
+            top3_weight_pct: top3WeightPct,
+            concentration_tone: concentrationTone,
+            diversification_text: diversificationText,
+            pnl_tone: pnlTone,
+          },
+        }),
+        cache: 'no-store',
+        signal: controller.signal,
+      })
 
-        const json = await response.json().catch(() => null)
-        if (!response.ok) {
-          throw new Error(typeof json?.error === 'string' ? json.error : 'Failed to load portfolio narrative.')
-        }
+      const json = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(typeof json?.error === 'string' ? json.error : 'Failed to load portfolio narrative.')
+      }
 
-        if (!active) return
-        setPortfolioNarrative(mapPortfolioNarrative(json))
-      } catch {
-        if (!active) return
-        setPortfolioNarrative(mapPortfolioNarrative(fallbackPayload))
+      if (!active) return
+      setPortfolioNarrative(mapPortfolioNarrative(json))
+      setPortfolioNarrativeMeta({
+        cached: !!json?.cached,
+        cache_mode: asText(json?.cache_mode) || 'daily',
+        cache_date: asText(json?.cache_date) || '',
+        analysis_date: asText(json?.analysis_date) || '',
+        generated_at: asText(json?.generated_at) || '',
+        saved_at: asText(json?.saved_at) || '',
+        cache_tab: asText(json?.cache_tab) || asText(json?.tab_name) || activePositionsTab,
+      })
+    } catch {
+      if (!active) return
+      setPortfolioNarrative(mapPortfolioNarrative(fallbackPayload))
+      setPortfolioNarrativeMeta({
+        cached: false,
+        cache_mode: 'fallback',
+        cache_date: fmtDateOnly(activeTabAsOfDate) || '',
+        analysis_date: fmtDateOnly(activeTabAsOfDate) || '',
+        generated_at: new Date().toISOString(),
+        saved_at: new Date().toISOString(),
+        cache_tab: activePositionsTab,
+      })
+    } finally {
+      if (active) {
+        setPortfolioNarrativeLoading(false)
+      }
+      if (portfolioNarrativeAbortRef.current === controller) {
+        portfolioNarrativeAbortRef.current = null
       }
     }
+  }
 
-    void loadPortfolioNarrative()
+  useEffect(() => {
+    if (loading || tabsLoading || !activePositionsTab) return
+    if (portfolioNarrativeMeta?.cache_tab === activePositionsTab) return
+    void loadPortfolioNarrative(false)
+  }, [activePositionsTab, loading, tabsLoading, portfolioNarrativeMeta?.cache_tab])
+
+  useEffect(() => {
     return () => {
-      active = false
-      controller.abort()
+      portfolioNarrativeAbortRef.current?.abort()
     }
-  }, [
-    API_BASE,
-    activePositionsTab,
-    activeTabPortfolioData,
-    activeTabSummary,
-    cashRatioPct,
-    concentrationTone,
-    diversificationText,
-    loading,
-    pnlTone,
-    top3WeightPct,
-    topWeight?.pct,
-    topWeight?.symbol,
-  ])
+  }, [])
 
   const resolvedPortfolioNarrative = useMemo(
     () =>
@@ -1349,6 +1389,13 @@ export default function MyPage() {
     [cashRatioPct, concentrationTone, diversificationText, marketIndices, pnlTone, portfolioNarrative, topHoldingVsSpyText, topWeight],
   )
 
+  const portfolioNarrativeDate = fmtDateOnly(
+    portfolioNarrativeMeta?.analysis_date ||
+      portfolioNarrativeMeta?.cache_date ||
+      portfolioNarrativeMeta?.generated_at ||
+      activeTabAsOfDate,
+  )
+
   const snapshotExtraRows = useMemo(() => {
     return [
       { label: '총 평가액', value: fmtMoney(activeTabTotalEquity) },
@@ -1382,21 +1429,19 @@ export default function MyPage() {
     <div style={{ padding: '1.5rem 1.75rem 2rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, color: '#f3f4f6' }}>
-              My <span style={{ color: '#00D9FF' }}>Holdings v2</span>
-            </h1>
-            <ContentLangToggle
-              value={contentLang}
-              onChange={(next) => { setContentLang(next); persistContentLang(next) }}
-            />
-          </div>
+          <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, color: '#f3f4f6' }}>
+            My <span style={{ color: '#00D9FF' }}>Holdings v2</span>
+          </h1>
           <div style={{ color: '#8b93a8', fontSize: '0.78rem', marginTop: 4 }}>
             As of: {asText(data.as_of_date) || '-'} | Generated: {asText(data.generated_at) || '-'} | Status: {asText(data.status) || '-'}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <ContentLangToggle
+            value={contentLang}
+            onChange={(next) => { setContentLang(next); persistContentLang(next) }}
+          />
           <input
             ref={fileInputRef}
             type="file"
@@ -1543,7 +1588,50 @@ export default function MyPage() {
             {typeof activeTabSummary.total_pnl_pct === 'number' ? `누적 수익률 ${fmtPct(activeTabSummary.total_pnl_pct)}.` : ''}
           </div>
           {resolvedPortfolioNarrative ? (
-            <NarrativeBlocks data={resolvedPortfolioNarrative} density="compact" />
+            <NarrativeBlocks
+              data={resolvedPortfolioNarrative}
+              density="compact"
+              headerLeft={
+                portfolioNarrativeDate ? (
+                  <span
+                    style={{
+                      color: '#93c5fd',
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      padding: '2px 7px',
+                      borderRadius: 999,
+                      border: '1px solid rgba(59,130,246,0.24)',
+                      background: 'rgba(59,130,246,0.10)',
+                    }}
+                  >
+                    {portfolioNarrativeDate}
+                  </span>
+                ) : null
+              }
+              headerRight={
+                <button
+                  type="button"
+                  onClick={() => void loadPortfolioNarrative(true)}
+                  disabled={portfolioNarrativeLoading}
+                  style={{
+                    border: '1px solid rgba(16,185,129,0.35)',
+                    background: portfolioNarrativeLoading ? 'rgba(16,185,129,0.10)' : 'rgba(16,185,129,0.16)',
+                    color: portfolioNarrativeLoading ? '#86efac' : '#6ee7b7',
+                    borderRadius: 999,
+                    padding: '0.22rem 0.55rem',
+                    fontSize: '0.66rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    cursor: portfolioNarrativeLoading ? 'default' : 'pointer',
+                  }}
+                >
+                  {portfolioNarrativeLoading ? 'Refreshing...' : 'Refresh'}
+                </button>
+              }
+            />
           ) : (
             <div style={{ color: '#8b93a8', fontSize: '0.78rem', lineHeight: 1.45 }}>
               Portfolio narrative is unavailable.
