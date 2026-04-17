@@ -10,8 +10,6 @@ import { buildPriceAnchorLayer } from '@/lib/terminal-mvp/priceAnchorLayer'
 import { buildSessionThesis } from '@/lib/terminal-mvp/sessionThesisEngine'
 import { buildTimelineFlow } from '@/lib/terminal-mvp/timelineEngine'
 
-import fs from 'fs'
-import pathModule from 'path'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -1469,78 +1467,6 @@ const buildBriefUserPromptEN = (
 }
 
 // ── DeepL translation with daily file cache ──
-const DEEPL_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'deepl-ko-cache.json')
-
-function loadDeeplFileCache(): Record<string, string> {
-  try {
-    const dir = pathModule.dirname(DEEPL_CACHE_FILE)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    if (!fs.existsSync(DEEPL_CACHE_FILE)) return {}
-    return JSON.parse(fs.readFileSync(DEEPL_CACHE_FILE, 'utf-8')) as Record<string, string>
-  } catch {
-    return {}
-  }
-}
-
-function saveDeeplFileCache(cache: Record<string, string>): void {
-  try {
-    fs.writeFileSync(DEEPL_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('[deepl-cache] write error:', err)
-  }
-}
-
-function pruneDeeplCache(cache: Record<string, string>, todayET: string): Record<string, string> {
-  // Keep only entries for today's date
-  const pruned: Record<string, string> = {}
-  for (const [k, v] of Object.entries(cache)) {
-    if (k.endsWith(':' + todayET)) pruned[k] = v
-  }
-  return pruned
-}
-
-async function translateToKoViaDeepl(enText: string, symbol: string, dateET: string): Promise<string | null> {
-  const DEEPL_KEY = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
-  if (!DEEPL_KEY) return null
-
-  const cacheKey = `${symbol}:${dateET}`
-  let fileCache = loadDeeplFileCache()
-  // Prune stale entries
-  fileCache = pruneDeeplCache(fileCache, dateET)
-
-  if (fileCache[cacheKey]) {
-    console.log(`[deepl] cache hit: ${cacheKey}`)
-    return fileCache[cacheKey]
-  }
-
-  try {
-    const res = await fetch('https://api-free.deepl.com/v2/translate', {
-      method: 'POST',
-      headers: {
-        'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text: [enText], target_lang: 'KO' }),
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) {
-      console.error('[deepl] translate error:', res.status)
-      return null
-    }
-    const data = await res.json() as { translations?: { text: string }[] }
-    const koText = data.translations?.[0]?.text ?? null
-    if (koText) {
-      fileCache[cacheKey] = koText
-      saveDeeplFileCache(fileCache)
-      console.log(`[deepl] translated + cached: ${cacheKey}`)
-    }
-    return koText
-  } catch (err) {
-    console.error('[deepl] translate exception:', err)
-    return null
-  }
-}
-
 async function synthesizeBatch(
   symbol: string,
   batch: NewsInputItem[],
@@ -1576,9 +1502,10 @@ async function synthesizeBatch(
   }
   cleanSynthCache(effectiveDateET)
 
-  // Always synthesize in English; KO result obtained via DeepL (once per day, file-cached)
-  const systemPrompt = buildBriefSystemPromptEN()
-  const userPrompt = buildBriefUserPromptEN(symbol, leadSentenceEN, selected, effectiveDateET)
+  const systemPrompt = lang === 'ko' ? buildBriefSystemPrompt() : buildBriefSystemPromptEN()
+  const userPrompt = lang === 'ko'
+    ? buildBriefUserPromptKO(symbol, koName, koPct, koDir, koPrice, selected, effectiveDateET)
+    : buildBriefUserPromptEN(symbol, leadSentenceEN, selected, effectiveDateET)
 
   let raw: string | null = null
   for (const provider of [
@@ -1616,9 +1543,7 @@ async function synthesizeBatch(
     return result
   }
 
-  // KO: translate via DeepL once per day (file-cached); fallback to KO lead sentence
-  const koText = await translateToKoViaDeepl(enText, symbol, effectiveDateET) ?? leadSentence
-  const result = [{ id: selected[0].id, text: koText, signal }]
+  const result = [{ id: selected[0].id, text: enText, signal }]
   synthCache.set(cacheKey, { result, cachedAt: Date.now() })
   return result
 }
