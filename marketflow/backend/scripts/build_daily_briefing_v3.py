@@ -20,6 +20,137 @@ Run:    python3 marketflow/backend/scripts/build_daily_briefing_v3.py
 from __future__ import annotations
 
 import json
+
+# ── DeepL KO→EN translation (file-cached, 5 trading days) ──────────────────
+import hashlib, urllib.request
+
+_US_HOLIDAYS = {
+    '2025-01-01','2025-01-20','2025-02-17','2025-04-18','2025-05-26',
+    '2025-06-19','2025-07-04','2025-09-01','2025-11-27','2025-12-25',
+    '2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25',
+    '2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+}
+
+def _is_trading_day(d: str) -> bool:
+    import datetime
+    dt = datetime.date.fromisoformat(d)
+    return dt.weekday() < 5 and d not in _US_HOLIDAYS
+
+def _last5_trading_days(from_date: str) -> set:
+    import datetime
+    days, d = [], datetime.date.fromisoformat(from_date)
+    while len(days) < 5:
+        if _is_trading_day(d.isoformat()): days.append(d.isoformat())
+        d -= datetime.timedelta(days=1)
+    return set(days)
+
+def _deepl_cache_path() -> str:
+    import pathlib
+    base = pathlib.Path(__file__).resolve().parent.parent / 'output' / 'cache'
+    base.mkdir(parents=True, exist_ok=True)
+    return str(base / 'deepl-briefing-en-cache.json')
+
+def _load_deepl_cache() -> dict:
+    p = _deepl_cache_path()
+    try:
+        with open(p, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_deepl_cache(cache: dict) -> None:
+    try:
+        with open(_deepl_cache_path(), 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'[deepl-cache] write error: {e}')
+
+def _prune_deepl_cache(cache: dict, today: str) -> dict:
+    keep = _last5_trading_days(today)
+    return {k: v for k, v in cache.items() if k.split(':')[0] in keep}
+
+def deepl_translate_batch(texts: list, deepl_key: str, date_key: str) -> list:
+    """Translate list of KO texts to EN via DeepL. Returns translated list (same order)."""
+    if not deepl_key or not texts:
+        return texts
+
+    cache = _prune_deepl_cache(_load_deepl_cache(), date_key)
+    results = []
+    to_translate = []  # (original_index, text, cache_key)
+
+    for i, text in enumerate(texts):
+        if not text or not text.strip():
+            results.append(text)
+            continue
+        ck = f'{date_key}:{hashlib.md5(text.encode()).hexdigest()[:12]}'
+        if ck in cache:
+            results.append(cache[ck])
+        else:
+            results.append(None)  # placeholder
+            to_translate.append((i, text, ck))
+
+    if not to_translate:
+        print(f'[deepl] all {len(texts)} texts from cache')
+        return results
+
+    batch_texts = [t for _, t, _ in to_translate]
+    try:
+        payload = json.dumps({'text': batch_texts, 'source_lang': 'KO', 'target_lang': 'EN'}).encode('utf-8')
+        req = urllib.request.Request(
+            'https://api-free.deepl.com/v2/translate',
+            data=payload,
+            headers={'Authorization': f'DeepL-Auth-Key {deepl_key}', 'Content-Type': 'application/json'},
+            method='POST'
+        )
+        import socket; socket.setdefaulttimeout(10)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+        translations = [t['text'] for t in data.get('translations', [])]
+        if len(translations) != len(batch_texts):
+            print(f'[deepl] response count mismatch: expected {len(batch_texts)} got {len(translations)}')
+            return results  # return partial cache hits
+
+        for (orig_i, orig_text, ck), translated in zip(to_translate, translations):
+            results[orig_i] = translated
+            cache[ck] = translated
+        _save_deepl_cache(cache)
+        print(f'[deepl] translated {len(translations)} texts, cached')
+    except Exception as e:
+        print(f'[deepl] error: {e} — keeping Korean for EN fields')
+        for orig_i, orig_text, _ in to_translate:
+            if results[orig_i] is None:
+                results[orig_i] = orig_text  # fallback to KO
+
+    return results
+
+
+def fill_en_fields_via_deepl(output: dict, deepl_key: str, date_key: str) -> dict:
+    """Translate all _ko fields to fill English fields using DeepL."""
+    if not deepl_key:
+        print('[deepl] DEEPL_API_KEY not set — English fields will be empty')
+        return output
+
+    # Collect texts to translate
+    texts = []
+    texts.append(output.get('hook_ko') or '')        # 0
+    texts.append(output.get('one_line_ko') or '')    # 1
+    for sec in output.get('sections', []):
+        texts.append(sec.get('structural_ko') or '')
+        texts.append(sec.get('implication_ko') or '')
+
+    translated = deepl_translate_batch(texts, deepl_key, date_key)
+
+    # Fill back
+    output['hook'] = translated[0] if translated[0] else output.get('hook', '')
+    output['one_line'] = translated[1] if translated[1] else output.get('one_line', '')
+    idx = 2
+    for sec in output.get('sections', []):
+        sec['structural'] = translated[idx] if translated[idx] else sec.get('structural', '')
+        sec['implication'] = translated[idx+1] if translated[idx+1] else sec.get('implication', '')
+        idx += 2
+
+    return output
+# ────────────────────────────────────────────────────────────────────────────
 import os
 import re
 import sys
@@ -1947,6 +2078,10 @@ def main() -> None:
             "one_line":   "",
             "one_line_ko": one_line_ko,
         }
+
+    # Translate KO → EN via DeepL (fills empty English fields)
+    deepl_key = os.environ.get("DEEPL_API_KEY", "").strip()
+    output = fill_en_fields_via_deepl(output, deepl_key, output.get("data_date", ""))
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:

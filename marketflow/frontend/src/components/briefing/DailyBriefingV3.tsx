@@ -116,8 +116,9 @@ function formatDateKey(iso: string): string {
 }
 
 function pick(en: string, ko: string | undefined, lang: Lang): string {
-  if (lang === 'ko') return ko || en
-  return en || ko || ''
+  if (lang === 'ko') return (ko && ko.trim()) ? ko : en
+  // lang === 'en': use en if non-empty; do NOT fall back to ko (prevents showing KO in EN mode)
+  return (en && en.trim()) ? en : ''
 }
 
 function formatFreshnessBadge(freshness: DailyBriefingV3Freshness | undefined, uiLang: Lang): { text: string; color: string } | null {
