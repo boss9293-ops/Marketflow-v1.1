@@ -10,6 +10,9 @@ import { buildPriceAnchorLayer } from '@/lib/terminal-mvp/priceAnchorLayer'
 import { buildSessionThesis } from '@/lib/terminal-mvp/sessionThesisEngine'
 import { buildTimelineFlow } from '@/lib/terminal-mvp/timelineEngine'
 
+import fs from 'fs'
+import pathModule from 'path'
+
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -1360,6 +1363,102 @@ const KO_NAMES: Record<string, string> = {
 const synthCache = new Map<string, { result: SynthesizedItem[]; cachedAt: number }>()
 const SYNTH_CACHE_TTL_MS = 8 * 60 * 60 * 1000 // 8 hours
 
+// -- Trading day utilities --
+const US_MARKET_HOLIDAYS = new Set([
+  '2025-01-01','2025-01-20','2025-02-17','2025-04-18','2025-05-26',
+  '2025-06-19','2025-07-04','2025-09-01','2025-11-27','2025-12-25',
+  '2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25',
+  '2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+])
+
+function isMarketOpen(dateStr: string): boolean {
+  const d = new Date(dateStr + 'T12:00:00Z')
+  const dow = d.getUTCDay()
+  return dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(dateStr)
+}
+
+function getLast5TradingDays(fromDateET: string): Set<string> {
+  const result: string[] = []
+  const d = new Date(fromDateET + 'T12:00:00Z')
+  while (result.length < 5) {
+    const ds = d.toISOString().slice(0, 10)
+    if (isMarketOpen(ds)) result.push(ds)
+    d.setUTCDate(d.getUTCDate() - 1)
+  }
+  return new Set(result)
+}
+
+function pruneToTradingDays<T>(cache: Record<string, T>, todayET: string): Record<string, T> {
+  const keep = getLast5TradingDays(todayET)
+  const pruned: Record<string, T> = {}
+  for (const [k, v] of Object.entries(cache)) {
+    const dateKey = k.split(':')[1] ?? ''
+    if (keep.has(dateKey)) pruned[k] = v
+  }
+  return pruned
+}
+
+// -- EN synthesis file cache (prevents repeated LLM calls after server restart) --
+const SYNTH_EN_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'synth-en-cache.json')
+type SynthEnEntry = { text: string; signal: string }
+
+function loadSynthEnCache(): Record<string, SynthEnEntry> {
+  try {
+    const dir = pathModule.dirname(SYNTH_EN_CACHE_FILE)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(SYNTH_EN_CACHE_FILE)) return {}
+    return JSON.parse(fs.readFileSync(SYNTH_EN_CACHE_FILE, 'utf-8')) as Record<string, SynthEnEntry>
+  } catch { return {} }
+}
+
+function saveSynthEnCache(cache: Record<string, SynthEnEntry>): void {
+  try { fs.writeFileSync(SYNTH_EN_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8') }
+  catch (err) { console.error('[synth-en-cache] write error:', err) }
+}
+
+// -- DeepL translation with 5-trading-day file cache --
+const DEEPL_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'deepl-ko-cache.json')
+
+function loadDeeplFileCache(): Record<string, string> {
+  try {
+    const dir = pathModule.dirname(DEEPL_CACHE_FILE)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(DEEPL_CACHE_FILE)) return {}
+    return JSON.parse(fs.readFileSync(DEEPL_CACHE_FILE, 'utf-8')) as Record<string, string>
+  } catch { return {} }
+}
+
+function saveDeeplFileCache(cache: Record<string, string>): void {
+  try { fs.writeFileSync(DEEPL_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8') }
+  catch (err) { console.error('[deepl-cache] write error:', err) }
+}
+
+async function translateToKoViaDeepl(enText: string, symbol: string, dateET: string): Promise<string | null> {
+  const DEEPL_KEY = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
+  if (!DEEPL_KEY) return null
+
+  const cacheKey = `${symbol}:${dateET}`
+  let fileCache = pruneToTradingDays(loadDeeplFileCache(), dateET)
+  if (fileCache[cacheKey]) {
+    console.log(`[deepl] cache hit: ${cacheKey}`)
+    return fileCache[cacheKey]
+  }
+  try {
+    const res = await fetch('https://api-free.deepl.com/v2/translate', {
+      method: 'POST',
+      headers: { 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: [enText], target_lang: 'KO' }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) { console.error('[deepl] error:', res.status); return null }
+    const data = await res.json() as { translations?: { text: string }[] }
+    const koText = data.translations?.[0]?.text ?? null
+    if (koText) { fileCache[cacheKey] = koText; saveDeeplFileCache(fileCache); console.log(`[deepl] cached: ${cacheKey}`) }
+    return koText
+  } catch (err) { console.error('[deepl] exception:', err); return null }
+}
+
+
 function getSynthCacheKey(symbol: string, dateET: string, lang: string) {
   return `${symbol}:${dateET}:${lang}`
 }
@@ -1502,40 +1601,47 @@ async function synthesizeBatch(
   }
   cleanSynthCache(effectiveDateET)
 
-  const systemPrompt = lang === 'ko' ? buildBriefSystemPrompt() : buildBriefSystemPromptEN()
-  const userPrompt = lang === 'ko'
-    ? buildBriefUserPromptKO(symbol, koName, koPct, koDir, koPrice, selected, effectiveDateET)
-    : buildBriefUserPromptEN(symbol, leadSentenceEN, selected, effectiveDateET)
+  // EN file cache check — zero token cost on hit
+  const enCacheKey = `${symbol}:${effectiveDateET}`
+  let enFileCache = loadSynthEnCache()
+  const cachedEN = enFileCache[enCacheKey]
+  let enText: string
+  let signal: 'bull' | 'bear' | 'neutral'
 
-  let raw: string | null = null
-  for (const provider of [
-    () => callAnthropic(systemPrompt, userPrompt),
-    () => callOpenAI(systemPrompt, userPrompt),
-  ]) {
+  if (cachedEN) {
+    enText = cachedEN.text
+    signal = (cachedEN.signal as 'bull' | 'bear' | 'neutral') ?? 'neutral'
+    console.log(`[synth-en] file cache hit: ${enCacheKey}`)
+  } else {
+    // LLM call — always English (one call serves both EN display and DeepL-KO)
+    const systemPrompt = buildBriefSystemPromptEN()
+    const userPrompt = buildBriefUserPromptEN(symbol, leadSentenceEN, selected, effectiveDateET)
+    let raw: string | null = null
+    for (const provider of [
+      () => callAnthropic(systemPrompt, userPrompt),
+      () => callOpenAI(systemPrompt, userPrompt),
+    ]) {
+      try { raw = await provider(); if (raw) break }
+      catch (err) { console.error('[news-synthesize] provider error:', err) }
+    }
+    if (!raw) return [{ id: selected[0].id, text: leadSentenceEN, signal: 'neutral' as const }]
+
+    enText = raw.trim()
+    signal = 'neutral'
     try {
-      raw = await provider()
-      if (raw) break
-    } catch (err) {
-      console.error('[news-synthesize] provider error:', err)
-    }
+      const match = raw.match(/\{[\s\S]*\}/)
+      if (match) {
+        const parsed = JSON.parse(match[0]) as Record<string, unknown>
+        enText = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
+        const rawSig = parsed.signal
+        signal = rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
+      }
+    } catch {}
+    // Persist EN — no re-LLM after server restart
+    enFileCache = pruneToTradingDays(enFileCache, effectiveDateET)
+    enFileCache[enCacheKey] = { text: enText, signal }
+    saveSynthEnCache(enFileCache)
   }
-
-  if (!raw) {
-    return [{ id: selected[0].id, text: leadSentence, signal: 'neutral' as const }]
-  }
-
-  // Parse JSON response
-  let enText = raw.trim()
-  let signal: 'bull' | 'bear' | 'neutral' = 'neutral'
-  try {
-    const match = raw.match(/\{[\s\S]*\}/)
-    if (match) {
-      const parsed = JSON.parse(match[0]) as Record<string, unknown>
-      enText = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
-      const rawSig = parsed.signal
-      signal = rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
-    }
-  } catch {}
 
   if (lang === 'en') {
     const result = [{ id: selected[0].id, text: enText, signal }]
@@ -1543,7 +1649,9 @@ async function synthesizeBatch(
     return result
   }
 
-  const result = [{ id: selected[0].id, text: enText, signal }]
+  // KO: DeepL translation (file-cached per 5 trading days) — zero token cost
+  const koText = await translateToKoViaDeepl(enText, symbol, effectiveDateET) ?? leadSentence
+  const result = [{ id: selected[0].id, text: koText, signal }]
   synthCache.set(cacheKey, { result, cachedAt: Date.now() })
   return result
 }
@@ -1565,13 +1673,9 @@ export async function POST(req: Request) {
   const price = typeof body.price === 'number' && Number.isFinite(body.price) ? body.price : null
   const changePct = typeof body.changePct === 'number' && Number.isFinite(body.changePct) ? body.changePct : null
 
-  // Non-trading day guard (weekends)
-  if (dateET) {
-    const d = new Date(dateET + 'T12:00:00Z')
-    const dow = d.getUTCDay() // 0=Sun, 6=Sat
-    if (dow === 0 || dow === 6) {
-      return NextResponse.json({ results: [], digest: null, digestSignal: null, meta: { inputItems: 0, selectedItems: 0, digestAvailable: false, skipped: true } })
-    }
+  // Non-trading day guard (weekends + US market holidays)
+  if (dateET && !isMarketOpen(dateET)) {
+    return NextResponse.json({ results: [], digest: null, digestSignal: null, meta: { inputItems: 0, selectedItems: 0, digestAvailable: false, skipped: true } })
   }
 
   if (!symbol) {

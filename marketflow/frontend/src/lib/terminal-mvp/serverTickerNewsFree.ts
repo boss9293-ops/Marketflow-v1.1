@@ -18,6 +18,30 @@ const TICKER_NEWS_HISTORY_PATHS = resolveNewsHistoryCandidates('ticker-news-hist
 const MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 const MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
 
+
+const US_MARKET_HOLIDAYS_NEWS = new Set([
+  '2025-01-01','2025-01-20','2025-02-17','2025-04-18','2025-05-26',
+  '2025-06-19','2025-07-04','2025-09-01','2025-11-27','2025-12-25',
+  '2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25',
+  '2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+])
+
+function isMarketOpenDay(dateStr: string): boolean {
+  const d = new Date(dateStr + 'T12:00:00Z')
+  const dow = d.getUTCDay()
+  return dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS_NEWS.has(dateStr)
+}
+
+function getLast5TradingDaysSet(fromDateET: string): Set<string> {
+  const result: string[] = []
+  const d = new Date(fromDateET + 'T12:00:00Z')
+  while (result.length < 5) {
+    const ds = d.toISOString().slice(0, 10)
+    if (isMarketOpenDay(ds)) result.push(ds)
+    d.setUTCDate(d.getUTCDate() - 1)
+  }
+  return new Set(result)
+}
 const tickerNewsCache = new Map<string, { expiresAt: number; payload: BuiltTickerNewsPayload }>()
 const tickerNewsHistory = new Map<string, { timelineById: Map<string, TickerNewsItem>; detailsById: Map<string, NewsDetail> }>()
 let tickerHistoryLoaded = false
@@ -441,9 +465,14 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
   freshTimeline.forEach((item) => symbolHistory.timelineById.set(item.id, item))
   freshDetails.forEach((item) => symbolHistory.detailsById.set(item.id, item))
 
-  // Accumulate all history; only cap by MAX_ITEMS (newest first)
-  let mergedTimeline = sortNewsItems(Array.from(symbolHistory.timelineById.values()))
-  let mergedDetails = sortNewsItems(Array.from(symbolHistory.detailsById.values()))
+  // Keep last 5 trading days of news (prune older items from disk history)
+  const tradingDaySet = getLast5TradingDaysSet(toDateET(new Date()))
+  let mergedTimeline = sortNewsItems(
+    Array.from(symbolHistory.timelineById.values()).filter(item => tradingDaySet.has(item.dateET))
+  )
+  let mergedDetails = sortNewsItems(
+    Array.from(symbolHistory.detailsById.values()).filter(item => tradingDaySet.has(item.dateET))
+  )
 
   if (mergedTimeline.length > TICKER_NEWS_HISTORY_MAX_ITEMS) {
     mergedTimeline = mergedTimeline.slice(0, TICKER_NEWS_HISTORY_MAX_ITEMS)
