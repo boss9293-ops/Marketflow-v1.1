@@ -10,8 +10,8 @@ import { ET_TIMEZONE, type ETDateString, type NewsDetail, type TickerNewsItem } 
 import { upsertNewsDetails } from '@/lib/terminal-mvp/serverNewsStore'
 
 const TICKER_NEWS_CACHE_TTL_MS = 1000 * 60 * 30
-const TICKER_NEWS_HISTORY_MAX_ITEMS = 50
-const TICKER_NEWS_HISTORY_WINDOW_HOURS = 36
+const TICKER_NEWS_HISTORY_MAX_ITEMS = 200
+const TICKER_NEWS_HISTORY_WINDOW_HOURS = 36 // used for cache-key only, not for pruning disk history
 const TICKER_NEWS_FETCH_ATTEMPTS = 2
 const TICKER_NEWS_RETRY_DELAY_MS = 250
 const TICKER_NEWS_HISTORY_PATHS = resolveNewsHistoryCandidates('ticker-news-history-v2-1630.json')
@@ -271,9 +271,20 @@ const readTag = (xmlBlock: string, tag: string): string => {
   return match[1].replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, '').trim()
 }
 
+const getETOffset = (dateStr: string): string => {
+  // EDT (2nd Sun Mar – 1st Sun Nov) = -04:00, EST = -05:00
+  const d = new Date(dateStr + 'T12:00:00Z')
+  const y = d.getUTCFullYear()
+  const ms = new Date(Date.UTC(y, 2, 1))
+  ms.setUTCDate(1 + ((7 - ms.getUTCDay()) % 7) + 7)
+  const ns = new Date(Date.UTC(y, 10, 1))
+  ns.setUTCDate(1 + ((7 - ns.getUTCDay()) % 7))
+  return d >= ms && d < ns ? '-04:00' : '-05:00'
+}
+
 const parsePublishedAtTs = (publishedAtET: string): number => {
   const etMatch = publishedAtET.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}) ET$/)
-  const normalized = etMatch ? `${etMatch[1]}T${etMatch[2]}-05:00` : publishedAtET
+  const normalized = etMatch ? `${etMatch[1]}T${etMatch[2]}${getETOffset(etMatch[1])}` : publishedAtET
   const ts = Date.parse(normalized)
   return Number.isFinite(ts) ? ts : 0
 }
@@ -430,14 +441,9 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
   freshTimeline.forEach((item) => symbolHistory.timelineById.set(item.id, item))
   freshDetails.forEach((item) => symbolHistory.detailsById.set(item.id, item))
 
-  const cutoffTs = Date.now() - TICKER_NEWS_HISTORY_WINDOW_HOURS * 60 * 60 * 1000
-
-  let mergedTimeline = sortNewsItems(
-    Array.from(symbolHistory.timelineById.values()).filter((item) => parsePublishedAtTs(item.publishedAtET) >= cutoffTs),
-  )
-  let mergedDetails = sortNewsItems(
-    Array.from(symbolHistory.detailsById.values()).filter((item) => parsePublishedAtTs(item.publishedAtET) >= cutoffTs),
-  )
+  // Accumulate all history; only cap by MAX_ITEMS (newest first)
+  let mergedTimeline = sortNewsItems(Array.from(symbolHistory.timelineById.values()))
+  let mergedDetails = sortNewsItems(Array.from(symbolHistory.detailsById.values()))
 
   if (mergedTimeline.length > TICKER_NEWS_HISTORY_MAX_ITEMS) {
     mergedTimeline = mergedTimeline.slice(0, TICKER_NEWS_HISTORY_MAX_ITEMS)

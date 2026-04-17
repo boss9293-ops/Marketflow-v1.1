@@ -10,6 +10,9 @@ import { buildPriceAnchorLayer } from '@/lib/terminal-mvp/priceAnchorLayer'
 import { buildSessionThesis } from '@/lib/terminal-mvp/sessionThesisEngine'
 import { buildTimelineFlow } from '@/lib/terminal-mvp/timelineEngine'
 
+import fs from 'fs'
+import pathModule from 'path'
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -1284,7 +1287,7 @@ async function callAnthropic(
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     }),
-    signal: AbortSignal.timeout(55_000),
+    signal: AbortSignal.timeout(20_000),
   })
 
   if (!response.ok) {
@@ -1327,7 +1330,7 @@ async function callOpenAI(
       temperature: 0.35,
       max_tokens: 2500,
     }),
-    signal: AbortSignal.timeout(55_000),
+    signal: AbortSignal.timeout(20_000),
   })
 
   if (!response.ok) {
@@ -1389,15 +1392,29 @@ const buildBriefSystemPrompt = (): string =>
 
 const buildBriefSystemPromptEN = (): string =>
   [
-    'You are an institutional financial terminal editor.',
+    'You are an institutional financial terminal editor. Write like Bloomberg Terminal — catalyst-driven, source-cited, zero fluff.',
     'Write an English news summary (~500 characters) for the given stock.',
     'The first sentence is provided — copy it exactly as the opening, then continue in English.',
-    'Focus only on specific news events that moved the stock: analyst upgrades/downgrades, earnings, product launches, regulatory decisions, or management comments. Name the source when given.',
-    'Do not mention S&P 500, Nasdaq, or other index comparisons.',
-    'Write 2-3 dense explanation-first paragraphs.',
+    '',
+    'ALLOWED topics only:',
+    '  - Earnings beats/misses, guidance (cite EPS/revenue figures when available)',
+    '  - Analyst upgrades/downgrades with price target changes (name the firm)',
+    '  - Product launches, regulatory approvals/rejections, FDA/FCC decisions',
+    '  - Management guidance, CEO/CFO comments, investor day announcements',
+    '  - M&A activity, partnerships, licensing deals, share buybacks',
+    '  - Macro factors directly affecting this company (tariffs on its products, sector-specific policy)',
+    '',
+    'STRICTLY FORBIDDEN — never write about:',
+    '  - Moving averages (MA20/50/200, SMA, EMA), RSI, MACD, Bollinger Bands',
+    '  - Support/resistance levels, chart patterns, technical breakouts or bounces',
+    '  - Volume patterns, momentum indicators, candlestick signals',
+    '  - Broad index comparisons (S&P 500, Nasdaq, market-wide moves)',
+    '',
+    'Write 2-3 dense explanation-first paragraphs. Name sources when given.',
     'Return JSON: {"text":"<summary>","signal":"bull|bear|neutral"}',
-    '"bull" if catalysts are net positive for the stock, "bear" if net negative, "neutral" if mixed.',
+    '"bull" if catalysts are net positive, "bear" if net negative, "neutral" if mixed.',
   ].join('\n')
+
 
 const buildBriefUserPromptKO = (
   symbol: string,
@@ -1451,6 +1468,79 @@ const buildBriefUserPromptEN = (
   ].join('\n')
 }
 
+// ── DeepL translation with daily file cache ──
+const DEEPL_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'deepl-ko-cache.json')
+
+function loadDeeplFileCache(): Record<string, string> {
+  try {
+    const dir = pathModule.dirname(DEEPL_CACHE_FILE)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(DEEPL_CACHE_FILE)) return {}
+    return JSON.parse(fs.readFileSync(DEEPL_CACHE_FILE, 'utf-8')) as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+function saveDeeplFileCache(cache: Record<string, string>): void {
+  try {
+    fs.writeFileSync(DEEPL_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[deepl-cache] write error:', err)
+  }
+}
+
+function pruneDeeplCache(cache: Record<string, string>, todayET: string): Record<string, string> {
+  // Keep only entries for today's date
+  const pruned: Record<string, string> = {}
+  for (const [k, v] of Object.entries(cache)) {
+    if (k.endsWith(':' + todayET)) pruned[k] = v
+  }
+  return pruned
+}
+
+async function translateToKoViaDeepl(enText: string, symbol: string, dateET: string): Promise<string | null> {
+  const DEEPL_KEY = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
+  if (!DEEPL_KEY) return null
+
+  const cacheKey = `${symbol}:${dateET}`
+  let fileCache = loadDeeplFileCache()
+  // Prune stale entries
+  fileCache = pruneDeeplCache(fileCache, dateET)
+
+  if (fileCache[cacheKey]) {
+    console.log(`[deepl] cache hit: ${cacheKey}`)
+    return fileCache[cacheKey]
+  }
+
+  try {
+    const res = await fetch('https://api-free.deepl.com/v2/translate', {
+      method: 'POST',
+      headers: {
+        'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text: [enText], target_lang: 'KO' }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) {
+      console.error('[deepl] translate error:', res.status)
+      return null
+    }
+    const data = await res.json() as { translations?: { text: string }[] }
+    const koText = data.translations?.[0]?.text ?? null
+    if (koText) {
+      fileCache[cacheKey] = koText
+      saveDeeplFileCache(fileCache)
+      console.log(`[deepl] translated + cached: ${cacheKey}`)
+    }
+    return koText
+  } catch (err) {
+    console.error('[deepl] translate exception:', err)
+    return null
+  }
+}
+
 async function synthesizeBatch(
   symbol: string,
   batch: NewsInputItem[],
@@ -1472,11 +1562,12 @@ async function synthesizeBatch(
   const koDir = (changePct ?? 0) > 0 ? '상승' : (changePct ?? 0) < 0 ? '하락' : '보합'
   const koPct = changePct != null ? `${Math.abs(changePct).toFixed(2)}%` : ''
   const koPrice = price != null ? ` $${price.toFixed(2)}에` : ''
+  const leadSentenceEN = `${symbol} closed ${direction}${pctStr}${priceStr},`
   const leadSentence = lang === 'ko'
     ? `${koName}(${symbol})는 ${koPct} ${koDir}하며${koPrice} 마감했다,`
-    : `${symbol} closed ${direction}${pctStr}${priceStr},`
+    : leadSentenceEN
 
-  // Check cache
+  // Check in-memory cache
   const effectiveDateET = dateET || getCurrentEtDate()
   const cacheKey = getSynthCacheKey(symbol, effectiveDateET, lang)
   const cached = synthCache.get(cacheKey)
@@ -1485,10 +1576,9 @@ async function synthesizeBatch(
   }
   cleanSynthCache(effectiveDateET)
 
-  const systemPrompt = lang === 'ko' ? buildBriefSystemPrompt() : buildBriefSystemPromptEN()
-  const userPrompt = lang === 'ko'
-    ? buildBriefUserPromptKO(symbol, koName, koPct, koDir, koPrice, selected, effectiveDateET)
-    : buildBriefUserPromptEN(symbol, leadSentence, selected, effectiveDateET)
+  // Always synthesize in English; KO result obtained via DeepL (once per day, file-cached)
+  const systemPrompt = buildBriefSystemPromptEN()
+  const userPrompt = buildBriefUserPromptEN(symbol, leadSentenceEN, selected, effectiveDateET)
 
   let raw: string | null = null
   for (const provider of [
@@ -1508,23 +1598,29 @@ async function synthesizeBatch(
   }
 
   // Parse JSON response
+  let enText = raw.trim()
+  let signal: 'bull' | 'bear' | 'neutral' = 'neutral'
   try {
     const match = raw.match(/\{[\s\S]*\}/)
     if (match) {
       const parsed = JSON.parse(match[0]) as Record<string, unknown>
-      const text = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
+      enText = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
       const rawSig = parsed.signal
-      const signal: 'bull' | 'bear' | 'neutral' =
-        rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
-      const result1 = [{ id: selected[0].id, text, signal }]
-      synthCache.set(cacheKey, { result: result1, cachedAt: Date.now() })
-      return result1
+      signal = rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
     }
   } catch {}
 
-  const result2 = [{ id: selected[0].id, text: raw.trim(), signal: 'neutral' as const }]
-  synthCache.set(cacheKey, { result: result2, cachedAt: Date.now() })
-  return result2
+  if (lang === 'en') {
+    const result = [{ id: selected[0].id, text: enText, signal }]
+    synthCache.set(cacheKey, { result, cachedAt: Date.now() })
+    return result
+  }
+
+  // KO: translate via DeepL once per day (file-cached); fallback to KO lead sentence
+  const koText = await translateToKoViaDeepl(enText, symbol, effectiveDateET) ?? leadSentence
+  const result = [{ id: selected[0].id, text: koText, signal }]
+  synthCache.set(cacheKey, { result, cachedAt: Date.now() })
+  return result
 }
 
 export async function POST(req: Request) {

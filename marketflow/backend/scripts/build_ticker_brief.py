@@ -36,7 +36,7 @@ BRIEFS_DIR.mkdir(parents=True, exist_ok=True)
 ROOT = str(BACKEND_DIR.parent.parent)  # us_market_complete root
 
 ET_ZONE     = ZoneInfo("America/New_York")
-KEEP_DAYS   = 4
+KEEP_DAYS   = 90
 DIRECTNESS_THRESHOLD = 4
 
 ANTHROPIC_URL  = "https://api.anthropic.com/v1/messages"
@@ -332,7 +332,7 @@ def call_claude(prompt: str) -> str:
             ANTHROPIC_URL,
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json={"model": CLAUDE_MODEL, "max_tokens": 400, "messages": [{"role": "user", "content": prompt}]},
-            timeout=(10, 60),
+            timeout=(10, 20),
         )
         r.raise_for_status()
         return r.json()["content"][0]["text"].strip()
