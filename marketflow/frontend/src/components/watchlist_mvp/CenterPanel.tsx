@@ -484,8 +484,8 @@ export default function CenterPanel({
           if (!groupPending.length) return
           groupPending.forEach(item => synthENRequested.current.add(item.id))
           const isToday = group.dateKey === dateET
-          const digestPrice = isToday ? (todayClose ?? parseLooseNumber(selectedItem?.lastPrice)) : null
-          const digestChangePct = isToday ? parseLooseNumber(selectedItem?.changePercent) : null
+          const digestPrice = todayClose ?? parseLooseNumber(selectedItem?.lastPrice) ?? null
+          const digestChangePct = parseLooseNumber(selectedItem?.changePercent) ?? null
           const payload = groupPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
           const res = await fetch('/api/terminal/news-synthesize', {
             method: 'POST',
@@ -544,8 +544,8 @@ export default function CenterPanel({
           if (!groupPending.length) return
           groupPending.forEach(item => synthKORequested.current.add(item.id))
           const isToday = group.dateKey === dateET
-          const digestPrice = isToday ? (todayClose ?? parseLooseNumber(selectedItem?.lastPrice)) : null
-          const digestChangePct = isToday ? parseLooseNumber(selectedItem?.changePercent) : null
+          const digestPrice = todayClose ?? parseLooseNumber(selectedItem?.lastPrice) ?? null
+          const digestChangePct = parseLooseNumber(selectedItem?.changePercent) ?? null
           const payload = groupPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
           const res = await fetch('/api/terminal/news-synthesize', {
             method: 'POST',
