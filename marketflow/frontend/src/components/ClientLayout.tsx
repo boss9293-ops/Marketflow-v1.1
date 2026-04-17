@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { SessionProvider } from 'next-auth/react'
 import Sidebar from '@/components/Sidebar'
 import WatchlistSidebar from '@/components/WatchlistSidebar'
@@ -40,6 +41,7 @@ export default function ClientLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth]       = useState(SIDEBAR_DEFAULT)
   const [isDragging, setIsDragging]           = useState(false)
+  const router = useRouter()
   const [uiLang, setUiLang]                   = useState<UiLang>(initialUiLang)
   const [contentLang, setContentLang]         = useState<ContentLang>(initialContentLang)
 
@@ -193,6 +195,9 @@ export default function ClientLayout({
                 onChange={(next) => {
                   setUiLang(next)
                   setContentLang(next)
+                  persistUiLang(next)
+                  persistContentLang(next)
+                  router.refresh()
                 }}
               />
               <button

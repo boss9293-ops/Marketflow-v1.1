@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers'
 
 import styles from '@/app/dashboard/dashboardTerminal.module.css'
+import type { DailyBriefingV3Data, BriefingV3Section } from '@/components/briefing/DailyBriefingV3'
 import { renderEngineText, selectLocalizedText, type LocalizedText } from '@/lib/i18n/contentContract'
 import { readCacheJson } from '@/lib/readCacheJson'
 import { UI_LANG_COOKIE, normalizeUiLang, pickLang, type UiLang } from '@/lib/uiLang'
@@ -21,9 +22,7 @@ type MarketTapeCache = {
   items?: MarketTapeItem[]
 }
 
-type DailyBriefing = {
-  data_date?: string | null
-  generated_at?: string | null
+type DailyBriefing = Partial<DailyBriefingV3Data> & {
   headline?: { ko?: string | null; en?: string | null } | string | null
   paragraphs?: {
     ko?: Array<{ text?: string | null }>
@@ -32,12 +31,13 @@ type DailyBriefing = {
   bullets?: {
     ko?: Array<{ label?: string | null; text?: string | null }>
     en?: Array<{ label?: string | null; text?: string | null }>
-  } | null
+  } | Array<{ label?: string | null; text?: string | null }> | null
   stance?: {
     action?: { ko?: string | null; en?: string | null } | string | null
     exposure_band?: string | null
     why?: string | null
   } | null
+  sections?: BriefingV3Section[] | null
 }
 
 type SnapshotItem = {
@@ -127,7 +127,7 @@ const DASHBOARD_UI = {
   cardBreadth: { ko: 'Breadth & Flow', en: 'Breadth & Flow' },
   gateScore: { ko: 'Gate Score', en: 'Gate Score' },
   breadthPulse: { ko: 'Breadth Pulse', en: 'Breadth Pulse' },
-  whyMatters: { ko: 'Why this matters', en: 'Why this matters' },
+  whyMatters: { ko: '왜 중요한가', en: 'Why this matters' },
   openLeverageLens: { ko: 'Open Leverage Lens', en: 'Open Leverage Lens' },
   fullBriefing: { ko: 'Full Briefing', en: 'Full Briefing' },
   newsDetail: { ko: 'News Detail', en: 'News Detail' },
@@ -156,49 +156,49 @@ const DASHBOARD_UI = {
 } as const
 
 const DASHBOARD_ENGINE = {
-  regimeHeadline: { ko: '{{regime}} regime with {{riskLevel}} risk posture', en: '{{regime}} regime with {{riskLevel}} risk posture' },
-  gateZoneUnavailable: { ko: 'unavailable', en: 'unavailable' },
-  gateZoneDefensive: { ko: 'defensive zone', en: 'defensive zone' },
-  gateZoneNeutral: { ko: 'neutral zone', en: 'neutral zone' },
-  gateZoneRiskOn: { ko: 'risk-on zone', en: 'risk-on zone' },
+  regimeHeadline: { ko: '{{regime}} 국면 · {{riskLevel}} 리스크 포지션', en: '{{regime}} regime with {{riskLevel}} risk posture' },
+  gateZoneUnavailable: { ko: '확인 불가', en: 'unavailable' },
+  gateZoneDefensive: { ko: '방어 구간', en: 'defensive zone' },
+  gateZoneNeutral: { ko: '중립 구간', en: 'neutral zone' },
+  gateZoneRiskOn: { ko: 'Risk-On 구간', en: 'risk-on zone' },
   gateGuide: {
-    ko: 'Gate scale: 0-39 defensive, 40-69 neutral, 70-100 risk-on. Current {{current}} means {{zone}}.',
-    en: 'Gate scale: 0-39 defensive, 40-69 neutral, 70-100 risk-on. Current {{current}} means {{zone}}.',
+    ko: 'Gate 0~39: 방어 / 40~69: 중립 / 70~100: Risk-On. 현재 {{current}} → {{zone}}',
+    en: 'Gate scale: 0-39 defensive, 40-69 neutral, 70-100 risk-on. Current {{current}} means {{zone}}',
   },
   queueCore: {
-    ko: 'Keep core exposure within {{exposureBand}} while regime is {{regime}}.',
-    en: 'Keep core exposure within {{exposureBand}} while regime is {{regime}}.',
+    ko: '{{regime}} 국면에서 핵심 Exposure를 {{exposureBand}} 범위 내로 유지하세요.',
+    en: 'Keep core exposure within {{exposureBand}} while regime is {{regime}}',
   },
   queueGateAvailable: {
-    ko: 'Gate score {{gate}}: add risk only on pullback quality, not breakaway spikes.',
+    ko: 'Gate {{gate}} — 추가 매수는 풀백 시에만, 급등 돌파 추격 금지.',
     en: 'Gate score {{gate}}: add risk only on pullback quality, not breakaway spikes.',
   },
   queueGateUnavailable: {
-    ko: 'Gate score unavailable: keep risk parity posture until gate data confirms.',
+    ko: 'Gate 데이터 없음 — 확인될 때까지 리스크 패리티 포지션 유지.',
     en: 'Gate score unavailable: keep risk parity posture until gate data confirms.',
   },
   queueHighRisk: {
-    ko: 'Prioritize hedge and cash buffer; defer fresh leverage entries.',
+    ko: '헤지와 현금 비중 우선 확보. 신규 레버리지 진입 보류.',
     en: 'Prioritize hedge and cash buffer; defer fresh leverage entries.',
   },
   queueDefaultRisk: {
-    ko: 'Use staged entries and reduce single-theme concentration risk.',
+    ko: '분할 진입으로 단일 테마 집중 리스크를 낮추세요.',
     en: 'Use staged entries and reduce single-theme concentration risk.',
   },
   event0830: {
-    ko: '08:30 ET - Macro releases window (CPI/PPI/Jobs feed watch).',
-    en: '08:30 ET - Macro releases window (CPI/PPI/Jobs feed watch).',
+    ko: '08:30 ET — 매크로 발표 구간 (CPI/PPI/고용 지표 주시).',
+    en: '08:30 ET - Macro releases window (CPI/PPI/Jobs feed watch)',
   },
   event1000: {
-    ko: '10:00 ET - Intraday breadth check + rates trend confirmation.',
+    ko: '10:00 ET — 장중 Breadth 점검 + 금리 방향 확인.',
     en: '10:00 ET - Intraday breadth check + rates trend confirmation.',
   },
   event1400: {
-    ko: '14:00 ET - Fed tape sensitivity window (headlines + yields).',
-    en: '14:00 ET - Fed tape sensitivity window (headlines + yields).',
+    ko: '14:00 ET — Fed 발언 민감 구간 (헤드라인 + 금리 주시).',
+    en: '14:00 ET - Fed tape sensitivity window (headlines + yields)',
   },
   event1630: {
-    ko: '16:30 ET - Close audit: rebalance only if signal drift persists.',
+    ko: '16:30 ET — 장 마감 점검: 시그널 변동 지속 시에만 리밸런싱.',
     en: '16:30 ET - Close audit: rebalance only if signal drift persists.',
   },
   leverageDeRiskLabel: { ko: '🔴 DE-RISK LEVERAGE (위험)', en: '🔴 DE-RISK LEVERAGE (Risk)' },
@@ -265,36 +265,36 @@ const DASHBOARD_ENGINE = {
     ko: ' (bottom {{bottomDate}}, +{{days}}d)',
     en: ' (bottom {{bottomDate}}, +{{days}}d)',
   },
-  bottomSignalPattern: { ko: 'Bottoming analog detected', en: 'Bottoming analog detected' },
-  bottomSignalDeepDd: { ko: 'Deep DD zone: bottom watch only', en: 'Deep DD zone: bottom watch only' },
-  bottomSignalEarlyWatch: { ko: 'Early bottom-watch posture', en: 'Early bottom-watch posture' },
-  bottomSignalNone: { ko: 'No bottom confirmation', en: 'No bottom confirmation' },
-  reboundSignalFragile: { ko: 'Rebound is fragile (dead-cat risk)', en: 'Rebound is fragile (dead-cat risk)' },
+  bottomSignalPattern: { ko: '바닥권 유사 패턴 감지', en: 'Bottoming analog detected' },
+  bottomSignalDeepDd: { ko: '급락 구간: 바닥 확인 대기', en: 'Deep DD zone: bottom watch only' },
+  bottomSignalEarlyWatch: { ko: '초기 바닥 탐지 구간', en: 'Early bottom-watch posture' },
+  bottomSignalNone: { ko: '바닥 미확인', en: 'No bottom confirmation' },
+  reboundSignalFragile: { ko: '반등 불안정 (데드캣 리스크)', en: 'Rebound is fragile (dead-cat risk)' },
   reboundSignalPossible: {
-    ko: 'Rebound possible with persistence confirmation',
+    ko: '지속성 확인 시 반등 가능',
     en: 'Rebound possible with persistence confirmation',
   },
-  reboundSignalNone: { ko: 'Rebound not confirmed', en: 'Rebound not confirmed' },
+  reboundSignalNone: { ko: '반등 미확인', en: 'Rebound not confirmed' },
   reboundStageNa: { ko: 'N/A', en: 'N/A' },
-  reboundStageEscapeConviction: { ko: 'Escape conviction (+30)', en: 'Escape conviction (+30)' },
-  reboundStageEscapeEntry: { ko: 'Escape entry (+25)', en: 'Escape entry (+25)' },
-  reboundStageRebound: { ko: 'Rebound (+20)', en: 'Rebound (+20)' },
-  reboundStageEarly: { ko: 'Early rebound (+15)', en: 'Early rebound (+15)' },
-  reboundStageWatch: { ko: 'Watch zone (<+15)', en: 'Watch zone (<+15)' },
-  breadthPending: { ko: 'Breadth data pending', en: 'Breadth data pending' },
-  breadthImproving: { ko: 'Breadth improving', en: 'Breadth improving' },
-  breadthMixed: { ko: 'Breadth mixed', en: 'Breadth mixed' },
-  breadthWeak: { ko: 'Breadth weak', en: 'Breadth weak' },
+  reboundStageEscapeConviction: { ko: '하락 탈출 확신 (+30)', en: 'Escape conviction (+30)' },
+  reboundStageEscapeEntry: { ko: '탈출 진입 구간 (+25)', en: 'Escape entry (+25)' },
+  reboundStageRebound: { ko: '반등 구간 (+20)', en: 'Rebound (+20)' },
+  reboundStageEarly: { ko: '초기 반등 (+15)', en: 'Early rebound (+15)' },
+  reboundStageWatch: { ko: '관찰 구간 (<+15)', en: 'Watch zone (<+15)' },
+  breadthPending: { ko: 'Breadth 데이터 로딩 중', en: 'Breadth data pending' },
+  breadthImproving: { ko: 'Breadth 개선 중', en: 'Breadth improving' },
+  breadthMixed: { ko: 'Breadth 혼조', en: 'Breadth mixed' },
+  breadthWeak: { ko: 'Breadth 약세', en: 'Breadth weak' },
   fallbackHeadline: {
-    ko: 'Structure-first terminal dashboard is active.',
+    ko: '구조 우선 터미널 대시보드가 활성화되었습니다.',
     en: 'Structure-first terminal dashboard is active.',
   },
   fallbackTeaser: {
-    ko: "Signal context is loading. Use right rail for today's cross-asset pulse.",
+    ko: '시그널 로딩 중. 오른쪽 패널에서 오늘의 교차자산 흐름을 확인하세요.',
     en: "Signal context is loading. Use right rail for today's cross-asset pulse.",
   },
   fallbackWhy: {
-    ko: 'Keep posture and leverage in sync with regime, not with headline volatility.',
+    ko: '포지션과 레버리지는 헤드라인 변동성이 아니라 시장 구조(Regime)에 맞추세요.',
     en: 'Keep posture and leverage in sync with regime, not with headline volatility.',
   },
 } as const
@@ -565,7 +565,7 @@ export default async function DashboardPage() {
 
   const [marketTape, dailyBriefing, snapshots, riskV1, vrPattern, current90d] = await Promise.all([
     readCacheJson<MarketTapeCache>('market_tape.json', { items: [] }),
-    readCacheJson<DailyBriefing>('daily_briefing.json', {}),
+    readCacheJson<DailyBriefing>('daily_briefing_v3.json', {}),
     readCacheJson<SnapshotsCache>('snapshots_120d.json', { snapshots: [] }),
     readCacheJson<RiskV1Cache>('risk_v1.json', {}),
     readCacheJson<VrPatternDashboard>('vr_pattern_dashboard.json', {}),
@@ -586,8 +586,7 @@ export default async function DashboardPage() {
   const riskLevelLabel = localizeByMap(riskLevel, contentLang, RISK_LABELS)
   const gateScore = typeof latestSnapshot?.gate_score === 'number' ? latestSnapshot.gate_score : null
   const exposureBand =
-    dailyBriefing.stance?.exposure_band ||
-    (typeof riskV1.current?.context?.final_exposure === 'number' ? `${riskV1.current.context.final_exposure}%` : '40~60%')
+    typeof riskV1.current?.context?.final_exposure === 'number' ? `${riskV1.current.context.final_exposure}%` : '40~60%'
 
   const mssScore = typeof riskV1.current?.score === 'number' ? riskV1.current.score : null
   const mssWindowDays = 45
@@ -630,12 +629,22 @@ export default async function DashboardPage() {
           ? engineText(contentLang, DASHBOARD_ENGINE.breadthMixed)
           : engineText(contentLang, DASHBOARD_ENGINE.breadthWeak)
 
-  const headline = pickText(dailyBriefing.headline, contentLang) || engineText(contentLang, DASHBOARD_ENGINE.fallbackHeadline)
-  const primaryParagraphCandidates = contentLang === 'ko' ? dailyBriefing.paragraphs?.ko : dailyBriefing.paragraphs?.en
-  const primaryParagraph =
-    primaryParagraphCandidates?.find((item) => item?.text?.trim())?.text?.trim() || ''
-  const teaser = toTeaser(primaryParagraph || engineText(contentLang, DASHBOARD_ENGINE.fallbackTeaser), 280)
-  const stanceWhy = preferLangText(dailyBriefing.stance?.why, contentLang)
+  const briefingSections = Array.isArray(dailyBriefing.sections) ? dailyBriefing.sections : []
+  const sectionBody = (section: BriefingV3Section): string => {
+    const ko = [section.structural_ko, section.implication_ko].filter(Boolean).join(' ').trim()
+    const en = [section.structural, section.implication].filter(Boolean).join(' ').trim()
+    return contentLang === 'ko' ? (ko || en) : (en || ko)
+  }
+  const headline =
+    (
+      contentLang === 'ko'
+        ? dailyBriefing.one_line_ko || dailyBriefing.hook_ko || dailyBriefing.one_line || dailyBriefing.hook
+        : dailyBriefing.one_line || dailyBriefing.hook || dailyBriefing.one_line_ko || dailyBriefing.hook_ko
+    )?.trim() || engineText(contentLang, DASHBOARD_ENGINE.fallbackHeadline)
+  const primarySection = briefingSections.find((section) => Boolean(sectionBody(section))) || null
+  const primaryParagraph = primarySection ? sectionBody(primarySection) : ''
+  const teaser = toTeaser(primaryParagraph || headline || engineText(contentLang, DASHBOARD_ENGINE.fallbackTeaser), 280)
+  const stanceWhy = String(dailyBriefing.risk_check?.message || '').trim()
   const whyMatters = toTeaser(
     stanceWhy || engineText(contentLang, DASHBOARD_ENGINE.fallbackWhy),
     140,
@@ -832,10 +841,13 @@ export default async function DashboardPage() {
         direction: directionText,
       })
 
-  const bulletLines =
-    (contentLang === 'ko' ? dailyBriefing.bullets?.ko : dailyBriefing.bullets?.en)
-      ?.map((item) => item?.text?.trim())
-      .filter((v): v is string => Boolean(v)) || []
+  const bulletLines = briefingSections
+    .map((section) => {
+      const body = sectionBody(section)
+      if (!body) return ''
+      return `${section.title ? `${section.title}: ` : ''}${body}`.trim()
+    })
+    .filter((v): v is string => Boolean(v))
   const tapeTimes = ['16:30 ET', '12:30 ET', '09:30 ET']
   const tapeHeadlines = (bulletLines.length ? bulletLines : [headline, teaser, whyMatters]).slice(0, 3).map((text, idx) => ({
     time: tapeTimes[idx] || '--:-- ET',
