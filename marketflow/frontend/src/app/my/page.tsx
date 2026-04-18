@@ -1974,7 +1974,7 @@ export default function MyPage() {
           {/* 관리자 전용: SA JSON 설정 — Railway Variables로 관리, 구독자 UI 숨김 */}
           {false && <details style={{ marginTop: 8 }}>
             <summary style={{ color: '#6b7280', fontSize: '0.68rem', cursor: 'pointer' }}>
-              Admin: Service Account 설정 ({credsStatus === null ? '...' : credsStatus?.configured ? `configured (${credsStatus.source})` : 'not configured'})
+              Admin: Service Account 설정 ({credsStatus == null ? '...' : credsStatus!.configured ? `configured (${credsStatus!.source})` : 'not configured'})
             </summary>
             <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{ color: '#6b7280', fontSize: '0.65rem', marginBottom: 3 }}>
