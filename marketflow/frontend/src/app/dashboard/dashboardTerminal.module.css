@@ -36,6 +36,7 @@
   background: linear-gradient(180deg, #0a0e14 0%, #070b10 100%);
   border-radius: 12px;
   padding: 12px;
+  margin-top: 56px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -468,6 +469,10 @@
 
   .shell {
     grid-template-columns: 1fr;
+  }
+
+  .railPanel {
+    margin-top: 0;
   }
 
   .cards {

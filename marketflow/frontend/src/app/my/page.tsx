@@ -145,6 +145,8 @@ type PortfolioNarrativeMeta = {
   saved_at?: string
   cache_tab?: string
   cache_version?: string
+  cache_scope?: string
+  cache_namespace?: string
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
@@ -1064,6 +1066,15 @@ export default function MyPage() {
   const tabActiveSymbolCount = Array.isArray(activePositionsRows)
     ? activePositionsRows.filter((r) => !!asText(r.symbol)).length
     : 0
+  const narrativeSheetId = useMemo(() => {
+    const fromInput = extractSheetId(sheetUrl)
+    if (fromInput) return fromInput
+    const fromTabsMeta = extractSheetId(asText(tabsMeta?.sheet_id))
+    if (fromTabsMeta) return fromTabsMeta
+    const fromTs = extractSheetId(asText(tsData?.sheet_id))
+    if (fromTs) return fromTs
+    return ''
+  }, [sheetUrl, tabsMeta?.sheet_id, tsData?.sheet_id])
   const portfolioNarrativeInputSignature = useMemo(() => {
     const rowBits = activePositionsRows.slice(0, 12).map((row, idx) => {
       const raw = row as Record<string, unknown>
@@ -1080,6 +1091,7 @@ export default function MyPage() {
     }).join('|')
     return [
       PORTFOLIO_NARRATIVE_VERSION,
+      narrativeSheetId || '',
       activePositionsTab || '',
       activeTabAsOfDate || '',
       activeTabTotalEquity ?? '-',
@@ -1094,6 +1106,7 @@ export default function MyPage() {
     ].join('::')
   }, [
     activePositionsRows,
+    narrativeSheetId,
     activePositionsTab,
     activeTabAsOfDate,
     activeTabTotalEquity,
@@ -1123,6 +1136,7 @@ export default function MyPage() {
       : ''
   const activeTabPortfolioData = useMemo(
     () => ({
+      sheet_id: narrativeSheetId || null,
       tab_name: activePositionsTab || null,
       summary: activeTabSummary,
       portfolio_snapshot: {
@@ -1199,6 +1213,7 @@ export default function MyPage() {
       activePositionsColumns,
       activeTabSummary,
       activePositionsTab,
+      narrativeSheetId,
       leverageExposureWeightPct,
       marketIndices,
       top3WeightPct,
@@ -1213,24 +1228,6 @@ export default function MyPage() {
     portfolioNarrativeAbortRef.current = controller
     let active = true
     setPortfolioNarrativeLoading(true)
-    setPortfolioNarrative(null)
-
-    const fallbackPayload = {
-      headline: 'Portfolio narrative unavailable - refresh to generate a new LLM read.',
-      daily_brief: 'The current panel did not receive a fresh narrative payload. Use Refresh to rerun the model for this tab.',
-      stock_focus: [],
-      portfolio_structure: 'Narrative unavailable until a fresh model response is generated.',
-      watchlist_insight: 'Refresh the panel to rebuild the symbol-level read.',
-      action_advice: 'Refresh to request a new portfolio narrative.',
-      risk_flags: ['narrative_unavailable'],
-      summary: 'Narrative unavailable - refresh to regenerate.',
-      structure: 'Narrative unavailable',
-      risk: 'Narrative unavailable',
-      alignment: 'Narrative unavailable',
-      action: 'Refresh the panel to retry the portfolio analysis.',
-      tqqq: 'Narrative unavailable',
-      footerLabel: 'RISK FLAGS',
-    }
 
     try {
       const response = await fetch(`${API_BASE}/api/narrative/portfolio`, {
@@ -1238,10 +1235,14 @@ export default function MyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           force_refresh: forceRefresh,
+          sheet_id: narrativeSheetId || null,
+          subscriber_key: narrativeSheetId || null,
           portfolio_data: activeTabPortfolioData,
           engine_data: {
             tab_name: activePositionsTab || null,
             narrative_version: PORTFOLIO_NARRATIVE_VERSION,
+            sheet_id: narrativeSheetId || null,
+            subscriber_key: narrativeSheetId || null,
             today: new Date().toISOString().slice(0, 10),
             as_of_date: activeTabSummary.as_of_date,
             total_equity: activeTabSummary.total_equity,
@@ -1280,21 +1281,21 @@ export default function MyPage() {
           saved_at: asText(json?.saved_at) || '',
           cache_tab: asText(json?.cache_tab) || asText(json?.tab_name) || activePositionsTab,
           cache_version: asText(json?.cache_version) || PORTFOLIO_NARRATIVE_VERSION,
+          cache_scope: asText(json?.cache_scope) || 'subscriber_daily',
+          cache_namespace: asText(json?.cache_namespace) || '',
         })
         portfolioNarrativeLoadedSignatureRef.current = requestSignature
       } catch {
         if (!active) return
-        setPortfolioNarrative(mapPortfolioNarrative(fallbackPayload))
-        setPortfolioNarrativeMeta({
-          cached: false,
-          cache_mode: 'fallback',
-          cache_date: fmtDateOnly(activeTabAsOfDate) || '',
-          analysis_date: fmtDateOnly(activeTabAsOfDate) || '',
-          generated_at: new Date().toISOString(),
-          saved_at: new Date().toISOString(),
-          cache_tab: activePositionsTab,
-          cache_version: PORTFOLIO_NARRATIVE_VERSION,
-        })
+        setPortfolioNarrativeMeta((prev) =>
+          prev
+            ? {
+                ...prev,
+                cached: true,
+                cache_mode: 'sticky_on_error',
+              }
+            : prev,
+        )
         portfolioNarrativeLoadedSignatureRef.current = requestSignature
       } finally {
       if (active) {
@@ -1383,9 +1384,9 @@ export default function MyPage() {
   )
 
   const portfolioNarrativeDate = fmtDateOnly(
-    portfolioNarrativeMeta?.analysis_date ||
+    portfolioNarrativeMeta?.generated_at ||
+      portfolioNarrativeMeta?.analysis_date ||
       portfolioNarrativeMeta?.cache_date ||
-      portfolioNarrativeMeta?.generated_at ||
       activeTabAsOfDate,
   )
 

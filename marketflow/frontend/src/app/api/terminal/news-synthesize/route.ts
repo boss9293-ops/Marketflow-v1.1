@@ -19,6 +19,8 @@ export const dynamic = 'force-dynamic'
 
 type NewsInputItem = {
   id: string
+  dateET?: string
+  publishedAtET?: string
   timeET: string
   headline: string
   summary: string
@@ -55,6 +57,7 @@ const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 const OPENAI_API = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL = 'gpt-4o-mini'
+const SYNTH_CACHE_VERSION = 'v2_price_bound'
 
 const stripCodeFences = (value: string): string =>
   value.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim()
@@ -639,13 +642,14 @@ const buildDigestPrompt = (
     `Symbol: ${symbol}`,
     `Company name: ${companyNameBlock}`,
     `Market context: ${marketContextBlock}`,
-    `Date ET: ${dateBlock}`,
+    `Selected session date ET: ${dateBlock}`,
     `Price: ${priceBlock}`,
     `Change: ${changeBlock}`,
     '',
     'Write one digest note for the whole batch, not separate item notes.',
     'Use the rendered narrative draft and narrative spine as the only primary sources.',
     'Do not repeat headlines or mention raw items.',
+    'When item timing matters, prefer each item publishedAtET over the selected session date.',
     'The output should read like a Terminal X daily note: explanation-first, not headline-first.',
     'Use the spine fields in this priority order: PRICE, CATALYST, TIMELINE, NUMBERS, RISK. Name the actual news events. Reference INSTITUTION or RELATIVE_VIEW only if they directly explain the price move.',
     'Keep the narrative anchored to specific news events, price reaction, and concrete numbers. Reference market indices only if the stock moved against the tape.',
@@ -887,12 +891,24 @@ const buildUserPrompt = (
   const eventCardsBlock = eventCardsJson?.trim() || '[]'
   const narrativePlanBlock = narrativePlanJson?.trim() || '{}'
   const layerHint = 'Primary sources are EVENT CARDS and NARRATIVE PLAN; raw items are supporting evidence only.'
+  const formatPublishedAtText = (item: ItemBlock['item']): string => {
+    const raw = item.publishedAtET?.trim()
+    if (raw) return raw
+    const date = item.dateET?.trim() || ''
+    const time = item.timeET?.trim() || ''
+    if (date && time) return `${date}T${time}:00 ET`
+    if (date) return date
+    if (time) return `${time} ET`
+    return 'N/A'
+  }
 
   const itemText = items
     .map(({ item, sessionHint }, index) =>
       [
         `[ITEM-${index}]`,
         `id: ${item.id}`,
+        `dateET: ${item.dateET || 'N/A'}`,
+        `publishedAtET: ${formatPublishedAtText(item)}`,
         `session_hint: ${sessionHint}`,
         `timeET: ${item.timeET}`,
         `headline: ${item.headline || ''}`,
@@ -912,6 +928,7 @@ const buildUserPrompt = (
       'Lead with the actual news event (what was announced or decided).',
       'Connect related items sharing the same catalyst into one storyline.',
       layerHint,
+      'Use publishedAtET as the primary timing field. If dateET and publishedAtET differ, trust publishedAtET for the article timestamp and dateET only for session grouping.',
       'Use market context only to explain price reaction, not to repeat it.',
       'Morning items: emphasize premarket and open implications in Korean.',
       'Afternoon items: emphasize session reaction and next checkpoint in Korean.',
@@ -938,6 +955,7 @@ const buildUserPrompt = (
     layerHint,
     'Keep each item to 3 to 5 sentences, preserve the input order, and keep the original ids.',
     'Korean outputs should target 300 to 400 characters excluding spaces. English outputs should target around 600 characters excluding spaces.',
+    'Use publishedAtET as the primary timing field. If dateET and publishedAtET differ, trust publishedAtET for the article timestamp and dateET only for session grouping.',
     'Use the market context only to explain why the item matters; do not restate it mechanically.',
     'Morning-like items should emphasize premarket/open implications; afternoon-like items should emphasize session reaction and the next checkpoint.',
     'Return JSON only: {"items":[{"id":"...","text":"..."}]}',
@@ -1433,11 +1451,14 @@ function saveDeeplFileCache(cache: Record<string, string>): void {
   catch (err) { console.error('[deepl-cache] write error:', err) }
 }
 
-async function translateToKoViaDeepl(enText: string, symbol: string, dateET: string): Promise<string | null> {
+const cachePriceKey = (price?: number | null): string =>
+  price != null && Number.isFinite(price) ? price.toFixed(2) : 'na'
+
+async function translateToKoViaDeepl(enText: string, symbol: string, dateET: string, priceKey: string): Promise<string | null> {
   const DEEPL_KEY = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
   if (!DEEPL_KEY) return null
 
-  const cacheKey = `${symbol}:${dateET}`
+  const cacheKey = `${symbol}:${dateET}:${SYNTH_CACHE_VERSION}:${priceKey}`
   let fileCache = pruneToTradingDays(loadDeeplFileCache(), dateET)
   if (fileCache[cacheKey]) {
     console.log(`[deepl] cache hit: ${cacheKey}`)
@@ -1459,8 +1480,8 @@ async function translateToKoViaDeepl(enText: string, symbol: string, dateET: str
 }
 
 
-function getSynthCacheKey(symbol: string, dateET: string, lang: string) {
-  return `${symbol}:${dateET}:${lang}`
+function getSynthCacheKey(symbol: string, dateET: string, lang: string, priceKey: string) {
+  return `${symbol}:${dateET}:${lang}:${SYNTH_CACHE_VERSION}:${priceKey}`
 }
 
 function cleanSynthCache(keepDateET: string) {
@@ -1524,7 +1545,10 @@ const buildBriefUserPromptKO = (
 ): string => {
   const itemLines = items
     .slice(0, 15)
-    .map(it => `${it.timeET || ''} — ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`)
+    .map(it => {
+      const timestamp = it.publishedAtET?.trim() || (it.dateET && it.timeET ? `${it.dateET} ${it.timeET}` : it.timeET || '')
+      return `${timestamp} — ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`
+    })
     .join('\n')
   const template = koPct
     ? `${koName}(${symbol})는 [핵심 이벤트]로 ${koPct} ${koDir}하며${koPrice} 마감했다.`
@@ -1551,7 +1575,10 @@ const buildBriefUserPromptEN = (
 ): string => {
   const itemLines = items
     .slice(0, 15)
-    .map(it => `${it.timeET || ''} — ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`)
+    .map(it => {
+      const timestamp = it.publishedAtET?.trim() || (it.dateET && it.timeET ? `${it.dateET} ${it.timeET}` : it.timeET || '')
+      return `${timestamp} — ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`
+    })
     .join('\n')
   return [
     `Symbol: ${symbol}`,
@@ -1578,6 +1605,7 @@ async function synthesizeBatch(
 ): Promise<SynthesizedItem[]> {
   const selected = selectRelevantItems(batch, symbol, companyName)
   if (selected.length === 0) return []
+  const priceKey = cachePriceKey(price)
 
   // Build price-lead first sentence
   const direction = (changePct ?? 0) > 0 ? 'up' : (changePct ?? 0) < 0 ? 'down' : 'unchanged'
@@ -1594,7 +1622,7 @@ async function synthesizeBatch(
 
   // Check in-memory cache
   const effectiveDateET = dateET || getCurrentEtDate()
-  const cacheKey = getSynthCacheKey(symbol, effectiveDateET, lang)
+  const cacheKey = getSynthCacheKey(symbol, effectiveDateET, lang, priceKey)
   const cached = synthCache.get(cacheKey)
   if (cached && Date.now() - cached.cachedAt < SYNTH_CACHE_TTL_MS) {
     return cached.result
@@ -1602,7 +1630,7 @@ async function synthesizeBatch(
   cleanSynthCache(effectiveDateET)
 
   // EN file cache check — zero token cost on hit
-  const enCacheKey = `${symbol}:${effectiveDateET}`
+  const enCacheKey = `${symbol}:${effectiveDateET}:${SYNTH_CACHE_VERSION}:${priceKey}`
   let enFileCache = loadSynthEnCache()
   const cachedEN = enFileCache[enCacheKey]
   let enText: string
@@ -1650,7 +1678,7 @@ async function synthesizeBatch(
   }
 
   // KO: DeepL translation (file-cached per 5 trading days) — zero token cost
-  const koText = await translateToKoViaDeepl(enText, symbol, effectiveDateET) ?? leadSentence
+  const koText = await translateToKoViaDeepl(enText, symbol, effectiveDateET, priceKey) ?? leadSentence
   const result = [{ id: selected[0].id, text: koText, signal }]
   synthCache.set(cacheKey, { result, cachedAt: Date.now() })
   return result
@@ -1689,6 +1717,8 @@ export async function POST(req: Request) {
     .slice(0, MAX_ITEMS_PER_BATCH)
     .map((item, index) => ({
       id: String(item.id || `item-${index}`),
+      dateET: typeof item.dateET === 'string' ? item.dateET.trim() : '',
+      publishedAtET: typeof item.publishedAtET === 'string' ? item.publishedAtET.trim() : '',
       timeET: String(item.timeET || (index % 2 === 0 ? '09:30' : '16:30')),
       headline: String(item.headline || '').trim(),
       summary: String(item.summary || '').trim(),

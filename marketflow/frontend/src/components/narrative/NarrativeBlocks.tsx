@@ -21,6 +21,7 @@ type NarrativeBlockProps = {
 }
 
 const PORTFOLIO_CLASSIFICATIONS = ['Aligned', 'Overexposed', 'Fragile', 'Defensive'] as const
+const PORTFOLIO_SUBTHEMES_MAX_ITEMS = 10
 
 function pickText(value: unknown): string {
   if (value == null) return ''
@@ -191,7 +192,7 @@ export function mapPortfolioNarrative(raw: unknown): StructuredNarrative | null 
   const riskFlags = pickList(record.risk_flags || record.riskFlags)
   const stockFocus = pickStockFocus(record.stock_focus || record.stockFocus)
   const subThemes = isAccountManager
-    ? (stockFocus.length > 0 ? stockFocus.slice(0, 4) : [dailyBrief].filter(Boolean))
+    ? (stockFocus.length > 0 ? stockFocus.slice(0, PORTFOLIO_SUBTHEMES_MAX_ITEMS) : [dailyBrief].filter(Boolean))
     : pickList(record.sub_themes || record.subThemes || [structure, risk, alignment])
   const interpretation = isAccountManager ? dailyBrief || structure || title : joinParagraph(structure, alignment) || title
   const action = pickText(record.action_advice || record.action || record.guidance || record.rebalance_action)

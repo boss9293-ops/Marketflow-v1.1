@@ -44,6 +44,21 @@ const SENTIMENT_BG = {
   neutral: 'bg-amber-500/10 border-amber-500/30',
 }
 
+function formatEtTimestamp(value: string): string {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.valueOf())) return value || 'N/A'
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short',
+  }).format(parsed)
+}
+
 function SignalBars({ value }: { value: number }) {
   return (
     <span className="inline-flex gap-0.5 items-end">
@@ -61,7 +76,7 @@ function SignalBars({ value }: { value: number }) {
 }
 
 function BriefCard({ day }: { day: TickerBriefDay }) {
-  const { price, brief, sentiment, signal_strength, events, date } = day
+  const { price, brief, sentiment, signal_strength, events, date, generated_at } = day
   const change = price?.change1d ?? 0
   const close = price?.close ?? 0
   const dir = change >= 0 ? '+' : ''
@@ -73,8 +88,9 @@ function BriefCard({ day }: { day: TickerBriefDay }) {
     <div className={`rounded-lg border p-4 space-y-3 ${SENTIMENT_BG[sentiment]}`}>
       {/* Header row */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-500 font-mono">{date}</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-zinc-500 font-mono">Brief date ET: {date}</span>
+          <span className="text-xs text-zinc-600 font-mono">Generated ET: {formatEtTimestamp(generated_at)}</span>
           <span className={`text-xs font-semibold uppercase ${SENTIMENT_COLOR[sentiment]}`}>
             {sentiment}
           </span>
@@ -192,7 +208,7 @@ export default function TickerBriefPanel({ symbol }: { symbol: string }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-zinc-300 tracking-wider uppercase">
-          {symbol} · EOD Brief
+          {symbol} EOD Brief
         </h3>
         <span className="text-xs text-zinc-600">{briefs.length}d</span>
       </div>

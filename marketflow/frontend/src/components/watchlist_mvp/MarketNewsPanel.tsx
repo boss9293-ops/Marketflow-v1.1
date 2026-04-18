@@ -28,6 +28,28 @@ const formatEtDateLabel = (dateET: string): string => {
   }).format(parsed)
 }
 
+const formatPublishedEtLabel = (publishedAtET: string, fallbackTimeET?: string): string => {
+  const raw = publishedAtET?.trim()
+  if (raw) {
+    const parsed = new Date(raw)
+    if (!Number.isNaN(parsed.valueOf())) {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+        timeZoneName: 'short',
+      }).format(parsed)
+    }
+    return raw
+  }
+  return fallbackTimeET ? `${fallbackTimeET} ET` : 'N/A'
+}
+
 const getHeadlineEpoch = (item: MarketNewsPanelProps['headlines'][number]): number => {
   const ts = Date.parse(item.publishedAtET || '')
   if (Number.isFinite(ts)) return ts
@@ -70,7 +92,7 @@ export default function MarketNewsPanel({
   return (
     <article className={styles.marketPanel}>
       <p className={styles.panelLabel}>Daily Headlines</p>
-      <p className={styles.panelSubtle}>One ET day for now | headline, source, time, and links only</p>
+      <p className={styles.panelSubtle}>One ET day for now | each card shows the publish timestamp</p>
       {!isLoading && (
         <div className={styles.feedHealthRow}>
           <span className={`${styles.feedHealthBadge} ${getStatusClassName(health?.status)}`}>
@@ -117,7 +139,9 @@ export default function MarketNewsPanel({
               className={`${styles.headlineCard} ${index === 0 ? styles.breakingHeadlineCard : ''}`}
             >
               <div className={styles.headlineTop}>
-                <p className={index === 0 ? styles.breakingHeadlineTime : styles.headlineTime}>{item.timeET}</p>
+                <p className={index === 0 ? styles.breakingHeadlineTime : styles.headlineTime}>
+                  Published ET: {formatPublishedEtLabel(item.publishedAtET, item.timeET)}
+                </p>
                 <span className={styles.headlineAction}>Open {'>'}</span>
               </div>
               <p className={styles.headlineText}>{item.headline}</p>

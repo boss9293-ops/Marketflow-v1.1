@@ -55,6 +55,7 @@ type CenterPanelProps = {
   todayHigh: number | null
   todayLow: number | null
   todayClose: number | null
+  todayCloseSymbol: string | null
   todayVolume: number | null
 }
 
@@ -310,6 +311,37 @@ const formatTerminalDateLabel = (dateET: ETDateString): string => {
   return `${dateET}  ${weekday}`
 }
 
+const formatPublishedEtLabel = (
+  publishedAtET: string,
+  fallbackDateET?: string,
+  fallbackTimeET?: string,
+): string => {
+  const raw = publishedAtET?.trim()
+  if (raw) {
+    const parsed = new Date(raw)
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+        timeZoneName: 'short',
+      }).format(parsed)
+    }
+    return raw
+  }
+  const date = fallbackDateET?.trim() || ''
+  const time = fallbackTimeET?.trim() || ''
+  if (date && time) return `${date} ${time} ET`
+  if (date) return date
+  if (time) return `${time} ET`
+  return 'N/A'
+}
+
 const formatTimelineDateHeader = (dateKey: string): string => {
   const parsed = new Date(`${dateKey}T00:00:00Z`)
   if (Number.isNaN(parsed.getTime())) return dateKey
@@ -381,6 +413,7 @@ export default function CenterPanel({
   todayHigh,
   todayLow,
   todayClose,
+  todayCloseSymbol,
   todayVolume,
 }: CenterPanelProps) {
   const dateLabel = useMemo(() => formatTerminalDateLabel(dateET), [dateET])
@@ -465,11 +498,12 @@ export default function CenterPanel({
     setIsSynthesizingKO(false)
     setExpandedItems(new Set())
     setSynthSignal(new Map())
-  }, [dateET, selectedSymbol])
+  }, [dateET, selectedSymbol, todayClose, todayCloseSymbol])
 
   // EN auto synthesis — only when EN mode
   useEffect(() => {
     if (langMode !== 'EN') return
+    if (todayClose == null || todayCloseSymbol !== selectedSymbol) return
     const pendingGroups = groupedTimeline.filter(g =>
       g.items.some(item => !synthENRequested.current.has(item.id))
     )
@@ -483,10 +517,16 @@ export default function CenterPanel({
           const groupPending = group.items.filter(item => !synthENRequested.current.has(item.id))
           if (!groupPending.length) return
           groupPending.forEach(item => synthENRequested.current.add(item.id))
-          const isToday = group.dateKey === dateET
-          const digestPrice = todayClose ?? parseLooseNumber(selectedItem?.lastPrice) ?? null
+          const digestPrice = todayClose
           const digestChangePct = parseLooseNumber(selectedItem?.changePercent) ?? null
-          const payload = groupPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
+          const payload = groupPending.map(item => ({
+            id: item.id,
+            dateET: item.dateET,
+            publishedAtET: item.publishedAtET,
+            timeET: item.timeET,
+            headline: item.headline ?? '',
+            summary: item.summary ?? '',
+          }))
           const res = await fetch('/api/terminal/news-synthesize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -524,12 +564,13 @@ export default function CenterPanel({
       }
     }
     void runAll()
-  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose])
+  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol])
 
   // KR 踰꾪듉 ?대┃ ???쒓뎅???⑹꽦
   // KO synthesis — one call per date group (triggered on langMode=KR)
   useEffect(() => {
     if (langMode !== 'KR') return
+    if (todayClose == null || todayCloseSymbol !== selectedSymbol) return
     const pendingGroups = groupedTimeline.filter(g =>
       g.items.some(item => !synthKORequested.current.has(item.id))
     )
@@ -543,10 +584,16 @@ export default function CenterPanel({
           const groupPending = group.items.filter(item => !synthKORequested.current.has(item.id))
           if (!groupPending.length) return
           groupPending.forEach(item => synthKORequested.current.add(item.id))
-          const isToday = group.dateKey === dateET
-          const digestPrice = todayClose ?? parseLooseNumber(selectedItem?.lastPrice) ?? null
+          const digestPrice = todayClose
           const digestChangePct = parseLooseNumber(selectedItem?.changePercent) ?? null
-          const payload = groupPending.map(item => ({ id: item.id, timeET: item.timeET, headline: item.headline ?? '', summary: item.summary ?? '' }))
+          const payload = groupPending.map(item => ({
+            id: item.id,
+            dateET: item.dateET,
+            publishedAtET: item.publishedAtET,
+            timeET: item.timeET,
+            headline: item.headline ?? '',
+            summary: item.summary ?? '',
+          }))
           const res = await fetch('/api/terminal/news-synthesize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -584,7 +631,7 @@ export default function CenterPanel({
       }
     }
     void runAll()
-  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose])
+  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol])
 
   useEffect(() => {
     setExportStatus('idle')
@@ -690,7 +737,7 @@ export default function CenterPanel({
           </div>
         </div>
         <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b', fontWeight: 500, letterSpacing: '0.01em' }}>
-          {dateLabel}
+          Selected ET session: {dateLabel}
         </p>
       </header>
 
@@ -729,7 +776,7 @@ export default function CenterPanel({
                         const bodyText = stripLeadingTerminalNumbering(synthText)
                         const isFirstItem = groupIndex === 0 && itemIndex === 0
                         const isExpanded = isFirstItem || expandedItems.has(item.id)
-                        const timeLabel = item.timeET ? item.timeET + ' EDT' : ''
+                        const timeLabel = formatPublishedEtLabel(item.publishedAtET, item.dateET, item.timeET)
                         const signal = synthSignal.get(item.id)
                         const signalColor = signal === 'bull' ? '#4ade80' : signal === 'bear' ? '#f87171' : '#94a3b8'
                         const signalBg = signal === 'bull' ? 'rgba(34,197,94,0.1)' : signal === 'bear' ? 'rgba(239,68,68,0.1)' : 'rgba(148,163,184,0.08)'
@@ -757,7 +804,7 @@ export default function CenterPanel({
                                   fontFamily: 'var(--font-mono, monospace)',
                                   letterSpacing: '0.06em',
                                 }}>
-                                  {timeLabel}
+                                  Published ET: {timeLabel}
                                 </p>
                               )}
                               {signal && (

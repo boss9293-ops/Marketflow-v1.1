@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import time
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -27,6 +28,8 @@ narrative_bp = Blueprint("narrative", __name__)
 
 _WATCHLIST_CACHE_TTL_SEC = 60 * 30
 _WATCHLIST_CACHE: Dict[str, Dict[str, Any]] = {}
+_TICKER_BRIEF_REFRESH_LOCK = threading.Lock()
+_TICKER_BRIEF_REFRESH_IN_FLIGHT = False
 _PORTFOLIO_NARRATIVE_CACHE_DIR = Path(__file__).resolve().parents[1] / "output" / "cache" / "portfolio_narratives"
 _PORTFOLIO_NARRATIVE_VERSION = "news_first_v3"
 _TICKER_BRIEF_INDEX_PATH = Path(__file__).resolve().parents[1] / "output" / "cache" / "ticker_brief_index.json"
@@ -96,6 +99,42 @@ def _safe_slug(value: Any) -> str:
     return text or "portfolio"
 
 
+def _extract_portfolio_cache_owner(
+    payload: Dict[str, Any],
+    engine_data: Dict[str, Any],
+    portfolio_data: Dict[str, Any],
+) -> str:
+    keys = (
+        "subscriber_key",
+        "cache_namespace",
+        "sheet_id",
+        "sheetId",
+        "account_id",
+        "user_id",
+        "member_id",
+    )
+    for source in (engine_data, payload, portfolio_data):
+        if not isinstance(source, dict):
+            continue
+        for key in keys:
+            value = source.get(key)
+            if value is None:
+                continue
+            text = str(value).strip()
+            if text:
+                return text
+    header_value = str(request.headers.get("X-Subscriber-Key") or "").strip()
+    if header_value:
+        return header_value
+    return "global"
+
+
+def _portfolio_cache_namespace(owner: str) -> str:
+    raw = str(owner or "global").strip().lower() or "global"
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+    return f"sub_{digest}"
+
+
 def _portfolio_cache_date(engine_data: Dict[str, Any], portfolio_data: Dict[str, Any]) -> str:
     return datetime.now().date().isoformat()
 
@@ -113,14 +152,39 @@ def _portfolio_analysis_date(engine_data: Dict[str, Any], portfolio_data: Dict[s
 
 
 def _portfolio_cache_path(
+    cache_namespace: str,
     tab_name: str,
     cache_date: str,
     positions_hash: str = "",
     narrative_version: str = _PORTFOLIO_NARRATIVE_VERSION,
 ) -> Path:
-    suffix = f"_{positions_hash}" if positions_hash else ""
+    raw_tab_name = str(tab_name or "portfolio").strip() or "portfolio"
+    tab_folder = f"{_safe_slug(raw_tab_name)}_{hashlib.sha1(raw_tab_name.encode('utf-8')).hexdigest()[:8]}"
     version_suffix = f"_{_safe_slug(narrative_version)}" if narrative_version else ""
-    return _PORTFOLIO_NARRATIVE_CACHE_DIR / _safe_slug(tab_name) / f"{cache_date}{version_suffix}{suffix}.json"
+    return (
+        _PORTFOLIO_NARRATIVE_CACHE_DIR
+        / _safe_slug(cache_namespace)
+        / tab_folder
+        / f"{cache_date}{version_suffix}.json"
+    )
+
+
+def _load_latest_portfolio_cache_for_tab(
+    cache_namespace: str,
+    tab_name: str,
+    narrative_version: str = _PORTFOLIO_NARRATIVE_VERSION,
+) -> Dict[str, Any] | None:
+    sample_path = _portfolio_cache_path(cache_namespace, tab_name, "1970-01-01", "", narrative_version)
+    tab_dir = sample_path.parent
+    if not tab_dir.exists() or not tab_dir.is_dir():
+        return None
+    pattern = f"*_{_safe_slug(narrative_version)}*.json" if narrative_version else "*.json"
+    candidates = sorted(tab_dir.glob(pattern), key=lambda p: p.name, reverse=True)
+    for path in candidates:
+        cached = _load_portfolio_cache(path)
+        if isinstance(cached, dict):
+            return cached
+    return None
 
 
 def _load_portfolio_cache(path: Path) -> Dict[str, Any] | None:
@@ -164,6 +228,25 @@ def _refresh_ticker_briefs() -> None:
                 print(f"[narrative] ticker brief refresh failed rc={proc.returncode}: {tail[-2000:]}")
     except Exception as exc:
         print(f"[narrative] ticker brief refresh error: {exc}")
+
+
+def _kickoff_ticker_brief_refresh_async(reason: str) -> None:
+    global _TICKER_BRIEF_REFRESH_IN_FLIGHT
+    with _TICKER_BRIEF_REFRESH_LOCK:
+        if _TICKER_BRIEF_REFRESH_IN_FLIGHT:
+            return
+        _TICKER_BRIEF_REFRESH_IN_FLIGHT = True
+
+    def _runner() -> None:
+        global _TICKER_BRIEF_REFRESH_IN_FLIGHT
+        try:
+            print(f"[narrative] ticker brief refresh scheduled ({reason})")
+            _refresh_ticker_briefs()
+        finally:
+            with _TICKER_BRIEF_REFRESH_LOCK:
+                _TICKER_BRIEF_REFRESH_IN_FLIGHT = False
+
+    threading.Thread(target=_runner, daemon=True).start()
 
 
 def _save_portfolio_cache(path: Path, payload: Dict[str, Any]) -> None:
@@ -252,29 +335,63 @@ def narrative_portfolio():
         force_refresh = _coerce_bool(payload_dict.get("force_refresh") or payload_dict.get("refresh") or engine_data.get("force_refresh") or engine_data.get("refresh"))
         tab_name = str(engine_data.get("tab_name") or portfolio_data.get("tab_name") or portfolio_data.get("name") or "portfolio").strip() or "portfolio"
         narrative_version = str(engine_data.get("narrative_version") or payload_dict.get("narrative_version") or _PORTFOLIO_NARRATIVE_VERSION).strip() or _PORTFOLIO_NARRATIVE_VERSION
+        cache_owner = _extract_portfolio_cache_owner(payload_dict, engine_data, portfolio_data)
+        cache_namespace = _portfolio_cache_namespace(cache_owner)
         cache_date = _portfolio_cache_date(engine_data, portfolio_data)
         analysis_date = _portfolio_analysis_date(engine_data, portfolio_data, cache_date)
         _positions_raw = portfolio_data.get("positions") or []
         _pos_symbols = sorted({str(p.get("symbol","")).upper() for p in _positions_raw if p.get("symbol")})
         positions_hash = hashlib.sha1(json.dumps(_pos_symbols).encode()).hexdigest()[:8]
-        cache_path = _portfolio_cache_path(tab_name, cache_date, positions_hash, narrative_version)
+        cache_path = _portfolio_cache_path(cache_namespace, tab_name, cache_date, positions_hash, narrative_version)
 
         if not force_refresh:
-            cached = _load_portfolio_cache(cache_path)
-            if isinstance(cached, dict) and str(cached.get("cache_version") or narrative_version) == narrative_version:
-                cached = dict(cached)
-                cached["cached"] = True
-                cached.setdefault("cache_mode", "daily")
-                cached.setdefault("cache_date", cache_date)
-                cached.setdefault("analysis_date", analysis_date)
-                cached.setdefault("cache_tab", tab_name)
-                cached.setdefault("cache_version", narrative_version)
-                return jsonify(cached), 200
+            cached_today = _load_portfolio_cache(cache_path)
+            if isinstance(cached_today, dict) and str(cached_today.get("cache_version") or narrative_version) == narrative_version:
+                cached_today = dict(cached_today)
+                cached_today["cached"] = True
+                cached_today.setdefault("cache_mode", "daily")
+                cached_today.setdefault("cache_date", cache_date)
+                cached_today.setdefault("analysis_date", analysis_date)
+                cached_today.setdefault("cache_tab", tab_name)
+                cached_today.setdefault("cache_version", narrative_version)
+                cached_today.setdefault("cache_scope", "subscriber_daily")
+                cached_today.setdefault("cache_namespace", cache_namespace)
+                cached_today.setdefault("positions_hash", positions_hash)
+                return jsonify(cached_today), 200
 
-        if force_refresh or not _ticker_brief_index_is_fresh():
-            _refresh_ticker_briefs()
+            # Sticky cache policy: keep showing the last generated tab narrative
+            # until the subscriber explicitly refreshes on a later day.
+            cached_latest = _load_latest_portfolio_cache_for_tab(cache_namespace, tab_name, narrative_version)
+            if isinstance(cached_latest, dict) and str(cached_latest.get("cache_version") or narrative_version) == narrative_version:
+                cached_latest = dict(cached_latest)
+                cached_latest["cached"] = True
+                cached_latest.setdefault("cache_mode", "sticky")
+                cached_latest.setdefault("cache_tab", tab_name)
+                cached_latest.setdefault("cache_version", narrative_version)
+                cached_latest.setdefault("cache_scope", "subscriber_daily")
+                cached_latest.setdefault("cache_namespace", cache_namespace)
+                cached_latest.setdefault("positions_hash", positions_hash)
+                return jsonify(cached_latest), 200
 
-        result = generate_portfolio(portfolio_data, engine_data)
+        if not _ticker_brief_index_is_fresh():
+            _kickoff_ticker_brief_refresh_async(f"portfolio_request:{tab_name}")
+
+        try:
+            result = generate_portfolio(portfolio_data, engine_data)
+        except Exception:
+            rescue = _load_portfolio_cache(cache_path) or _load_latest_portfolio_cache_for_tab(cache_namespace, tab_name, narrative_version)
+            if isinstance(rescue, dict):
+                rescue = dict(rescue)
+                rescue["cached"] = True
+                rescue["cache_mode"] = "rescue"
+                rescue.setdefault("cache_tab", tab_name)
+                rescue.setdefault("cache_version", narrative_version)
+                rescue.setdefault("cache_scope", "subscriber_daily")
+                rescue.setdefault("cache_namespace", cache_namespace)
+                rescue.setdefault("positions_hash", positions_hash)
+                rescue.setdefault("analysis_date", analysis_date)
+                return jsonify(rescue), 200
+            raise
         generated_at = datetime.now().isoformat(timespec="seconds")
         response = {
             **result,
@@ -283,6 +400,9 @@ def narrative_portfolio():
             "cache_date": cache_date,
             "cache_tab": tab_name,
             "cache_version": narrative_version,
+            "cache_scope": "subscriber_daily",
+            "cache_namespace": cache_namespace,
+            "positions_hash": positions_hash,
             "analysis_date": analysis_date,
             "generated_at": generated_at,
             "saved_at": generated_at,

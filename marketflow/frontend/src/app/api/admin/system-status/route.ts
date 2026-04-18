@@ -12,9 +12,9 @@ const OUTPUT_DIRS = [
 type CategoryId = 'DATA' | 'BUILD' | 'CACHE' | 'AI' | 'FRONTEND';
 
 const MODULE_DEFS = [
-  { id: 'price_feed', file: 'market_tape.json', expected_interval: 60, impact: ['risk_build', 'vr_build', 'dashboard'], category: 'Data Intake', stage: 'DATA' },
+  { id: 'price_feed', file: 'cache/market_tape.json', expected_interval: 60, impact: ['risk_build', 'vr_build', 'dashboard'], category: 'Data Intake', stage: 'DATA' },
   { id: 'fred_macro', file: 'current_90d.json', expected_interval: 1440, impact: ['macro_build', 'risk_build'], category: 'Data Intake', stage: 'DATA' },
-  { id: 'volatility_feed', file: 'market_tape.json', expected_interval: 60, impact: ['risk_build'], category: 'Data Intake', stage: 'DATA' },
+  { id: 'volatility_feed', file: 'cache/market_tape.json', expected_interval: 60, impact: ['risk_build'], category: 'Data Intake', stage: 'DATA' },
 
   { id: 'macro_build', file: 'current_90d.json', expected_interval: 1440, impact: ['risk_build', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
   { id: 'risk_build', file: 'risk_v1.json', expected_interval: 1440, impact: ['vr_build', 'ai_std_risk', 'ai_integrated'], category: 'Build Layer', stage: 'BUILD' },
@@ -28,7 +28,7 @@ const MODULE_DEFS = [
 
   { id: 'risk_v1.json', file: 'risk_v1.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
   { id: 'vr_survival.json', file: 'vr_survival.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
-  { id: 'overview.json', file: 'overview_home.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
+  { id: 'overview.json', file: 'cache/overview_home.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
 ];
 
 async function getFileStat(filename: string) {

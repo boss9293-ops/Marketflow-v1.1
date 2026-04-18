@@ -211,7 +211,7 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
             onClick={() => onChange(l)}
             style={{
               background: active ? 'rgba(215,255,63,0.13)' : 'transparent',
-              color: active ? '#d7ff3f' : '#475569',
+              color: active ? '#d7ff3f' : '#94a3b8',
               border: 'none',
               borderRight: idx === 0 ? '1px solid rgba(215,255,63,0.14)' : 'none',
               padding: '5px 13px',
@@ -403,8 +403,12 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
       display: 'flex', flexDirection: 'column', gap: 24 }}>
 
       {/* ?? Header ??????????????????????????????????????????????????????????? */}
-      <div style={{ display: 'flex', alignItems: 'flex-start',
-        justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 10,
+      }}>
         <div>
           <div style={{
             fontFamily: MONO_FONT,
@@ -432,7 +436,7 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
           {genStatus && <span style={{ fontSize: rem(0.88), color: '#64748b' }}>{genStatus}</span>}
           <button onClick={() => handleGenerate(false, lang)} disabled={generating} style={{
             background: 'transparent', border: '1px solid rgba(148,163,184,0.15)',
-            color: '#475569', borderRadius: 5, padding: '7px 14px', fontSize: rem(0.8),
+            color: '#94a3b8', borderRadius: 5, padding: '7px 14px', fontSize: rem(0.8),
             fontFamily: MONO_FONT,
             cursor: generating ? 'not-allowed' : 'pointer', letterSpacing: '0.08em',
           }}>

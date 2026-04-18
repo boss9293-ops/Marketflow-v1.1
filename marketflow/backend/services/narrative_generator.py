@@ -128,6 +128,7 @@ ACCOUNT_MANAGER_SCHEMA = {
 }
 
 PORTFOLIO_SCHEMA = ACCOUNT_MANAGER_SCHEMA
+PORTFOLIO_STOCK_FOCUS_MAX_ITEMS = 10
 
 
 ACCOUNT_MANAGER_OUTPUT_SCHEMA = {
@@ -138,7 +139,7 @@ ACCOUNT_MANAGER_OUTPUT_SCHEMA = {
         "stock_focus": {
             "type": "array",
             "minItems": 1,
-            "maxItems": 4,
+            "maxItems": PORTFOLIO_STOCK_FOCUS_MAX_ITEMS,
             "items": {
                 "type": "object",
                 "properties": {
@@ -1316,7 +1317,7 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
     daily_brief = " ".join(daily_brief_bits).strip() or "Read the account symbol by symbol; the structure is concentrated."
 
     focus_items: List[Dict[str, Any]] = []
-    for item in holdings[:4]:
+    for item in holdings[:PORTFOLIO_STOCK_FOCUS_MAX_ITEMS]:
         if not isinstance(item, dict):
             continue
         symbol = _safe_str(item.get("symbol"))
@@ -1680,6 +1681,7 @@ def generate_portfolio(portfolio_data: dict, engine_data: dict) -> dict:
             "If tab_name is present in the input, analyze only that tab and do not mix in other tabs or the aggregate account.",
             "Treat the holdings table as today's selected-tab positions table, not a pooled book from other tabs.",
             "Use symbol_news as the primary evidence. Prefer direct_ticker items over market_context items, and avoid market_context news unless a holding has no direct news at all.",
+            f"stock_focus should include up to {PORTFOLIO_STOCK_FOCUS_MAX_ITEMS} symbols from the selected tab. If holdings are fewer than that, cover all holdings.",
             "Make stock_focus the primary narrative. Each stock_focus item should describe one symbol's move, the nearby catalyst or news, and whether it is above SPY, below SPY, or aligned with SPY.",
             "Do not write a chapter-style account overview. Keep daily_brief to one sentence, and keep portfolio_structure and watchlist_insight short enough to read like a terminal note.",
             "If position_count is greater than zero, never describe the account as no holdings or cash-only; headline must anchor on the top holding or dominant risk instead.",

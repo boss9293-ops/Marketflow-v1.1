@@ -37,6 +37,7 @@ SCRIPT_TIMEOUTS: dict[str, int] = {
     "build_snapshots_120d.py": 600, # 10 min — 120-day rolling series
     "backfill_macro_snapshots.py": 3600, # 60 min bootstrap on cold start
     "build_risk_alert.py":         600,  # 10 min — historical crash event scan
+    "build_vr_survival.py":        600,  # 10 min — survival cache generation
     "build_navigator_full_snapshots.py": 600, # 10 min — 2Y/5Y snapshot series
     "rrg_calculator.py":           120,  #  2 min — RRG via yfinance
     "build_tqqq_dca.py":           120,  #  2 min — DCA backtest compute
@@ -100,6 +101,7 @@ SCRIPTS = [
     ("risk_engine.py",       "Compute Risk Engine Metrics"),
     ("build_risk_v1.py",     "Build Risk v1 (Standard Risk System)"),
     ("build_risk_alert.py",  "Build Risk Alert System (Crash Engine)"),
+    ("build_vr_survival.py", "Build VR Survival Cache"),
     ("build_current_90d.py",  "Build Current 90-Day Playback (cur90)"),
     ("build_soxx_context.py", "Build SOXX Semiconductor Context"),
     ("build_soxx_survival_playback.py", "Build SOXX Survival Playback Archive"),

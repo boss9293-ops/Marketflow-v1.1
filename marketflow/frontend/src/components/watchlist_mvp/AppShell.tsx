@@ -182,7 +182,32 @@ const isNewsRefreshAllowedET = (now: Date = new Date()): boolean => {
   return !isUsMarketHolidayET(now)
 }
 
+const getMostRecentFridayET = (now: Date = new Date()): ETDateString => {
+  const cursor = new Date(now)
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  }
+  const { weekday } = getEtClockParts(cursor)
+  const currentDow = weekdayMap[weekday] ?? 5
+  const fridayDow = 5
+  const offset = (currentDow - fridayDow + 7) % 7
+  cursor.setDate(cursor.getDate() - offset)
+  const { year, month, day } = getEtClockParts(cursor)
+  return toYmd(year, month, day)
+}
+
 const getLatestTradingDateET = (now: Date = new Date()): ETDateString => {
+  const { weekday } = getEtClockParts(now)
+  if (weekday === 'Sat' || weekday === 'Sun' || isUsMarketHolidayET(now)) {
+    return getMostRecentFridayET(now)
+  }
+
   const { hour, minute } = getEtClockParts(now)
   const currentMinutes = hour * 60 + minute
   // Before market close: show previous trading day (today's data not complete yet)
@@ -301,6 +326,7 @@ type SymbolSnapshotCacheEntry = {
   todayLow: number | null
   todayClose: number | null
   todayVolume: number | null
+  todayCloseSymbol: string | null
   fetchedAt: Date
   refreshTick: number
 }
@@ -322,6 +348,7 @@ export default function AppShell() {
   const [todayHigh, setTodayHigh] = useState<number | null>(null)
   const [todayLow, setTodayLow] = useState<number | null>(null)
   const [todayClose, setTodayClose] = useState<number | null>(null)
+  const [todayCloseSymbol, setTodayCloseSymbol] = useState<string | null>(null)
   const [todayVolume, setTodayVolume] = useState<number | null>(null)
 
   const [marketHeadlines, setMarketHeadlines] = useState<MarketHeadlineView[]>([])
@@ -488,6 +515,7 @@ export default function AppShell() {
     if (!selectedSymbol || initStatus === 'error' || initStatus === 'empty') return
 
     let cancelled = false
+    const requestSymbol = selectedSymbol
     const cacheKey = `${selectedDateET}|${selectedSymbol}`
 
     const hydrateSnapshot = (snapshot: SymbolSnapshotCacheEntry) => {
@@ -501,11 +529,14 @@ export default function AppShell() {
       setTodayHigh(snapshot.todayHigh)
       setTodayLow(snapshot.todayLow)
       setTodayClose(snapshot.todayClose)
+      setTodayCloseSymbol(snapshot.todayCloseSymbol ?? requestSymbol)
       setTodayVolume(snapshot.todayVolume)
       setNewsLastFetchedAt(snapshot.fetchedAt)
     }
 
     const loadSymbolData = async () => {
+      setTodayCloseSymbol(null)
+      setTodayClose(null)
       const cachedSnapshot = symbolSnapshotCacheRef.current.get(cacheKey)
       const cacheAgeMs = cachedSnapshot ? Date.now() - cachedSnapshot.fetchedAt.getTime() : Number.POSITIVE_INFINITY
       const shouldRevalidate =
@@ -611,6 +642,7 @@ export default function AppShell() {
         setTodayHigh(todayBar?.h ?? null)
         setTodayLow(todayBar?.l ?? null)
         setTodayClose(todayBar?.c ?? null)
+        setTodayCloseSymbol(requestSymbol)
         setTodayVolume(todayBar?.v ?? null)
       }
       if (
@@ -633,6 +665,7 @@ export default function AppShell() {
           todayClose: ohlcvResult.value?.bars?.length
             ? ohlcvResult.value.bars[ohlcvResult.value.bars.length - 1]?.c ?? null
             : null,
+          todayCloseSymbol: requestSymbol,
           todayVolume: ohlcvResult.value?.bars?.length
             ? ohlcvResult.value.bars[ohlcvResult.value.bars.length - 1]?.v ?? null
             : null,
@@ -828,6 +861,7 @@ export default function AppShell() {
         todayHigh={todayHigh}
         todayLow={todayLow}
         todayClose={todayClose}
+        todayCloseSymbol={todayCloseSymbol}
         todayVolume={todayVolume}
         timeline={tickerNews}
         timelineStatus={timelineStatus}
