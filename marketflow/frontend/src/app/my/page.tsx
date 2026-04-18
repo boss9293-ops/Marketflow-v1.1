@@ -582,7 +582,12 @@ export default function MyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ service_account_json: saJsonInput.trim() }),
       })
-      const json = await res.json().catch(() => ({}))
+      let json: Record<string, unknown> = {}
+      let rawBody = ''
+      try {
+        rawBody = await res.text()
+        json = JSON.parse(rawBody)
+      } catch { /* non-json body */ }
       if (res.ok) {
         setCredsMessage('저장 완료. (재배포 시 초기화됩니다 — Railway Variables에 GOOGLE_SERVICE_ACCOUNT_JSON 설정 권장)')
         setSaJsonInput('')
@@ -590,10 +595,11 @@ export default function MyPage() {
         await fetchCredsStatus()
         await fetchSaEmail()
       } else {
-        setCredsMessage(json?.error || 'Failed to save credentials.')
+        const errMsg = (json?.error as string) || rawBody.slice(0, 120) || 'Failed to save credentials.'
+        setCredsMessage(`[${res.status}] ${errMsg}`)
       }
-    } catch {
-      setCredsMessage('저장 실패: 백엔드 연결 불가. API 연결을 확인하세요.')
+    } catch (err) {
+      setCredsMessage(`네트워크 오류: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setCredsLoading(false)
     }
