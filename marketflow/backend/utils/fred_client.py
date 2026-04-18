@@ -5,7 +5,11 @@ import pandas as pd
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
-load_dotenv()
+_UTILS_DIR  = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_UTILS_DIR)
+_ROOT_DIR   = os.path.dirname(os.path.dirname(_BACKEND_DIR))
+load_dotenv(os.path.join(_ROOT_DIR, "marketflow", ".env"))
+load_dotenv(os.path.join(_BACKEND_DIR, ".env"))
 
 logger = logging.getLogger(__name__)
 
