@@ -144,9 +144,11 @@ type PortfolioNarrativeMeta = {
   generated_at?: string
   saved_at?: string
   cache_tab?: string
+  cache_version?: string
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+const PORTFOLIO_NARRATIVE_VERSION = 'news_first_v3'
 
 function panelStyle() {
   return {
@@ -462,6 +464,7 @@ export default function MyPage() {
   const [portfolioNarrativeMeta, setPortfolioNarrativeMeta] = useState<PortfolioNarrativeMeta | null>(null)
   const [portfolioNarrativeLoading, setPortfolioNarrativeLoading] = useState(false)
   const portfolioNarrativeAbortRef = useRef<AbortController | null>(null)
+  const portfolioNarrativeLoadedSignatureRef = useRef<string>('')
   const [marketIndices, setMarketIndices] = useState<MarketIndicesPayload | null>(null)
 
   async function fetchHoldings() {
@@ -1061,6 +1064,47 @@ export default function MyPage() {
   const tabActiveSymbolCount = Array.isArray(activePositionsRows)
     ? activePositionsRows.filter((r) => !!asText(r.symbol)).length
     : 0
+  const portfolioNarrativeInputSignature = useMemo(() => {
+    const rowBits = activePositionsRows.slice(0, 12).map((row, idx) => {
+      const raw = row as Record<string, unknown>
+      const symbol =
+        asText(raw.symbol ?? raw.Symbol ?? raw['종목'] ?? raw['티커'] ?? raw.Ticker) || `row${idx}`
+      const pctValue = raw.position_pct ?? raw['포지션(%)'] ?? raw['비중'] ?? raw['비중(%)']
+      const equityValue = raw.equity ?? raw['평가액'] ?? raw.market_value ?? raw.value ?? raw['시장가치']
+      const pnlValue = raw.pnl_today ?? raw['오늘 수익'] ?? raw.change_pct ?? raw['변동(%)']
+      const safePct = typeof pctValue === 'number' && Number.isFinite(pctValue) ? pctValue.toFixed(2) : '-'
+      const safeEquity =
+        typeof equityValue === 'number' && Number.isFinite(equityValue) ? equityValue.toFixed(0) : '-'
+      const safePnl = typeof pnlValue === 'number' && Number.isFinite(pnlValue) ? pnlValue.toFixed(2) : '-'
+      return [symbol, safePct, safeEquity, safePnl].join(':')
+    }).join('|')
+    return [
+      PORTFOLIO_NARRATIVE_VERSION,
+      activePositionsTab || '',
+      activeTabAsOfDate || '',
+      activeTabTotalEquity ?? '-',
+      activeTabTotalCost ?? '-',
+      activeTabTotalPnl ?? '-',
+      activeTabCashRatioPct ?? '-',
+      topWeight?.symbol ?? '-',
+      topWeight?.pct ?? '-',
+      top3WeightPct,
+      activeSymbolCount,
+      rowBits,
+    ].join('::')
+  }, [
+    activePositionsRows,
+    activePositionsTab,
+    activeTabAsOfDate,
+    activeTabTotalEquity,
+    activeTabTotalCost,
+    activeTabTotalPnl,
+    activeTabCashRatioPct,
+    topWeight?.symbol,
+    topWeight?.pct,
+    top3WeightPct,
+    activeSymbolCount,
+  ])
   const leverageExposureWeightPct = donutRows.reduce(
     (sum, row) => (isLeverageSymbol(row.symbol) ? sum + row.pct : sum),
     0,
@@ -1161,7 +1205,7 @@ export default function MyPage() {
     ],
   )
 
-  async function loadPortfolioNarrative(forceRefresh = false) {
+  async function loadPortfolioNarrative(forceRefresh = false, requestSignature = portfolioNarrativeInputSignature) {
     if (loading || tabsLoading || !activePositionsTab) return
 
     portfolioNarrativeAbortRef.current?.abort()
@@ -1172,76 +1216,19 @@ export default function MyPage() {
     setPortfolioNarrative(null)
 
     const fallbackPayload = {
-      headline:
-        concentrationTone === 'high'
-          ? topWeight
-            ? `Fragile: ${topWeight.symbol} dominates the account and needs trimming before new risk.`
-            : 'Fragile: the account is too concentrated and needs trimming before new risk.'
-          : concentrationTone === 'mid'
-            ? 'Overexposed: the core is fine, but concentration needs to be reduced before adding new risk.'
-            : 'Defensive: preserve cash and keep leverage separate until the structure is cleaner.',
-      daily_brief:
-        typeof activeTabTotalPnl === 'number'
-          ? `Account PnL is ${fmtMoney(activeTabTotalPnl)}${typeof activeTabReturnPct === 'number' ? ` (${fmtPct(activeTabReturnPct)})` : ''}.${spyMarketChangePct != null ? ` SPY is ${fmtPct(spyMarketChangePct)} today.` : ''}`
-          : 'Account structure matters more than adding fresh risk today.',
-      stock_focus: [
-        topWeight
-          ? {
-              symbol: topWeight.symbol,
-              type: concentrationTone === 'high' ? 'risk' : 'core',
-              summary: `Largest holding at ${topWeight.pct.toFixed(1)}% requires active management.${topHoldingVsSpyText ? ` ${topHoldingVsSpyText}` : ''}`,
-            }
-          : null,
-        donutRows[1]
-          ? {
-              symbol: donutRows[1].symbol,
-              type: 'supporting',
-              summary: `Second-largest sleeve adds to the same account theme.`,
-            }
-          : null,
-      ].filter(Boolean),
-      portfolio_structure: diversificationText,
-      watchlist_insight:
-        concentrationTone === 'high'
-          ? 'Use watchlist names as possible replacements or complements, not as fresh risk to add blindly.'
-          : 'Use watchlist names as comparison points and keep them tied to the current account theme.',
-      action_advice:
-        concentrationTone === 'high'
-          ? 'Trim the largest position first and avoid adding leverage.'
-          : concentrationTone === 'mid'
-            ? 'Rebalance the biggest sleeve before adding new exposure.'
-            : 'Maintain the defensive tilt and wait for a cleaner setup before increasing exposure.',
-      risk_flags: [
-        concentrationTone === 'high' ? 'single_stock_concentration' : null,
-        concentrationTone !== 'low' ? 'top3_concentration' : null,
-        cashRatioPct !== null && cashRatioPct < 10 ? 'low_cash_buffer' : null,
-      ].filter(Boolean),
-      summary:
-        concentrationTone === 'high'
-          ? topWeight
-            ? `Fragile: ${topWeight.symbol} dominates the book, so trim the largest line before adding fresh risk.`
-            : 'Fragile: the book is too concentrated, so trim the largest line before adding fresh risk.'
-          : concentrationTone === 'mid'
-            ? 'Overexposed: keep the core, but rebalance concentration before adding new risk.'
-            : 'Defensive: preserve the cash buffer and keep leverage separate until the structure is cleaner.',
-      structure: diversificationText,
-      risk: topWeight
-        ? `The main risk is concentration in ${topWeight.symbol} at ${topWeight.pct.toFixed(1)}%.`
-        : 'The main risk is that the portfolio is still concentrated across a few positions.',
-      alignment:
-        cashRatioPct != null
-          ? `Cash buffer is ${cashRatioText}, so it can help absorb volatility if you keep new risk small.`
-          : 'Cash buffer is not available, so the advice is to stay conservative until the structure is clearer.',
-      action:
-        concentrationTone === 'high'
-          ? 'Trim the largest position first and avoid adding leverage.'
-          : concentrationTone === 'mid'
-            ? 'Rebalance the biggest sleeve before adding new exposure.'
-            : 'Maintain the defensive tilt and wait for a cleaner setup before increasing exposure.',
-      tqqq:
-        pnlTone === 'plus'
-          ? 'Treat TQQQ as a separate tactical sleeve, not part of the core basket.'
-          : 'Keep TQQQ separate from the core basket until the structure improves.',
+      headline: 'Portfolio narrative unavailable - refresh to generate a new LLM read.',
+      daily_brief: 'The current panel did not receive a fresh narrative payload. Use Refresh to rerun the model for this tab.',
+      stock_focus: [],
+      portfolio_structure: 'Narrative unavailable until a fresh model response is generated.',
+      watchlist_insight: 'Refresh the panel to rebuild the symbol-level read.',
+      action_advice: 'Refresh to request a new portfolio narrative.',
+      risk_flags: ['narrative_unavailable'],
+      summary: 'Narrative unavailable - refresh to regenerate.',
+      structure: 'Narrative unavailable',
+      risk: 'Narrative unavailable',
+      alignment: 'Narrative unavailable',
+      action: 'Refresh the panel to retry the portfolio analysis.',
+      tqqq: 'Narrative unavailable',
       footerLabel: 'RISK FLAGS',
     }
 
@@ -1254,6 +1241,7 @@ export default function MyPage() {
           portfolio_data: activeTabPortfolioData,
           engine_data: {
             tab_name: activePositionsTab || null,
+            narrative_version: PORTFOLIO_NARRATIVE_VERSION,
             today: new Date().toISOString().slice(0, 10),
             as_of_date: activeTabSummary.as_of_date,
             total_equity: activeTabSummary.total_equity,
@@ -1283,28 +1271,32 @@ export default function MyPage() {
 
       if (!active) return
       setPortfolioNarrative(mapPortfolioNarrative(json))
-      setPortfolioNarrativeMeta({
-        cached: !!json?.cached,
-        cache_mode: asText(json?.cache_mode) || 'daily',
-        cache_date: asText(json?.cache_date) || '',
-        analysis_date: asText(json?.analysis_date) || '',
-        generated_at: asText(json?.generated_at) || '',
-        saved_at: asText(json?.saved_at) || '',
-        cache_tab: asText(json?.cache_tab) || asText(json?.tab_name) || activePositionsTab,
-      })
-    } catch {
-      if (!active) return
-      setPortfolioNarrative(mapPortfolioNarrative(fallbackPayload))
-      setPortfolioNarrativeMeta({
-        cached: false,
-        cache_mode: 'fallback',
-        cache_date: fmtDateOnly(activeTabAsOfDate) || '',
-        analysis_date: fmtDateOnly(activeTabAsOfDate) || '',
-        generated_at: new Date().toISOString(),
-        saved_at: new Date().toISOString(),
-        cache_tab: activePositionsTab,
-      })
-    } finally {
+        setPortfolioNarrativeMeta({
+          cached: !!json?.cached,
+          cache_mode: asText(json?.cache_mode) || 'daily',
+          cache_date: asText(json?.cache_date) || '',
+          analysis_date: asText(json?.analysis_date) || '',
+          generated_at: asText(json?.generated_at) || '',
+          saved_at: asText(json?.saved_at) || '',
+          cache_tab: asText(json?.cache_tab) || asText(json?.tab_name) || activePositionsTab,
+          cache_version: asText(json?.cache_version) || PORTFOLIO_NARRATIVE_VERSION,
+        })
+        portfolioNarrativeLoadedSignatureRef.current = requestSignature
+      } catch {
+        if (!active) return
+        setPortfolioNarrative(mapPortfolioNarrative(fallbackPayload))
+        setPortfolioNarrativeMeta({
+          cached: false,
+          cache_mode: 'fallback',
+          cache_date: fmtDateOnly(activeTabAsOfDate) || '',
+          analysis_date: fmtDateOnly(activeTabAsOfDate) || '',
+          generated_at: new Date().toISOString(),
+          saved_at: new Date().toISOString(),
+          cache_tab: activePositionsTab,
+          cache_version: PORTFOLIO_NARRATIVE_VERSION,
+        })
+        portfolioNarrativeLoadedSignatureRef.current = requestSignature
+      } finally {
       if (active) {
         setPortfolioNarrativeLoading(false)
       }
@@ -1316,9 +1308,9 @@ export default function MyPage() {
 
   useEffect(() => {
     if (loading || tabsLoading || !activePositionsTab) return
-    if (portfolioNarrativeMeta?.cache_tab === activePositionsTab) return
-    void loadPortfolioNarrative(false)
-  }, [activePositionsTab, loading, tabsLoading, portfolioNarrativeMeta?.cache_tab])
+    if (portfolioNarrativeLoadedSignatureRef.current === portfolioNarrativeInputSignature) return
+    void loadPortfolioNarrative(false, portfolioNarrativeInputSignature)
+  }, [activePositionsTab, loading, tabsLoading, portfolioNarrativeInputSignature])
 
   useEffect(() => {
     return () => {
@@ -1614,7 +1606,7 @@ export default function MyPage() {
               headerRight={
                 <button
                   type="button"
-                  onClick={() => void loadPortfolioNarrative(true)}
+                  onClick={() => void loadPortfolioNarrative(true, portfolioNarrativeInputSignature)}
                   disabled={portfolioNarrativeLoading}
                   style={{
                     border: '1px solid rgba(16,185,129,0.35)',

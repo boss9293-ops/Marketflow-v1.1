@@ -5,7 +5,7 @@ import requests
 
 from .ai_types import AIResult
 from .logger import log_call, sanitize_error
-from .providers import AIProvider, get_api_key, get_model, get_retry_count, get_timeout_sec
+from .providers import AIProvider, get_api_key, get_model, get_reasoning_effort, get_retry_count, get_timeout_sec
 
 
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
@@ -42,6 +42,8 @@ def generate_text(
     api_key = get_api_key(AIProvider.GPT)
     timeout_sec = get_timeout_sec()
     retry = get_retry_count()
+    reasoning_effort = get_reasoning_effort(AIProvider.GPT)
+    is_gpt5 = model.lower().startswith("gpt-5")
 
     start = time.perf_counter()
     last_error = ""
@@ -55,13 +57,23 @@ def generate_text(
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                    "temperature": float(temperature),
-                    "max_tokens": int(max_tokens),
+                    **{
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user},
+                        ],
+                    },
+                    **(
+                        {"reasoning_effort": reasoning_effort}
+                        if is_gpt5 and reasoning_effort
+                        else {}
+                    ),
+                    **(
+                        {"max_completion_tokens": int(max_tokens)}
+                        if is_gpt5
+                        else {"temperature": float(temperature), "max_tokens": int(max_tokens)}
+                    ),
                 },
                 timeout=timeout_sec,
             )

@@ -58,4 +58,5 @@ def get_narrative_templates() -> Dict[str, str]:
         "briefing_v1": load_prompt("marketflow/prompts/engine_narrative/briefing_v1.md"),
         "watchlist_v1": load_prompt("marketflow/prompts/engine_narrative/watchlist_v1.md"),
         "portfolio_v1": load_prompt("marketflow/prompts/engine_narrative/portfolio_v1.md"),
+        "account_manager_v1": load_prompt("marketflow/prompts/engine_narrative/account_manager_v1.md"),
     }

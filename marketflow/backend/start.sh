@@ -62,11 +62,11 @@ mkdir -p /app/output/cache
         echo "[bg] context_news.json exists, skipping"
     fi
 
-    if [ ! -f "/app/output/cache/daily_briefing.json" ]; then
-        echo "[bg] Building daily_briefing..."
-        python scripts/build_daily_briefing.py && echo "[bg][OK] daily_briefing" || echo "[bg][FAIL] daily_briefing"
+    if [ ! -f "/app/output/cache/ticker_brief_index.json" ]; then
+        echo "[bg] Building ticker_brief_index..."
+        python scripts/build_account_ticker_briefs.py && echo "[bg][OK] ticker_brief_index" || echo "[bg][FAIL] ticker_brief_index"
     else
-        echo "[bg] daily_briefing.json exists, skipping"
+        echo "[bg] ticker_brief_index.json exists, skipping"
     fi
 
     if [ ! -f "/app/output/cache/daily_briefing_v3.json" ]; then

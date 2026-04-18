@@ -83,7 +83,7 @@ def generate_briefing():
 """
             
             response = client.chat.completions.create(
-                model="gpt-5.2",
+                model="gpt-5.1",
                 messages=[
                     {
                         "role": "system",
@@ -191,7 +191,7 @@ python scripts/briefing_ai.py
         'timestamp': datetime.now().isoformat(),
         'content': content,
         'summary': summary,
-        'model': 'gpt-5.2',
+        'model': 'gpt-5.1',
         'api_used': 'OpenAI' if api_key else 'None'
     }
     

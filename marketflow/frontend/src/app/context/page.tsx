@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import MacroBadgeStrip from '@/components/MacroBadgeStrip'
 import MarketContextCard from '@/components/MarketContextCard'
+import type { DailyBriefingV3Data, BriefingV3Section } from '@/components/briefing/DailyBriefingV3'
 import { readCacheJson } from '@/lib/readCacheJson'
 
 type OverviewCache = {
@@ -32,10 +33,8 @@ type MarketHealthCache = {
   } | null
 }
 
-type BriefingPara = { text?: string | null }
-type BriefingCache = {
-  headline?: { ko?: string | null; en?: string | null } | null
-  paragraphs?: { ko?: BriefingPara[] | null } | null
+type BriefingCache = Partial<DailyBriefingV3Data> & {
+  sections?: BriefingV3Section[] | null
 }
 
 type ContextNewsCache = {
@@ -70,7 +69,7 @@ export default async function ContextPage() {
     readCacheJson<TapeCache>('market_tape.json', {}),
     readCacheJson<MacroLayerCache>('macro_layer.json', {}),
     readCacheJson<MarketHealthCache>('market_health.json', {}),
-    readCacheJson<BriefingCache>('daily_briefing.json', {}),
+    readCacheJson<BriefingCache>('daily_briefing_v3.json', {}),
     readCacheJson<ContextNewsCache>('context_news.json', {}),
   ])
 
@@ -87,15 +86,31 @@ export default async function ContextPage() {
     (typeof contextNews.sensor_snapshot?.MPS?.value === 'number' ? contextNews.sensor_snapshot?.MPS?.value : null) ??
     (typeof macroLayer.macro_pressure_score === 'number' ? macroLayer.macro_pressure_score : null)
   const regime = (overview.market_phase || state.phase?.label || 'Normal').toUpperCase()
-  const briefingParas = briefing.paragraphs?.ko || []
+  const briefingSections = Array.isArray(briefing.sections) ? briefing.sections : []
+  const briefingLead = briefing.one_line_ko || briefing.hook_ko || briefing.one_line || briefing.hook || ''
+  const firstSection = briefingSections.find((section) =>
+    Boolean(
+      [section.structural_ko, section.implication_ko, section.structural, section.implication]
+        .map((part) => String(part || '').trim())
+        .find(Boolean),
+    ),
+  )
+  const sectionSummary = firstSection
+    ? [
+        firstSection.structural_ko || firstSection.structural || '',
+        firstSection.implication_ko || firstSection.implication || '',
+      ]
+        .map((part) => String(part || '').trim())
+        .filter(Boolean)
+        .join(' ')
+    : ''
   const newsHeadline =
     contextNews.news_brief?.headline ||
-    briefing.headline?.en ||
-    briefing.headline?.ko ||
+    briefingLead ||
     'Macro headline unavailable for today.'
   const newsSummary =
     toTwoSentences(contextNews.news_brief?.summary_2sentences || '') ||
-    toTwoSentences(briefingParas[0]?.text || briefingParas[1]?.text || '')
+    toTwoSentences(sectionSummary || briefingLead || '')
 
   return (
     <div className="bg-black min-h-screen text-white">

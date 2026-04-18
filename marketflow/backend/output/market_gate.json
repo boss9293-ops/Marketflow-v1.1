@@ -1,12 +1,12 @@
 {
-  "score": 35,
-  "status": "RED",
-  "signal": "HOLD",
+  "score": 75,
+  "status": "GREEN",
+  "signal": "BUY",
   "components": {
-    "vix": 10,
-    "trend": 5,
-    "momentum": 5,
+    "vix": 20,
+    "trend": 25,
+    "momentum": 15,
     "regime": 15
   },
-  "timestamp": "2026-04-13T07:00:09.537553"
+  "timestamp": "2026-04-17T22:45:14.765622"
 }

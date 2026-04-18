@@ -112,6 +112,8 @@ function buildLocalCandidates(relativePath: string): string[] {
   if (!rel) return []
 
   const base = path.basename(rel)
+  const legacyCacheDir = path.resolve(process.cwd(), '..', 'backend', 'output', 'cache', 'legacy')
+  const legacyOutputDir = path.resolve(process.cwd(), '..', 'backend', 'output', 'legacy')
   const candidates = [
     path.resolve(process.cwd(), '..', 'backend', 'output', rel),
     path.resolve(process.cwd(), 'backend', 'output', rel),
@@ -124,6 +126,8 @@ function buildLocalCandidates(relativePath: string): string[] {
   if (base === rel) {
     candidates.push(path.resolve(process.cwd(), '..', 'backend', 'output', 'cache', base))
     candidates.push(path.resolve(process.cwd(), 'backend', 'output', 'cache', base))
+    candidates.push(path.resolve(legacyCacheDir, base))
+    candidates.push(path.resolve(legacyOutputDir, base))
   } else {
     candidates.push(path.resolve(process.cwd(), '..', 'backend', 'output', base))
     candidates.push(path.resolve(process.cwd(), 'backend', 'output', base))
@@ -131,6 +135,8 @@ function buildLocalCandidates(relativePath: string): string[] {
     candidates.push(path.resolve(process.cwd(), 'backend', 'output', 'cache', base))
     candidates.push(path.resolve(process.cwd(), '..', 'output', base))
     candidates.push(path.resolve(process.cwd(), 'output', base))
+    candidates.push(path.resolve(legacyCacheDir, base))
+    candidates.push(path.resolve(legacyOutputDir, base))
   }
 
   return dedupePaths(candidates)

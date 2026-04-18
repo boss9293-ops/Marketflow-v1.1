@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-04-13T07:08:27",
-  "data_date": "2026-04-10",
+  "generated_at": "2026-04-17T22:23:54",
+  "data_date": "2026-04-17",
   "cache_policy": "daily_close",
   "phase": {
     "value": "BULL",
     "label": "BULL",
     "color": "#22c55e",
-    "detail": "Regime: Bull | Appetite: Risk Off | Conf: High",
+    "detail": "Regime: Bull | Appetite: Risk On | Conf: High",
     "source": "regime_classifier"
   },
   "gate": {
     "value": 60.0,
     "label": "60.0",
-    "avg10d": 44.285714285714285,
+    "avg10d": 43.75,
     "delta5d": 5.0,
     "color": "#22c55e",
-    "detail": "RED | 10d avg 44.3 | delta5d +5.0",
+    "detail": "GREEN | 10d avg 43.8 | delta5d +5.0",
     "source": "overview_v2"
   },
   "risk": {
     "value": "MEDIUM",
     "label": "MED",
     "vol_pct": 14.47,
-    "var95": -1.6,
+    "var95": -1.59,
     "color": "#f59e0b",
-    "detail": "Port.Vol 14.5% | SPY VaR95 -1.60% | QQQ VaR95 -1.96% | Level MEDIUM",
+    "detail": "Port.Vol 14.5% | SPY VaR95 -1.59% | QQQ VaR95 -1.96% | Level MEDIUM",
     "source": "overview_v2"
   },
   "trend": {

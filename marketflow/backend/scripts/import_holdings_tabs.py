@@ -1,4 +1,4 @@
-﻿"""
+"""
 Import holdings data from selected Google Sheets tabs.
 
 Usage:
@@ -6,8 +6,8 @@ Usage:
   python backend/scripts/import_holdings_tabs.py --sheet_id <ID> --tabs "Goal,Tab1"
 
 History ranges (header row included in the range):
-  Goal tab   D21:H500
-  Other tabs D49:H500
+  Header row: D49:I49
+  Data rows:   D50:I999
 
 Positions table:
   - Auto-detect header row containing '醫낅ぉ' and '?댁젣醫낃?'
@@ -28,14 +28,15 @@ import sys
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-GOAL_RANGE = "D21:H500"
-NORMAL_RANGE = "D49:H500"
-GOAL_SNAPSHOT_RANGE = "G14:H23"
+GOAL_RANGE = "D49:I999"
+NORMAL_RANGE = "D49:I999"
+NORMAL_SNAPSHOT_RANGE = "E13:F21"
+GOAL_SNAPSHOT_RANGE = "G15:H22"
 
-DEFAULT_EXCLUDED = {"readme", "holidays", "rsi"}
+DEFAULT_EXCLUDED = {"readme", "holidays", "rsi", "x", "main", "rsi_main", "pricedata__rsi__main"}
 
-POSITIONS_SCAN_RANGE = os.getenv("POSITIONS_SCAN_RANGE", "A1:Z120")
-POSITIONS_RANGE = os.getenv("POSITIONS_RANGE", "A1:Z40")
+POSITIONS_SCAN_RANGE = os.getenv("POSITIONS_SCAN_RANGE", "D1:Z120")
+POSITIONS_RANGE = os.getenv("POSITIONS_RANGE", "D1:Z40")
 
 RERUN_HINT_TEMPLATE = (
     "python backend/scripts/import_holdings_tabs.py --sheet_id {sheet_id} --tabs {tabs}"
@@ -116,6 +117,11 @@ def parse_number(raw: str) -> Optional[float]:
     text = (raw or "").strip()
     if not text:
         return None
+    try:
+        text = text.replace(",", "").replace("$", "").replace("₩", "").replace("%", "")
+        return float(text)
+    except Exception:
+        return None
 
 
 def parse_goal_snapshot_summary(rows: List[List[Any]]) -> Dict[str, Any]:
@@ -186,6 +192,10 @@ def normalize_date(raw: str) -> Optional[str]:
     if not text:
         return None
 
+    # The sheet uses values like "22.04.08." for 2022-04-08.
+    # Parse this explicitly so dateutil does not misread it as 2001/2002-style dates.
+    text = text.rstrip(".")
+
     if re.match(r"^\d{4}-\d{2}-\d{2}$", text):
         return text
     m = re.match(r"^(\d{4})/(\d{1,2})/(\d{1,2})$", text)
@@ -197,6 +207,16 @@ def normalize_date(raw: str) -> Optional[str]:
     m = re.match(r"^(\d{4})\.(\d{1,2})\.(\d{1,2})$", text)
     if m:
         return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    m = re.match(r"^(\d{2})\.(\d{1,2})\.(\d{1,2})$", text)
+    if m:
+        yy = int(m.group(1))
+        year = 2000 + yy if yy < 70 else 1900 + yy
+        return f"{year}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    m = re.match(r"^(\d{2})/(\d{1,2})/(\d{1,2})$", text)
+    if m:
+        yy = int(m.group(1))
+        year = 2000 + yy if yy < 70 else 1900 + yy
+        return f"{year}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
 
     try:
         serial = int(float(text))
@@ -570,7 +590,14 @@ def main() -> int:
             continue
 
         is_goal = tab.lower() == "goal"
-        history_range = GOAL_RANGE if is_goal else NORMAL_RANGE
+        
+        if "한국" in tab:
+            history_range = "D49:H999"
+            snapshot_range = "E13:F21"
+        else:
+            history_range = "D49:I999"
+            snapshot_range = "G15:H22"
+            
         print(f"  Fetching '{tab}' positions + {history_range} ...", flush=True)
 
         try:
@@ -578,7 +605,7 @@ def main() -> int:
             history_rows = fetch_range(sheet_id, tab, history_range, sa_info)
             history, report = parse_history(history_rows)
             history = merge_points([], history)
-            snapshot_summary = parse_goal_snapshot_summary(fetch_range(sheet_id, tab, GOAL_SNAPSHOT_RANGE, sa_info)) if is_goal else None
+            snapshot_summary = parse_goal_snapshot_summary(fetch_range(sheet_id, tab, snapshot_range, sa_info))
 
             tab_payload = {
                 "name": tab,
@@ -589,7 +616,7 @@ def main() -> int:
                 "history": history,
                 "history_range": history_range,
                 "history_report": report,
-                **({"snapshot_summary": snapshot_summary} if snapshot_summary else {}),
+                "snapshot_summary": snapshot_summary,
             }
 
             if is_goal:

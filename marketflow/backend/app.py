@@ -417,7 +417,6 @@ def _run_builds_if_needed():
             ('build_health_snapshot.py', os.path.join(_out, 'cache', 'health_snapshot.json')),
             ('build_action_snapshot.py', os.path.join(_out, 'cache', 'action_snapshot.json')),
             ('build_context_news.py', os.path.join(_out, 'cache', 'context_news.json')),
-            ('build_daily_briefing.py', os.path.join(_out, 'cache', 'daily_briefing.json')),
             ('build_daily_briefing_v3.py', os.path.join(_out, 'cache', 'daily_briefing_v3.json')),
             ('build_vr_pattern_dashboard.py', os.path.join(_out, 'vr_pattern_dashboard.json')),
         ]
@@ -752,7 +751,6 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'health_snapshot.json': ('build_health_snapshot.py', 300),
     'action_snapshot.json': ('build_action_snapshot.py', 300),
     'context_news.json': ('build_context_news.py', 180),
-    'daily_briefing.json': ('build_daily_briefing.py', 300),
     'daily_briefing_v3.json': ('build_daily_briefing_v3.py', 300),
     'vr_pattern_dashboard.json': ('build_vr_pattern_dashboard.py', 180),
     'vr_survival.json': ('build_vr_survival.py', 600),
@@ -991,6 +989,7 @@ def _legacy_json_candidate_paths(rel: str) -> list[str]:
 
     base = os.path.basename(rel)
     base_dir = os.path.dirname(__file__)
+    legacy_cache_dir = os.path.abspath(os.path.join(base_dir, 'output', 'cache', 'legacy'))
     candidates = [
         os.path.abspath(os.path.join(base_dir, '..', 'data', 'snapshots', rel)),
         os.path.abspath(os.path.join(base_dir, 'output', rel)),
@@ -998,9 +997,11 @@ def _legacy_json_candidate_paths(rel: str) -> list[str]:
 
     if base == rel:
         candidates.append(os.path.abspath(os.path.join(base_dir, 'output', 'cache', base)))
+        candidates.append(os.path.join(legacy_cache_dir, base))
     else:
         candidates.append(os.path.abspath(os.path.join(base_dir, 'output', base)))
         candidates.append(os.path.abspath(os.path.join(base_dir, 'output', 'cache', base)))
+        candidates.append(os.path.join(legacy_cache_dir, base))
 
     return candidates
 
@@ -2785,7 +2786,7 @@ def normalize_kr_ai_summary_payload(item, ticker=''):
             'openai': {
 
 
-                'model': str(((providers.get('openai') or {}).get('model', 'gpt-4o-mini'))),
+                'model': str(((providers.get('openai') or {}).get('model', 'gpt-5.1'))),
 
 
                 'rating': str(((providers.get('openai') or {}).get('rating', 'WATCH'))),
@@ -3232,7 +3233,7 @@ def briefing():
 def briefing_today():
 
 
-    data = load_json_or_none_cached('cache/daily_briefing.json')
+    data = load_json_or_none_cached('cache/daily_briefing_v3.json')
 
 
     if data:
@@ -3244,10 +3245,10 @@ def briefing_today():
     return jsonify({
 
 
-        'error': 'daily_briefing.json not generated yet.',
+        'error': 'daily_briefing_v3.json not generated yet.',
 
 
-        'rerun_hint': 'python backend/scripts/build_daily_briefing.py',
+        'rerun_hint': 'python backend/scripts/build_daily_briefing_v3.py',
 
 
     }), 404
@@ -5145,6 +5146,106 @@ def refresh_risk_v1():
 
 
 
+def _daily_briefing_primary_line(payload):
+
+    if not isinstance(payload, dict):
+        return ""
+
+    for key in ('one_line_ko', 'hook_ko', 'one_line', 'hook'):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    sections = payload.get('sections') if isinstance(payload.get('sections'), list) else []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        for keys in (('structural_ko', 'implication_ko'), ('structural', 'implication')):
+            text = ' '.join(
+                part.strip()
+                for part in (section.get(keys[0]), section.get(keys[1]))
+                if isinstance(part, str) and part.strip()
+            ).strip()
+            if text:
+                return text
+
+    headline = payload.get('headline')
+    if isinstance(headline, dict):
+        for key in ('ko', 'en'):
+            value = headline.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    elif isinstance(headline, str) and headline.strip():
+        return headline.strip()
+
+    return ""
+
+
+def _daily_briefing_summary_text(payload):
+
+    if not isinstance(payload, dict):
+        return ""
+
+    lines = []
+
+    primary = _daily_briefing_primary_line(payload)
+    if primary:
+        lines.append(primary)
+
+    sections = payload.get('sections') if isinstance(payload.get('sections'), list) else []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        text = ' '.join(
+            part.strip()
+            for part in (
+                section.get('structural_ko'),
+                section.get('implication_ko'),
+                section.get('structural'),
+                section.get('implication'),
+            )
+            if isinstance(part, str) and part.strip()
+        ).strip()
+        if text and text not in lines:
+            lines.append(text)
+        if len(lines) >= 3:
+            break
+
+    if not lines:
+        paragraphs = payload.get('paragraphs')
+        if isinstance(paragraphs, dict):
+            for key in ('ko', 'en'):
+                items = paragraphs.get(key)
+                if isinstance(items, list):
+                    for item in items:
+                        text = item.get('text') if isinstance(item, dict) else item
+                        if isinstance(text, str) and text.strip():
+                            lines.append(text.strip())
+                    if lines:
+                        break
+
+    if not lines:
+        bullets = payload.get('bullets')
+        if isinstance(bullets, dict):
+            for key in ('ko', 'en'):
+                items = bullets.get(key)
+                if isinstance(items, list):
+                    for item in items:
+                        text = item.get('text') if isinstance(item, dict) else item
+                        if isinstance(text, str) and text.strip():
+                            lines.append(text.strip())
+                    if lines:
+                        break
+
+    if not lines:
+        risk_check = payload.get('risk_check') if isinstance(payload.get('risk_check'), dict) else {}
+        risk_message = risk_check.get('message') if isinstance(risk_check, dict) else ''
+        if isinstance(risk_message, str) and risk_message.strip():
+            lines.append(risk_message.strip())
+
+    return ' '.join(lines[:3]).strip()
+
+
 @app.route('/api/briefing-cards')
 
 
@@ -5167,60 +5268,13 @@ def briefing_cards():
 
 
         data = load_json_or_none(json_path)
-
-
-        if data and 'briefing' in data and 'paragraphs' in data['briefing']:
-
-
-            paras = data['briefing']['paragraphs']
-
-
-            if isinstance(paras, dict) and 'ko' in paras:
-
-
-                text = " ".join(paras['ko'])
-
-
-                success = True
-
-
-        elif data and 'paragraphs' in data: # Some JSONs have paragraphs at root
-
-
-            paras = data['paragraphs']
-
-
-            if isinstance(paras, dict) and 'ko' in paras:
-
-
-                text = " ".join(paras['ko'])
-
-
-                success = True
-
-
-                
-
+        text = _daily_briefing_summary_text(data)
+        success = bool(text)
 
         if not success and fallback_path:
-
-
             fb_data = load_json_or_none(fallback_path)
-
-
-            if fb_data and 'paragraphs' in fb_data:
-
-
-                paras = fb_data['paragraphs']
-
-
-                if isinstance(paras, dict) and 'ko' in paras:
-
-
-                    text = " ".join(paras['ko'])
-
-
-                    success = True
+            text = _daily_briefing_summary_text(fb_data)
+            success = bool(text)
 
 
 
@@ -5283,7 +5337,7 @@ def briefing_cards():
         "risk_brief": _build_card("risk_brief", "ai/std_risk/latest.json"),
 
 
-        "market_structure_brief": _build_card("market_structure_brief", "ai/integrated/latest.json", "daily_briefing.json")
+        "market_structure_brief": _build_card("market_structure_brief", "ai/integrated/latest.json", "cache/daily_briefing_v3.json")
 
 
     })
@@ -5310,16 +5364,16 @@ def today_context():
 
 
 
-    data = load_json_or_none('daily_briefing.json')
+    data = load_json_or_none('cache/daily_briefing_v3.json')
 
 
-    if data and 'headline' in data and data['headline']:
+    if isinstance(data, dict):
 
 
-        text = str(data['headline']).strip()
+        text = _daily_briefing_primary_line(data)
 
 
-        success = True
+        success = bool(text)
 
 
 
@@ -9299,7 +9353,7 @@ def briefing_v2_generate():
 
 
 
-        out_path = os.path.join(OUTPUT_DIR, 'cache', 'ai_briefing_v2.json')
+        out_path = os.path.join(OUTPUT_DIR, 'cache', 'legacy', 'ai_briefing_v2.json')
 
 
         if os.path.exists(out_path):

@@ -8,7 +8,8 @@ class AIProvider(str, Enum):
     CLAUDE = "claude"
 
 
-DEFAULT_GPT_MODEL    = "gpt-4o-mini"
+DEFAULT_GPT_MODEL    = "gpt-5.1"
+DEFAULT_GPT_REASONING_EFFORT = "medium"
 DEFAULT_GEMINI_MODEL = "gemini-1.5-flash-latest"
 DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6"
 DEFAULT_TIMEOUT_SEC  = 30
@@ -37,6 +38,12 @@ def get_model(provider: AIProvider) -> str:
         return os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL).strip() or DEFAULT_CLAUDE_MODEL
     model = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
     return model if model.startswith("models/") else f"models/{model}"
+
+
+def get_reasoning_effort(provider: AIProvider) -> str:
+    if provider == AIProvider.GPT:
+        return os.getenv("GPT_REASONING_EFFORT", DEFAULT_GPT_REASONING_EFFORT).strip() or DEFAULT_GPT_REASONING_EFFORT
+    return ""
 
 
 def get_api_key(provider: AIProvider) -> str:

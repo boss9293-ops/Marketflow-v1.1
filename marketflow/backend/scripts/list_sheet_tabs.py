@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 
 # Tabs excluded by default (case-insensitive exact match)
-DEFAULT_EXCLUDED = {"readme", "holidays", "rsi"}
+DEFAULT_EXCLUDED = {"readme", "holidays", "rsi", "x", "main", "rsi_main", "pricedata__rsi__main"}
 # Exclude tabs starting with "_" as non-data/aux tabs
 def is_excluded(title: str) -> bool:
     low = title.lower()
@@ -136,7 +136,7 @@ def build_payload(
         "tabs": tabs,
         "selectable": [t["title"] for t in selectable],
         "excluded_default": excluded_default,
-        "excluded_rules": ["ReadMe", "Holidays", "RSI", "tabs starting with '_'"],
+        "excluded_rules": ["ReadMe", "Holidays", "RSI", "X", "Main", "RSI_Main", "PriceData__RSI__MAIN", "tabs starting with '_'"],
         "source": source,
         "error": error,
         "generated_at": now_iso(),

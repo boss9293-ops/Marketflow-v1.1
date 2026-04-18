@@ -135,12 +135,12 @@ async function fetchNewsYahoo(symbol: string): Promise<RawArticle[]> {
       cache: 'no-store',
     })
     if (!res2.ok) {
-      if (IS_DEV) console.warn(`[sentiment] Yahoo search fallback status=${res2.status}`)
+      if (IS_DEV) console.warn(`[sentiment] Yahoo Finance search fallback status=${res2.status}`)
       return []
     }
     const json2 = await res2.json()
     const items2: any[] = json2?.news ?? []
-    if (IS_DEV) console.info(`[sentiment] Yahoo search news count=${items2.length}`)
+    if (IS_DEV) console.info(`[sentiment] Yahoo Finance search news count=${items2.length}`)
     return items2.map((a: any) => ({
       title: a.title || '',
       publishedDate: a.providerPublishTime

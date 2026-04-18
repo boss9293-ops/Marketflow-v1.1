@@ -15,6 +15,8 @@ const PREFERRED_SOURCE_BONUSES: Array<{ pattern: RegExp; bonus: number }> = [
   { pattern: /reuters/i, bonus: 2.6 },
   { pattern: /associated press|\bap news\b|\bap\b/i, bonus: 2.4 },
   { pattern: /yahoo finance/i, bonus: 1.8 },
+  { pattern: /finnhub/i, bonus: 1.2 },
+  { pattern: /alpha vantage/i, bonus: 1.1 },
   { pattern: /marketwatch/i, bonus: 1.5 },
   { pattern: /cnbc/i, bonus: 1.3 },
   { pattern: /nasdaq/i, bonus: 1.2 },

@@ -39,7 +39,7 @@ RECOMMENDED_FILES = [
     ('cache/market_tape.json',      ['items']),
     ('cache/health_snapshot.json', ['trend', 'risk', 'breadth_greed']),
     ('cache/action_snapshot.json', ['exposure_guidance', 'portfolio', 'watchlist_moves']),
-    ('cache/daily_briefing.json',  ['headline', 'bullets', 'stance']),
+    ('cache/daily_briefing_v3.json',  ['hook', 'sections', 'risk_check', 'one_line']),
     ('ai/std_risk/latest.json',   ['layer', 'generated_at', 'paragraphs', 'warnings']),
     ('ai/macro/latest.json',      ['layer', 'generated_at', 'paragraphs', 'warnings']),
     ('ai/integrated/latest.json', ['layer', 'generated_at', 'paragraphs', 'warnings']),

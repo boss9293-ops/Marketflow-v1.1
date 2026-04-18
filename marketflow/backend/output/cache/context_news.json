@@ -1,117 +1,119 @@
 {
-  "generated_at": "2026-04-13T12:08:44.642371+00:00",
-  "date": "2026-04-13",
-  "slot": "preopen",
+  "generated_at": "2026-04-18T03:43:24.236393+00:00",
+  "date": "2026-04-17",
+  "slot": "close",
   "region": "us",
   "provider": "composite",
   "provider_sources": [
-    "yahoo",
+    "yahoo_finance",
+    "finnhub",
+    "alpha_vantage",
     "google_news",
     "reuters_rss"
   ],
   "news_status": "Fresh",
   "articles": [
     {
-      "id": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxPVkdzbkVraThqckxMNERIcHk4TG5XLUZIb2NneFVsVUphRTh5b25vbFJNbUQ5NHE3SVhLeEtSX1Y5dWxQNTM2YUpOeXNMTkRpSXVrRTBLT0hrY2hmSFJCRzg5OGU5VF9YcjNTZHpPNURSSXVaNHFBOVd0eTRaZW9kSjhsN1J6aExwaFV0RWg1MjQyZnlvU2xCUlREdVpwSkdta0VoTVlKcGxKcGI2ekJOYkRseUJpbDUweUcw?oc=5",
-      "title": "Wall St. gains, U.S. Treasury yields fall after remarks by Fed's Powell - Reuters",
-      "publisher": "Reuters",
-      "published_at": "2026-04-13T08:23:27+00:00",
-      "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxPVkdzbkVraThqckxMNERIcHk4TG5XLUZIb2NneFVsVUphRTh5b25vbFJNbUQ5NHE3SVhLeEtSX1Y5dWxQNTM2YUpOeXNMTkRpSXVrRTBLT0hrY2hmSFJCRzg5OGU5VF9YcjNTZHpPNURSSXVaNHFBOVd0eTRaZW9kSjhsN1J6aExwaFV0RWg1MjQyZnlvU2xCUlREdVpwSkdta0VoTVlKcGxKcGI2ekJOYkRseUJpbDUweUcw?oc=5",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiuwFBVV95cUxPVkdzbkVraThqckxMNERIcHk4TG5XLUZIb2NneFVsVUphRTh5b25vbFJNbUQ5NHE3SVhLeEtSX1Y5dWxQNTM2YUpOeXNMTkRpSXVrRTBLT0hrY2hmSFJCRzg5OGU5VF9YcjNTZHpPNURSSXVaNHFBOVd0eTRaZW9kSjhsN1J6aExwaFV0RWg1MjQyZnlvU2xCUlREdVpwSkdta0VoTVlKcGxKcGI2ekJOYkRseUJpbDUweUcw?oc=5\" target=\"_blank\">Wall St. gains, U.S. Treasury yields fall after remarks by Fed's Powell</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Reuters</font>",
+      "id": "https://news.google.com/rss/articles/CBMi5wFBVV95cUxOcmlwRXhYVnptdlR0ejJma2tTNGlTSFhZb2NKeHFhelM2TmpIbS1ta1Y1TlFuV0tadGlZUVFaazB3eW95OG9BNEc1NHdMS0VINDhxWGsxSmpQQi1NUEVDUW1xWkJSWTlaYWV1TDUtY081anRBbUctX1BlSmRQZXdrVFZ2cHNvWnRuWHNPUFExSUp5RlctUUhLNFhiTUZobEJ0OWtOMFJ0UGlaRlg1VlZJQXh5dFQ4d2hONk0tQjc3QWg3MFRJWjhNVjNNZmVVSXVWTlgtZWFmOHNPTWlYMkVVLWFzTmlYSGc?oc=5",
+      "title": "CLEO Trading Platform Integrates with Gold-i's MatrixNET Liquidity Management Platform to Set New Standard for Prop Firms - Fintech Finance",
+      "publisher": "Fintech Finance",
+      "published_at": "2026-04-17T21:46:22+00:00",
+      "url": "https://news.google.com/rss/articles/CBMi5wFBVV95cUxOcmlwRXhYVnptdlR0ejJma2tTNGlTSFhZb2NKeHFhelM2TmpIbS1ta1Y1TlFuV0tadGlZUVFaazB3eW95OG9BNEc1NHdMS0VINDhxWGsxSmpQQi1NUEVDUW1xWkJSWTlaYWV1TDUtY081anRBbUctX1BlSmRQZXdrVFZ2cHNvWnRuWHNPUFExSUp5RlctUUhLNFhiTUZobEJ0OWtOMFJ0UGlaRlg1VlZJQXh5dFQ4d2hONk0tQjc3QWg3MFRJWjhNVjNNZmVVSXVWTlgtZWFmOHNPTWlYMkVVLWFzTmlYSGc?oc=5",
+      "summary": "<a href=\"https://news.google.com/rss/articles/CBMi5wFBVV95cUxOcmlwRXhYVnptdlR0ejJma2tTNGlTSFhZb2NKeHFhelM2TmpIbS1ta1Y1TlFuV0tadGlZUVFaazB3eW95OG9BNEc1NHdMS0VINDhxWGsxSmpQQi1NUEVDUW1xWkJSWTlaYWV1TDUtY081anRBbUctX1BlSmRQZXdrVFZ2cHNvWnRuWHNPUFExSUp5RlctUUhLNFhiTUZobEJ0OWtOMFJ0UGlaRlg1VlZJQXh5dFQ4d2hONk0tQjc3QWg3MFRJWjhNVjNNZmVVSXVWTlgtZWFmOHNPTWlYMkVVLWFzTmlYSGc?oc=5\" target=\"_blank\">CLEO Trading Platform Integrates with Gold-i's MatrixNET Liquidity Management Platform to Set New Standard for Prop Firms</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Fintech Finance</font>",
       "tickers": [],
       "topics": [],
       "source": "google_news",
-      "score": 15.4
+      "score": 11.0
     },
     {
-      "id": "https://news.google.com/rss/articles/CBMi2wFBVV95cUxPZDZCTEZ2RHB1VkNZU1RQeTMxdF9YNjhYTWFEdVlYNlZIWWxMcjVza2p0cjdNeU1hSWtmdlZNTE5fQm5DQmdSYWFmTTZwYjVQSDFpanNubnM1RjVUNUc2TTFWWktmRTFtX0hNZDhTVHJ5bFZEWHNjZS0xYTJyTnI1UTkzQzUtUjVqV25hUnVfNUVSUHJBNUxXbzBTRVM3MnY1SEZ6RnV5WjVIY2JqQWFwTmtDRnlZZlI1NlhhdWIwTUN0Zzl3MmZBbWJGX2R0STZoQTZRUEpBZkU1bm_SAeABQVVfeXFMT2dPZ0tzRWQwd0dTTWkzYS03RlY0a2VGLWdnOVRsR1c3bW1wYXlnMXdJbnFqeENwMGhST0J5STZYN2NkeDE0MWhpQUE5ZUN2V3lNcUZtZ0dRZ3VocUpfeU8xSVMwWmxad2g0aUZCTHhtTHVld0xqVnVrVk81Z0IyZWpmOUZLaVhlMDdBeGJiajM1dWJGMWNFRlZWUEQtRjFfSi1nVWxqQ1BCWVM4YXlGc2djTE9uclJyMTdrbktiUGFWd3FURlVvUVFFN1JxQVhlM29XdXM3SWxxNU5kQzlFdi0?oc=5",
-      "title": "How High Can Gold Go? UBP Rebuilds Bullion Positions and Reaffirms $6,000 Gold Price Prediction for 2026 - Finance Magnates",
-      "publisher": "Finance Magnates",
-      "published_at": "2026-04-13T07:51:28+00:00",
-      "url": "https://news.google.com/rss/articles/CBMi2wFBVV95cUxPZDZCTEZ2RHB1VkNZU1RQeTMxdF9YNjhYTWFEdVlYNlZIWWxMcjVza2p0cjdNeU1hSWtmdlZNTE5fQm5DQmdSYWFmTTZwYjVQSDFpanNubnM1RjVUNUc2TTFWWktmRTFtX0hNZDhTVHJ5bFZEWHNjZS0xYTJyTnI1UTkzQzUtUjVqV25hUnVfNUVSUHJBNUxXbzBTRVM3MnY1SEZ6RnV5WjVIY2JqQWFwTmtDRnlZZlI1NlhhdWIwTUN0Zzl3MmZBbWJGX2R0STZoQTZRUEpBZkU1bm_SAeABQVVfeXFMT2dPZ0tzRWQwd0dTTWkzYS03RlY0a2VGLWdnOVRsR1c3bW1wYXlnMXdJbnFqeENwMGhST0J5STZYN2NkeDE0MWhpQUE5ZUN2V3lNcUZtZ0dRZ3VocUpfeU8xSVMwWmxad2g0aUZCTHhtTHVld0xqVnVrVk81Z0IyZWpmOUZLaVhlMDdBeGJiajM1dWJGMWNFRlZWUEQtRjFfSi1nVWxqQ1BCWVM4YXlGc2djTE9uclJyMTdrbktiUGFWd3FURlVvUVFFN1JxQVhlM29XdXM3SWxxNU5kQzlFdi0?oc=5",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMi2wFBVV95cUxPZDZCTEZ2RHB1VkNZU1RQeTMxdF9YNjhYTWFEdVlYNlZIWWxMcjVza2p0cjdNeU1hSWtmdlZNTE5fQm5DQmdSYWFmTTZwYjVQSDFpanNubnM1RjVUNUc2TTFWWktmRTFtX0hNZDhTVHJ5bFZEWHNjZS0xYTJyTnI1UTkzQzUtUjVqV25hUnVfNUVSUHJBNUxXbzBTRVM3MnY1SEZ6RnV5WjVIY2JqQWFwTmtDRnlZZlI1NlhhdWIwTUN0Zzl3MmZBbWJGX2R0STZoQTZRUEpBZkU1bm_SAeABQVVfeXFMT2dPZ0tzRWQwd0dTTWkzYS03RlY0a2VGLWdnOVRsR1c3bW1wYXlnMXdJbnFqeENwMGhST0J5STZYN2NkeDE0MWhpQUE5ZUN2V3lNcUZtZ0dRZ3VocUpfeU8xSVMwWmxad2g0aUZCTHhtTHVld0xqVnVrVk81Z0IyZWpmOUZLaVhlMDdBeGJiajM1dWJGMWNFRlZWUEQtRjFfSi1nVWxqQ1BCWVM4YXlGc2djTE9uclJyMTdrbktiUGFWd3FURlVvUVFFN1JxQVhlM29XdXM3SWxxNU5kQzlFdi0?oc=5\" target=\"_blank\">How High Can Gold Go? UBP Rebuilds Bullion Positions and Reaffirms $6,000 Gold Price Prediction for 2026</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Finance Magnates</font>",
+      "id": "https://news.google.com/rss/articles/CBMirgFBVV95cUxPTG5XNTgycVYtbjFXMzNtcXFtSEkzdndZT3JQZG9LcjFHenpFNFZnM2hRRmxjTlJQcUM2cFJYMFhZbExRU21ZUFc0Zk85cVZRWXdJSUVCS0lRREkzaEVvM0tVM2tNM3JyOVhyR0ltOENsY2NpdWdrM3E3d3NqejdFS1Zkb2ozVEZXeDlvWjBjcGtsdmZoVTc5cUNBbXZKRUhEc2tELWZyMXVNcWxzTnc?oc=5",
+      "title": "Utilities Fall as Treasury Yields Fall - Utilities Roundup - marketscreener.com",
+      "publisher": "marketscreener.com",
+      "published_at": "2026-04-17T21:09:37+00:00",
+      "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxPTG5XNTgycVYtbjFXMzNtcXFtSEkzdndZT3JQZG9LcjFHenpFNFZnM2hRRmxjTlJQcUM2cFJYMFhZbExRU21ZUFc0Zk85cVZRWXdJSUVCS0lRREkzaEVvM0tVM2tNM3JyOVhyR0ltOENsY2NpdWdrM3E3d3NqejdFS1Zkb2ozVEZXeDlvWjBjcGtsdmZoVTc5cUNBbXZKRUhEc2tELWZyMXVNcWxzTnc?oc=5",
+      "summary": "<a href=\"https://news.google.com/rss/articles/CBMirgFBVV95cUxPTG5XNTgycVYtbjFXMzNtcXFtSEkzdndZT3JQZG9LcjFHenpFNFZnM2hRRmxjTlJQcUM2cFJYMFhZbExRU21ZUFc0Zk85cVZRWXdJSUVCS0lRREkzaEVvM0tVM2tNM3JyOVhyR0ltOENsY2NpdWdrM3E3d3NqejdFS1Zkb2ozVEZXeDlvWjBjcGtsdmZoVTc5cUNBbXZKRUhEc2tELWZyMXVNcWxzTnc?oc=5\" target=\"_blank\">Utilities Fall as Treasury Yields Fall - Utilities Roundup</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">marketscreener.com</font>",
       "tickers": [],
       "topics": [],
       "source": "google_news",
-      "score": 13.0
+      "score": 10.0
     },
     {
-      "id": "https://news.google.com/rss/articles/CBMiqwJBVV95cUxNbVIxc1djeXRzVUNBVF9lNGZaYVo2akotellpNkJ2YzVWVWI3OUFGUVczYWpUWldrQWliZ2UyTzFYb0hueWlpMDJ0OFUyTnRCQ1ByWU1NOTFPNlJtTzhVWHpJYmtRdGJ2RDdlVnJ6b1pxb1NadGRXcUNic1BnVFRMdU9leGNHTGYzZnMzOTIwU21ZR2ZPY19DenZpZnNRTE5lelJ3ZU5ROHJpY1FHaGVNLVNpOFdVMEZRckkyX1ZfbGRjT2F4cUwzTktuTE1QbWlhdmYxd2pHTkNFeVFDV1BoRW9ENHBsY1lTM21EMnUwa3loaE9qQkh5VHBkejRRc2JZTWR1SVRUcHp1dmlMZkE2dTJnQkliZWR4YjRUY09ib08tNlA3a1hKYk9aTQ?oc=5",
-      "title": "Gold and silver prices today, Monday, April 13: Gold and silver open lower then rebound after inflation report and blockade threat - Yahoo Finance",
+      "id": "https://news.google.com/rss/articles/CBMingJBVV95cUxPb0JRZXk5WG1iaDV5MTA5NllobUtVVG0zSnExTFNWbEpOcmFBYVJHY05kTDRLVnVLdTRZdlMzZEdSbGFpdGdkR1RGb3Y4XzVMR3RMMjQyWk9NY3hMMm9kZUFKYm5IbkdCNVdjeHVQc1h3V1Rfc1d6WmdrcXdkdURCY09Ydk1WVTVpa2JrUFBWc1d2V3V2UWJQMnc2UExSU25tRDFtRzZRN0VTaDhBLXR0XzBBXzFVTjJ5Qmp3eXRSLS1selgtTERkUERSWFpjRndRTkRWSE9UVDRyTnVRX1phTnFvaGduYW12QlAzdHZIRXhHSTZ5WV80Y0pVSkJCaWNwX3RaRTNaM1lpUnF1QTIxTlIxcDdJeldaUUdlRUFn?oc=5",
+      "title": "Stock market today: GIFT Nifty trades flat; US-Iran news, India VIX to gold, silver rates — eight stocks to buy or sell - MSN",
+      "publisher": "MSN",
+      "published_at": "2026-04-17T20:28:44+00:00",
+      "url": "https://news.google.com/rss/articles/CBMingJBVV95cUxPb0JRZXk5WG1iaDV5MTA5NllobUtVVG0zSnExTFNWbEpOcmFBYVJHY05kTDRLVnVLdTRZdlMzZEdSbGFpdGdkR1RGb3Y4XzVMR3RMMjQyWk9NY3hMMm9kZUFKYm5IbkdCNVdjeHVQc1h3V1Rfc1d6WmdrcXdkdURCY09Ydk1WVTVpa2JrUFBWc1d2V3V2UWJQMnc2UExSU25tRDFtRzZRN0VTaDhBLXR0XzBBXzFVTjJ5Qmp3eXRSLS1selgtTERkUERSWFpjRndRTkRWSE9UVDRyTnVRX1phTnFvaGduYW12QlAzdHZIRXhHSTZ5WV80Y0pVSkJCaWNwX3RaRTNaM1lpUnF1QTIxTlIxcDdJeldaUUdlRUFn?oc=5",
+      "summary": "<a href=\"https://news.google.com/rss/articles/CBMingJBVV95cUxPb0JRZXk5WG1iaDV5MTA5NllobUtVVG0zSnExTFNWbEpOcmFBYVJHY05kTDRLVnVLdTRZdlMzZEdSbGFpdGdkR1RGb3Y4XzVMR3RMMjQyWk9NY3hMMm9kZUFKYm5IbkdCNVdjeHVQc1h3V1Rfc1d6WmdrcXdkdURCY09Ydk1WVTVpa2JrUFBWc1d2V3V2UWJQMnc2UExSU25tRDFtRzZRN0VTaDhBLXR0XzBBXzFVTjJ5Qmp3eXRSLS1selgtTERkUERSWFpjRndRTkRWSE9UVDRyTnVRX1phTnFvaGduYW12QlAzdHZIRXhHSTZ5WV80Y0pVSkJCaWNwX3RaRTNaM1lpUnF1QTIxTlIxcDdJeldaUUdlRUFn?oc=5\" target=\"_blank\">Stock market today: GIFT Nifty trades flat; US-Iran news, India VIX to gold, silver rates — eight stocks to buy or sell</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">MSN</font>",
+      "tickers": [],
+      "topics": [],
+      "source": "google_news",
+      "score": 10.0
+    },
+    {
+      "id": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNRlhJYzdLbmh2MXpCNUFGbjd6VEZhN2JoUWxBb0RCS3BPSkl6ZmlPVXVJdXRjaDREZTRUX2d4d1B5NmhvcTlRX2w2NXJ1VWpINUJMRFpJVTJxVTlCaVFlUFpvVmNZcWswQWoyMmJJTlpBUXEzbmJueDRkQTQteVA4RDdfaFV1TVpKOFJoWTJhZWZEMkFzS3FIN2VCX0hKM2pfSmtTSw?oc=5",
+      "title": "Market rally breakdown: Dow Jones, bitcoin, Tesla, and more - Yahoo Finance",
       "publisher": "Yahoo Finance",
-      "published_at": "2026-04-13T11:10:30+00:00",
-      "url": "https://news.google.com/rss/articles/CBMiqwJBVV95cUxNbVIxc1djeXRzVUNBVF9lNGZaYVo2akotellpNkJ2YzVWVWI3OUFGUVczYWpUWldrQWliZ2UyTzFYb0hueWlpMDJ0OFUyTnRCQ1ByWU1NOTFPNlJtTzhVWHpJYmtRdGJ2RDdlVnJ6b1pxb1NadGRXcUNic1BnVFRMdU9leGNHTGYzZnMzOTIwU21ZR2ZPY19DenZpZnNRTE5lelJ3ZU5ROHJpY1FHaGVNLVNpOFdVMEZRckkyX1ZfbGRjT2F4cUwzTktuTE1QbWlhdmYxd2pHTkNFeVFDV1BoRW9ENHBsY1lTM21EMnUwa3loaE9qQkh5VHBkejRRc2JZTWR1SVRUcHp1dmlMZkE2dTJnQkliZWR4YjRUY09ib08tNlA3a1hKYk9aTQ?oc=5",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiqwJBVV95cUxNbVIxc1djeXRzVUNBVF9lNGZaYVo2akotellpNkJ2YzVWVWI3OUFGUVczYWpUWldrQWliZ2UyTzFYb0hueWlpMDJ0OFUyTnRCQ1ByWU1NOTFPNlJtTzhVWHpJYmtRdGJ2RDdlVnJ6b1pxb1NadGRXcUNic1BnVFRMdU9leGNHTGYzZnMzOTIwU21ZR2ZPY19DenZpZnNRTE5lelJ3ZU5ROHJpY1FHaGVNLVNpOFdVMEZRckkyX1ZfbGRjT2F4cUwzTktuTE1QbWlhdmYxd2pHTkNFeVFDV1BoRW9ENHBsY1lTM21EMnUwa3loaE9qQkh5VHBkejRRc2JZTWR1SVRUcHp1dmlMZkE2dTJnQkliZWR4YjRUY09ib08tNlA3a1hKYk9aTQ?oc=5\" target=\"_blank\">Gold and silver prices today, Monday, April 13: Gold and silver open lower then rebound after inflation report and blockade threat</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Yahoo Finance</font>",
+      "published_at": "2026-04-17T19:39:47+00:00",
+      "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNRlhJYzdLbmh2MXpCNUFGbjd6VEZhN2JoUWxBb0RCS3BPSkl6ZmlPVXVJdXRjaDREZTRUX2d4d1B5NmhvcTlRX2w2NXJ1VWpINUJMRFpJVTJxVTlCaVFlUFpvVmNZcWswQWoyMmJJTlpBUXEzbmJueDRkQTQteVA4RDdfaFV1TVpKOFJoWTJhZWZEMkFzS3FIN2VCX0hKM2pfSmtTSw?oc=5",
+      "summary": "<a href=\"https://news.google.com/rss/articles/CBMipAFBVV95cUxNRlhJYzdLbmh2MXpCNUFGbjd6VEZhN2JoUWxBb0RCS3BPSkl6ZmlPVXVJdXRjaDREZTRUX2d4d1B5NmhvcTlRX2w2NXJ1VWpINUJMRFpJVTJxVTlCaVFlUFpvVmNZcWswQWoyMmJJTlpBUXEzbmJueDRkQTQteVA4RDdfaFV1TVpKOFJoWTJhZWZEMkFzS3FIN2VCX0hKM2pfSmtTSw?oc=5\" target=\"_blank\">Market rally breakdown: Dow Jones, bitcoin, Tesla, and more</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Yahoo Finance</font>",
       "tickers": [],
       "topics": [],
       "source": "google_news",
-      "score": 12.6
+      "score": 9.6
     },
     {
-      "id": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxQQTdwb29EUW13TU5QMW1VejBhSVZ3TC1ndmRiOGJ5dGhTWXFrVzdjWl9GRVZzUWV3eXl2am8wbGZTQkYteWlKckMxbHZZTXdmOWd6aml0NUdzaE1aZEkxdlFWWE12MlJRYXRnNTlqZVFJalZ0VGdKbldFbG9tRjVNdXM0ZEc4WDE1NVpzWjNFNkR1dFRHQTY0M2FuNk1peThpVHYtZjZoaERMeUk?oc=5",
-      "title": "BOJ highlights market volatility, economic hit from Middle East conflict - Reuters",
-      "publisher": "Reuters",
-      "published_at": "2026-04-13T10:51:39+00:00",
-      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxQQTdwb29EUW13TU5QMW1VejBhSVZ3TC1ndmRiOGJ5dGhTWXFrVzdjWl9GRVZzUWV3eXl2am8wbGZTQkYteWlKckMxbHZZTXdmOWd6aml0NUdzaE1aZEkxdlFWWE12MlJRYXRnNTlqZVFJalZ0VGdKbldFbG9tRjVNdXM0ZEc4WDE1NVpzWjNFNkR1dFRHQTY0M2FuNk1peThpVHYtZjZoaERMeUk?oc=5",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiqwFBVV95cUxQQTdwb29EUW13TU5QMW1VejBhSVZ3TC1ndmRiOGJ5dGhTWXFrVzdjWl9GRVZzUWV3eXl2am8wbGZTQkYteWlKckMxbHZZTXdmOWd6aml0NUdzaE1aZEkxdlFWWE12MlJRYXRnNTlqZVFJalZ0VGdKbldFbG9tRjVNdXM0ZEc4WDE1NVpzWjNFNkR1dFRHQTY0M2FuNk1peThpVHYtZjZoaERMeUk?oc=5\" target=\"_blank\">BOJ highlights market volatility, economic hit from Middle East conflict</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Reuters</font>",
+      "id": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQeTRmUUxJVDFxRk0tcUp5ZE5SakNJOVpTaTgwUGpYOW0xVjc5eEJhUW9NZHUzamtXRTF0c1FIY2dNdUJwTU1lcjd1d2pZeC1rTmExWFhoWDZJeHlrY0NicnVrTExfZ3o3b3JLMkl2R3p5eHlIcVE3cGdPajJ6NjdnSWZxd1Q1d201ZnJrUmRfZUJhVjdoRkZWNl8zZjhHX091MWh1cHFRRdIBrAFBVV95cUxPY3BQaFNRQUtCWlVTeFRzeUFyazczX1VQOGpieUR6dkRtUHpfSzNBczB2ZGw4MkhFODFYeDNiaW5abS1PeWRjQzZoQnl1Rk8zQzVqb2ItY0xrVThwbWVfR2l3bHhJME1BYjYxWnNSRll4YTRlSm13ZlhhWHFTbTY1UzBwdlV6V1FKRW9SckM4RFJlV1JkQ2swTnB1N3gwU3R0WHl6ekdWckRrZXds?oc=5",
+      "title": "U.S. Treasury yields slide as traders welcome Middle East de-escalation - CNBC",
+      "publisher": "CNBC",
+      "published_at": "2026-04-17T09:11:13+00:00",
+      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQeTRmUUxJVDFxRk0tcUp5ZE5SakNJOVpTaTgwUGpYOW0xVjc5eEJhUW9NZHUzamtXRTF0c1FIY2dNdUJwTU1lcjd1d2pZeC1rTmExWFhoWDZJeHlrY0NicnVrTExfZ3o3b3JLMkl2R3p5eHlIcVE3cGdPajJ6NjdnSWZxd1Q1d201ZnJrUmRfZUJhVjdoRkZWNl8zZjhHX091MWh1cHFRRdIBrAFBVV95cUxPY3BQaFNRQUtCWlVTeFRzeUFyazczX1VQOGpieUR6dkRtUHpfSzNBczB2ZGw4MkhFODFYeDNiaW5abS1PeWRjQzZoQnl1Rk8zQzVqb2ItY0xrVThwbWVfR2l3bHhJME1BYjYxWnNSRll4YTRlSm13ZlhhWHFTbTY1UzBwdlV6V1FKRW9SckM4RFJlV1JkQ2swTnB1N3gwU3R0WHl6ekdWckRrZXds?oc=5",
+      "summary": "<a href=\"https://news.google.com/rss/articles/CBMipwFBVV95cUxQeTRmUUxJVDFxRk0tcUp5ZE5SakNJOVpTaTgwUGpYOW0xVjc5eEJhUW9NZHUzamtXRTF0c1FIY2dNdUJwTU1lcjd1d2pZeC1rTmExWFhoWDZJeHlrY0NicnVrTExfZ3o3b3JLMkl2R3p5eHlIcVE3cGdPajJ6NjdnSWZxd1Q1d201ZnJrUmRfZUJhVjdoRkZWNl8zZjhHX091MWh1cHFRRdIBrAFBVV95cUxPY3BQaFNRQUtCWlVTeFRzeUFyazczX1VQOGpieUR6dkRtUHpfSzNBczB2ZGw4MkhFODFYeDNiaW5abS1PeWRjQzZoQnl1Rk8zQzVqb2ItY0xrVThwbWVfR2l3bHhJME1BYjYxWnNSRll4YTRlSm13ZlhhWHFTbTY1UzBwdlV6V1FKRW9SckM4RFJlV1JkQ2swTnB1N3gwU3R0WHl6ekdWckRrZXds?oc=5\" target=\"_blank\">U.S. Treasury yields slide as traders welcome Middle East de-escalation</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">CNBC</font>",
       "tickers": [],
       "topics": [],
       "source": "google_news",
-      "score": 11.4
-    },
-    {
-      "id": "https://news.google.com/rss/articles/CBMixgFBVV95cUxPd09EUGJRWjhVdk5QTkFSekcwV2piU1FYQXpMWFZIa1JnaG1QQ3Z6SHFMTmhWZWtxLXhOTXNvbFJSVlBGeFh6ZnR3SWFiVmhiNFJrdVEyLU9WNS01cWYxM0xmblBjM2hzcFVyTDdjcTVZUXh2bEVubGNUQmY0MFJLaEZ1cW1HTUFhVDJsZzFzbWl1d0tidnNRTU9IU2lYbjktaXJxNkRzc2pwNFc5TE92LUtGOXRpWDUzb2ZicUJnMDQwa1hjSnc?oc=5",
-      "title": "Mortgage and refinance interest rates today, April 13, 2026: Will we see sub-6% rates again soon? - Yahoo Finance",
-      "publisher": "Yahoo Finance",
-      "published_at": "2026-04-13T10:00:00+00:00",
-      "url": "https://news.google.com/rss/articles/CBMixgFBVV95cUxPd09EUGJRWjhVdk5QTkFSekcwV2piU1FYQXpMWFZIa1JnaG1QQ3Z6SHFMTmhWZWtxLXhOTXNvbFJSVlBGeFh6ZnR3SWFiVmhiNFJrdVEyLU9WNS01cWYxM0xmblBjM2hzcFVyTDdjcTVZUXh2bEVubGNUQmY0MFJLaEZ1cW1HTUFhVDJsZzFzbWl1d0tidnNRTU9IU2lYbjktaXJxNkRzc2pwNFc5TE92LUtGOXRpWDUzb2ZicUJnMDQwa1hjSnc?oc=5",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMixgFBVV95cUxPd09EUGJRWjhVdk5QTkFSekcwV2piU1FYQXpMWFZIa1JnaG1QQ3Z6SHFMTmhWZWtxLXhOTXNvbFJSVlBGeFh6ZnR3SWFiVmhiNFJrdVEyLU9WNS01cWYxM0xmblBjM2hzcFVyTDdjcTVZUXh2bEVubGNUQmY0MFJLaEZ1cW1HTUFhVDJsZzFzbWl1d0tidnNRTU9IU2lYbjktaXJxNkRzc2pwNFc5TE92LUtGOXRpWDUzb2ZicUJnMDQwa1hjSnc?oc=5\" target=\"_blank\">Mortgage and refinance interest rates today, April 13, 2026: Will we see sub-6% rates again soon?</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Yahoo Finance</font>",
-      "tickers": [],
-      "topics": [],
-      "source": "google_news",
-      "score": 10.6
+      "score": 9.2
     }
   ],
   "selected_count": 5,
   "sensor_snapshot": {
-    "snapshot_date": "2026-04-13",
+    "snapshot_date": "2026-04-16",
     "LPI": {
       "status": "Neutral",
-      "value": 48.27682119205298
+      "value": 35.22384105960265
     },
     "RPI": {
       "status": "Stable",
-      "value": 45.31788079470199
+      "value": 41.23841059602649
     },
     "VRI": {
       "status": "Normal",
-      "value": 60.20132450331127
+      "value": 51.27417218543047
     },
     "XCONF": {
       "status": "Align",
-      "value": 0.36552275457619376
+      "value": 0.35728039466571454
     },
     "GHEDGE": {
-      "status": "Normal",
-      "value": -0.21206863608780066
+      "status": "HedgeDemand",
+      "value": -0.2707380394233123
     },
     "MPS": {
       "status": "Caution",
-      "value": 48.28728476821192
+      "value": 39.19158940397351
     }
   },
   "validation_status": "Watch",
-  "validation_snapshot_date": "2026-04-09",
+  "validation_snapshot_date": "2026-04-17",
   "news_brief": {
-    "headline": "Wall St. gains, U.S. Treasury yields fall after remarks by Fed's Powell - Reuters",
-    "summary_2sentences": "<a href=\"https://news.google.com/rss/articles/CBMiuwFBVV95cUxPVkdzbkVraThqckxMNERIcHk4TG5XLUZIb2NneFVsVUphRTh5b25vbFJNbUQ5NHE3SVhLeEtSX1Y5dWxQNTM2YUpOeXNMTkRpSXVrRTBLT0hrY2hmSFJCRzg5OGU5VF9YcjNTZHpPNURSSXVaNHFBOVd0eTRaZW9kSjhsN1J6aExwaFV0RWg1MjQyZnlvU2xCUlREdVpwSkdta0VoTVlKcGxKcGI2ekJOYkRseUJpbDUweUcw?oc=5\" target=\"_blank\">Wall St. This headline is interpreted with LPI Neutral, RPI Stable, VRI Normal, and XCONF Align as a sensor context."
+    "headline": "CLEO Trading Platform Integrates with Gold-i's MatrixNET Liquidity Management Platform to Set New Standard for Prop Firms - Fintech Finance",
+    "summary_2sentences": "<a href=\"https://news.google.com/rss/articles/CBMi5wFBVV95cUxOcmlwRXhYVnptdlR0ejJma2tTNGlTSFhZb2NKeHFhelM2TmpIbS1ta1Y1TlFuV0tadGlZUVFaazB3eW95OG9BNEc1NHdMS0VINDhxWGsxSmpQQi1NUEVDUW1xWkJSWTlaYWV1TDUtY081anRBbUctX1BlSmRQZXdrVFZ2cHNvWnRuWHNPUFExSUp5RlctUUhLNFhiTUZobEJ0OWtOMFJ0UGlaRlg1VlZJQXh5dFQ4d2hONk0tQjc3QWg3MFRJWjhNVjNNZmVVSXVWTlgtZWFmOHNPTWlYMkVVLWFzTmlYSGc?oc=5\" target=\"_blank\">CLEO Trading Platform Integrates with Gold-i's MatrixNET Liquidity Management Platform to Set New Standard for Prop Firms</a>&nbsp;&nbsp;<font color=\"#6f6f6f\">Fintech Finance</font>. This headline is interpreted with LPI Neutral, RPI Stable, VRI Normal, and XCONF Align as a sensor context."
   },
-  "source_line": "Reuters (2026-04-13 08:23), Finance Magnates (2026-04-13 07:51)",
+  "source_line": "Fintech Finance (2026-04-17 21:46), marketscreener.com (2026-04-17 21:09)",
   "fallback": {
     "used_last_good": false,
     "sensor_only": false,
     "error": null,
     "fetch_errors": [],
-    "lookback_days": 4
+    "lookback_days": 3
   }
 }

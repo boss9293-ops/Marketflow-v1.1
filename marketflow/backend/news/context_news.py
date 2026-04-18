@@ -26,6 +26,8 @@ PREFERRED_PUBLISHER_BONUS = {
     "AP News": 2.2,
     "AP": 2.2,
     "Yahoo Finance": 1.6,
+    "Finnhub": 1.1,
+    "Alpha Vantage": 0.9,
     "MarketWatch": 1.4,
     "CNBC": 1.2,
     "Nasdaq": 1.1,

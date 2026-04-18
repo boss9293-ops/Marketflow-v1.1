@@ -9,12 +9,15 @@ export type StructuredNarrative = {
   interpretation: string
   action: string
   tqqq: string
+  footerLabel?: string
   accent?: string
 }
 
 type NarrativeBlockProps = {
   data: StructuredNarrative
   density?: 'normal' | 'compact'
+  headerLeft?: ReactNode
+  headerRight?: ReactNode
 }
 
 const PORTFOLIO_CLASSIFICATIONS = ['Aligned', 'Overexposed', 'Fragile', 'Defensive'] as const
@@ -52,6 +55,24 @@ function pickList(value: unknown): string[] {
     .split(/\r?\n+/)
     .map((item) => item.trim().replace(/^[\-\*]\s*/, ''))
     .filter(Boolean)
+}
+
+function pickStockFocus(value: unknown): string[] {
+  if (value == null) return []
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => pickStockFocus(item))
+  }
+  if (typeof value !== 'object') {
+    const text = pickText(value)
+    return text ? [text] : []
+  }
+
+  const record = value as Record<string, unknown>
+  const symbol = pickText(record.symbol || record.ticker || record.name)
+  const type = pickText(record.type || record.kind || record.role)
+  const summary = pickText(record.summary || record.note || record.description)
+  const line = [symbol, type ? `(${type})` : '', summary].filter(Boolean).join(' ').trim()
+  return line ? [line] : []
 }
 
 function joinParagraph(...values: unknown[]): string {
@@ -156,26 +177,42 @@ export function mapPortfolioNarrative(raw: unknown): StructuredNarrative | null 
   if (!raw || typeof raw !== 'object') return null
 
   const record = raw as Record<string, unknown>
-  const title = pickText(record.summary || record.main_theme || record.mainTheme || record.classification || 'Portfolio Narrative')
-  const structure = pickText(record.structure || record.allocation || record.holdings_structure)
+  const isAccountManager = !!(record.headline || record.daily_brief || record.dailyBrief || record.action_advice || record.stock_focus || record.stockFocus)
+
+  const title = isAccountManager
+    ? pickText(record.headline || record.summary || record.main_theme || record.mainTheme || record.title || 'Portfolio Advice')
+    : pickText(record.summary || record.main_theme || record.mainTheme || record.classification || 'Portfolio Advice')
+
+  const structure = pickText(record.portfolio_structure || record.structure || record.allocation || record.holdings_structure)
   const risk = pickText(record.risk || record.risk_concentration || record.concentration)
   const alignment = pickText(record.alignment || record.market_alignment || record.regime_alignment)
-  const subThemes = pickList(record.sub_themes || record.subThemes || [structure, risk, alignment])
-  const interpretation = joinParagraph(structure, alignment) || title
-  const action = pickText(record.action || record.guidance || record.rebalance_action)
-  const tqqq = pickText(record.tqqq || record.leverage || record.leverage_note)
-  const badge = findClassification(joinParagraph(title, structure, risk, alignment, action, tqqq))
+  const dailyBrief = pickText(record.daily_brief || record.dailyBrief)
+  const watchlistInsight = pickText(record.watchlist_insight || record.watchlistInsight)
+  const riskFlags = pickList(record.risk_flags || record.riskFlags)
+  const stockFocus = pickStockFocus(record.stock_focus || record.stockFocus)
+  const subThemes = isAccountManager
+    ? (stockFocus.length > 0 ? stockFocus.slice(0, 4) : [dailyBrief].filter(Boolean))
+    : pickList(record.sub_themes || record.subThemes || [structure, risk, alignment])
+  const interpretation = isAccountManager ? dailyBrief || structure || title : joinParagraph(structure, alignment) || title
+  const action = pickText(record.action_advice || record.action || record.guidance || record.rebalance_action)
+  const tqqq = isAccountManager ? riskFlags.join(' · ') : pickText(record.tqqq || record.leverage || record.leverage_note)
+  const badge =
+    findClassification(joinParagraph(title, structure, risk, alignment, action, tqqq, dailyBrief, watchlistInsight, riskFlags.join(' '))) ||
+    pickText(record.badge || record.classification || (isAccountManager && riskFlags.length ? riskFlags[0] : ''))
 
   if (!title && !subThemes.length && !interpretation && !action && !tqqq) return null
 
   return {
-    eyebrow: 'PORTFOLIO NARRATIVE',
+    eyebrow: isAccountManager ? 'AI ACCOUNT MANAGER' : 'AI PORTFOLIO ADVISOR',
     badge,
     title,
     subThemes,
     interpretation,
     action: action || interpretation || title,
     tqqq: tqqq || action || interpretation,
+    footerLabel: isAccountManager
+      ? pickText(record.footerLabel || record.footer_label || record.footerlabel) || 'RISK FLAGS'
+      : undefined,
     accent: '#38bdf8',
   }
 }
@@ -215,7 +252,7 @@ function Block({
   )
 }
 
-export default function NarrativeBlocks({ data, density = 'normal' }: NarrativeBlockProps) {
+export default function NarrativeBlocks({ data, density = 'normal', headerLeft, headerRight }: NarrativeBlockProps) {
   const dense = density === 'compact'
   const accent = data.accent || '#22d3ee'
   const titleSize = dense ? '0.98rem' : '1.08rem'
@@ -267,6 +304,7 @@ export default function NarrativeBlocks({ data, density = 'normal' }: NarrativeB
               {data.eyebrow}
             </span>
           )}
+          {headerLeft}
           {data.symbol && (
             <span
               style={{
@@ -286,23 +324,26 @@ export default function NarrativeBlocks({ data, density = 'normal' }: NarrativeB
           )}
         </div>
 
-        {data.badge && (
-          <span
-            style={{
-              borderRadius: 999,
-              border: '1px solid rgba(148,163,184,0.18)',
-              background: 'rgba(148,163,184,0.08)',
-              color: '#cbd5e1',
-              fontSize: dense ? '0.60rem' : '0.62rem',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              padding: '2px 8px',
-              textTransform: 'uppercase',
-            }}
-          >
-            {data.badge}
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {headerRight}
+          {data.badge && (
+            <span
+              style={{
+                borderRadius: 999,
+                border: '1px solid rgba(148,163,184,0.18)',
+                background: 'rgba(148,163,184,0.08)',
+                color: '#cbd5e1',
+                fontSize: dense ? '0.60rem' : '0.62rem',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                padding: '2px 8px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {data.badge}
+            </span>
+          )}
+        </div>
       </div>
 
       <Block label="MAIN THEME" first dense={dense}>
@@ -365,7 +406,7 @@ export default function NarrativeBlocks({ data, density = 'normal' }: NarrativeB
         </p>
       </Block>
 
-      <Block label="TQQQ" dense={dense}>
+      <Block label={data.footerLabel || 'TQQQ'} dense={dense}>
         <p style={{ margin: 0, color: '#dbe5f3', fontSize: bodySize, lineHeight, wordBreak: 'keep-all' }}>
           {data.tqqq || 'No TQQQ note returned.'}
         </p>

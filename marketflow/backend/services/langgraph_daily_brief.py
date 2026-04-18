@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 ET_ZONE = ZoneInfo("America/New_York")
 
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
+ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 SOURCE_WEIGHTS = {
@@ -108,7 +110,7 @@ def _text(value: Any, default: str = "") -> str:
 def _sanitize_error(message: Any) -> str:
     text = _text(message, str(message))
     text = re.sub(r"([?&]key=)[^&\s]+", r"\1***", text, flags=re.IGNORECASE)
-    for env_name in ("OPENAI_API_KEY", "GPT_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "TAVILY_API_KEY"):
+    for env_name in ("OPENAI_API_KEY", "GPT_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "TAVILY_API_KEY"):
         secret = os.getenv(env_name, "").strip()
         if secret:
             text = text.replace(secret, "***")
@@ -236,8 +238,10 @@ def _build_search_queries(asof_day: str) -> Dict[str, str]:
 def _select_llm_candidates() -> List[Tuple[str, str, str]]:
     forced = os.getenv("LANGGRAPH_LLM_PROVIDER", "auto").strip().lower()
     openai_key = os.getenv("GPT_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip()
+    claude_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
-    openai_model = os.getenv("GPT_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+    openai_model = os.getenv("GPT_MODEL", "gpt-5.1").strip() or "gpt-5.1"
+    claude_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6").strip() or "claude-sonnet-4-6"
     gemini_model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash-latest").strip() or "gemini-1.5-flash-latest"
     if not gemini_model.startswith("models/"):
         gemini_model = f"models/{gemini_model}"
@@ -247,12 +251,19 @@ def _select_llm_candidates() -> List[Tuple[str, str, str]]:
             raise RuntimeError("Missing OPENAI/GPT API key for langgraph pipeline")
         return [("openai", openai_model, openai_key)]
 
+    if forced in {"claude", "anthropic"}:
+        if not claude_key:
+            raise RuntimeError("Missing ANTHROPIC API key for langgraph pipeline")
+        return [("claude", claude_model, claude_key)]
+
     if forced == "gemini":
         if not gemini_key:
             raise RuntimeError("Missing GEMINI/GOOGLE API key for langgraph pipeline")
         return [("gemini", gemini_model, gemini_key)]
 
     candidates: List[Tuple[str, str, str]] = []
+    if claude_key:
+        candidates.append(("claude", claude_model, claude_key))
     if openai_key:
         candidates.append(("openai", openai_model, openai_key))
     if gemini_key:
@@ -260,7 +271,7 @@ def _select_llm_candidates() -> List[Tuple[str, str, str]]:
     if candidates:
         return candidates
 
-    raise RuntimeError("Missing OpenAI/Gemini API key for langgraph pipeline")
+    raise RuntimeError("Missing Claude/OpenAI/Gemini API key for langgraph pipeline")
 
 
 def _build_synthesis_prompt() -> Tuple[str, str]:
@@ -268,7 +279,10 @@ def _build_synthesis_prompt() -> Tuple[str, str]:
         [
             "You are Terminal-X.ai Daily Briefing Agent for Korean investors.",
             "Use only provided search data and engine context.",
+            "Write like a skilled human analyst, not a template generator.",
             "Do not hedge. Do not speculate. Keep concise, factual Korean.",
+            "Every theme must explain why it matters and what it means for the account or watchlist.",
+            "Avoid filler phrases and repeated boilerplate.",
             "Output JSON object only (no markdown).",
         ]
     )
@@ -359,6 +373,36 @@ def _call_openai(system: str, user: str, model: str, api_key: str) -> str:
     text = _text(((data.get("choices") or [{}])[0].get("message") or {}).get("content"))
     if not text:
         raise RuntimeError("OpenAI returned empty response")
+    return text
+
+
+def _call_claude(system: str, user: str, model: str, api_key: str) -> str:
+    timeout_sec = int(os.getenv("TIMEOUT_SEC", "30") or "30")
+    payload = {
+        "model": model,
+        "max_tokens": 2500,
+        "temperature": 0.1,
+        "system": system,
+        "messages": [{"role": "user", "content": user}],
+    }
+    try:
+        response = requests.post(
+            ANTHROPIC_MESSAGES_URL,
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": ANTHROPIC_VERSION,
+                "content-type": "application/json",
+            },
+            json=payload,
+            timeout=timeout_sec,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as exc:
+        raise RuntimeError(_sanitize_error(exc)) from exc
+    text = _text(((data.get("content") or [{}])[0]).get("text"))
+    if not text:
+        raise RuntimeError("Claude returned empty response")
     return text
 
 
@@ -492,6 +536,8 @@ def _invoke_synthesis_llm(
 
     if provider == "openai":
         raw_text = _call_openai(system, user, model, api_key)
+    elif provider == "claude":
+        raw_text = _call_claude(system, user, model, api_key)
     elif provider == "gemini":
         raw_text = _call_gemini(system, user, model, api_key)
     else:

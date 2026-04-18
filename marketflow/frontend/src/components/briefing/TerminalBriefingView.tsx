@@ -77,8 +77,8 @@ type Props = {
 
 const MISSING_BRIEFING = {
   reason: 'daily briefing unavailable',
-  cacheFile: 'cache/daily_briefing.json',
-  script: 'python backend/scripts/build_daily_briefing.py',
+  cacheFile: 'cache/daily_briefing_v3.json',
+  script: 'python backend/scripts/build_daily_briefing_v3.py',
 }
 
 const MISSING_STATE = {

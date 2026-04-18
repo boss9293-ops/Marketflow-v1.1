@@ -2,93 +2,93 @@
   "005930": {
     "ticker": "005930",
     "name": "Samsung Electronics",
-    "summary": "Samsung Electronics (005930) VCP 비율 0.80, 5일 +4.09%, 1일 -2.43%.",
-    "summary_ko": "Samsung Electronics (005930) VCP 비율 0.80, 5일 +4.09%, 1일 -2.43%.",
-    "summary_en": "Samsung Electronics (005930) VCP ratio 0.80, 5D +4.09%, 1D -2.43%.",
-    "providers": {
-      "openai": {
-        "model": "gpt-4o-mini",
-        "rating": "WATCH",
-        "confidence": 65,
-        "summary": "삼성전자는 최근 5일간 상승세를 보였으나 단기 하락세가 우려됩니다.",
-        "summary_ko": "삼성전자는 최근 5일간 상승세를 보였으나 단기 하락세가 우려됩니다.",
-        "summary_en": "Samsung Electronics shows mixed signals with recent volatility.",
-        "source": "openai"
-      },
-      "gemini": {
-        "model": "gemini-1.5-flash",
-        "rating": "WATCH",
-        "confidence": 66,
-        "summary": "Gemini 1.5 Flash: Samsung Electronics(005930) 5일 수익률 +4.09%, 1일 수익률 -2.43%입니다. VCP 비율 0.80 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Samsung Electronics(005930) 5일 수익률 +4.09%, 1일 수익률 -2.43%입니다. VCP 비율 0.80 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Samsung Electronics(005930) momentum +4.09% (5D), -2.43% (1D). VCP ratio 0.80 with watch bias.",
-        "source": "fallback"
-      }
-    },
-    "generated_at": "2026-04-13T07:00:42.289468"
-  },
-  "000660": {
-    "ticker": "000660",
-    "name": "SK Hynix",
-    "summary": "SK Hynix (000660) VCP 비율 0.95, 5일 +17.38%, 1일 +1.27%.",
-    "summary_ko": "SK Hynix (000660) VCP 비율 0.95, 5일 +17.38%, 1일 +1.27%.",
-    "summary_en": "SK Hynix (000660) VCP ratio 0.95, 5D +17.38%, 1D +1.27%.",
+    "summary": "Samsung Electronics (005930) VCP 비율 0.50, 5일 +4.85%, 1일 -0.69%.",
+    "summary_ko": "Samsung Electronics (005930) VCP 비율 0.50, 5일 +4.85%, 1일 -0.69%.",
+    "summary_en": "Samsung Electronics (005930) VCP ratio 0.50, 5D +4.85%, 1D -0.69%.",
     "providers": {
       "openai": {
         "model": "gpt-4o-mini",
         "rating": "BUY",
         "confidence": 75,
-        "summary": "SK 하이닉스의 주가는 긍정적인 상승세를 보이고 있습니다.",
-        "summary_ko": "SK 하이닉스의 주가는 긍정적인 상승세를 보이고 있습니다.",
-        "summary_en": "SK Hynix shows strong upward momentum in recent performance.",
+        "summary": "삼성전자는 최근 5일간 상승세를 보이며 긍정적인 신호를 나타내고 있습니다.",
+        "summary_ko": "삼성전자는 최근 5일간 상승세를 보이며 긍정적인 신호를 나타내고 있습니다.",
+        "summary_en": "Samsung Electronics shows positive momentum over the past week.",
         "source": "openai"
       },
       "gemini": {
         "model": "gemini-1.5-flash",
         "rating": "BUY",
-        "confidence": 92,
-        "summary": "Gemini 1.5 Flash: SK Hynix(000660) 5일 수익률 +17.38%, 1일 수익률 +1.27%입니다. VCP 비율 0.95 기준으로 BUY 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: SK Hynix(000660) 5일 수익률 +17.38%, 1일 수익률 +1.27%입니다. VCP 비율 0.95 기준으로 BUY 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: SK Hynix(000660) momentum +17.38% (5D), +1.27% (1D). VCP ratio 0.95 with buy bias.",
+        "confidence": 69,
+        "summary": "Gemini 1.5 Flash: Samsung Electronics(005930) 5일 수익률 +4.85%, 1일 수익률 -0.69%입니다. VCP 비율 0.50 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Samsung Electronics(005930) 5일 수익률 +4.85%, 1일 수익률 -0.69%입니다. VCP 비율 0.50 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Samsung Electronics(005930) momentum +4.85% (5D), -0.69% (1D). VCP ratio 0.50 with buy bias.",
         "source": "fallback"
       }
     },
-    "generated_at": "2026-04-13T07:00:42.289468"
+    "generated_at": "2026-04-17T22:45:48.566826"
   },
-  "035420": {
-    "ticker": "035420",
-    "name": "Naver",
-    "summary": "Naver (035420) VCP 비율 0.58, 5일 +1.12%, 1일 -1.49%.",
-    "summary_ko": "Naver (035420) VCP 비율 0.58, 5일 +1.12%, 1일 -1.49%.",
-    "summary_en": "Naver (035420) VCP ratio 0.58, 5D +1.12%, 1D -1.49%.",
+  "000660": {
+    "ticker": "000660",
+    "name": "SK Hynix",
+    "summary": "SK Hynix (000660) VCP 비율 0.51, 5일 +9.83%, 1일 -2.34%.",
+    "summary_ko": "SK Hynix (000660) VCP 비율 0.51, 5일 +9.83%, 1일 -2.34%.",
+    "summary_en": "SK Hynix (000660) VCP ratio 0.51, 5D +9.83%, 1D -2.34%.",
     "providers": {
       "openai": {
         "model": "gpt-4o-mini",
         "rating": "WATCH",
         "confidence": 65,
-        "summary": "현재 주가는 하락세이나, 단기적으로 상승 가능성이 있습니다.",
-        "summary_ko": "현재 주가는 하락세이나, 단기적으로 상승 가능성이 있습니다.",
-        "summary_en": "The stock shows short-term potential despite recent declines.",
+        "summary": "SK 하이닉스는 최근 5일 동안 상승세를 보였습니다.",
+        "summary_ko": "SK 하이닉스는 최근 5일 동안 상승세를 보였습니다.",
+        "summary_en": "SK Hynix shows potential but recent decline warrants caution.",
         "source": "openai"
       },
       "gemini": {
         "model": "gemini-1.5-flash",
         "rating": "WATCH",
-        "confidence": 60,
-        "summary": "Gemini 1.5 Flash: Naver(035420) 5일 수익률 +1.12%, 1일 수익률 -1.49%입니다. VCP 비율 0.58 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Naver(035420) 5일 수익률 +1.12%, 1일 수익률 -1.49%입니다. VCP 비율 0.58 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Naver(035420) momentum +1.12% (5D), -1.49% (1D). VCP ratio 0.58 with watch bias.",
+        "confidence": 79,
+        "summary": "Gemini 1.5 Flash: SK Hynix(000660) 5일 수익률 +9.83%, 1일 수익률 -2.34%입니다. VCP 비율 0.51 기준으로 WATCH 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: SK Hynix(000660) 5일 수익률 +9.83%, 1일 수익률 -2.34%입니다. VCP 비율 0.51 기준으로 WATCH 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: SK Hynix(000660) momentum +9.83% (5D), -2.34% (1D). VCP ratio 0.51 with watch bias.",
         "source": "fallback"
       }
     },
-    "generated_at": "2026-04-13T07:00:42.289468"
+    "generated_at": "2026-04-17T22:45:48.566826"
+  },
+  "035420": {
+    "ticker": "035420",
+    "name": "Naver",
+    "summary": "Naver (035420) VCP 비율 0.91, 5일 +7.18%, 1일 -0.92%.",
+    "summary_ko": "Naver (035420) VCP 비율 0.91, 5일 +7.18%, 1일 -0.92%.",
+    "summary_en": "Naver (035420) VCP ratio 0.91, 5D +7.18%, 1D -0.92%.",
+    "providers": {
+      "openai": {
+        "model": "gpt-4o-mini",
+        "rating": "BUY",
+        "confidence": 75,
+        "summary": "네이버 주가는 최근 5일 동안 상승세를 보이고 있습니다.",
+        "summary_ko": "네이버 주가는 최근 5일 동안 상승세를 보이고 있습니다.",
+        "summary_en": "Naver shows strong short-term momentum despite a slight daily decline.",
+        "source": "openai"
+      },
+      "gemini": {
+        "model": "gemini-1.5-flash",
+        "rating": "BUY",
+        "confidence": 74,
+        "summary": "Gemini 1.5 Flash: Naver(035420) 5일 수익률 +7.18%, 1일 수익률 -0.92%입니다. VCP 비율 0.91 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Naver(035420) 5일 수익률 +7.18%, 1일 수익률 -0.92%입니다. VCP 비율 0.91 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Naver(035420) momentum +7.18% (5D), -0.92% (1D). VCP ratio 0.91 with buy bias.",
+        "source": "fallback"
+      }
+    },
+    "generated_at": "2026-04-17T22:45:48.566826"
   },
   "035720": {
     "ticker": "035720",
     "name": "Kakao",
-    "summary": "Kakao (035720) VCP 비율 0.78, 5일 +4.79%, 1일 -1.47%.",
-    "summary_ko": "Kakao (035720) VCP 비율 0.78, 5일 +4.79%, 1일 -1.47%.",
-    "summary_en": "Kakao (035720) VCP ratio 0.78, 5D +4.79%, 1D -1.47%.",
+    "summary": "Kakao (035720) VCP 비율 0.70, 5일 +4.82%, 1일 -1.19%.",
+    "summary_ko": "Kakao (035720) VCP 비율 0.70, 5일 +4.82%, 1일 -1.19%.",
+    "summary_en": "Kakao (035720) VCP ratio 0.70, 5D +4.82%, 1D -1.19%.",
     "providers": {
       "openai": {
         "model": "gpt-4o-mini",
@@ -103,236 +103,236 @@
         "model": "gemini-1.5-flash",
         "rating": "BUY",
         "confidence": 69,
-        "summary": "Gemini 1.5 Flash: Kakao(035720) 5일 수익률 +4.79%, 1일 수익률 -1.47%입니다. VCP 비율 0.78 기준으로 BUY 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Kakao(035720) 5일 수익률 +4.79%, 1일 수익률 -1.47%입니다. VCP 비율 0.78 기준으로 BUY 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Kakao(035720) momentum +4.79% (5D), -1.47% (1D). VCP ratio 0.78 with buy bias.",
+        "summary": "Gemini 1.5 Flash: Kakao(035720) 5일 수익률 +4.82%, 1일 수익률 -1.19%입니다. VCP 비율 0.70 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Kakao(035720) 5일 수익률 +4.82%, 1일 수익률 -1.19%입니다. VCP 비율 0.70 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Kakao(035720) momentum +4.82% (5D), -1.19% (1D). VCP ratio 0.70 with buy bias.",
         "source": "fallback"
       }
     },
-    "generated_at": "2026-04-13T07:00:42.289468"
+    "generated_at": "2026-04-17T22:45:48.566826"
   },
   "051910": {
     "ticker": "051910",
     "name": "LG Chem",
-    "summary": "LG Chem (051910) VCP 비율 0.92, 5일 +7.26%, 1일 -4.49%.",
-    "summary_ko": "LG Chem (051910) VCP 비율 0.92, 5일 +7.26%, 1일 -4.49%.",
-    "summary_en": "LG Chem (051910) VCP ratio 0.92, 5D +7.26%, 1D -4.49%.",
-    "providers": {
-      "openai": {
-        "model": "gpt-4o-mini",
-        "rating": "WATCH",
-        "confidence": 65,
-        "summary": "LG Chem의 주가는 하락했지만, 최근 5일간 상승세를 보이고 있습니다.",
-        "summary_ko": "LG Chem의 주가는 하락했지만, 최근 5일간 상승세를 보이고 있습니다.",
-        "summary_en": "LG Chem shows mixed signals with recent volatility.",
-        "source": "openai"
-      },
-      "gemini": {
-        "model": "gemini-1.5-flash",
-        "rating": "WATCH",
-        "confidence": 71,
-        "summary": "Gemini 1.5 Flash: LG Chem(051910) 5일 수익률 +7.26%, 1일 수익률 -4.49%입니다. VCP 비율 0.92 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: LG Chem(051910) 5일 수익률 +7.26%, 1일 수익률 -4.49%입니다. VCP 비율 0.92 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: LG Chem(051910) momentum +7.26% (5D), -4.49% (1D). VCP ratio 0.92 with watch bias.",
-        "source": "fallback"
-      }
-    },
-    "generated_at": "2026-04-13T07:00:42.289468"
-  },
-  "207940": {
-    "ticker": "207940",
-    "name": "Samsung Biologics",
-    "summary": "Samsung Biologics (207940) VCP 비율 0.59, 5일 -0.32%, 1일 -1.34%.",
-    "summary_ko": "Samsung Biologics (207940) VCP 비율 0.59, 5일 -0.32%, 1일 -1.34%.",
-    "summary_en": "Samsung Biologics (207940) VCP ratio 0.59, 5D -0.32%, 1D -1.34%.",
-    "providers": {
-      "openai": {
-        "model": "gpt-4o-mini",
-        "rating": "WATCH",
-        "confidence": 65,
-        "summary": "삼성바이오로직스의 주가는 최근 하락세를 보이고 있습니다.",
-        "summary_ko": "삼성바이오로직스의 주가는 최근 하락세를 보이고 있습니다.",
-        "summary_en": "Samsung Biologics shows a slight downward trend recently.",
-        "source": "openai"
-      },
-      "gemini": {
-        "model": "gemini-1.5-flash",
-        "rating": "WATCH",
-        "confidence": 57,
-        "summary": "Gemini 1.5 Flash: Samsung Biologics(207940) 5일 수익률 -0.32%, 1일 수익률 -1.34%입니다. VCP 비율 0.59 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Samsung Biologics(207940) 5일 수익률 -0.32%, 1일 수익률 -1.34%입니다. VCP 비율 0.59 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Samsung Biologics(207940) momentum -0.32% (5D), -1.34% (1D). VCP ratio 0.59 with watch bias.",
-        "source": "fallback"
-      }
-    },
-    "generated_at": "2026-04-13T07:00:42.289468"
-  },
-  "068270": {
-    "ticker": "068270",
-    "name": "Celltrion",
-    "summary": "Celltrion (068270) VCP 비율 0.80, 5일 -0.31%, 1일 -2.25%.",
-    "summary_ko": "Celltrion (068270) VCP 비율 0.80, 5일 -0.31%, 1일 -2.25%.",
-    "summary_en": "Celltrion (068270) VCP ratio 0.80, 5D -0.31%, 1D -2.25%.",
-    "providers": {
-      "openai": {
-        "model": "gpt-4o-mini",
-        "rating": "WATCH",
-        "confidence": 60,
-        "summary": "Celltrion의 주가는 하락세를 보이고 있으며, 주의가 필요합니다.",
-        "summary_ko": "Celltrion의 주가는 하락세를 보이고 있으며, 주의가 필요합니다.",
-        "summary_en": "Celltrion shows a downward trend; caution is advised.",
-        "source": "openai"
-      },
-      "gemini": {
-        "model": "gemini-1.5-flash",
-        "rating": "WATCH",
-        "confidence": 57,
-        "summary": "Gemini 1.5 Flash: Celltrion(068270) 5일 수익률 -0.31%, 1일 수익률 -2.25%입니다. VCP 비율 0.80 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Celltrion(068270) 5일 수익률 -0.31%, 1일 수익률 -2.25%입니다. VCP 비율 0.80 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Celltrion(068270) momentum -0.31% (5D), -2.25% (1D). VCP ratio 0.80 with watch bias.",
-        "source": "fallback"
-      }
-    },
-    "generated_at": "2026-04-13T07:00:42.289468"
-  },
-  "105560": {
-    "ticker": "105560",
-    "name": "KB Financial",
-    "summary": "KB Financial (105560) VCP 비율 1.15, 5일 +5.88%, 1일 -1.07%.",
-    "summary_ko": "KB Financial (105560) VCP 비율 1.15, 5일 +5.88%, 1일 -1.07%.",
-    "summary_en": "KB Financial (105560) VCP ratio 1.15, 5D +5.88%, 1D -1.07%.",
-    "providers": {
-      "openai": {
-        "model": "gpt-4o-mini",
-        "rating": "BUY",
-        "confidence": 75,
-        "summary": "KB금융은 최근 5일간 상승세를 보이며 긍정적인 신호를 나타냅니다.",
-        "summary_ko": "KB금융은 최근 5일간 상승세를 보이며 긍정적인 신호를 나타냅니다.",
-        "summary_en": "KB Financial shows positive momentum with a recent 5-day gain.",
-        "source": "openai"
-      },
-      "gemini": {
-        "model": "gemini-1.5-flash",
-        "rating": "BUY",
-        "confidence": 71,
-        "summary": "Gemini 1.5 Flash: KB Financial(105560) 5일 수익률 +5.88%, 1일 수익률 -1.07%입니다. VCP 비율 1.15 기준으로 BUY 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: KB Financial(105560) 5일 수익률 +5.88%, 1일 수익률 -1.07%입니다. VCP 비율 1.15 기준으로 BUY 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: KB Financial(105560) momentum +5.88% (5D), -1.07% (1D). VCP ratio 1.15 with buy bias.",
-        "source": "fallback"
-      }
-    },
-    "generated_at": "2026-04-13T07:00:42.289468"
-  },
-  "055550": {
-    "ticker": "055550",
-    "name": "Shinhan Financial",
-    "summary": "Shinhan Financial (055550) VCP 비율 0.92, 5일 +5.81%, 1일 -0.41%.",
-    "summary_ko": "Shinhan Financial (055550) VCP 비율 0.92, 5일 +5.81%, 1일 -0.41%.",
-    "summary_en": "Shinhan Financial (055550) VCP ratio 0.92, 5D +5.81%, 1D -0.41%.",
-    "providers": {
-      "openai": {
-        "model": "gpt-4o-mini",
-        "rating": "BUY",
-        "confidence": 75,
-        "summary": "신한금융은 최근 5일 동안 상승세를 보였습니다.",
-        "summary_ko": "신한금융은 최근 5일 동안 상승세를 보였습니다.",
-        "summary_en": "Shinhan Financial shows positive momentum over the past week.",
-        "source": "openai"
-      },
-      "gemini": {
-        "model": "gemini-1.5-flash",
-        "rating": "BUY",
-        "confidence": 72,
-        "summary": "Gemini 1.5 Flash: Shinhan Financial(055550) 5일 수익률 +5.81%, 1일 수익률 -0.41%입니다. VCP 비율 0.92 기준으로 BUY 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Shinhan Financial(055550) 5일 수익률 +5.81%, 1일 수익률 -0.41%입니다. VCP 비율 0.92 기준으로 BUY 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Shinhan Financial(055550) momentum +5.81% (5D), -0.41% (1D). VCP ratio 0.92 with buy bias.",
-        "source": "fallback"
-      }
-    },
-    "generated_at": "2026-04-13T07:00:42.289468"
-  },
-  "005380": {
-    "ticker": "005380",
-    "name": "Hyundai Motor",
-    "summary": "Hyundai Motor (005380) VCP 비율 1.02, 5일 +2.03%, 1일 -2.25%.",
-    "summary_ko": "Hyundai Motor (005380) VCP 비율 1.02, 5일 +2.03%, 1일 -2.25%.",
-    "summary_en": "Hyundai Motor (005380) VCP ratio 1.02, 5D +2.03%, 1D -2.25%.",
+    "summary": "LG Chem (051910) VCP 비율 0.73, 5일 +1.12%, 1일 +0.70%.",
+    "summary_ko": "LG Chem (051910) VCP 비율 0.73, 5일 +1.12%, 1일 +0.70%.",
+    "summary_en": "LG Chem (051910) VCP ratio 0.73, 5D +1.12%, 1D +0.70%.",
     "providers": {
       "openai": {
         "model": "gpt-4o-mini",
         "rating": "HOLD",
         "confidence": 65,
-        "summary": "현대차 주가는 하락했지만, 최근 5일간 상승세를 보였습니다.",
-        "summary_ko": "현대차 주가는 하락했지만, 최근 5일간 상승세를 보였습니다.",
-        "summary_en": "Hyundai Motor shows mixed signals with recent performance.",
+        "summary": "LG Chem의 주가는 안정세를 보이고 있으나, 추가 상승 여지는 제한적입니다.",
+        "summary_ko": "LG Chem의 주가는 안정세를 보이고 있으나, 추가 상승 여지는 제한적입니다.",
+        "summary_en": "LG Chem shows stability but limited upside potential.",
         "source": "openai"
       },
       "gemini": {
         "model": "gemini-1.5-flash",
         "rating": "WATCH",
-        "confidence": 62,
-        "summary": "Gemini 1.5 Flash: Hyundai Motor(005380) 5일 수익률 +2.03%, 1일 수익률 -2.25%입니다. VCP 비율 1.02 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Hyundai Motor(005380) 5일 수익률 +2.03%, 1일 수익률 -2.25%입니다. VCP 비율 1.02 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Hyundai Motor(005380) momentum +2.03% (5D), -2.25% (1D). VCP ratio 1.02 with watch bias.",
+        "confidence": 61,
+        "summary": "Gemini 1.5 Flash: LG Chem(051910) 5일 수익률 +1.12%, 1일 수익률 +0.70%입니다. VCP 비율 0.73 기준으로 WATCH 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: LG Chem(051910) 5일 수익률 +1.12%, 1일 수익률 +0.70%입니다. VCP 비율 0.73 기준으로 WATCH 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: LG Chem(051910) momentum +1.12% (5D), +0.70% (1D). VCP ratio 0.73 with watch bias.",
         "source": "fallback"
       }
     },
-    "generated_at": "2026-04-13T07:00:42.289468"
+    "generated_at": "2026-04-17T22:45:48.566826"
   },
-  "012330": {
-    "ticker": "012330",
-    "name": "Hyundai Mobis",
-    "summary": "Hyundai Mobis (012330) VCP 비율 0.79, 5일 +0.77%, 1일 -2.73%.",
-    "summary_ko": "Hyundai Mobis (012330) VCP 비율 0.79, 5일 +0.77%, 1일 -2.73%.",
-    "summary_en": "Hyundai Mobis (012330) VCP ratio 0.79, 5D +0.77%, 1D -2.73%.",
+  "207940": {
+    "ticker": "207940",
+    "name": "Samsung Biologics",
+    "summary": "Samsung Biologics (207940) VCP 비율 0.96, 5일 +1.91%, 1일 -0.93%.",
+    "summary_ko": "Samsung Biologics (207940) VCP 비율 0.96, 5일 +1.91%, 1일 -0.93%.",
+    "summary_en": "Samsung Biologics (207940) VCP ratio 0.96, 5D +1.91%, 1D -0.93%.",
     "providers": {
       "openai": {
         "model": "gpt-4o-mini",
-        "rating": "WATCH",
+        "rating": "HOLD",
         "confidence": 65,
-        "summary": "현대모비스의 주가는 하락세이나 단기 회복 가능성이 있습니다.",
-        "summary_ko": "현대모비스의 주가는 하락세이나 단기 회복 가능성이 있습니다.",
-        "summary_en": "Hyundai Mobis shows potential for short-term recovery despite recent decline.",
+        "summary": "삼성바이오로직스의 주가는 안정세를 보이고 있습니다.",
+        "summary_ko": "삼성바이오로직스의 주가는 안정세를 보이고 있습니다.",
+        "summary_en": "Samsung Biologics shows stable performance with slight fluctuations.",
         "source": "openai"
       },
       "gemini": {
         "model": "gemini-1.5-flash",
-        "rating": "WATCH",
-        "confidence": 58,
-        "summary": "Gemini 1.5 Flash: Hyundai Mobis(012330) 5일 수익률 +0.77%, 1일 수익률 -2.73%입니다. VCP 비율 0.79 기준으로 WATCH 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Hyundai Mobis(012330) 5일 수익률 +0.77%, 1일 수익률 -2.73%입니다. VCP 비율 0.79 기준으로 WATCH 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Hyundai Mobis(012330) momentum +0.77% (5D), -2.73% (1D). VCP ratio 0.79 with watch bias.",
+        "rating": "BUY",
+        "confidence": 63,
+        "summary": "Gemini 1.5 Flash: Samsung Biologics(207940) 5일 수익률 +1.91%, 1일 수익률 -0.93%입니다. VCP 비율 0.96 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Samsung Biologics(207940) 5일 수익률 +1.91%, 1일 수익률 -0.93%입니다. VCP 비율 0.96 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Samsung Biologics(207940) momentum +1.91% (5D), -0.93% (1D). VCP ratio 0.96 with buy bias.",
         "source": "fallback"
       }
     },
-    "generated_at": "2026-04-13T07:00:42.289468"
+    "generated_at": "2026-04-17T22:45:48.566826"
   },
-  "006400": {
-    "ticker": "006400",
-    "name": "Samsung SDI",
-    "summary": "Samsung SDI (006400) VCP 비율 0.55, 5일 +5.29%, 1일 -0.73%.",
-    "summary_ko": "Samsung SDI (006400) VCP 비율 0.55, 5일 +5.29%, 1일 -0.73%.",
-    "summary_en": "Samsung SDI (006400) VCP ratio 0.55, 5D +5.29%, 1D -0.73%.",
+  "068270": {
+    "ticker": "068270",
+    "name": "Celltrion",
+    "summary": "Celltrion (068270) VCP 비율 0.73, 5일 +3.91%, 1일 -0.72%.",
+    "summary_ko": "Celltrion (068270) VCP 비율 0.73, 5일 +3.91%, 1일 -0.72%.",
+    "summary_en": "Celltrion (068270) VCP ratio 0.73, 5D +3.91%, 1D -0.72%.",
     "providers": {
       "openai": {
         "model": "gpt-4o-mini",
         "rating": "BUY",
         "confidence": 75,
-        "summary": "삼성 SDI는 최근 5일 동안 상승세를 보이고 있습니다.",
-        "summary_ko": "삼성 SDI는 최근 5일 동안 상승세를 보이고 있습니다.",
-        "summary_en": "Samsung SDI shows positive momentum over the past week.",
+        "summary": "셀트리온의 최근 주가는 상승세를 보이고 있습니다.",
+        "summary_ko": "셀트리온의 최근 주가는 상승세를 보이고 있습니다.",
+        "summary_en": "Celltrion shows positive momentum despite a slight daily decline.",
         "source": "openai"
       },
       "gemini": {
         "model": "gemini-1.5-flash",
         "rating": "BUY",
-        "confidence": 70,
-        "summary": "Gemini 1.5 Flash: Samsung SDI(006400) 5일 수익률 +5.29%, 1일 수익률 -0.73%입니다. VCP 비율 0.55 기준으로 BUY 관점입니다.",
-        "summary_ko": "Gemini 1.5 Flash: Samsung SDI(006400) 5일 수익률 +5.29%, 1일 수익률 -0.73%입니다. VCP 비율 0.55 기준으로 BUY 관점입니다.",
-        "summary_en": "Gemini 1.5 Flash: Samsung SDI(006400) momentum +5.29% (5D), -0.73% (1D). VCP ratio 0.55 with buy bias.",
+        "confidence": 67,
+        "summary": "Gemini 1.5 Flash: Celltrion(068270) 5일 수익률 +3.91%, 1일 수익률 -0.72%입니다. VCP 비율 0.73 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Celltrion(068270) 5일 수익률 +3.91%, 1일 수익률 -0.72%입니다. VCP 비율 0.73 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Celltrion(068270) momentum +3.91% (5D), -0.72% (1D). VCP ratio 0.73 with buy bias.",
         "source": "fallback"
       }
     },
-    "generated_at": "2026-04-13T07:00:42.289468"
+    "generated_at": "2026-04-17T22:45:48.566826"
+  },
+  "105560": {
+    "ticker": "105560",
+    "name": "KB Financial",
+    "summary": "KB Financial (105560) VCP 비율 0.52, 5일 +2.53%, 1일 +0.00%.",
+    "summary_ko": "KB Financial (105560) VCP 비율 0.52, 5일 +2.53%, 1일 +0.00%.",
+    "summary_en": "KB Financial (105560) VCP ratio 0.52, 5D +2.53%, 1D +0.00%.",
+    "providers": {
+      "openai": {
+        "model": "gpt-4o-mini",
+        "rating": "WATCH",
+        "confidence": 65,
+        "summary": "KB금융은 최근 안정적인 성과를 보이고 있습니다.",
+        "summary_ko": "KB금융은 최근 안정적인 성과를 보이고 있습니다.",
+        "summary_en": "KB Financial shows stable performance recently.",
+        "source": "openai"
+      },
+      "gemini": {
+        "model": "gemini-1.5-flash",
+        "rating": "BUY",
+        "confidence": 65,
+        "summary": "Gemini 1.5 Flash: KB Financial(105560) 5일 수익률 +2.53%, 1일 수익률 +0.00%입니다. VCP 비율 0.52 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: KB Financial(105560) 5일 수익률 +2.53%, 1일 수익률 +0.00%입니다. VCP 비율 0.52 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: KB Financial(105560) momentum +2.53% (5D), +0.00% (1D). VCP ratio 0.52 with buy bias.",
+        "source": "fallback"
+      }
+    },
+    "generated_at": "2026-04-17T22:45:48.566826"
+  },
+  "055550": {
+    "ticker": "055550",
+    "name": "Shinhan Financial",
+    "summary": "Shinhan Financial (055550) VCP 비율 0.26, 5일 +0.91%, 1일 -0.30%.",
+    "summary_ko": "Shinhan Financial (055550) VCP 비율 0.26, 5일 +0.91%, 1일 -0.30%.",
+    "summary_en": "Shinhan Financial (055550) VCP ratio 0.26, 5D +0.91%, 1D -0.30%.",
+    "providers": {
+      "openai": {
+        "model": "gpt-4o-mini",
+        "rating": "HOLD",
+        "confidence": 65,
+        "summary": "신한금융의 최근 주가는 안정세를 보이고 있습니다.",
+        "summary_ko": "신한금융의 최근 주가는 안정세를 보이고 있습니다.",
+        "summary_en": "Shinhan Financial's recent stock performance shows stability.",
+        "source": "openai"
+      },
+      "gemini": {
+        "model": "gemini-1.5-flash",
+        "rating": "WATCH",
+        "confidence": 61,
+        "summary": "Gemini 1.5 Flash: Shinhan Financial(055550) 5일 수익률 +0.91%, 1일 수익률 -0.30%입니다. VCP 비율 0.26 기준으로 WATCH 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Shinhan Financial(055550) 5일 수익률 +0.91%, 1일 수익률 -0.30%입니다. VCP 비율 0.26 기준으로 WATCH 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Shinhan Financial(055550) momentum +0.91% (5D), -0.30% (1D). VCP ratio 0.26 with watch bias.",
+        "source": "fallback"
+      }
+    },
+    "generated_at": "2026-04-17T22:45:48.566826"
+  },
+  "005380": {
+    "ticker": "005380",
+    "name": "Hyundai Motor",
+    "summary": "Hyundai Motor (005380) VCP 비율 0.67, 5일 +9.91%, 1일 +0.75%.",
+    "summary_ko": "Hyundai Motor (005380) VCP 비율 0.67, 5일 +9.91%, 1일 +0.75%.",
+    "summary_en": "Hyundai Motor (005380) VCP ratio 0.67, 5D +9.91%, 1D +0.75%.",
+    "providers": {
+      "openai": {
+        "model": "gpt-4o-mini",
+        "rating": "BUY",
+        "confidence": 75,
+        "summary": "현대차 주가는 긍정적인 상승세를 보이고 있습니다.",
+        "summary_ko": "현대차 주가는 긍정적인 상승세를 보이고 있습니다.",
+        "summary_en": "Hyundai Motor shows a positive upward trend.",
+        "source": "openai"
+      },
+      "gemini": {
+        "model": "gemini-1.5-flash",
+        "rating": "BUY",
+        "confidence": 81,
+        "summary": "Gemini 1.5 Flash: Hyundai Motor(005380) 5일 수익률 +9.91%, 1일 수익률 +0.75%입니다. VCP 비율 0.67 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Hyundai Motor(005380) 5일 수익률 +9.91%, 1일 수익률 +0.75%입니다. VCP 비율 0.67 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Hyundai Motor(005380) momentum +9.91% (5D), +0.75% (1D). VCP ratio 0.67 with buy bias.",
+        "source": "fallback"
+      }
+    },
+    "generated_at": "2026-04-17T22:45:48.566826"
+  },
+  "012330": {
+    "ticker": "012330",
+    "name": "Hyundai Mobis",
+    "summary": "Hyundai Mobis (012330) VCP 비율 0.80, 5일 +6.09%, 1일 +0.00%.",
+    "summary_ko": "Hyundai Mobis (012330) VCP 비율 0.80, 5일 +6.09%, 1일 +0.00%.",
+    "summary_en": "Hyundai Mobis (012330) VCP ratio 0.80, 5D +6.09%, 1D +0.00%.",
+    "providers": {
+      "openai": {
+        "model": "gpt-4o-mini",
+        "rating": "BUY",
+        "confidence": 75,
+        "summary": "현대모비스의 주가는 최근 5일 동안 상승세를 보이고 있습니다.",
+        "summary_ko": "현대모비스의 주가는 최근 5일 동안 상승세를 보이고 있습니다.",
+        "summary_en": "Hyundai Mobis shows positive momentum over the past week.",
+        "source": "openai"
+      },
+      "gemini": {
+        "model": "gemini-1.5-flash",
+        "rating": "BUY",
+        "confidence": 73,
+        "summary": "Gemini 1.5 Flash: Hyundai Mobis(012330) 5일 수익률 +6.09%, 1일 수익률 +0.00%입니다. VCP 비율 0.80 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Hyundai Mobis(012330) 5일 수익률 +6.09%, 1일 수익률 +0.00%입니다. VCP 비율 0.80 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Hyundai Mobis(012330) momentum +6.09% (5D), +0.00% (1D). VCP ratio 0.80 with buy bias.",
+        "source": "fallback"
+      }
+    },
+    "generated_at": "2026-04-17T22:45:48.566826"
+  },
+  "006400": {
+    "ticker": "006400",
+    "name": "Samsung SDI",
+    "summary": "Samsung SDI (006400) VCP 비율 1.12, 5일 +6.65%, 1일 +7.21%.",
+    "summary_ko": "Samsung SDI (006400) VCP 비율 1.12, 5일 +6.65%, 1일 +7.21%.",
+    "summary_en": "Samsung SDI (006400) VCP ratio 1.12, 5D +6.65%, 1D +7.21%.",
+    "providers": {
+      "openai": {
+        "model": "gpt-4o-mini",
+        "rating": "BUY",
+        "confidence": 85,
+        "summary": "삼성 SDI의 주가는 긍정적인 상승세를 보이고 있습니다.",
+        "summary_ko": "삼성 SDI의 주가는 긍정적인 상승세를 보이고 있습니다.",
+        "summary_en": "Samsung SDI shows strong upward momentum.",
+        "source": "openai"
+      },
+      "gemini": {
+        "model": "gemini-1.5-flash",
+        "rating": "BUY",
+        "confidence": 67,
+        "summary": "Gemini 1.5 Flash: Samsung SDI(006400) 5일 수익률 +6.65%, 1일 수익률 +7.21%입니다. VCP 비율 1.12 기준으로 BUY 관점입니다.",
+        "summary_ko": "Gemini 1.5 Flash: Samsung SDI(006400) 5일 수익률 +6.65%, 1일 수익률 +7.21%입니다. VCP 비율 1.12 기준으로 BUY 관점입니다.",
+        "summary_en": "Gemini 1.5 Flash: Samsung SDI(006400) momentum +6.65% (5D), +7.21% (1D). VCP ratio 1.12 with buy bias.",
+        "source": "fallback"
+      }
+    },
+    "generated_at": "2026-04-17T22:45:48.566826"
   }
 }

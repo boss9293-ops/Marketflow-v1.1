@@ -6,7 +6,7 @@ Pipeline:
   Claude generation (daily briefing + today context) -> quality gate -> cache
 
 Output file:
-  backend/output/cache/ai_briefing_v2.json
+  backend/output/cache/legacy/ai_briefing_v2.json
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 CACHE_DIR = BACKEND_DIR / "output" / "cache"
 OUTPUT_DIR = BACKEND_DIR / "output"
-OUT_PATH = CACHE_DIR / "ai_briefing_v2.json"
+OUT_PATH = CACHE_DIR / "legacy" / "ai_briefing_v2.json"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
@@ -373,7 +373,7 @@ def read_previous_cache() -> dict[str, Any] | None:
 
 
 def write_output(payload: dict[str, Any]) -> None:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
 

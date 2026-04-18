@@ -1,5 +1,5 @@
 """
-Build daily_briefing.json — schema v3 (bilingual ko/en, tone-enforced, cache-only, no LLM).
+Build legacy daily_briefing.json — old cache path kept for compatibility.
 
 Inputs:
   backend/output/cache/market_tape.json
@@ -8,7 +8,7 @@ Inputs:
   backend/output/cache/action_snapshot.json
 
 Output:
-  backend/output/cache/daily_briefing.json
+  backend/output/cache/legacy/daily_briefing.json
 
 Schema v3:
   lang            — ["ko", "en"]
@@ -1069,8 +1069,9 @@ def main() -> int:
         },
     }
 
-    os.makedirs(cache, exist_ok=True)
-    out_path = os.path.join(cache, "daily_briefing.json")
+    out_dir = os.path.join(cache, "legacy")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "daily_briefing.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 

@@ -39,7 +39,7 @@ DEFAULT_ARTIFACT_KEYS: tuple[str, ...] = (
     "cache/ticker-news-history-v2-1630.json",
     "cache/context_narrative_cache.json",
     "cache/context_narrative_usage.json",
-    "cache/daily_briefing.json",
+    "cache/legacy/ai_briefing_v2.json",
     "cache/daily_briefing_v3.json",
     "ai/std_risk/latest.json",
     "ai/macro/latest.json",

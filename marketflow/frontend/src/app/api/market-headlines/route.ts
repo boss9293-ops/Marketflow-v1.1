@@ -52,7 +52,24 @@ type YahooRssItem = {
   description: string
 }
 
-type SourceHealthName = 'finnhub' | 'yahoo'
+type YahooFinanceNewsItem = {
+  id?: string | number
+  uuid?: string
+  title?: string
+  headline?: string
+  link?: string
+  url?: string
+  source?: string
+  publisher?: string
+  summary?: string
+  description?: string
+  pubTime?: number
+  providerPublishTime?: number
+  clickThroughUrl?: { url?: string }
+  canonicalUrl?: { url?: string }
+}
+
+type SourceHealthName = 'finnhub' | 'yahoo_finance'
 
 type SourceHealth = {
   name: SourceHealthName
@@ -96,6 +113,8 @@ const decodeHtml = (raw: string): string =>
     .trim()
 
 const stripHtml = (raw: string): string => raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
+const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 const readTag = (xmlBlock: string, tag: string): string => {
   const match = xmlBlock.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))
@@ -351,6 +370,28 @@ const mapYahooRssItem = (symbol: string, item: YahooRssItem): FeedHeadline | nul
   }
 }
 
+const mapYahooFinanceItem = (symbol: string, item: YahooFinanceNewsItem, idx: number): FeedHeadline | null => {
+  if (!item || typeof item !== 'object') return null
+  const headline = String(item.title || item.headline || '').trim()
+  const source = String(item.publisher || item.source || 'Yahoo Finance').trim()
+  const url = String(item.link || item.url || item.clickThroughUrl?.url || item.canonicalUrl?.url || '').trim()
+  if (!headline || !source || !url) return null
+  if (!isFreeNewsSource(source) || hasPromoSignals(headline)) return null
+
+  const epoch = Number(item.pubTime || item.providerPublishTime || 0)
+  const published = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : new Date()
+  return {
+    id: `mh-yf-${symbol}-${item.uuid ?? item.id ?? `${idx}`}`,
+    dateET: formatDateET(published),
+    publishedAtET: published.toISOString(),
+    timeET: formatTimeET(published),
+    headline,
+    source,
+    summary: String(item.summary || item.description || '').trim(),
+    url,
+  }
+}
+
 const readHistoryCache = async (): Promise<FeedHeadline[]> => {
   for (const candidate of HISTORY_CACHE_PATHS) {
     try {
@@ -463,36 +504,64 @@ const fetchFinnhubHeadlines = async (
 const fetchYahooMarketHeadlines = async (): Promise<{ items: FeedHeadline[]; health: SourceHealth }> => {
   const results = await Promise.all(
     YAHOO_MARKET_SYMBOLS.map(async (symbol) => {
-      const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`
-      const request = await fetchWithRetry(rssUrl, { next: { revalidate: 300 } }, 3500)
-      if (!request.response) {
-        console.warn(`[market-headlines] Yahoo RSS fetch failed for ${symbol}:`, request.error)
-        return {
-          symbol,
-          attempts: request.attempts,
-          items: [] as FeedHeadline[],
-          error: request.error || 'request failed',
-        }
-      }
-
       try {
-        const xml = await request.response.text()
-        const parsed = parseYahooRss(xml)
-        const items = parsed
-          .map((item) => mapYahooRssItem(symbol, item))
+        const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+          headers: { 'User-Agent': CHROME_UA, Accept: '*/*' },
+          cache: 'no-store',
+        })
+        const cookie = crumbRes.headers.get('set-cookie') ?? ''
+        const crumbText = crumbRes.ok ? await crumbRes.text() : ''
+        const crumb = crumbText.trim()
+        const crumbParam = crumb && !crumb.includes('<') ? `&crumb=${encodeURIComponent(crumb)}` : ''
+
+        const directUrl = `https://query2.finance.yahoo.com/v2/finance/news?symbols=${encodeURIComponent(symbol)}&count=20${crumbParam}`
+        const directRes = await fetchWithRetry(directUrl, {
+          headers: { 'User-Agent': CHROME_UA, Accept: 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+          next: { revalidate: 300 },
+        }, 3500)
+        const directItems: YahooFinanceNewsItem[] = []
+        if (directRes.response) {
+          const data = await directRes.response.json()
+          directItems.push(...((data?.items?.result ?? data?.news ?? []) as YahooFinanceNewsItem[]))
+        }
+
+        const searchUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(`${symbol} stock`)}&quotesCount=0&newsCount=20&enableFuzzyQuery=false&enableNews=true${crumbParam}`
+        const searchRes = await fetchWithRetry(searchUrl, {
+          headers: { 'User-Agent': CHROME_UA, Accept: 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+          next: { revalidate: 300 },
+        }, 3500)
+        const searchItems: YahooFinanceNewsItem[] = []
+        if (searchRes.response) {
+          const data = await searchRes.response.json()
+          searchItems.push(...(Array.isArray(data?.news) ? data.news : []))
+        }
+
+        const mapped = [...directItems, ...searchItems]
+          .map((item, idx) => mapYahooFinanceItem(symbol, item, idx))
           .filter((row): row is FeedHeadline => Boolean(row))
+
+        if (!mapped.length) {
+          console.warn(`[market-headlines] Yahoo Finance fetch returned no items for ${symbol}`)
+          return {
+            symbol,
+            attempts: 1,
+            items: [] as FeedHeadline[],
+            error: 'no results',
+          }
+        }
+
         return {
           symbol,
-          attempts: request.attempts,
-          items,
+          attempts: 1,
+          items: mapped,
           error: '',
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'parse failed'
-        console.warn(`[market-headlines] Yahoo RSS parse failed for ${symbol}:`, message)
+        const message = error instanceof Error ? error.message : 'fetch failed'
+        console.warn(`[market-headlines] Yahoo Finance fetch failed for ${symbol}:`, message)
         return {
           symbol,
-          attempts: request.attempts,
+          attempts: 1,
           items: [] as FeedHeadline[],
           error: message,
         }
@@ -509,7 +578,7 @@ const fetchYahooMarketHeadlines = async (): Promise<{ items: FeedHeadline[]; hea
   return {
     items,
     health: {
-      name: 'yahoo',
+      name: 'yahoo_finance',
       status: allFailed ? 'down' : failedCount > 0 || hadRetry ? 'degraded' : 'ok',
       items: items.length,
       attempts,

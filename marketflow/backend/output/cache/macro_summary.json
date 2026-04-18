@@ -1,8 +1,8 @@
 {
   "policy_version": "macro_policy_v1",
-  "asof_date": "2026-04-13",
+  "asof_date": "2026-04-15",
   "macro_pressure": {
-    "score": 34.28,
+    "score": 28.25,
     "state": "Normal",
     "confidence": 50,
     "bar": {
@@ -12,17 +12,17 @@
   },
   "indexes": {
     "LPI": {
-      "score": 20.37,
+      "score": 10.23,
       "state": "Normal",
       "confidence": 50
     },
     "RPI": {
-      "score": 29.82,
+      "score": 27.76,
       "state": "Normal",
       "confidence": 50
     },
     "VRI": {
-      "score": 58.64,
+      "score": 56.9,
       "state": "Normal",
       "confidence": 50
     }

@@ -55,6 +55,23 @@ type YahooRssItem = {
   description: string
 }
 
+type YahooFinanceNewsItem = {
+  id?: string | number
+  uuid?: string
+  title?: string
+  headline?: string
+  link?: string
+  url?: string
+  source?: string
+  publisher?: string
+  description?: string
+  summary?: string
+  pubTime?: number
+  providerPublishTime?: number
+  clickThroughUrl?: { url?: string }
+  canonicalUrl?: { url?: string }
+}
+
 type StoredTickerNewsPayload = {
   updatedAt: string
   symbols: Record<string, { timeline: TickerNewsItem[]; details: NewsDetail[] }>
@@ -75,6 +92,8 @@ const decodeHtml = (raw: string): string =>
     .trim()
 
 const stripHtml = (raw: string): string => raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
+const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 const toDateET = (value: Date): ETDateString =>
   new Intl.DateTimeFormat('en-CA', {
@@ -328,6 +347,60 @@ const parseGoogleNewsRss = (xml: string): YahooRssItem[] => {
     .filter((item) => item.title && item.link && item.pubDateRaw)
 }
 
+const mapYahooFinanceItems = (symbol: string, items: YahooFinanceNewsItem[]): YahooRssItem[] => {
+  return items
+    .map((item) => {
+      const title = decodeHtml(String(item.title || item.headline || '').trim())
+      const link = decodeHtml(String(item.link || item.url || item.clickThroughUrl?.url || item.canonicalUrl?.url || '').trim())
+      const source = decodeHtml(String(item.publisher || item.source || 'Yahoo Finance').trim()) || 'Yahoo Finance'
+      const description = stripHtml(decodeHtml(String(item.summary || item.description || '').trim()))
+      const epoch = Number(item.pubTime || item.providerPublishTime || 0)
+      const pubDateRaw = Number.isFinite(epoch) && epoch > 0
+        ? new Date(epoch * 1000).toUTCString()
+        : new Date().toUTCString()
+      void symbol
+      return { title, link, pubDateRaw, source, description }
+    })
+    .filter((item) => item.title && item.link)
+}
+
+async function fetchYahooFinanceNews(symbol: string): Promise<YahooRssItem[]> {
+  try {
+    const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { 'User-Agent': CHROME_UA, Accept: '*/*' },
+      cache: 'no-store',
+    })
+    const cookie = crumbRes.headers.get('set-cookie') ?? ''
+    const crumbText = crumbRes.ok ? await crumbRes.text() : ''
+    const crumb = crumbText.trim()
+    const crumbParam = crumb && !crumb.includes('<') ? `&crumb=${encodeURIComponent(crumb)}` : ''
+
+    const directUrl = `https://query2.finance.yahoo.com/v2/finance/news?symbols=${encodeURIComponent(symbol)}&count=20${crumbParam}`
+    const res = await fetchWithRetry(directUrl, {
+      headers: { 'User-Agent': CHROME_UA, Accept: 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+      cache: 'no-store',
+    }, 6000)
+    if (res) {
+      const json = await res.json()
+      const directItems: YahooFinanceNewsItem[] = (json?.items?.result ?? json?.news ?? []) as YahooFinanceNewsItem[]
+      const mapped = mapYahooFinanceItems(symbol, directItems)
+      if (mapped.length) return mapped
+    }
+
+    const searchUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(`${symbol} stock`)}&quotesCount=0&newsCount=20&enableFuzzyQuery=false&enableNews=true${crumbParam}`
+    const searchRes = await fetchWithRetry(searchUrl, {
+      headers: { 'User-Agent': CHROME_UA, Accept: 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+      cache: 'no-store',
+    }, 6000)
+    if (!searchRes) return []
+    const searchJson = await searchRes.json()
+    const searchItems: YahooFinanceNewsItem[] = Array.isArray(searchJson?.news) ? searchJson.news : []
+    return mapYahooFinanceItems(symbol, searchItems)
+  } catch {
+    return []
+  }
+}
+
 const buildPayloadFromYahoo = (
   symbol: string,
   parsedItems: YahooRssItem[],
@@ -395,9 +468,15 @@ const buildPayloadFromYahoo = (
 }
 
 const fetchYahooFreeNews = async (symbol: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
+  const financeItems = await fetchYahooFinanceNews(symbol)
+  if (financeItems.length) {
+    const built = buildPayloadFromYahoo(symbol, financeItems)
+    if (built.timeline.length || built.details.length) return built
+  }
+
   const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`
   const res = await fetchWithRetry(rssUrl, { next: { revalidate: 3600 } }, 4500)
-  if (!res) throw new Error('Yahoo RSS request failed after retries')
+  if (!res) throw new Error('Yahoo Finance request failed after retries')
   const xml = await res.text()
   return buildPayloadFromYahoo(symbol, parseYahooRss(xml))
 }

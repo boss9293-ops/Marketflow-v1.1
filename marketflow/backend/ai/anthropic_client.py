@@ -2,8 +2,8 @@
 Claude (Anthropic) client — mirrors gpt_client.py pattern.
 Uses Anthropic Messages API via requests (no SDK dependency).
 """
-import time
 import json
+import time
 from typing import Any, Dict
 
 import requests
@@ -19,6 +19,13 @@ ANTHROPIC_VERSION      = "2023-06-01"
 def _extract_text(data: Dict[str, Any]) -> str:
     try:
         content = data.get("content") or []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "tool_use":
+                tool_input = item.get("input")
+                if isinstance(tool_input, str):
+                    return tool_input.strip()
+                if isinstance(tool_input, (dict, list)):
+                    return json.dumps(tool_input, ensure_ascii=False)
         parts = [block["text"] for block in content if block.get("type") == "text"]
         return "\n".join(parts).strip()
     except Exception:
@@ -32,12 +39,17 @@ def generate_text(
     *,
     temperature: float = 0.3,
     max_tokens: int = 1200,
+    output_schema: Dict[str, Any] | None = None,
+    output_tool_name: str = "return_json",
 ) -> AIResult:
     provider  = AIProvider.CLAUDE.value
     model     = get_model(AIProvider.CLAUDE)
     api_key   = get_api_key(AIProvider.CLAUDE)
     timeout   = get_timeout_sec()
     retry     = get_retry_count()
+    if output_schema is not None and task == "narrative_portfolio":
+        timeout = max(timeout, 90)
+        retry = 0
 
     start = time.perf_counter()
     last_error = ""
@@ -57,6 +69,20 @@ def generate_text(
                     "temperature": float(temperature),
                     "system":     system,
                     "messages":   [{"role": "user", "content": user}],
+                    **(
+                        {
+                            "tools": [
+                                {
+                                    "name": output_tool_name,
+                                    "description": "Return the final analysis as a JSON object matching the requested schema.",
+                                    "input_schema": output_schema,
+                                }
+                            ],
+                            "tool_choice": {"type": "tool", "name": output_tool_name},
+                        }
+                        if output_schema
+                        else {}
+                    ),
                 },
                 timeout=timeout,
             )

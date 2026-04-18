@@ -127,6 +127,7 @@ def main() -> int:
                 "history": history,
                 "history_range": t.get("history_range"),
                 "positions_range": t.get("positions_range"),
+                "snapshot_summary": t.get("snapshot_summary"),
             }
         )
 
@@ -138,6 +139,7 @@ def main() -> int:
         "history": sort_history((goal_raw or {}).get("history") or []),
         "history_range": (goal_raw or {}).get("history_range"),
         "positions_range": (goal_raw or {}).get("positions_range"),
+        "snapshot_summary": (goal_raw or {}).get("snapshot_summary"),
     }
 
     active_tabs = []

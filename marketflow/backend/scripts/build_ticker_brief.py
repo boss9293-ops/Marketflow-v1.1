@@ -1,10 +1,10 @@
-"""
-build_ticker_brief.py  —  Terminal X 스타일 티커 EOD 브리프 생성기
+﻿"""
+build_ticker_brief.py  ?? Terminal X ?ㅽ????곗빱 EOD 釉뚮━???앹꽦湲?
 
-실행 시점: 4:30 PM ET (장마감 30분 후)
-뉴스 소스: 기존 CompositeNewsProvider (Yahoo + Google RSS + Reuters RSS)
-출력:      output/cache/ticker_briefs/{SYMBOL}/{DATE}.json  (최근 4일 보관)
-API:       GET /api/ticker-brief?symbol=NVDA  →  최근 4일 브리프 배열
+?ㅽ뻾 ?쒖젏: 4:30 PM ET (?λ쭏媛?30遺???
+?댁뒪 ?뚯뒪: 湲곗〈 CompositeNewsProvider (Yahoo Finance + Finnhub + Alpha Vantage + Google News RSS + Reuters RSS)
+異쒕젰:      output/cache/ticker_briefs/{SYMBOL}/{DATE}.json  (理쒓렐 4??蹂닿?)
+API:       GET /api/ticker-brief?symbol=NVDA  ?? 理쒓렐 4??釉뚮━??諛곗뿴
 """
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-# ── 경로 부트스트랩 ────────────────────────────────────────────────────────
+# ?? 寃쎈줈 遺?몄뒪?몃옪 ????????????????????????????????????????????????????????
 SCRIPT_DIR  = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-# 기존 news providers 재사용
+# 湲곗〈 news providers ?ъ궗??
 try:
     from news.providers import CompositeNewsProvider, Article
 except ImportError:
@@ -48,14 +48,14 @@ DEFAULT_WATCHLIST = [
     "XOM",  "AAPL",  "TSLA", "QQQ",  "SPY",
 ]
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 1. 뉴스 수집 — 기존 CompositeNewsProvider
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 1. ?댁뒪 ?섏쭛 ??湲곗〈 CompositeNewsProvider
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def fetch_news(symbol: str, date_et: str) -> list[dict]:
     """
-    기존 파이프라인 활용.
-    당일 전체 뉴스 수집 (prev 16:00 ~ today 16:30 ET).
+    湲곗〈 ?뚯씠?꾨씪???쒖슜.
+    ?뱀씪 ?꾩껜 ?댁뒪 ?섏쭛 (prev 16:00 ~ today 16:30 ET).
     """
     day_start    = datetime.strptime(date_et, "%Y-%m-%d").replace(tzinfo=ET_ZONE)
     window_start = (day_start - timedelta(hours=24)).timestamp()
@@ -78,7 +78,7 @@ def fetch_news(symbol: str, date_et: str) -> list[dict]:
         articles = []
 
     def _parse_pub(pub_str: str):
-        """ISO string → datetime with UTC tz"""
+        """ISO string ??datetime with UTC tz"""
         try:
             dt = datetime.fromisoformat(pub_str)
             if dt.tzinfo is None:
@@ -91,7 +91,7 @@ def fetch_news(symbol: str, date_et: str) -> list[dict]:
     for a in articles:
         dt = _parse_pub(a.published_at) if a.published_at else None
         pub_ts = dt.timestamp() if dt else 0
-        # 날짜 필터 — 없으면 수용 (당일 것으로 간주)
+        # ?좎쭨 ?꾪꽣 ???놁쑝硫??섏슜 (?뱀씪 寃껋쑝濡?媛꾩＜)
         if pub_ts and not (window_start <= pub_ts <= window_end):
             continue
         if dt is None:
@@ -110,9 +110,9 @@ def fetch_news(symbol: str, date_et: str) -> list[dict]:
     return items
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 2. 가격 수집 (yfinance — 이미 프로젝트에서 사용 중)
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 2. 媛寃??섏쭛 (yfinance ???대? ?꾨줈?앺듃?먯꽌 ?ъ슜 以?
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def fetch_price(symbol: str) -> dict:
     """Get last trading day's OHLC from local DB."""
@@ -142,9 +142,9 @@ def fetch_price(symbol: str) -> dict:
         return {}
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 3. Event Extractor (기존 TS 로직 Python 포팅)
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 3. Event Extractor (湲곗〈 TS 濡쒖쭅 Python ?ы똿)
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 import re
 
@@ -278,9 +278,9 @@ def extract_events(items: list[dict], threshold: int = DIRECTNESS_THRESHOLD, tar
     return evts
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 4. Terminal X 프롬프트
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 4. Terminal X ?꾨＼?꾪듃
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def build_prompt(symbol: str, price: dict, events: list[dict], date_et: str) -> str:
     close    = price.get("close", 0)
@@ -301,13 +301,13 @@ def build_prompt(symbol: str, price: dict, events: list[dict], date_et: str) -> 
 
 STRUCTURE (strict):
 1. "{symbol} closed {direction} {{X}}% at ${{Y}}, {{one clause connecting to primary driver}}"
-2. Primary driver sentence — ONE catalyst, specific actor + number
+2. Primary driver sentence ??ONE catalyst, specific actor + number
 3-4. Supporting catalysts stacked (names + numbers, no vague language)
-5. Headwind sentence — always acknowledge counterforce ("These catalysts offset..." or "Sentiment was tempered by...")
+5. Headwind sentence ??always acknowledge counterforce ("These catalysts offset..." or "Sentiment was tempered by...")
 
 RULES:
 - Every claim needs a number or a named entity
-- No adjectives without data (not "strong" — say "+4.52%")
+- No adjectives without data (not "strong" ??say "+4.52%")
 - One flowing paragraph, 4-6 sentences
 - Bloomberg tone: dry, precise, zero fluff
 
@@ -320,9 +320,9 @@ NEWS EVENTS (directness-ranked):
 Write the brief now:"""
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 5. Claude 호출 + 폴백
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 5. Claude ?몄텧 + ?대갚
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def call_claude(prompt: str) -> str:
     if not ANTHROPIC_KEY:
@@ -341,7 +341,7 @@ def call_claude(prompt: str) -> str:
         return ""
 
 def fallback_brief(symbol: str, price: dict, events: list[dict]) -> str:
-    """LLM 없을 때 룰 기반"""
+    """LLM ?놁쓣 ??猷?湲곕컲"""
     close = price.get("close", 0)
     chg   = price.get("change1d", 0)
     dir_  = "up" if chg >= 0 else "down"
@@ -359,23 +359,23 @@ def fallback_brief(symbol: str, price: dict, events: list[dict]) -> str:
     return " ".join(parts)
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 6. 저장 + 4일 캐시 관리
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 6. ???+ 4??罹먯떆 愿由?
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def save_brief(symbol: str, date_et: str, payload: dict) -> Path:
     sym_dir = BRIEFS_DIR / symbol
     sym_dir.mkdir(exist_ok=True)
     out = sym_dir / f"{date_et}.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    # 최근 4일치만 유지
+    # 理쒓렐 4?쇱튂留??좎?
     for old in sorted(sym_dir.glob("*.json"), reverse=True)[KEEP_DAYS:]:
         old.unlink()
         print(f"  [CACHE] pruned {old.name}")
     return out
 
 def load_briefs(symbol: str) -> list[dict]:
-    """최근 4일치 로드 (최신순)"""
+    """理쒓렐 4?쇱튂 濡쒕뱶 (理쒖떊??"""
     sym_dir = BRIEFS_DIR / symbol
     if not sym_dir.exists():
         return []
@@ -388,23 +388,23 @@ def load_briefs(symbol: str) -> list[dict]:
     return result
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 7. 티커별 실행
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 7. ?곗빱蹂??ㅽ뻾
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def run_ticker(symbol: str, date_et: str) -> dict:
-    print(f"\n{'─'*52}")
+    print(f"\n{'?'*52}")
     print(f"  {symbol}  {date_et}  {'(LLM)' if ANTHROPIC_KEY else '(fallback)'}")
-    print(f"{'─'*52}")
+    print(f"{'?'*52}")
 
     news   = fetch_news(symbol, date_et)
     price  = fetch_price(symbol)
     events = extract_events(news, target=symbol)
 
-    print(f"  events: {len(events)}/{len(news)} passed (d≥{DIRECTNESS_THRESHOLD})")
+    print(f"  events: {len(events)}/{len(news)} passed (d??DIRECTNESS_THRESHOLD})")
     for e in events[:5]:
-        bar = "█" * e["directness"] + "░" * (10 - e["directness"])
-        sent = {"bullish":"🟢","bearish":"🔴","neutral":"🟡"}.get(e["sentiment"],"")
+        bar = "?? * e["directness"] + "?? * (10 - e["directness"])
+        sent = {"bullish":"?윟","bearish":"?뵶","neutral":"?윞"}.get(e["sentiment"],"")
         print(f"    {bar} {e['directness']}/10 {sent} {e['headline'][:52]}")
 
     prompt     = build_prompt(symbol, price, events, date_et)
@@ -429,13 +429,13 @@ def run_ticker(symbol: str, date_et: str) -> dict:
     }
 
     out = save_brief(symbol, date_et, payload)
-    print(f"  → saved: {out.name}")
+    print(f"  ??saved: {out.name}")
     return payload
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 8. 엔트리포인트
-# ═══════════════════════════════════════════════════════════════════════════
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
+# 8. ?뷀듃由ы룷?명듃
+# ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
 def main() -> None:
     now_et  = datetime.now(tz=ET_ZONE)
@@ -464,3 +464,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

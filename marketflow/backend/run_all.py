@@ -46,6 +46,7 @@ SCRIPT_TIMEOUTS: dict[str, int] = {
 
 SCRIPT_TIMEOUTS["build_ai_briefings.py"] = 300
 SCRIPT_TIMEOUTS["build_daily_briefing_v3.py"] = 120
+SCRIPT_TIMEOUTS["build_account_ticker_briefs.py"] = 900
 SCRIPT_TIMEOUTS["build_vr_pattern_dashboard.py"] = 180
 SCRIPT_TIMEOUTS["build_data_manifest.py"] = 60
 ET_ZONE = ZoneInfo("America/New_York")
@@ -93,7 +94,7 @@ SCRIPTS = [
     ("build_health_snapshot.py", "Build Health Snapshot Row"),
     ("build_action_snapshot.py", "Build Action Snapshot Row"),
     ("build_context_news.py", "Build Context News Cache"),
-    ("build_daily_briefing.py", "Build Daily Briefing Snapshot"),
+    ("build_account_ticker_briefs.py", "Build Account Ticker Briefs"),
     ("build_daily_briefing_v3.py", "Build Daily Briefing V3 Narrative"),
     ("build_market_health.py", "Build Market Health 4-Score"),
     ("risk_engine.py",       "Compute Risk Engine Metrics"),
@@ -372,6 +373,7 @@ HOLDINGS_SCRIPTS = [
     ("import_holdings_tabs.py", "Import Holdings Tabs from Google Sheets"),
     ("build_holdings_ts_cache.py", "Build Holdings Time-Series Cache"),
     ("build_my_holdings_cache_from_ts.py", "Build Holdings Snapshot Cache (TS)"),
+    ("build_account_ticker_briefs.py", "Build Account Ticker Briefs"),
     ("build_cache_json.py", "Build Dashboard Cache JSON"),
 ]
 

@@ -315,7 +315,7 @@ def _candidate_market_paths():
 
     candidates.extend([
         BACKEND_DIR / "output" / "briefing.json",
-        NEWS_CACHE_DIR / "daily_briefing.json",
+        NEWS_CACHE_DIR / "daily_briefing_v3.json",
     ])
 
     seen = set()
@@ -468,8 +468,8 @@ def find_latest_news_input_path():
             candidate_paths.extend(root.rglob(pattern))
 
     for path in (
-        NEWS_CACHE_DIR / "daily_briefing.json",
-        NEWS_CACHE_DIR / "ai_briefing_v2.json",
+        NEWS_CACHE_DIR / "daily_briefing_v3.json",
+        NEWS_CACHE_DIR / "legacy" / "ai_briefing_v2.json",
         NEWS_CACHE_DIR / "context_news.json",
         NEWS_AI_DIR / "integrated" / "latest.json",
         BACKEND_DIR / "output" / "briefing.json",

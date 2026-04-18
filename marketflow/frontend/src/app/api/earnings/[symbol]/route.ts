@@ -282,7 +282,7 @@ async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null
 // ── Yahoo Finance fallback (crumb-based, no key required) ────────────────────
 async function fetchEarningsYahoo(symbol: string): Promise<NormalizedResponse | null> {
   try {
-    if (IS_DEV) console.info(`[earnings] Yahoo fallback fetching for ${symbol}`)
+    if (IS_DEV) console.info(`[earnings] Yahoo Finance fallback fetching for ${symbol}`)
     const crumbData = await getYahooCrumb()
     const crumb = crumbData?.crumb ?? ''
     const cookie = crumbData?.cookie ?? ''
@@ -297,7 +297,7 @@ async function fetchEarningsYahoo(symbol: string): Promise<NormalizedResponse | 
       cache: 'no-store',
     })
     if (!res.ok) {
-      if (IS_DEV) console.warn(`[earnings] Yahoo fallback status=${res.status}`)
+      if (IS_DEV) console.warn(`[earnings] Yahoo Finance fallback status=${res.status}`)
       return null
     }
     const json = await res.json()
@@ -361,7 +361,7 @@ async function fetchEarningsYahoo(symbol: string): Promise<NormalizedResponse | 
       dataSource: 'yahoo',
     }
   } catch (_e) {
-    if (IS_DEV) console.warn('[earnings] Yahoo fallback error', _e)
+    if (IS_DEV) console.warn('[earnings] Yahoo Finance fallback error', _e)
     return null
   }
 }
@@ -474,7 +474,7 @@ export async function GET(request: Request, { params }: { params: { symbol: stri
       if (IS_DEV) console.info(`[earnings] trying Yahoo Finance fallback for ${symbolRaw}`)
       const yahooData = await fetchEarningsYahoo(symbolRaw)
       if (yahooData) {
-        if (IS_DEV) console.info(`[earnings] Yahoo fallback success for ${symbolRaw}`)
+        if (IS_DEV) console.info(`[earnings] Yahoo Finance fallback success for ${symbolRaw}`)
         cache.set(symbolRaw, { ts: Date.now(), data: yahooData })
         staleCache.set(symbolRaw, { ts: Date.now(), data: yahooData })
         return NextResponse.json(yahooData)

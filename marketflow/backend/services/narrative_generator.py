@@ -386,6 +386,21 @@ def _load_artifact_json(relative_path: str) -> Any:
         return None
 
 
+def _load_latest_ticker_brief(symbol: str) -> Any:
+    symbol = _safe_str(symbol).upper()
+    if not symbol:
+        return None
+    brief_dir = artifact_path(f"cache/ticker_briefs/{symbol}")
+    if not brief_dir.exists() or not brief_dir.is_dir():
+        return None
+    for brief_path in sorted(brief_dir.glob("*.json"), reverse=True):
+        try:
+            return json.loads(brief_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return None
+
+
 def _build_spy_benchmark_context() -> Dict[str, Any]:
     market_data = _load_artifact_json("market_data.json") or {}
     indices = market_data.get("indices") if isinstance(market_data, dict) else {}
@@ -856,7 +871,7 @@ def _build_symbol_news(portfolio_symbols: set[str], watchlist_symbols: set[str],
     today = datetime.now().strftime("%Y-%m-%d")
     direct_news: List[Dict[str, Any]] = []
     for symbol in sorted(portfolio_symbols):
-        brief = _load_artifact_json(f"cache/ticker_briefs/{symbol}/{today}.json") or {}
+        brief = _load_latest_ticker_brief(symbol) or _load_artifact_json(f"cache/ticker_briefs/{symbol}/{today}.json") or {}
         events = brief.get("events") or []
         for evt in events[:3]:
             hl = _safe_str(evt.get("headline"))
@@ -921,6 +936,8 @@ def _build_symbol_news(portfolio_symbols: set[str], watchlist_symbols: set[str],
                     "reason_relevance": "macro_context",
                 }
             )
+    if direct_news:
+        selected = [item for item in selected if _safe_str(item.get("reason_relevance")) != "macro_context"]
     combined = direct_news + selected
     return combined[:8]
 
@@ -1026,6 +1043,8 @@ def _build_account_manager_input(portfolio_data: Dict[str, Any], engine_data: Di
     index_summary = _build_index_summary()
     sector_summary = _build_sector_summary(holdings, symbol_meta)
     symbol_news = _build_symbol_news(portfolio_symbols, watchlist_symbols, sector_summary)
+    direct_symbol_news = [item for item in symbol_news if _safe_str(item.get("reason_relevance")) == "direct_ticker"]
+    market_symbol_news = [item for item in symbol_news if _safe_str(item.get("reason_relevance")) != "direct_ticker"]
     watchlist_snapshot = _build_watchlist_snapshot(symbol_meta, portfolio_symbols)
     portfolio_daily_change = _build_portfolio_daily_change(positions)
 
@@ -1105,6 +1124,11 @@ def _build_account_manager_input(portfolio_data: Dict[str, Any], engine_data: Di
         "index_summary": index_summary,
         "sector_summary": sector_summary,
         "symbol_news": symbol_news,
+        "news_meta": {
+            "news_first": True,
+            "direct_ticker_count": len(direct_symbol_news),
+            "market_context_count": len(market_symbol_news),
+        },
         "analysis_meta": {
             "as_of_date": today,
             "position_count": len(holdings),
@@ -1232,13 +1256,20 @@ def _call_structured_llm(
 
 def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[str, Any]) -> Dict[str, Any]:
     snapshot = _coerce_dict(account_data.get("portfolio_snapshot"), "portfolio_snapshot")
-    daily = _coerce_dict(account_data.get("portfolio_daily_change"), "portfolio_daily_change")
     holdings = _coerce_list(account_data.get("holdings"), "holdings")
     watchlist = _coerce_list(account_data.get("watchlist_snapshot", {}).get("focus"), "watchlist focus")
-    indices = _coerce_list(account_data.get("index_summary"), "index_summary")
     sector_summary = _coerce_dict(account_data.get("sector_summary"), "sector_summary")
     symbol_news = _coerce_list(account_data.get("symbol_news"), "symbol_news")
     benchmark = _coerce_dict(snapshot.get("benchmark"), "benchmark")
+
+    news_by_symbol: Dict[str, Dict[str, Any]] = {}
+    for news in symbol_news:
+        if not isinstance(news, dict):
+            continue
+        symbol = _safe_str(news.get("symbol")).upper()
+        headline = _safe_str(news.get("headline"))
+        if symbol and headline and symbol not in news_by_symbol:
+            news_by_symbol[symbol] = news
 
     top_position = _coerce_dict(snapshot.get("top_position"), "top_position")
     top_symbol = _safe_str(top_position.get("symbol"))
@@ -1248,15 +1279,8 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
     cash_weight = _safe_float(snapshot.get("cash_weight_pct") or snapshot.get("cash_weight"))
     benchmark_symbol = _safe_str(benchmark.get("symbol"), "SPY") or "SPY"
     benchmark_change_pct = _safe_float(benchmark.get("daily_change_pct"))
-    portfolio_total = _safe_float(snapshot.get("total_value"))
     daily_pnl = _safe_float(snapshot.get("daily_pnl"))
     daily_pnl_pct = _safe_float(snapshot.get("daily_pnl_pct"))
-    total_pnl_pct = _safe_float(snapshot.get("total_pnl_pct"))
-    regime_text = " ".join(
-        _safe_str(item.get("name")) + " " + _safe_str(item.get("comment"))
-        for item in indices[:3]
-        if isinstance(item, dict)
-    ).strip()
 
     if top3_weight >= 65 or top_weight >= 45 or leverage_weight >= 12:
         classification = "Fragile"
@@ -1267,81 +1291,82 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
     else:
         classification = "Aligned"
 
-    top_moves = _coerce_list(account_data.get("watchlist_snapshot", {}).get("moves"), "watchlist_moves")
-    top_move_text = ""
-    if top_moves:
-        first_move = _coerce_dict(top_moves[0], "watchlist move")
-        move_symbol = _safe_str(first_move.get("symbol"))
-        move_badge = _safe_str(first_move.get("badge"))
-        move_reason = _safe_str(first_move.get("badge_reason"))
-        top_move_text = " ".join(part for part in (move_symbol, move_badge, move_reason) if part).strip()
-
-    headline_parts = [classification + ":"]
+    headline = f"{classification}:"
     if top_symbol:
-        headline_parts.append(f"{top_symbol} is the largest holding at {top_weight:.1f}%.")
+        headline += f" {top_symbol} is the largest holding at {top_weight:.1f}%."
     if leverage_weight > 0:
-        headline_parts.append(f"Leverage exposure is {leverage_weight:.1f}% of the book.")
+        headline += f" Leverage exposure is {leverage_weight:.1f}% of the book."
     if cash_weight is not None:
-        headline_parts.append(f"Cash weight is {cash_weight:.1f}%.")
-    headline = " ".join(part.strip() for part in headline_parts if part).strip()
+        headline += f" Cash weight is {cash_weight:.1f}%."
+    headline = headline.strip()
 
-    daily_brief_parts = []
+    daily_brief_bits = []
+    if top_symbol and top_symbol.upper() in news_by_symbol:
+        top_news = news_by_symbol[top_symbol.upper()]
+        top_news_headline = _safe_str(top_news.get("headline"))
+        if top_news_headline:
+            daily_brief_bits.append(f"{top_symbol}: {top_news_headline}.")
     if daily_pnl is not None:
         if daily_pnl_pct is not None:
-            daily_brief_parts.append(f"Today PnL is {daily_pnl:,.2f} ({daily_pnl_pct:+.2f}%).")
+            daily_brief_bits.append(f"Today PnL is {daily_pnl:,.2f} ({daily_pnl_pct:+.2f}%).")
         else:
-            daily_brief_parts.append(f"Today PnL is {daily_pnl:,.2f}.")
-    if benchmark_change_pct is not None:
-        daily_brief_parts.append(f"{benchmark_symbol} is {benchmark_change_pct:+.2f}% today.")
-    if regime_text:
-        daily_brief_parts.append(f"Regime: {regime_text}.")
-    daily_brief = " ".join(daily_brief_parts).strip() or "The account is concentrated, so structure management matters more than adding fresh risk."
+            daily_brief_bits.append(f"Today PnL is {daily_pnl:,.2f}.")
+    if not daily_brief_bits and benchmark_change_pct is not None:
+        daily_brief_bits.append(f"{benchmark_symbol} is {benchmark_change_pct:+.2f}% today.")
+    daily_brief = " ".join(daily_brief_bits).strip() or "Read the account symbol by symbol; the structure is concentrated."
 
     focus_items: List[Dict[str, Any]] = []
-    for item in holdings[:3]:
+    for item in holdings[:4]:
         if not isinstance(item, dict):
             continue
         symbol = _safe_str(item.get("symbol"))
         weight = _safe_float(item.get("weight")) or 0.0
         return_pct = _safe_float(item.get("total_return_pct"))
         change_pct = _safe_float(item.get("daily_change_pct"))
-        relative_note = _safe_str(
-            item.get("vs_spy_note")
-            or _coerce_dict(item.get("benchmark"), "holding benchmark").get("vs_spy_note")
-        )
+        daily_pnl_item = _safe_float(item.get("daily_pnl"))
+        relative_note = _safe_str(item.get("vs_spy_note") or _coerce_dict(item.get("benchmark"), "holding benchmark").get("vs_spy_note"))
+        news_item = news_by_symbol.get(symbol.upper()) if symbol else None
+        news_headline = _safe_str(news_item.get("headline")) if news_item else ""
+        news_summary = _safe_str(news_item.get("summary")) if news_item else ""
+
         kind = "risk"
         if item.get("is_leverage"):
             kind = "opportunity_with_caution"
-        elif weight >= 30 or (symbol and symbol == top_symbol):
-            kind = "risk"
         elif return_pct is not None and return_pct > 100:
             kind = "trend_driver"
-        summary_bits = [f"{symbol} accounts for {weight:.1f}% of the account."]
+        elif weight >= 30 or (symbol and symbol == top_symbol):
+            kind = "risk"
+
+        summary_bits = [f"{symbol} at {weight:.1f}%."]
         if change_pct is not None:
             summary_bits.append(f"Today {change_pct:+.2f}%.")
+        if daily_pnl_item is not None:
+            summary_bits.append(f"PnL {daily_pnl_item:+,.2f}.")
         if return_pct is not None:
-            summary_bits.append(f"Cumulative return {return_pct:+.1f}%." if abs(return_pct) < 10000 else f"Cumulative return {return_pct:+.1f}%.")
+            summary_bits.append(f"Total {return_pct:+.1f}%.")
+        if news_headline:
+            summary_bits.append(f"News: {news_headline}.")
+        elif news_summary:
+            summary_bits.append(f"News: {news_summary}.")
         if relative_note:
             summary_bits.append(relative_note)
         elif change_pct is not None and benchmark_change_pct is not None:
             delta = change_pct - benchmark_change_pct
-            direction = "위에서 노는 중" if delta >= 0 else "아래에서 헤매는 중"
-            summary_bits.append(f"{benchmark_symbol} 대비 {delta:+.2f}pp, {benchmark_symbol}보다 {direction}.")
-        focus_items.append(
-            {
-                "symbol": symbol,
-                "type": kind,
-                "summary": " ".join(summary_bits).strip(),
-            }
-        )
+            relation = "above SPY" if delta >= 0 else "below SPY"
+            summary_bits.append(f"SPY spread {delta:+.2f}pp, {relation}.")
+
+        focus_items.append({
+            "symbol": symbol,
+            "type": kind,
+            "summary": " ".join(summary_bits).strip(),
+        })
+
     if not focus_items and top_symbol:
-        focus_items.append(
-            {
-                "symbol": top_symbol,
-                "type": "risk",
-                "summary": f"{top_symbol} is the main concentration point and should be managed first.",
-            }
-        )
+        focus_items.append({
+            "symbol": top_symbol,
+            "type": "risk",
+            "summary": f"{top_symbol} is the main concentration point and should be managed first.",
+        })
 
     structure_bits = []
     if top_symbol:
@@ -1352,15 +1377,11 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
         structure_bits.append(f"Leverage exposure at {leverage_weight:.1f}%.")
     if cash_weight is not None:
         structure_bits.append(f"Cash weight at {cash_weight:.1f}%.")
-    if benchmark_change_pct is not None:
-        structure_bits.append(f"{benchmark_symbol} change {benchmark_change_pct:+.2f}% today.")
     if sector_summary.get("portfolio_exposure"):
         first_sector = _coerce_dict(sector_summary["portfolio_exposure"][0], "sector exposure")
         if first_sector:
-            structure_bits.append(
-                f"Top sector {_safe_str(first_sector.get('sector'))} at {(_safe_float(first_sector.get('weight')) or 0):.1f}%."
-            )
-    portfolio_structure = " ".join(structure_bits).strip() or "The book is concentrated and should be managed as a core-plus-tactical structure."
+            structure_bits.append(f"Top sector {_safe_str(first_sector.get('sector'))} at {(_safe_float(first_sector.get('weight')) or 0):.1f}%.")
+    portfolio_structure = " ".join(structure_bits).strip() or "The book is concentrated and should be managed symbol by symbol."
 
     watchlist_items = _coerce_list(account_data.get("watchlist_snapshot", {}).get("focus"), "watchlist focus")
     watchlist_text_parts = []
@@ -1375,9 +1396,7 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
             watchlist_text_parts.append(part)
     if not watchlist_text_parts and watchlist:
         watchlist_text_parts = [_safe_str(item.get("symbol")) for item in watchlist[:3] if _safe_str(item.get("symbol"))]
-    if not watchlist_text_parts and top_move_text:
-        watchlist_text_parts = [top_move_text]
-    watchlist_insight = "; ".join(watchlist_text_parts).strip() or "Watchlist is a source of potential rotation and should be used as a comparison set, not as a reason to add risk blindly."
+    watchlist_insight = "; ".join(watchlist_text_parts).strip() or "Watchlist should be used as a comparison set, not as a reason to add risk blindly."
 
     if classification == "Fragile":
         action_advice = "Trim the largest position first, keep leverage separate, and only add risk after concentration falls."
@@ -1404,7 +1423,6 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
     if symbol_news:
         risk_flags.append("news_sensitive")
 
-    summary = f"{classification}: {headline.split(':', 1)[-1].strip() if ':' in headline else headline}"
     risk_sentence = " ".join(
         [
             f"Top concentration is {top_symbol} at {top_weight:.1f}%." if top_symbol else "The main risk is concentration in a few positions.",
@@ -1415,9 +1433,8 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
     ).strip()
     alignment_sentence = " ".join(
         [
-            "The structure is aligned with the market only if you keep the tactical sleeve separate.",
             f"{benchmark_symbol} {benchmark_change_pct:+.2f}% today." if benchmark_change_pct is not None else "",
-            regime_text or "",
+            "Keep the tactical sleeve separate from the core." if leverage_weight > 0 else "",
         ]
     ).strip()
 
@@ -1430,7 +1447,6 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
         "action_advice": action_advice,
         "risk_flags": risk_flags or ["monitor_concentration"],
         "footerLabel": "RISK FLAGS" if risk_flags else "WATCHLIST",
-        # Compatibility keys for the existing UI and fallbacks.
         "summary": headline,
         "main_theme": headline,
         "sub_themes": [daily_brief] + [item["summary"] for item in focus_items[:3]],
@@ -1442,7 +1458,6 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
         "classification": classification,
         "badge": classification,
     }
-
 
 def _briefing_fallback(engine_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
@@ -1664,13 +1679,15 @@ def generate_portfolio(portfolio_data: dict, engine_data: dict) -> dict:
             "Return a JSON object with keys headline, daily_brief, stock_focus, portfolio_structure, watchlist_insight, action_advice, and risk_flags.",
             "If tab_name is present in the input, analyze only that tab and do not mix in other tabs or the aggregate account.",
             "Treat the holdings table as today's selected-tab positions table, not a pooled book from other tabs.",
+            "Use symbol_news as the primary evidence. Prefer direct_ticker items over market_context items, and avoid market_context news unless a holding has no direct news at all.",
             "Make stock_focus the primary narrative. Each stock_focus item should describe one symbol's move, the nearby catalyst or news, and whether it is above SPY, below SPY, or aligned with SPY.",
             "Do not write a chapter-style account overview. Keep daily_brief to one sentence, and keep portfolio_structure and watchlist_insight short enough to read like a terminal note.",
             "If position_count is greater than zero, never describe the account as no holdings or cash-only; headline must anchor on the top holding or dominant risk instead.",
-            "Always mention the largest concentration, the strongest daily contributor or detractor, the market regime, the news tie-in, and the next action.",
+            "Always mention the largest concentration, the strongest daily contributor or detractor, the news tie-in, and the next action.",
             "Do not hide loss leaders or leverage exposure.",
             "Keep the prose professional and actionable. Avoid generic risk warnings without account impact.",
             "Use the user's current tab as a standalone account for the narrative, except for the benchmark comparison to SPY.",
+            "Use cash_weight as an actual percentage. Never reinterpret 0.8 as 80.",
         ],
     )
     data = _call_structured_llm(

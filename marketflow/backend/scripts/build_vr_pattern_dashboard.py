@@ -472,7 +472,7 @@ def main() -> int:
     current_90d = _load_json(artifact_path("current_90d.json"))
     market_state = _load_json(artifact_path("cache/market_state.json"))
     snapshots_120d = _load_json(artifact_path("cache/snapshots_120d.json"))
-    daily_briefing = _load_json(artifact_path("cache/daily_briefing.json"))
+    daily_briefing = _load_json(artifact_path("cache/daily_briefing_v3.json"))
 
     current = risk_v1.get("current") if isinstance(risk_v1.get("current"), dict) else {}
     latest_snapshot = _last_item((snapshots_120d or {}).get("snapshots"))

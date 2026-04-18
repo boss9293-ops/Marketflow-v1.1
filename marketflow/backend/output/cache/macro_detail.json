@@ -1,15 +1,15 @@
 {
   "policy_version": "macro_policy_v1",
-  "asof_date": "2026-04-13",
+  "asof_date": "2026-04-15",
   "macro_pressure": {
-    "score": 34.28,
+    "score": 28.25,
     "state": "Normal",
     "confidence": 50
   },
   "macro_pressure_explain": {
     "state": null,
     "score": null,
-    "asof": "2026-04-14",
+    "asof": "2026-04-16",
     "stale": false,
     "source": [
       "Macro Layer composites: LPI/RPI/VRI"
@@ -65,7 +65,7 @@
   "layers": {
     "LPI": {
       "label": "Liquidity Pressure Index",
-      "score": 20.37,
+      "score": 10.23,
       "state": "Normal",
       "confidence": 50,
       "drivers": [
@@ -109,7 +109,7 @@
       "explain": {
         "state": null,
         "score": null,
-        "asof": "2026-04-14",
+        "asof": "2026-04-16",
         "stale": false,
         "source": [
           "FRED:RRPONTSYD",
@@ -155,7 +155,7 @@
     },
     "RPI": {
       "label": "Rates Pressure Index",
-      "score": 29.82,
+      "score": 27.76,
       "state": "Normal",
       "confidence": 50,
       "drivers": [
@@ -199,7 +199,7 @@
       "explain": {
         "state": null,
         "score": null,
-        "asof": "2026-04-14",
+        "asof": "2026-04-16",
         "stale": false,
         "source": [
           "FRED:EFFR"
@@ -244,7 +244,7 @@
     },
     "VRI": {
       "label": "Volatility Regime Index",
-      "score": 58.64,
+      "score": 56.9,
       "state": "Normal",
       "confidence": 50,
       "drivers": [
@@ -288,7 +288,7 @@
       "explain": {
         "state": null,
         "score": null,
-        "asof": "2026-04-14",
+        "asof": "2026-04-16",
         "stale": false,
         "source": [
           "FRED:VIXCLS / CBOE VIX (configured source)"

@@ -1,13 +1,13 @@
 {
   "status": "YELLOW",
-  "gate_score": 47,
+  "gate_score": 50,
   "recommendation": "Mixed market. Be selective with position sizing.",
   "kospi": {
-    "change_pct": -0.86
+    "change_pct": -0.55
   },
   "kosdaq": {
-    "change_pct": 0.57
+    "change_pct": 0.61
   },
-  "usd_krw": 1489.48,
-  "generated_at": "2026-04-13T07:00:42.289468"
+  "usd_krw": 1465.68,
+  "generated_at": "2026-04-17T22:45:48.566826"
 }

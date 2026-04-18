@@ -184,6 +184,62 @@ def _read_json(name: str) -> Tuple[Optional[Dict[str, Any]], Optional[Path]]:
     return None, None
 
 
+def _normalize_daily_briefing(raw: Optional[Dict[str, Any]], asof_day: str) -> Dict[str, Any]:
+    payload = dict(raw or {})
+    if any(key in payload for key in ("headline", "paragraphs", "bullets", "stance")):
+        return payload
+
+    sections = payload.get("sections") if isinstance(payload.get("sections"), list) else []
+
+    def _section_text(section: Any, lang: str) -> str:
+        if not isinstance(section, dict):
+            return ""
+        if lang == "ko":
+            parts = [section.get("structural_ko"), section.get("implication_ko")]
+        else:
+            parts = [section.get("structural"), section.get("implication")]
+        text = " ".join(
+            str(part).strip()
+            for part in parts
+            if isinstance(part, str) and part.strip()
+        ).strip()
+        return text
+
+    headline_ko = str(payload.get("hook_ko") or payload.get("one_line_ko") or payload.get("hook") or payload.get("one_line") or "").strip()
+    headline_en = str(payload.get("hook") or payload.get("one_line") or payload.get("hook_ko") or payload.get("one_line_ko") or headline_ko or "").strip()
+    section_lines_ko = [line for line in (_section_text(section, "ko") for section in sections) if line][:4]
+    section_lines_en = [line for line in (_section_text(section, "en") for section in sections) if line][:4]
+    bullet_ko = []
+    bullet_en = []
+    for section in sections[:6]:
+        if not isinstance(section, dict):
+            continue
+        title = str(section.get("title") or "NOTE").strip()
+        text_ko = _section_text(section, "ko")
+        text_en = _section_text(section, "en")
+        if text_ko:
+            bullet_ko.append({"label": title, "text": text_ko})
+        if text_en:
+            bullet_en.append({"label": title, "text": text_en})
+
+    risk_check = payload.get("risk_check") if isinstance(payload.get("risk_check"), dict) else {}
+    risk_message = str(risk_check.get("message") or headline_ko or headline_en or "").strip()
+
+    payload.update({
+        "data_date": payload.get("data_date") or asof_day,
+        "headline": {"ko": headline_ko, "en": headline_en},
+        "paragraphs": {"ko": [{"text": text} for text in ([headline_ko] + section_lines_ko) if text], "en": [{"text": text} for text in ([headline_en] + section_lines_en) if text]},
+        "bullets": {"ko": bullet_ko, "en": bullet_en},
+        "stance": {
+            "action": risk_message,
+            "exposure_band": risk_check.get("zone") if isinstance(risk_check.get("zone"), str) else None,
+            "why": risk_message,
+        },
+        "risk_check": risk_check,
+    })
+    return payload
+
+
 def _load_context() -> Dict[str, Any]:
     market_state, market_state_path = _read_json("market_state.json")
     health_snapshot, health_snapshot_path = _read_json("health_snapshot.json")
@@ -193,7 +249,19 @@ def _load_context() -> Dict[str, Any]:
     risk_v1, risk_v1_path = _read_json("risk_v1.json")
     vr_survival, vr_survival_path = _read_json("vr_survival.json")
     action_snapshot, action_snapshot_path = _read_json("action_snapshot.json")
-    daily_briefing, daily_briefing_path = _read_json("daily_briefing.json")
+    base_asof_day = (
+        _text(_pick(market_state, "data_date"))
+        or _text(_pick(health_snapshot, "data_date"))
+        or _text(_pick(overview, "latest_date"))
+        or _text(_pick(macro_summary, "asof_date"))
+        or _text(_pick(macro_detail, "asof_date"))
+        or _text(_pick(risk_v1, "data_as_of"))
+        or _text(_pick(risk_v1, "current", "date"))
+        or _text(_pick(vr_survival, "current", "date"))
+        or datetime.now(ET_ZONE).strftime("%Y-%m-%d")
+    )
+    daily_briefing, daily_briefing_path = _read_json("daily_briefing_v3.json")
+    daily_briefing = _normalize_daily_briefing(daily_briefing, base_asof_day)
     daily_report, daily_report_path = _read_json("daily_report.json")
 
     asof_day = (

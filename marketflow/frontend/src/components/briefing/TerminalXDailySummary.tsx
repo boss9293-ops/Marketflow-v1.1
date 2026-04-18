@@ -353,7 +353,7 @@ function BriefingBulletRow({ bullet }: { bullet: { label?: string | null; text?:
       <div style={{ color: '#7dd3fc', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
         {bullet.label?.trim() || 'NOTE'}
       </div>
-      <div style={{ color: '#e2e8f0', fontSize: '0.85rem', lineHeight: 1.65, marginTop: 6 }}>{bullet.text || <DataPlaceholder reason="daily briefing unavailable" cacheFile="cache/daily_briefing.json" script="python backend/scripts/build_daily_briefing.py" />}</div>
+      <div style={{ color: '#e2e8f0', fontSize: '0.85rem', lineHeight: 1.65, marginTop: 6 }}>{bullet.text || <DataPlaceholder reason="daily briefing unavailable" cacheFile="cache/daily_briefing_v3.json" script="python backend/scripts/build_daily_briefing_v3.py" />}</div>
       {Array.isArray(bullet.evidence) && bullet.evidence.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
           {bullet.evidence.slice(0, 3).map((item, index) => (
