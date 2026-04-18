@@ -2,46 +2,81 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const OUTPUT_DIRS = [
-  path.resolve(process.cwd(), '..', 'backend', 'output'),
-  path.resolve(process.cwd(), 'backend', 'output'),
-  path.resolve(process.cwd(), '..', 'output'),
-  path.resolve(process.cwd(), 'output'),
-];
+function collectOutputDirs(): string[] {
+  const cwd = process.cwd();
+  const roots: string[] = [cwd];
+  let cursor = cwd;
+  for (let i = 0; i < 6; i += 1) {
+    const parent = path.dirname(cursor);
+    if (!parent || parent === cursor) break;
+    roots.push(parent);
+    cursor = parent;
+  }
+
+  const out = new Set<string>();
+  for (const root of roots) {
+    out.add(path.resolve(root, 'backend', 'output'));
+    out.add(path.resolve(root, 'marketflow', 'backend', 'output'));
+    out.add(path.resolve(root, 'output'));
+  }
+
+  const envCandidates = [
+    process.env.BACKEND_OUTPUT_DIR,
+    process.env.MARKETFLOW_OUTPUT_DIR,
+    process.env.OUTPUT_DIR,
+  ].filter((v): v is string => !!v && String(v).trim().length > 0);
+  for (const p of envCandidates) out.add(path.resolve(p));
+
+  return Array.from(out);
+}
+
+const OUTPUT_DIRS = collectOutputDirs();
 
 type CategoryId = 'DATA' | 'BUILD' | 'CACHE' | 'AI' | 'FRONTEND';
 
-const MODULE_DEFS = [
-  { id: 'price_feed', file: 'cache/market_tape.json', expected_interval: 60, impact: ['risk_build', 'vr_build', 'dashboard'], category: 'Data Intake', stage: 'DATA' },
-  { id: 'fred_macro', file: 'current_90d.json', expected_interval: 1440, impact: ['macro_build', 'risk_build'], category: 'Data Intake', stage: 'DATA' },
-  { id: 'volatility_feed', file: 'cache/market_tape.json', expected_interval: 60, impact: ['risk_build'], category: 'Data Intake', stage: 'DATA' },
+type ModuleDef = {
+  id: string;
+  file: string | string[];
+  expected_interval: number;
+  impact: string[];
+  category: string;
+  stage: CategoryId;
+};
 
-  { id: 'macro_build', file: 'current_90d.json', expected_interval: 1440, impact: ['risk_build', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
-  { id: 'risk_build', file: 'risk_v1.json', expected_interval: 1440, impact: ['vr_build', 'ai_std_risk', 'ai_integrated'], category: 'Build Layer', stage: 'BUILD' },
-  { id: 'vr_build', file: 'vr_survival.json', expected_interval: 1440, impact: ['dashboard'], category: 'Build Layer', stage: 'BUILD' },
-  { id: 'soxx_context', file: 'soxx_context.json', expected_interval: 1440, impact: ['frontend_api', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
-  { id: 'snapshot_build', file: 'snapshots_full_5y.json', expected_interval: 1440, impact: ['dashboard'], category: 'Build Layer', stage: 'BUILD' },
+const MODULE_DEFS: ModuleDef[] = [
+  { id: 'price_feed', file: ['cache/market_tape.json', 'market_tape.json'], expected_interval: 60, impact: ['risk_build', 'vr_build', 'dashboard'], category: 'Data Intake', stage: 'DATA' },
+  { id: 'fred_macro', file: ['current_90d.json', 'cache/current_90d.json'], expected_interval: 1440, impact: ['macro_build', 'risk_build'], category: 'Data Intake', stage: 'DATA' },
+  { id: 'volatility_feed', file: ['cache/market_tape.json', 'market_tape.json'], expected_interval: 60, impact: ['risk_build'], category: 'Data Intake', stage: 'DATA' },
 
-  { id: 'ai_std_risk', file: 'ai/std_risk/latest.json', expected_interval: 720, impact: ['dashboard_ai'], category: 'AI Layer', stage: 'AI' },
-  { id: 'ai_macro', file: 'ai/macro/latest.json', expected_interval: 720, impact: ['macro_ai'], category: 'AI Layer', stage: 'AI' },
-  { id: 'ai_integrated', file: 'ai/integrated/latest.json', expected_interval: 720, impact: ['briefing_api', 'dashboard_ai'], category: 'AI Layer', stage: 'AI' },
+  { id: 'macro_build', file: ['current_90d.json', 'cache/current_90d.json'], expected_interval: 1440, impact: ['risk_build', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
+  { id: 'risk_build', file: ['risk_v1.json', 'cache/risk_v1.json'], expected_interval: 1440, impact: ['vr_build', 'ai_std_risk', 'ai_integrated'], category: 'Build Layer', stage: 'BUILD' },
+  { id: 'vr_build', file: ['vr_survival.json', 'cache/vr_survival.json'], expected_interval: 1440, impact: ['dashboard'], category: 'Build Layer', stage: 'BUILD' },
+  { id: 'soxx_context', file: ['soxx_context.json', 'cache/soxx_context.json'], expected_interval: 1440, impact: ['frontend_api', 'dashboard'], category: 'Build Layer', stage: 'BUILD' },
+  { id: 'snapshot_build', file: ['snapshots_full_5y.json', 'cache/snapshots_full_5y.json'], expected_interval: 1440, impact: ['dashboard'], category: 'Build Layer', stage: 'BUILD' },
 
-  { id: 'risk_v1.json', file: 'risk_v1.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
-  { id: 'vr_survival.json', file: 'vr_survival.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
-  { id: 'overview.json', file: 'cache/overview_home.json', expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
+  { id: 'ai_std_risk', file: ['ai/std_risk/latest.json', 'cache/ai/std_risk/latest.json'], expected_interval: 720, impact: ['dashboard_ai'], category: 'AI Layer', stage: 'AI' },
+  { id: 'ai_macro', file: ['ai/macro/latest.json', 'cache/ai/macro/latest.json'], expected_interval: 720, impact: ['macro_ai'], category: 'AI Layer', stage: 'AI' },
+  { id: 'ai_integrated', file: ['ai/integrated/latest.json', 'cache/ai/integrated/latest.json'], expected_interval: 720, impact: ['briefing_api', 'dashboard_ai'], category: 'AI Layer', stage: 'AI' },
+
+  { id: 'risk_v1.json', file: ['risk_v1.json', 'cache/risk_v1.json'], expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
+  { id: 'vr_survival.json', file: ['vr_survival.json', 'cache/vr_survival.json'], expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
+  { id: 'overview.json', file: ['cache/overview_home.json', 'cache/overview.json'], expected_interval: 1440, impact: ['frontend_api'], category: 'Cache Layer', stage: 'CACHE' },
 ];
 
-async function getFileStat(filename: string) {
-  for (const dir of OUTPUT_DIRS) {
-    try {
-      const fullPath = path.join(dir, filename);
-      const stat = await fs.stat(fullPath);
-      return { path: fullPath, stat, exists: true };
-    } catch {
-      // try next
+async function getFileStat(filename: string | string[]) {
+  const candidates = Array.isArray(filename) ? filename : [filename];
+  for (const relFile of candidates) {
+    for (const dir of OUTPUT_DIRS) {
+      try {
+        const fullPath = path.join(dir, relFile);
+        const stat = await fs.stat(fullPath);
+        return { path: fullPath, stat, exists: true, matched: relFile };
+      } catch {
+        // try next
+      }
     }
   }
-  return { path: null, stat: null, exists: false };
+  return { path: null, stat: null, exists: false, matched: null };
 }
 
 function generateMaintenanceGuide(name: string, status: string, impact: string[]) {
@@ -177,7 +212,7 @@ export async function GET() {
           module: def.id,
           severity: calculateSeverity('RED', def.id),
           type: 'file_not_found',
-          message: `Expected file ${def.file} not found`,
+          message: `Expected file ${Array.isArray(def.file) ? def.file.join(' OR ') : def.file} not found`,
           time: new Date().toISOString(),
           pipeline_stage: def.stage,
           blocks: def.impact,
