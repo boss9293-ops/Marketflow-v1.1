@@ -457,7 +457,7 @@ export default function MyPage() {
   const [sheetUrl, setSheetUrl] = useState<string>(() => {
     try { return localStorage.getItem('holdings_sheet_url') || '' } catch { return '' }
   })
-  const [saEmail, setSaEmail] = useState<string | null>(null)
+  const [saEmail, setSaEmail] = useState<string>('stock-sheet@united-bongo-467018-v4.iam.gserviceaccount.com')
   const [selectedTabs, setSelectedTabs] = useState<string[]>([])
   const [activePositionsTab, setActivePositionsTab] = useState<string>('')
   const [credsStatus, setCredsStatus] = useState<{ configured: boolean; source: string } | null>(null)
@@ -563,7 +563,7 @@ export default function MyPage() {
     } catch {}
   }
 
-  const FALLBACK_SA_EMAIL = '서비스 계정 JSON을 설정해주세요 (우측 상단 관리 버튼)'
+  const FALLBACK_SA_EMAIL = 'stock-sheet@united-bongo-467018-v4.iam.gserviceaccount.com'
 
   async function fetchSaEmail() {
     try {
