@@ -1969,53 +1969,69 @@ export default function MyPage() {
             <div style={{ marginTop: 4 }}>
               <div style={{ color: '#cbd5e1', fontSize: '0.73rem', marginBottom: 6 }}>
                 <span style={{ color: '#7dd3fc', fontWeight: 700 }}>Step 2.</span>{' '}
-                Google Sheet 주소 붙여넣기 → Load → Import
+                서비스 계정 JSON 붙여넣기 후 저장
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <input
-                  value={sheetUrl}
-                  onChange={(e) => setSheetUrl(e.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <textarea
+                  value={saJsonInput}
+                  onChange={(e) => setSaJsonInput(e.target.value)}
+                  placeholder='{"type":"service_account", ...}'
+                  rows={3}
                   style={{
-                    flex: '1 1 200px',
-                    padding: '0.28rem 0.5rem',
+                    width: '100%',
+                    padding: '0.3rem 0.5rem',
                     background: 'rgba(31,41,55,0.8)',
                     border: '1px solid rgba(255,255,255,0.12)',
                     color: '#e5e7eb',
                     borderRadius: 6,
-                    fontSize: '0.72rem',
+                    fontSize: '0.68rem',
+                    fontFamily: 'monospace',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
                   }}
                 />
-                <button
-                  onClick={handleLoadTabs}
-                  style={{
-                    border: '1px solid rgba(14,165,233,0.4)',
-                    background: 'rgba(14,165,233,0.15)',
-                    color: '#7dd3fc',
-                    borderRadius: 6,
-                    padding: '0.28rem 0.6rem',
-                    fontSize: '0.7rem',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {tabsLoading ? 'Loading...' : 'Load'}
-                </button>
-                <button
-                  onClick={handleImportTabs}
-                  style={{
-                    border: '1px solid rgba(16,185,129,0.4)',
-                    background: 'rgba(16,185,129,0.16)',
-                    color: '#6ee7b7',
-                    borderRadius: 6,
-                    padding: '0.28rem 0.6rem',
-                    fontSize: '0.7rem',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Import
-                </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    onClick={saveCreds}
+                    disabled={credsLoading || !saJsonInput.trim()}
+                    style={{
+                      border: '1px solid rgba(14,165,233,0.4)',
+                      background: 'rgba(14,165,233,0.15)',
+                      color: '#7dd3fc',
+                      borderRadius: 6,
+                      padding: '0.25rem 0.6rem',
+                      fontSize: '0.7rem',
+                      cursor: 'pointer',
+                      opacity: saJsonInput.trim() ? 1 : 0.5,
+                    }}
+                  >
+                    {credsLoading ? '저장 중...' : 'Save SA JSON'}
+                  </button>
+                  {credsStatus?.configured && (
+                    <button
+                      onClick={clearCreds}
+                      style={{
+                        border: '1px solid rgba(239,68,68,0.4)',
+                        background: 'rgba(239,68,68,0.12)',
+                        color: '#fca5a5',
+                        borderRadius: 6,
+                        padding: '0.25rem 0.6rem',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                  <span style={{ color: '#6b7280', fontSize: '0.65rem' }}>
+                    {credsStatus == null ? '' : credsStatus.configured ? `✓ configured (${credsStatus!.source})` : 'not configured'}
+                  </span>
+                </div>
+                {credsMessage && (
+                  <div style={{ color: credsMessage.startsWith('[') ? '#f87171' : '#6ee7b7', fontSize: '0.68rem' }}>
+                    {credsMessage}
+                  </div>
+                )}
               </div>
             </div>
           </div>
