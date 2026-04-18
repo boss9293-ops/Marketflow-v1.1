@@ -640,6 +640,7 @@ export default function MyPage() {
       setMessage(cleanMessage(successMessage || `Imported tabs: ${tabsCsv}`))
       await refreshTabs(true)
       await refreshTs()
+      await fetchHoldings()
       return true
     } catch {
       setMessage('Import failed (network).')
@@ -672,6 +673,16 @@ export default function MyPage() {
       setTabsMeta(tmeta)
       setSelectedTabs(nextSelectedTabs)
       setSheetUrl(sheetId)
+      const needsBuild =
+        Object.keys(data.positions_by_tab || {}).length === 0 &&
+        ((tsData?.tabs?.length || 0) === 0 && (tsData?.goal?.positions?.length || 0) === 0)
+
+      if (needsBuild && nextSelectedTabs.length > 0) {
+        setMessage('Tabs loaded. Building holdings data...')
+        await importTabs(sheetId, nextSelectedTabs.join(','), 'Tabs loaded. Holdings data ready.')
+        return
+      }
+
       setMessage(cleanMessage(tmeta?.error || 'Tabs loaded.'))
     } catch {
       setMessage('Failed to load tabs (network).')
