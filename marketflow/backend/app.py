@@ -448,7 +448,6 @@ _run_builds_if_needed()
 CACHE_DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'cache.db')
 MY_HOLDINGS_PATH = os.path.join(OUTPUT_DIR, 'my_holdings.json')
 MY_HOLDINGS_SNAPSHOT_PATH = os.path.join(OUTPUT_DIR, 'my_holdings_cache.json')
-MY_HOLDINGS_CACHE_PATH = os.path.join(os.path.dirname(__file__), '..', 'output', 'cache', 'my_holdings.json')
 HOLDINGS_IMPORT_SCRIPT = os.path.join(os.path.dirname(__file__), 'scripts', 'import_holdings_csv.py')
 SA_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'google_sa.json')
 
@@ -764,11 +763,6 @@ def _data_build_lock(name: str) -> threading.Lock:
             lock = threading.Lock()
             _DATA_BUILD_LOCKS[name] = lock
         return lock
-
-
-def _holdings_expected_tabs() -> list[str]:
-    raw = os.environ.get('GOOGLE_SHEETS_TABS', 'Goal,미국1,미국2,미국3,미국4,미국5,미국6,한국1')
-    return [tab.strip() for tab in raw.split(',') if tab.strip()]
 
 
 def _holdings_artifacts_complete() -> bool:
