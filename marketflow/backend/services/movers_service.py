@@ -477,8 +477,3 @@ def build_movers_cache_payload(result: Dict[str, Any]) -> Dict[str, Any]:
         "records": result.get("records", []),
         "summary": result.get("summary", {}),
     }
-
-
-def default_cache_output_dir() -> Path:
-    ensure_dir(OUTPUT_CACHE_DIR)
-    return OUTPUT_CACHE_DIR
