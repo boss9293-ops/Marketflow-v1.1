@@ -621,20 +621,7 @@ def _build_my_holdings_cache_script():
 
 
     script = os.path.join(os.path.dirname(__file__), 'scripts', 'build_my_holdings_cache.py')
-
-
-    env = os.environ.copy()
-
-
-    env['PYTHONIOENCODING'] = 'utf-8'
-
-
-    env['PYTHONUTF8'] = '1'
-
-    if not env.get('GOOGLE_SERVICE_ACCOUNT_JSON'):
-        sa = _get_sa_json()
-        if sa:
-            env['GOOGLE_SERVICE_ACCOUNT_JSON'] = sa
+    env = _script_env(include_google_sa=True)
 
 
     return subprocess.run(
@@ -671,18 +658,7 @@ def _run_backend_script(script_name: str, extra_args=None, timeout: int = 180):
 
 
     script = os.path.join(os.path.dirname(__file__), 'scripts', script_name)
-
-
-    env = os.environ.copy()
-
-
-    env['PYTHONIOENCODING'] = 'utf-8'
-
-
-    env['PYTHONUTF8'] = '1'
-
-
-    env['PYTHONPATH'] = os.path.dirname(__file__) + os.pathsep + env.get('PYTHONPATH', '')
+    env = _script_env()
 
 
     return subprocess.run(
@@ -742,7 +718,6 @@ def _ensure_risk_v1_outputs(force: bool = False):
 
 
 _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
-    'sheet_tabs.json': ('list_sheet_tabs.py', 180),
     'my_holdings_ts.json': ('build_holdings_ts_cache.py', 120),
     'my_holdings_cache.json': ('build_my_holdings_cache_from_ts.py', 120),
     'risk_v1.json': ('build_risk_v1.py', 1200),
@@ -790,20 +765,32 @@ def _data_build_lock(name: str) -> threading.Lock:
         return lock
 
 
+def _script_env(include_google_sa: bool = False) -> dict[str, str]:
+    env = os.environ.copy()
+    env['PYTHONIOENCODING'] = 'utf-8'
+    env['PYTHONUTF8'] = '1'
+    backend_dir = os.path.dirname(__file__)
+    pythonpath = env.get('PYTHONPATH', '').strip()
+    env['PYTHONPATH'] = backend_dir if not pythonpath else backend_dir + os.pathsep + pythonpath
+    if include_google_sa and not env.get('GOOGLE_SERVICE_ACCOUNT_JSON'):
+        sa = _get_sa_json()
+        if sa:
+            env['GOOGLE_SERVICE_ACCOUNT_JSON'] = sa
+    return env
+
+
 def _holdings_expected_tabs() -> list[str]:
     raw = os.environ.get('GOOGLE_SHEETS_TABS', 'Goal,미국1,미국2,미국3,미국4,미국5,미국6,한국1')
     return [tab.strip() for tab in raw.split(',') if tab.strip()]
 
 
 def _holdings_artifacts_complete() -> bool:
-    sheet_tabs = _read_json_from_candidates('sheet_tabs.json')
     goal_payload = _read_json_from_candidates('my_holdings_goal.json')
     tabs_payload = _read_json_from_candidates('my_holdings_tabs.json')
     ts_payload = _read_json_from_candidates('my_holdings_ts.json')
 
     if not (
-        isinstance(sheet_tabs, dict)
-        and isinstance(goal_payload, dict)
+        isinstance(goal_payload, dict)
         and isinstance(tabs_payload, dict)
         and isinstance(ts_payload, dict)
     ):
@@ -917,30 +904,7 @@ def _run_sheets_script(script_name: str, extra_args=None, timeout: int = 180):
 
 
     script = os.path.join(os.path.dirname(__file__), 'scripts', script_name)
-
-
-    env = os.environ.copy()
-
-
-    env['PYTHONIOENCODING'] = 'utf-8'
-
-
-    env['PYTHONUTF8'] = '1'
-
-
-    env['PYTHONPATH'] = os.path.dirname(__file__) + os.pathsep + env.get('PYTHONPATH', '')
-
-
-    if not env.get('GOOGLE_SERVICE_ACCOUNT_JSON'):
-
-
-        sa = _get_sa_json()
-
-
-        if sa:
-
-
-            env['GOOGLE_SERVICE_ACCOUNT_JSON'] = sa
+    env = _script_env(include_google_sa=True)
 
 
     return subprocess.run(
@@ -8336,23 +8300,13 @@ def my_import_csv_v2():
 
 
         result = subprocess.run(
-
-
             [sys.executable, HOLDINGS_IMPORT_SCRIPT, '--csv', tmp_path, '--output', MY_HOLDINGS_PATH],
-
-
             capture_output=True,
-
-
             encoding='utf-8',
-
-
             errors='replace',
-
-
             timeout=120,
-
-
+            env=_script_env(),
+            cwd=os.path.dirname(__file__),
         )
 
 
@@ -10077,9 +10031,7 @@ def _auto_import_holdings_from_sheets() -> None:
 
     try:
         scripts_dir = os.path.join(os.path.dirname(__file__), "scripts")
-        env = os.environ.copy()
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["PYTHONUTF8"] = "1"
+        env = _script_env(include_google_sa=True)
         env["GOOGLE_SERVICE_ACCOUNT_JSON"] = sa_json
 
         r0 = subprocess.run(
