@@ -8050,24 +8050,22 @@ def my_holdings_import_tabs():
     _tabs_stripped = tabs.strip() if isinstance(tabs, str) else ''
     _needs_expansion = (not _tabs_stripped) or (_tabs_stripped == 'Goal')
 
+    print(f"[import-tabs] SENTINEL_V3 needs_expansion={_needs_expansion}", flush=True)
+
     if _needs_expansion:
+        # Always re-run list_sheet_tabs.py with the sheet context from the
+        # request so we have a fresh, authoritative selectable list regardless
+        # of any stale sheet_tabs.json on disk.
+        list_args = ['--sheet_url', sheet_url] if sheet_url else ['--sheet_id', sheet_id]
+        list_result = _run_sheets_script('list_sheet_tabs.py', extra_args=list_args, timeout=120)
+        print(f"[import-tabs] list_sheet_tabs rc={list_result.returncode}", flush=True)
+        print(f"[import-tabs] list_sheet_tabs stdout: {(list_result.stdout or '')[-500:]}", flush=True)
+        if list_result.stderr:
+            print(f"[import-tabs] list_sheet_tabs stderr: {(list_result.stderr or '')[-500:]}", flush=True)
+
         tdata = load_json_or_none('sheet_tabs.json') or {}
         selectable = tdata.get('selectable') or []
-        print(f"[import-tabs] expansion step1: sheet_tabs_exists={bool(tdata)} selectable={selectable!r}", flush=True)
-
-        # If sheet_tabs.json is missing or empty on this instance, regenerate it
-        # using the sheet context from the current request so we can enumerate
-        # all selectable tabs instead of falling through to a single "Goal".
-        if not selectable:
-            list_args = ['--sheet_url', sheet_url] if sheet_url else ['--sheet_id', sheet_id]
-            list_result = _run_sheets_script('list_sheet_tabs.py', extra_args=list_args, timeout=120)
-            print(f"[import-tabs] list_sheet_tabs rc={list_result.returncode}", flush=True)
-            if list_result.returncode != 0:
-                print(f"[import-tabs] list_sheet_tabs stderr: {(list_result.stderr or '')[-800:]}", flush=True)
-                print(f"[import-tabs] list_sheet_tabs stdout: {(list_result.stdout or '')[-800:]}", flush=True)
-            tdata = load_json_or_none('sheet_tabs.json') or {}
-            selectable = tdata.get('selectable') or []
-            print(f"[import-tabs] expansion step2: selectable={selectable!r} source={tdata.get('source')!r} error={tdata.get('error')!r}", flush=True)
+        print(f"[import-tabs] sheet_tabs source={tdata.get('source')!r} error={tdata.get('error')!r} selectable_count={len(selectable)} selectable={selectable!r}", flush=True)
 
         if len(selectable) > 1:
             tabs = ",".join(selectable)
