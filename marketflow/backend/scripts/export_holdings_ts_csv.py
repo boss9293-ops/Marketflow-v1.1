@@ -12,18 +12,40 @@ import json
 import os
 from typing import Any, Dict, List
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 
 def repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 def input_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "my_holdings_ts.json")
+    rel = "my_holdings_ts.json"
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Export holdings time-series cache to CSV")
-    p.add_argument("--output", default=os.path.join(repo_root(), "backend", "output", "my_holdings_ts.csv"))
+    default_output = "my_holdings_ts.csv"
+    if contract_artifact_path is not None:
+        try:
+            default_output = str(contract_artifact_path(default_output))
+        except Exception:
+            default_output = os.path.join(repo_root(), "backend", "output", default_output)
+    else:
+        default_output = os.path.join(repo_root(), "backend", "output", default_output)
+    p.add_argument("--output", default=default_output)
     return p.parse_args()
 
 

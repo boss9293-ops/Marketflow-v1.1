@@ -22,6 +22,14 @@ from typing import Any, Dict, List, Optional
 
 from date_utils import normalize_daily_snapshot_dates
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 
 DATA_VERSION = "cache_v2"
 SNAPSHOT_LIMIT = 120
@@ -44,6 +52,16 @@ def db_path() -> str:
 
 def cache_dir() -> str:
     return os.path.join(repo_root(), "output", "cache")
+
+
+def artifact_path(relative_path: str) -> str:
+    rel = str(relative_path or "").replace("\\", "/").lstrip("/")
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def now_iso() -> str:
@@ -762,9 +780,9 @@ def main() -> int:
         ml_prediction_path = os.path.join(cache_dir(), "ml_prediction.json")
         smart_money_path = os.path.join(cache_dir(), "smart_money.json")
         overview_home_path = os.path.join(cache_dir(), "overview_home.json")
-        holdings_ts_src = os.path.join(repo_root(), "backend", "output", "my_holdings_ts.json")
-        holdings_goal_src = os.path.join(repo_root(), "backend", "output", "my_holdings_goal.json")
-        holdings_tabs_src = os.path.join(repo_root(), "backend", "output", "my_holdings_tabs.json")
+        holdings_ts_src = artifact_path("my_holdings_ts.json")
+        holdings_goal_src = artifact_path("my_holdings_goal.json")
+        holdings_tabs_src = artifact_path("my_holdings_tabs.json")
         holdings_ts_dst = os.path.join(cache_dir(), "my_holdings_ts.json")
         holdings_goal_dst = os.path.join(cache_dir(), "my_holdings_goal.json")
         holdings_tabs_dst = os.path.join(cache_dir(), "my_holdings_tabs.json")

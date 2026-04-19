@@ -15,6 +15,14 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 
 RERUN_HINT = "python backend/scripts/import_holdings_csv.py --csv docs/my_holdings_template_v2.csv"
 
@@ -78,7 +86,13 @@ def repo_root() -> str:
 
 
 def default_output_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "my_holdings.json")
+    rel = "my_holdings.json"
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def normalize_symbol(raw: Any) -> str:

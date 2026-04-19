@@ -19,6 +19,14 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 DATA_VERSION = "my_holdings_ts_snapshot_v2"
 
 
@@ -31,15 +39,25 @@ def now_iso() -> str:
 
 
 def input_tabs_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "my_holdings_tabs.json")
+    return artifact_path("my_holdings_tabs.json")
 
 
 def input_goal_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "my_holdings_goal.json")
+    return artifact_path("my_holdings_goal.json")
 
 
 def output_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "my_holdings_cache.json")
+    return artifact_path("my_holdings_cache.json")
+
+
+def artifact_path(relative_path: str) -> str:
+    rel = str(relative_path or "").replace("\\", "/").lstrip("/")
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def parse_number(raw: Any) -> Optional[float]:

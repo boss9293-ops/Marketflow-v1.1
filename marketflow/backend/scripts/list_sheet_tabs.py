@@ -21,6 +21,14 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 
 # Tabs excluded by default (case-insensitive exact match)
 DEFAULT_EXCLUDED = {"readme", "holidays", "rsi", "x", "main", "rsi_main", "pricedata__rsi__main"}
@@ -41,7 +49,13 @@ def now_iso() -> str:
 
 
 def output_path() -> str:
-    return os.path.join(repo_root(), "backend", "output", "sheet_tabs.json")
+    rel = "sheet_tabs.json"
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def extract_sheet_id(url_or_id: str) -> str:

@@ -17,6 +17,14 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 
 DATA_VERSION = "my_holdings_v2"
 RERUN_HINT = "python backend/scripts/build_my_holdings_cache.py"
@@ -32,16 +40,28 @@ def db_path() -> str:
 
 def raw_input_candidates() -> List[str]:
     return [
-        os.path.join(repo_root(), "backend", "output", "my_holdings.json"),
+        artifact_path("my_holdings.json"),
+        artifact_path("cache/my_holdings.json"),
         os.path.join(repo_root(), "output", "my_holdings.json"),
     ]
 
 
 def output_targets() -> List[str]:
     return [
-        os.path.join(repo_root(), "backend", "output", "my_holdings.json"),
+        artifact_path("my_holdings.json"),
+        artifact_path("cache/my_holdings.json"),
         os.path.join(repo_root(), "output", "cache", "my_holdings.json"),
     ]
+
+
+def artifact_path(relative_path: str) -> str:
+    rel = str(relative_path or "").replace("\\", "/").lstrip("/")
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def now_iso() -> str:

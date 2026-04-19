@@ -28,6 +28,14 @@ import sys
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 GOAL_RANGE = "D49:I999"
 NORMAL_RANGE = "D49:I999"
 NORMAL_SNAPSHOT_RANGE = "E13:F21"
@@ -51,8 +59,14 @@ def now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
-def output_dir() -> str:
-    return os.path.join(repo_root(), "backend", "output")
+def output_path(relative_path: str) -> str:
+    rel = str(relative_path or "").replace("\\", "/").lstrip("/")
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
 
 
 def extract_sheet_id(url_or_id: str) -> str:
@@ -486,8 +500,8 @@ def main() -> int:
     sa_raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     rerun = RERUN_HINT_TEMPLATE.format(sheet_id=sheet_id, tabs=",".join(tab_list))
 
-    prev_goal_path = os.path.join(output_dir(), "my_holdings_goal.json")
-    prev_tabs_path = os.path.join(output_dir(), "my_holdings_tabs.json")
+    prev_goal_path = output_path("my_holdings_goal.json")
+    prev_tabs_path = output_path("my_holdings_tabs.json")
     prev_goal = {}
     prev_tabs = {}
     if os.path.exists(prev_goal_path):
@@ -649,7 +663,7 @@ def main() -> int:
         "generated_at": now_iso(),
         "rerun_hint": rerun,
     }
-    goal_path = os.path.join(output_dir(), "my_holdings_goal.json")
+    goal_path = output_path("my_holdings_goal.json")
     write_json(goal_path, goal_out)
 
     tabs_out = {
@@ -660,7 +674,7 @@ def main() -> int:
         "generated_at": now_iso(),
         "rerun_hint": rerun,
     }
-    tabs_path = os.path.join(output_dir(), "my_holdings_tabs.json")
+    tabs_path = output_path("my_holdings_tabs.json")
     write_json(tabs_path, tabs_out)
 
     result = {

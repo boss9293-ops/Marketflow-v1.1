@@ -17,6 +17,14 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List
 
+try:
+    from services.data_contract import artifact_path as contract_artifact_path
+except Exception:
+    try:
+        from backend.services.data_contract import artifact_path as contract_artifact_path
+    except Exception:
+        contract_artifact_path = None
+
 DATA_VERSION = "my_holdings_ts_v2"
 
 
@@ -24,13 +32,23 @@ def repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+def artifact_path(relative_path: str) -> str:
+    rel = str(relative_path or "").replace("\\", "/").lstrip("/")
+    if contract_artifact_path is not None:
+        try:
+            return str(contract_artifact_path(rel))
+        except Exception:
+            pass
+    return os.path.join(repo_root(), "backend", "output", rel)
+
+
 def now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
 def output_paths():
-    out1 = os.path.join(repo_root(), "backend", "output", "my_holdings_ts.json")
-    out2 = os.path.join(repo_root(), "output", "cache", "my_holdings_ts.json")
+    out1 = artifact_path("my_holdings_ts.json")
+    out2 = artifact_path("cache/my_holdings_ts.json")
     return out1, out2
 
 
