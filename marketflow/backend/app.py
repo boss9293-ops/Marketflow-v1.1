@@ -8044,12 +8044,13 @@ def my_holdings_import_tabs():
         return jsonify({'error': 'sheet_url or sheet_id is required'}), 400
 
 
-    if not tabs:
+    # Expand to all selectable when the client sends nothing OR sends only
+    # "Goal" (fresh-session quirk: the client may submit just the active tab
+    # instead of the full selection list on a brand-new deployment).
+    _tabs_stripped = tabs.strip() if isinstance(tabs, str) else ''
+    _needs_expansion = (not _tabs_stripped) or (_tabs_stripped == 'Goal')
 
-
-        # try default selectable tabs
-
-
+    if _needs_expansion:
         tdata = load_json_or_none('sheet_tabs.json') or {}
         selectable = tdata.get('selectable') or []
 
@@ -8062,13 +8063,9 @@ def my_holdings_import_tabs():
             tdata = load_json_or_none('sheet_tabs.json') or {}
             selectable = tdata.get('selectable') or []
 
-        if selectable:
+        if len(selectable) > 1:
             tabs = ",".join(selectable)
-
-
-        if not tabs:
-
-
+        elif not tabs:
             tabs = "Goal"
 
 
