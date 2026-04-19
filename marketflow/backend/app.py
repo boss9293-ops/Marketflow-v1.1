@@ -768,6 +768,14 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
 }
 _DATA_BUILD_LOCKS: dict[str, threading.Lock] = {}
 _DATA_BUILD_LOCKS_GUARD = threading.Lock()
+_HOLDINGS_REFRESH_LOCK = threading.Lock()
+_HOLDINGS_ARTIFACTS = {
+    'sheet_tabs.json',
+    'my_holdings_goal.json',
+    'my_holdings_tabs.json',
+    'my_holdings_ts.json',
+    'my_holdings_cache.json',
+}
 
 
 def _data_build_lock(name: str) -> threading.Lock:
@@ -779,6 +787,59 @@ def _data_build_lock(name: str) -> threading.Lock:
         return lock
 
 
+def _holdings_expected_tabs() -> list[str]:
+    raw = os.environ.get('GOOGLE_SHEETS_TABS', 'Goal,미국1,미국2,미국3,미국4,미국5,미국6,한국1')
+    return [tab.strip() for tab in raw.split(',') if tab.strip()]
+
+
+def _holdings_artifacts_complete() -> bool:
+    sheet_tabs = _read_json_from_candidates('sheet_tabs.json')
+    goal_payload = _read_json_from_candidates('my_holdings_goal.json')
+    tabs_payload = _read_json_from_candidates('my_holdings_tabs.json')
+    ts_payload = _read_json_from_candidates('my_holdings_ts.json')
+    cache_payload = _read_json_from_candidates('my_holdings_cache.json')
+
+    if not (
+        isinstance(sheet_tabs, dict)
+        and isinstance(goal_payload, dict)
+        and isinstance(tabs_payload, dict)
+        and isinstance(ts_payload, dict)
+        and isinstance(cache_payload, dict)
+    ):
+        return False
+
+    expected_tabs = _holdings_expected_tabs()
+    if not expected_tabs:
+        return True
+
+    selectable = sheet_tabs.get('selectable') if isinstance(sheet_tabs.get('selectable'), list) else []
+    active_tabs = ts_payload.get('active_tabs') if isinstance(ts_payload.get('active_tabs'), list) else []
+    if len(selectable) < len(expected_tabs):
+        return False
+    if len(active_tabs) < len(expected_tabs):
+        return False
+    return True
+
+
+def _refresh_holdings_from_sheets() -> bool:
+    sheet_id = os.environ.get('GOOGLE_SHEETS_ID', '').strip()
+    sheet_url = os.environ.get('GOOGLE_SHEETS_URL', '').strip()
+    if not sheet_id and not sheet_url:
+        return False
+    if not _get_sa_json():
+        return False
+
+    with _HOLDINGS_REFRESH_LOCK:
+        if _holdings_artifacts_complete():
+            return True
+        try:
+            _auto_import_holdings_from_sheets()
+        except Exception as exc:
+            print(f"[holdings] auto-import failed: {exc}", flush=True)
+            return False
+        return _holdings_artifacts_complete()
+
+
 def _ensure_data_artifact(filename: str) -> bool:
     name = os.path.basename(str(filename or '').replace('\\', '/').strip())
     if not name:
@@ -786,6 +847,10 @@ def _ensure_data_artifact(filename: str) -> bool:
 
     if _read_json_from_candidates(filename) is not None:
         return True
+
+    if name in _HOLDINGS_ARTIFACTS:
+        if _refresh_holdings_from_sheets():
+            return _read_json_from_candidates(filename) is not None
 
     if name == 'risk_v1.json' or name in _RISK_V1_OUTPUTS:
         return _ensure_risk_v1_outputs()
@@ -7211,44 +7276,14 @@ def ticker_summary():
 
 
 def my_holdings_cache():
-
-
-    candidates = [
-
-
-        MY_HOLDINGS_CACHE_PATH,
-
-
-        os.path.join(OUTPUT_DIR, 'cache', 'my_holdings.json'),
-
-
-    ]
-
-
-    for p in candidates:
-
-
-        if os.path.exists(p):
-
-
-            with open(p, 'r', encoding='utf-8') as f:
-
-
-                return jsonify(json.load(f))
-
+    payload = load_json_or_none('my_holdings_cache.json')
+    if payload is not None:
+        return jsonify(payload)
 
     return jsonify({
-
-
         'status': 'missing_input',
-
-
         'error': 'my_holdings cache not found',
-
-
         'rerun_hint': 'python backend/scripts/build_my_holdings_cache.py',
-
-
     }), 404
 
 
@@ -10005,7 +10040,7 @@ def _auto_import_holdings_from_sheets() -> None:
 
     # 캐시가 이미 최신이면 (6시간 이내) 스킵
     cache_path = MY_HOLDINGS_SNAPSHOT_PATH
-    if os.path.exists(cache_path):
+    if _holdings_artifacts_complete() and os.path.exists(cache_path):
         import time
         age_hours = (time.time() - os.path.getmtime(cache_path)) / 3600
         if age_hours < 6:
