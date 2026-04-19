@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import subprocess
@@ -25,13 +26,14 @@ from services.narrative_generator import (
 )
 
 narrative_bp = Blueprint("narrative", __name__)
+logger = logging.getLogger(__name__)
 
 _WATCHLIST_CACHE_TTL_SEC = 60 * 30
 _WATCHLIST_CACHE: Dict[str, Dict[str, Any]] = {}
 _TICKER_BRIEF_REFRESH_LOCK = threading.Lock()
 _TICKER_BRIEF_REFRESH_IN_FLIGHT = False
 _PORTFOLIO_NARRATIVE_CACHE_DIR = Path(__file__).resolve().parents[1] / "output" / "cache" / "portfolio_narratives"
-_PORTFOLIO_NARRATIVE_VERSION = "news_first_v3"
+_PORTFOLIO_NARRATIVE_VERSION = "news_first_v4"
 _TICKER_BRIEF_INDEX_PATH = Path(__file__).resolve().parents[1] / "output" / "cache" / "ticker_brief_index.json"
 _TICKER_BRIEF_BUILDER = Path(__file__).resolve().parents[1] / "scripts" / "build_account_ticker_briefs.py"
 ET_ZONE = ZoneInfo("America/New_York")
@@ -334,7 +336,14 @@ def narrative_portfolio():
         engine_data = _extract_engine_data(payload_dict)
         force_refresh = _coerce_bool(payload_dict.get("force_refresh") or payload_dict.get("refresh") or engine_data.get("force_refresh") or engine_data.get("refresh"))
         tab_name = str(engine_data.get("tab_name") or portfolio_data.get("tab_name") or portfolio_data.get("name") or "portfolio").strip() or "portfolio"
-        narrative_version = str(engine_data.get("narrative_version") or payload_dict.get("narrative_version") or _PORTFOLIO_NARRATIVE_VERSION).strip() or _PORTFOLIO_NARRATIVE_VERSION
+        client_narrative_version = str(engine_data.get("narrative_version") or payload_dict.get("narrative_version") or "").strip()
+        narrative_version = _PORTFOLIO_NARRATIVE_VERSION
+        if client_narrative_version and client_narrative_version != narrative_version:
+            logger.info(
+                "narrative_portfolio ignoring client narrative_version=%s; using server narrative_version=%s",
+                client_narrative_version,
+                narrative_version,
+            )
         cache_owner = _extract_portfolio_cache_owner(payload_dict, engine_data, portfolio_data)
         cache_namespace = _portfolio_cache_namespace(cache_owner)
         cache_date = _portfolio_cache_date(engine_data, portfolio_data)

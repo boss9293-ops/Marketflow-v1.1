@@ -1460,6 +1460,61 @@ def _account_manager_fallback(account_data: Dict[str, Any], engine_data: Dict[st
         "badge": classification,
     }
 
+
+def _portfolio_headline_from_output(data: Dict[str, Any], fallback: Dict[str, Any], engine_data: Dict[str, Any]) -> str:
+    headline = _safe_str(data.get("headline"))
+    if headline and not headline.startswith(("Fragile:", "Overexposed:", "Defensive:")):
+        return headline
+
+    stock_focus_items = data.get("stock_focus")
+    if not isinstance(stock_focus_items, list) or not stock_focus_items:
+        stock_focus_items = fallback.get("stock_focus") or []
+
+    focus_symbols: List[str] = []
+    for item in stock_focus_items:
+        if not isinstance(item, dict):
+            continue
+        symbol = _safe_str(item.get("symbol"))
+        if symbol and symbol not in focus_symbols:
+            focus_symbols.append(symbol)
+
+    top_symbol = _safe_str(engine_data.get("top_weight_symbol"))
+    if not top_symbol and focus_symbols:
+        top_symbol = focus_symbols[0]
+
+    top_weight = _safe_float(engine_data.get("top_weight_pct"))
+    classification = _safe_str(data.get("classification"), fallback.get("classification", ""))
+    tone_map = {
+        "Fragile": "집중 리스크",
+        "Overexposed": "비중 과다",
+        "Defensive": "방어적",
+        "Aligned": "균형",
+    }
+    tone = tone_map.get(classification, classification or "포트폴리오")
+
+    if top_symbol and top_weight is not None:
+        lead = f"{top_symbol} {top_weight:.1f}%"
+    elif focus_symbols:
+        lead = "·".join(focus_symbols[:3])
+    else:
+        lead = "포트폴리오"
+
+    if tone and tone not in lead:
+        lead = f"{lead} {tone}"
+
+    tail_source = (
+        _safe_str(data.get("daily_brief"))
+        or _safe_str(data.get("action_advice"))
+        or _safe_str(data.get("portfolio_structure"))
+        or _safe_str(fallback.get("daily_brief"))
+        or _safe_str(fallback.get("action_advice"))
+        or _safe_str(fallback.get("portfolio_structure"))
+    )
+    tail = _preview_text(tail_source, 120).rstrip(".")
+    headline = f"{lead} — {tail}" if tail else lead
+    return _preview_text(headline, 180)
+
+
 def _briefing_fallback(engine_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "main_theme": _safe_str(engine_data.get("main_theme") or engine_data.get("summary") or engine_data.get("theme")),
@@ -1588,11 +1643,17 @@ def _normalize_portfolio_output(data: Any, portfolio_data: Dict[str, Any], engin
         normalized_stock_focus = fallback["stock_focus"]
 
     risk_flags = _ensure_str_list(data.get("risk_flags")) or fallback["risk_flags"]
-    headline = _safe_str(data.get("headline"), fallback["headline"])
+    headline = _portfolio_headline_from_output(data, fallback, engine_data)
     daily_brief = _safe_str(data.get("daily_brief"), fallback["daily_brief"])
     portfolio_structure = _safe_str(data.get("portfolio_structure"), fallback["portfolio_structure"])
     watchlist_insight = _safe_str(data.get("watchlist_insight"), fallback["watchlist_insight"])
     action_advice = _safe_str(data.get("action_advice"), fallback["action_advice"])
+    summary = _safe_str(data.get("summary"), headline) or headline
+    if summary.startswith(("Fragile:", "Overexposed:", "Defensive:")):
+        summary = headline
+    main_theme = _safe_str(data.get("main_theme"), headline) or headline
+    if main_theme.startswith(("Fragile:", "Overexposed:", "Defensive:")):
+        main_theme = headline
 
     return {
         "headline": headline,
@@ -1603,8 +1664,8 @@ def _normalize_portfolio_output(data: Any, portfolio_data: Dict[str, Any], engin
         "action_advice": action_advice,
         "risk_flags": risk_flags,
         "footerLabel": _safe_str(data.get("footerLabel"), fallback["footerLabel"]),
-        "summary": _safe_str(data.get("summary"), fallback["summary"]) or headline,
-        "main_theme": _safe_str(data.get("main_theme"), fallback["main_theme"]) or headline,
+        "summary": summary,
+        "main_theme": main_theme,
         "sub_themes": _ensure_str_list(data.get("sub_themes")) or fallback["sub_themes"],
         "structure": _safe_str(data.get("structure"), fallback["structure"]) or portfolio_structure,
         "risk": _safe_str(data.get("risk"), fallback["risk"]) or portfolio_structure,

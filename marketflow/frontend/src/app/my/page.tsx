@@ -152,7 +152,7 @@ type PortfolioNarrativeMeta = {
 const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
   ? '/api/flask'  // Vercel: proxy via next.config.js rewrites → Railway
   : (process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001')
-const PORTFOLIO_NARRATIVE_VERSION = 'news_first_v3'
+const PORTFOLIO_NARRATIVE_VERSION = 'news_first_v4'
 
 function panelStyle() {
   return {
@@ -1437,11 +1437,11 @@ export default function MyPage() {
         headline:
           concentrationTone === 'high'
             ? topWeight
-              ? `Fragile: ${topWeight.symbol} dominates the account and needs trimming before new risk.`
-              : 'Fragile: the account is too concentrated and needs trimming before new risk.'
+              ? `${topWeight.symbol} ${topWeight.pct.toFixed(1)}% 집중 포트폴리오 — 리스크 관리 우선`
+              : '집중 포트폴리오 — 리스크 관리 우선'
             : concentrationTone === 'mid'
-              ? 'Overexposed: the core is fine, but concentration needs to be reduced before adding new risk.'
-              : 'Defensive: preserve cash and keep leverage separate until the structure is cleaner.',
+              ? '비중 과다: 코어는 괜찮지만 추가 리스크 전에 집중도를 줄여야 합니다.'
+              : '방어적: 현금과 레버리지를 분리하고 구조가 더 깔끔해질 때까지 보수적으로 유지합니다.',
         daily_brief:
           typeof activeTabTotalPnl === 'number'
             ? `Account PnL is ${fmtMoney(activeTabTotalPnl)}${typeof activeTabReturnPct === 'number' ? ` (${fmtPct(activeTabReturnPct)})` : ''}.${spyMarketChangePct != null ? ` SPY is ${fmtPct(spyMarketChangePct)} today.` : ''}`
@@ -1467,11 +1467,11 @@ export default function MyPage() {
         summary:
           concentrationTone === 'high'
             ? topWeight
-              ? `Fragile: ${topWeight.symbol} dominates the book, so trim the largest line before adding fresh risk.`
-              : 'Fragile: the book is too concentrated, so trim the largest line before adding fresh risk.'
+              ? `${topWeight.symbol} ${topWeight.pct.toFixed(1)}% 집중 포트폴리오 — 비중을 먼저 줄이고 새 리스크는 천천히.`
+              : '집중 포트폴리오 — 비중을 먼저 줄이고 새 리스크는 천천히.'
             : concentrationTone === 'mid'
-              ? 'Overexposed: keep the core, but rebalance concentration before adding new risk.'
-              : 'Defensive: preserve the cash buffer and keep leverage separate until the structure is cleaner.',
+              ? '비중 과다: 코어는 유지하되 추가 리스크 전에 집중도를 낮추자.'
+              : '방어적: 현금 버퍼를 유지하고 구조가 더 깔끔해질 때까지 보수적으로 가자.',
         structure: diversificationText,
         risk: topWeight
           ? `The main risk is concentration in ${topWeight.symbol} at ${topWeight.pct.toFixed(1)}%.`
