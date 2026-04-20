@@ -1892,18 +1892,39 @@ def _refresh_context_news(slot: str) -> dict[str, Any] | None:
 
 
 def _load_api_key() -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip().strip(chr(34)).strip(chr(39))
-    for _env_path in [BACKEND_DIR / ".env", BACKEND_DIR.parent / ".env"]:
+    api_key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip().strip(chr(34)).strip(chr(39))
+    if api_key:
+        return api_key
+
+    env_candidates = [
+        BACKEND_DIR / ".env",
+        BACKEND_DIR / ".env.local",
+        BACKEND_DIR.parent / ".env",
+        BACKEND_DIR.parent / ".env.local",
+    ]
+    for _env_path in env_candidates:
+        if not _env_path.exists():
+            continue
+        with open(_env_path, encoding="utf-8", errors="replace") as _ef:
+            for _line in _ef:
+                line = _line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                if key not in {"ANTHROPIC_API_KEY", "CLAUDE_API_KEY"}:
+                    continue
+                _val = value.strip().strip(chr(34)).strip(chr(39))
+                if _val:
+                    api_key = _val
+                    break
         if api_key:
             break
-        if _env_path.exists():
-            with open(_env_path, encoding="utf-8", errors="replace") as _ef:
-                for _line in _ef:
-                    if "ANTHROPIC_API_KEY" in _line and "=" in _line:
-                        _val = _line.split("=", 1)[1].strip().strip(chr(34)).strip(chr(39))
-                        if _val:
-                            api_key = _val
-                            break
+
+    if not api_key:
+        alias = (os.environ.get("CLAUDE_API_KEY") or "").strip().strip(chr(34)).strip(chr(39))
+        if alias:
+            api_key = alias
     return api_key
 
 
@@ -1946,7 +1967,7 @@ def main() -> None:
 
     api_key = _load_api_key()
     if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not found", file=sys.stderr)
+        print("ERROR: ANTHROPIC_API_KEY / CLAUDE_API_KEY not found", file=sys.stderr)
         sys.exit(1)
 
     refreshed_news = _refresh_context_news(slot)
