@@ -159,10 +159,6 @@ def _clear_risk_outputs() -> None:
             print(f"[startup][TURSO] Failed to clear {rel_path}: {exc}", flush=True)
 
 
-if _pull_turso_db_if_configured():
-    _clear_risk_outputs()
-
-
 def _auto_import_holdings_from_sheets() -> bool:
     sheet_id = _env_value("GOOGLE_SHEETS_ID", "").strip()
     sheet_url = _env_value("GOOGLE_SHEETS_URL", "").strip()
@@ -361,6 +357,10 @@ def _cleanup_sqlite_artifacts(moved: list[tuple[str, str]]) -> None:
                 os.remove(dst)
         except Exception:
             pass
+
+
+if _pull_turso_db_if_configured():
+    _clear_risk_outputs()
 
 
 def _sync_turso_if_configured() -> None:
