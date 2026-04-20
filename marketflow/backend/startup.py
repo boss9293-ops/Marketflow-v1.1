@@ -1,5 +1,5 @@
 """Railway startup script: downloads DB, runs builds, starts gunicorn."""
-import os, sys, subprocess, threading, urllib.request, datetime, json
+import os, sys, subprocess, threading, urllib.request, datetime, json, shutil
 from zoneinfo import ZoneInfo
 
 from services.data_contract import live_db_path
@@ -81,6 +81,12 @@ def _pull_turso_db_if_configured() -> bool:
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     print("[startup][TURSO] Pulling latest DB snapshot into live DB...", flush=True)
     start_time = datetime.datetime.now().timestamp()
+    backup_root = f"{db_abs}.turso-backup"
+    stale_state_markers = (
+        "db file exists but metadata file does not",
+        "metadata file exists but db file does not",
+        "local state is incorrect",
+    )
     try:
         conn = libsql.connect(DB_PATH, sync_url=turso_url, auth_token=auth_token)
         try:
@@ -99,6 +105,35 @@ def _pull_turso_db_if_configured() -> bool:
         print(f"[startup][TURSO] Live DB refreshed from Turso in {duration:.1f}s ({db_size_mb}MB).", flush=True)
         return True
     except Exception as exc:
+        message = str(exc)
+        if any(marker in message for marker in stale_state_markers):
+            print("[startup][TURSO] Existing DB looks like a stale replica; resetting local sync state and retrying once.", flush=True)
+            moved: list[tuple[str, str]] = []
+            try:
+                moved = _move_sqlite_artifacts(db_abs, backup_root)
+                # Retry against a clean local replica path.
+                conn = libsql.connect(DB_PATH, sync_url=turso_url, auth_token=auth_token)
+                try:
+                    if hasattr(conn, "sync"):
+                        conn.sync()
+                    else:
+                        print("[startup][TURSO] libsql connection has no sync(); using local DB as-is.", flush=True)
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
+                duration = datetime.datetime.now().timestamp() - start_time
+                db_size_mb = os.path.getsize(DB_PATH) // 1024 // 1024 if os.path.exists(DB_PATH) else 0
+                print(f"[startup][TURSO][OK] Recreated replica and refreshed from Turso in {duration:.1f}s ({db_size_mb}MB).", flush=True)
+                _cleanup_sqlite_artifacts(moved)
+                return True
+            except Exception as retry_exc:
+                duration = datetime.datetime.now().timestamp() - start_time
+                print(f"[startup][TURSO][FAIL] Retry after stale-state reset failed after {duration:.1f}s: {retry_exc}", flush=True)
+                _restore_sqlite_artifacts(moved)
+                return False
         duration = datetime.datetime.now().timestamp() - start_time
         print(f"[startup][TURSO][FAIL] Pull failed after {duration:.1f}s: {exc}", flush=True)
         return False
@@ -290,6 +325,42 @@ def _load_json(path: str):
             return json.load(f)
     except Exception:
         return None
+
+
+def _sqlite_artifacts(db_path: str) -> list[str]:
+    return [db_path, f"{db_path}-wal", f"{db_path}-shm"]
+
+
+def _move_sqlite_artifacts(src_db: str, backup_root: str) -> list[tuple[str, str]]:
+    moved: list[tuple[str, str]] = []
+    for src in _sqlite_artifacts(src_db):
+        if not os.path.exists(src):
+            continue
+        dst = f"{backup_root}{src[len(src_db):]}"
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(src, dst)
+        moved.append((src, dst))
+    return moved
+
+
+def _restore_sqlite_artifacts(moved: list[tuple[str, str]]) -> None:
+    for src, dst in reversed(moved):
+        if not os.path.exists(dst):
+            continue
+        try:
+            os.makedirs(os.path.dirname(src), exist_ok=True)
+            shutil.move(dst, src)
+        except Exception as exc:
+            print(f"[startup][TURSO] Failed to restore {src}: {exc}", flush=True)
+
+
+def _cleanup_sqlite_artifacts(moved: list[tuple[str, str]]) -> None:
+    for _, dst in moved:
+        try:
+            if os.path.exists(dst):
+                os.remove(dst)
+        except Exception:
+            pass
 
 
 def _sync_turso_if_configured() -> None:
