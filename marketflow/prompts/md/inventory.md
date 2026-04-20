@@ -25,7 +25,7 @@
 | Family | Files | Loader | Consumer | Status |
 | --- | --- | --- | --- | --- |
 | engine_knowledge | `engine_knowledge/transmission/transmission_map.md`, `engine_knowledge/tracks/track_a_credit.md`, `engine_knowledge/tracks/track_b_velocity.md`, `engine_knowledge/tracks/track_c_event.md`, `engine_knowledge/core/mss_engine.md` | `backend/utils/prompt_loader.py:get_engine_knowledge` | `backend/services/narrative_generator.py` | active |
-| engine_narrative | `engine_narrative/briefing_v1.md`, `engine_narrative/watchlist_v1.md`, `engine_narrative/portfolio_v1.md` | `backend/utils/prompt_loader.py:get_narrative_templates` | `backend/services/narrative_generator.py` | active |
+| engine_narrative | `engine_narrative/briefing_v1.md`, `engine_narrative/daily_briefing_v3_en_system.md`, `engine_narrative/daily_briefing_v3_en_user.md`, `engine_narrative/watchlist_v1.md`, `engine_narrative/portfolio_v1.md`, `engine_narrative/ticker_brief_v1.md` | `backend/utils/prompt_loader.py:get_narrative_templates`, `backend/scripts/build_daily_briefing_v3.py`, `backend/scripts/build_ticker_brief.py` | `backend/services/narrative_generator.py`, `backend/scripts/build_daily_briefing_v3.py`, `backend/scripts/build_ticker_brief.py` | active |
 | smart analyzer | [engines/smart_market_analyzer.md](../engines/smart_market_analyzer.md) | `services/promptLoader.ts:loadEnginePrompt` | `services/smartAnalyzer.ts` | active |
 | navigator | [navigator_ai_gpt.md](../navigator_ai_gpt.md), [navigator_ai_gemini.md](../navigator_ai_gemini.md) | `backend/app.py:_load_prompt` | `backend/app.py` navigator route | active |
 

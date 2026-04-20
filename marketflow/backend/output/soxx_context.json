@@ -1,7 +1,7 @@
 {
   "schema_version": "soxx_context_v6",
-  "run_id": "20260417_225854",
-  "generated_at": "2026-04-18T03:58:54Z",
+  "run_id": "20260419_110058",
+  "generated_at": "2026-04-19T16:00:58Z",
   "data_as_of": "2026-04-17",
   "history_window": 252,
   "primary_symbol": "SOXX",
@@ -471,13 +471,13 @@
       }
     },
     "physical_layer": {
-      "tsmc_util_pct": 93.0,
+      "tsmc_util_pct": 92.6,
       "cowos_lead_time_months": 8.9,
-      "hbm_yield_pct": 72.4
+      "hbm_yield_pct": 71.7
     },
     "economic_layer": {
-      "capex_revenue_ratio": 1.33,
-      "token_cost_index": 53.1
+      "capex_revenue_ratio": 1.34,
+      "token_cost_index": 54.2
     },
     "financial_layer": {
       "breadth_score": 100.0,
@@ -486,7 +486,7 @@
       "soxl_atr_band_proxy": -15.0
     },
     "edge_cases": {
-      "custom_silicon_share_pct": 21.7,
+      "custom_silicon_share_pct": 21.5,
       "macro_beta_score": 45.4
     },
     "relative_strength": {
@@ -499,7 +499,7 @@
     },
     "ai_cycle": {
       "model": "semi_cycle_proxy_v1",
-      "score": 78.2,
+      "score": 76.4,
       "stage": "MONETIZATION",
       "explanation": "Price action, macro, and earnings timing are aligned well enough for monetization.",
       "components": {
@@ -513,7 +513,7 @@
         "volatility": -0.0,
         "price": 100.0,
         "macro": 49.5,
-        "earnings": 52.5,
+        "earnings": 40.0,
         "weight_price": 56.0,
         "weight_macro": 29.0,
         "weight_earnings": 15.0,
@@ -526,10 +526,10 @@
         "rpi": 27.46,
         "lpi": 10.08,
         "defensive_mode": "OFF",
-        "event_count": 4,
-        "capex_count": 2,
-        "weighted_density": 3.112,
-        "next_nvda_days": 33,
+        "event_count": 0,
+        "capex_count": 0,
+        "weighted_density": 0,
+        "next_nvda_days": null,
         "next_tsm_days": null
       }
     },
@@ -577,67 +577,17 @@
       "model": "earnings_calendar_proxy",
       "window_days": 45,
       "as_of": "2026-04-17",
-      "event_count": 4,
-      "ai_count": 4,
-      "capex_count": 2,
-      "score": 52.5,
-      "state": "ACTIVE",
-      "summary": "4 AI/semi earnings in 45D; 2 capex-heavy names; next TER in 11D",
-      "next_nvda_days": 33,
+      "event_count": 0,
+      "ai_count": 0,
+      "capex_count": 0,
+      "score": 40.0,
+      "state": "EMPTY",
+      "summary": "No AI/semi earnings within the proxy window.",
+      "next_nvda_days": null,
       "next_tsm_days": null,
-      "next_event": {
-        "ticker": "TER",
-        "name": "Teradyne",
-        "date": "2026-04-28",
-        "days_out": 11,
-        "importance": 1.4,
-        "capex": true,
-        "ai": true,
-        "proximity": 0.756
-      },
-      "events": [
-        {
-          "ticker": "TER",
-          "name": "Teradyne",
-          "date": "2026-04-28",
-          "days_out": 11,
-          "importance": 1.4,
-          "capex": true,
-          "ai": true,
-          "proximity": 0.756
-        },
-        {
-          "ticker": "AMZN",
-          "name": "Amazon.com, Inc.",
-          "date": "2026-04-29",
-          "days_out": 12,
-          "importance": 1.0,
-          "capex": false,
-          "ai": true,
-          "proximity": 0.733
-        },
-        {
-          "ticker": "META",
-          "name": "Meta Platforms, Inc.",
-          "date": "2026-04-29",
-          "days_out": 12,
-          "importance": 1.0,
-          "capex": false,
-          "ai": true,
-          "proximity": 0.733
-        },
-        {
-          "ticker": "NVDA",
-          "name": "NVIDIA Corporation",
-          "date": "2026-05-20",
-          "days_out": 33,
-          "importance": 2.2,
-          "capex": true,
-          "ai": true,
-          "proximity": 0.267
-        }
-      ],
-      "weighted_density": 3.112
+      "next_event": null,
+      "events": [],
+      "weighted_density": 0
     },
     "risk": {
       "soxx_dd_pct": 0.0,
@@ -649,7 +599,7 @@
     },
     "guidance": {
       "headline": "SOXX can be held; SOXL stays tactical",
-      "detail": "SOXX, macro, and the catalyst calendar are aligned. Blended score 78.2 with Expansion backdrop supports controlled exposure through the current runway, but not full-size leverage."
+      "detail": "SOXX, macro, and the catalyst calendar are aligned. Blended score 76.4 with Expansion backdrop supports controlled exposure through the current runway, but not full-size leverage."
     },
     "brief": {
       "version": "v3",
@@ -657,10 +607,10 @@
       "summary": "Track 3-4Y supply/demand, industry structure, and external sensitivity before using leverage. The current boom still looks constructive through 2027, but SOXL should remain tactical because the market can price the runway early.",
       "regime": {
         "label": "MONETIZATION",
-        "score": 78.2,
+        "score": 76.4,
         "summary": "Price action, macro, and earnings timing are aligned well enough for monetization.",
         "macro_phase": "Expansion",
-        "earnings_state": "ACTIVE",
+        "earnings_state": "EMPTY",
         "lead_state": "LEADING"
       },
       "runway": {
@@ -689,8 +639,8 @@
           },
           {
             "label": "AI capex density",
-            "state": "ACTIVE",
-            "detail": "4 AI/semi earnings in 45D; 2 capex-heavy names; next TER in 11D"
+            "state": "EMPTY",
+            "detail": "No AI/semi earnings within the proxy window."
           },
           {
             "label": "QQQ relative strength",
@@ -731,11 +681,11 @@
       },
       "action": {
         "headline": "SOXX can be held; SOXL stays tactical",
-        "detail": "SOXX, macro, and the catalyst calendar are aligned. Blended score 78.2 with Expansion backdrop supports controlled exposure through the current runway, but not full-size leverage.",
+        "detail": "SOXX, macro, and the catalyst calendar are aligned. Blended score 76.4 with Expansion backdrop supports controlled exposure through the current runway, but not full-size leverage.",
         "monitor": [
           "SOXX MA200 ABOVE",
           "Macro Expansion",
-          "Earnings ACTIVE",
+          "Earnings EMPTY",
           "Lead LEADING"
         ]
       },
@@ -747,7 +697,7 @@
     },
     "signals": [
       "Phase Expansion, MPS 26.6, VRI 54.6 (Normal), Shock 28.2%, Defensive OFF",
-      "4 AI/semi earnings in 45D; 2 capex-heavy names; next TER in 11D",
+      "No AI/semi earnings within the proxy window.",
       "SOXX MA200 state: ABOVE",
       "QQQ relative strength (60D): 14.1",
       "SOXL proxy drawdown: 0.0%"

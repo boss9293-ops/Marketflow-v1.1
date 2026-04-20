@@ -1,7 +1,5 @@
 'use client'
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || process.env.NEXT_PUBLIC_API_URL || 'https://marketflow-production-09df.up.railway.app'
-
 import { useState, useMemo, useEffect } from 'react'
 import MonteCarloInterpretationCard from '@/components/MonteCarloInterpretationCard'
 import { buildStandardInterpretationDisplayModel } from '@/lib/standard/buildStandardInterpretationDisplayModel'
@@ -12,6 +10,9 @@ import {
   ResponsiveContainer, ReferenceLine, CartesianGrid,
   ReferenceDot, ReferenceArea, Legend,
 } from 'recharts'
+import { resolveBackendBaseUrl } from '@/lib/backendApi'
+
+const API_BASE = resolveBackendBaseUrl()
 
 // Types
 type Component = { name: string; range?: string; weight?: number; desc: string }

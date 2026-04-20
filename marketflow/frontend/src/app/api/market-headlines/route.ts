@@ -4,7 +4,7 @@ import path from 'path'
 
 import { NextResponse } from 'next/server'
 import { hasPromoSignals, isFreeNewsSource, scoreNewsSource, scoreNewsText } from '@/lib/newsQuality'
-import { resolveNewsHistoryCandidates } from '@/lib/newsHistoryPaths'
+import { resolveNewsHistoryPath } from '@/lib/newsHistoryPaths'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +17,7 @@ const SOURCE_FETCH_ATTEMPTS = 2
 const SOURCE_RETRY_DELAY_MS = 250
 const MIN_FEED_SCORE = 2.5
 const YAHOO_MARKET_SYMBOLS = ['^GSPC', '^IXIC', '^DJI']
-const HISTORY_CACHE_PATHS = resolveNewsHistoryCandidates('market-headlines-history.json')
+const HISTORY_CACHE_PATH = resolveNewsHistoryPath('market-headlines-history.json')
 
 type FeedHeadline = {
   id: string
@@ -393,24 +393,21 @@ const mapYahooFinanceItem = (symbol: string, item: YahooFinanceNewsItem, idx: nu
 }
 
 const readHistoryCache = async (): Promise<FeedHeadline[]> => {
-  for (const candidate of HISTORY_CACHE_PATHS) {
-    try {
-      const raw = await fs.readFile(candidate, 'utf8')
-      const parsed = JSON.parse(raw) as StoredHeadlineCache
-      if (!parsed || !Array.isArray(parsed.headlines)) continue
-      return dedupeHeadlines(
-        parsed.headlines
-          .filter(isFeedHeadline)
-          .filter((row) => !isLegacyFallbackHeadline(row))
-          .filter((row) => isFreeNewsSource(row.source) && !hasPromoSignals(`${row.headline} ${row.summary}`))
-          .filter((row) => scoreFeedHeadline(row) >= MIN_FEED_SCORE),
-        MAX_HISTORY_ITEMS,
-      )
-    } catch {
-      continue
-    }
+  try {
+    const raw = await fs.readFile(HISTORY_CACHE_PATH, 'utf8')
+    const parsed = JSON.parse(raw) as StoredHeadlineCache
+    if (!parsed || !Array.isArray(parsed.headlines)) return []
+    return dedupeHeadlines(
+      parsed.headlines
+        .filter(isFeedHeadline)
+        .filter((row) => !isLegacyFallbackHeadline(row))
+        .filter((row) => isFreeNewsSource(row.source) && !hasPromoSignals(`${row.headline} ${row.summary}`))
+        .filter((row) => scoreFeedHeadline(row) >= MIN_FEED_SCORE),
+      MAX_HISTORY_ITEMS,
+    )
+  } catch {
+    return []
   }
-  return []
 }
 const writeHistoryCache = async (headlines: FeedHeadline[]): Promise<void> => {
   const payload: StoredHeadlineCache = {
@@ -418,18 +415,11 @@ const writeHistoryCache = async (headlines: FeedHeadline[]): Promise<void> => {
     headlines: dedupeHeadlines(headlines, MAX_HISTORY_ITEMS),
   }
 
-  let lastError: unknown = null
-  for (const candidate of HISTORY_CACHE_PATHS) {
-    try {
-      await fs.mkdir(path.dirname(candidate), { recursive: true })
-      await fs.writeFile(candidate, JSON.stringify(payload, null, 2), 'utf8')
-      return
-    } catch (err) {
-      lastError = err
-    }
-  }
-  if (lastError) {
-    console.warn('[market-headlines] cache write failed:', lastError)
+  try {
+    await fs.mkdir(path.dirname(HISTORY_CACHE_PATH), { recursive: true })
+    await fs.writeFile(HISTORY_CACHE_PATH, JSON.stringify(payload, null, 2), 'utf8')
+  } catch (error) {
+    console.warn('[market-headlines] cache write failed:', error)
   }
 }
 

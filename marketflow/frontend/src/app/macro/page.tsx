@@ -11,6 +11,7 @@ import { type ConditionStudyCache } from '@/components/macro/ConditionStudyCard'
 import ValidationBadge from '@/components/macro/ValidationBadge'
 import { MACRO_GLOSSARY, getGlossaryTitle, type MacroGlossaryKey } from '@/lib/macro/glossary'
 import LiveTimeline from '@/components/macro/LiveTimeline'
+import { resolveBackendBaseUrl } from '@/lib/backendApi'
 
 type TapeItem = { symbol: string; last?: number | null; chg_pct?: number | null }
 type TapeCache = { items?: TapeItem[]; data_date?: string | null }
@@ -185,12 +186,7 @@ async function readLiveMpsSnapshots(): Promise<{ byDate: Map<string, number>; la
 
   // 2차: Railway 백엔드 API (프로덕션 Vercel)
   try {
-    const rawUrl =
-      process.env.NEXT_PUBLIC_BACKEND_API ||
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      'https://marketflow-production-09df.up.railway.app'
-    const backendUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
+    const backendUrl = resolveBackendBaseUrl()
     const res = await fetch(`${backendUrl}/api/macro/snapshots?limit=400`, {
       cache: 'no-store',
     })

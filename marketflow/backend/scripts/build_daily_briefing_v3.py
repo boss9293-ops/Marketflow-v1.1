@@ -159,57 +159,48 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-try:
-    from backend.services.data_contract import artifact_path as contract_artifact_path
-except Exception:
-    contract_artifact_path = None  # type: ignore[assignment]
-
 MARKETFLOW_ROOT = Path(__file__).resolve().parents[2]
 if str(MARKETFLOW_ROOT) not in sys.path:
     sys.path.insert(0, str(MARKETFLOW_ROOT))
 
-if contract_artifact_path is None:
-    try:
-        from backend.services.data_contract import artifact_path as contract_artifact_path
-    except Exception:
-        contract_artifact_path = None  # type: ignore[assignment]
-
-try:
-    from backend.services.prompt_manager import PromptManager
-except Exception:
-    PromptManager = None  # type: ignore[assignment]
-try:
-    from backend.news import build_context_news_cache
-except Exception:
-    try:
-        from news.context_news import build_context_news_cache
-    except Exception:
-        build_context_news_cache = None  # type: ignore[assignment]
-
-# ?? Paths ????????????????????????????????????????????????????????????????????
 SCRIPT_DIR  = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 CACHE_DIR   = BACKEND_DIR / "output" / "cache"
 OUTPUT_DIR  = BACKEND_DIR / "output"
 
+try:
+    from backend.services.prompt_manager import PromptManager
+    from backend.utils.prompt_loader import load_prompt_text
+except Exception:
+    PromptManager = None  # type: ignore[assignment]
+    try:
+        from utils.prompt_loader import load_prompt_text  # type: ignore
+    except Exception:
+        load_prompt_text = None  # type: ignore[assignment]
+try:
+    from backend.services.release_config import RELEASE_VERSION
+except Exception:
+    RELEASE_VERSION = "v1.1"
+try:
+    from backend.news import build_context_news_cache
+    from backend.news.news_paths import (
+        DAILY_BRIEFING_V3_PATH,
+        MARKET_HEADLINES_HISTORY_PATH,
+    )
+except Exception:
+    try:
+        from news.context_news import build_context_news_cache
+        from news.news_paths import (  # type: ignore
+            DAILY_BRIEFING_V3_PATH,
+            MARKET_HEADLINES_HISTORY_PATH,
+        )
+    except Exception:
+        build_context_news_cache = None  # type: ignore[assignment]
 
-def artifact_path(relative_path: str) -> Path:
-    rel = str(relative_path or "").replace("\\", "/").strip("/")
-    if contract_artifact_path is not None:
-        try:
-            return Path(contract_artifact_path(rel)).resolve()
-        except Exception:
-            pass
-    if not rel:
-        return OUTPUT_DIR.resolve()
-    if rel.startswith("cache/"):
-        return (CACHE_DIR / rel[len("cache/"):]).resolve()
-    return (OUTPUT_DIR / Path(rel)).resolve()
-
-
-OUT_PATH    = artifact_path("cache/daily_briefing_v3.json")
-FRONTEND_HEADLINE_CACHE_PATH = artifact_path("cache/market-headlines-history.json")
-LEGACY_FRONTEND_HEADLINE_CACHE_PATH = BACKEND_DIR.parent / "frontend" / ".cache" / "market-headlines-history.json"
+OUT_PATH    = DAILY_BRIEFING_V3_PATH
+FRONTEND_HEADLINE_CACHE_PATH = MARKET_HEADLINES_HISTORY_PATH
+DAILY_BRIEFING_EN_SYSTEM_PROMPT_SOURCE = "engine_narrative/daily_briefing_v3_en_system.md"
+DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE = "engine_narrative/daily_briefing_v3_en_user.md"
 
 # ?? Model & pricing ??????????????????????????????????????????????????????????
 MODEL_ID   = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip() or "claude-sonnet-4-6"
@@ -300,23 +291,16 @@ def load(fname: str, search_dirs: list[Path] | None = None) -> Any:
 
 
 def load_frontend_headline_cache() -> list[dict[str, Any]]:
-    candidates = [FRONTEND_HEADLINE_CACHE_PATH, LEGACY_FRONTEND_HEADLINE_CACHE_PATH]
-    seen: set[str] = set()
-    for candidate in candidates:
-        candidate_str = str(candidate)
-        if not candidate_str or candidate_str in seen:
-            continue
-        seen.add(candidate_str)
-        if not candidate.exists():
-            continue
-        try:
-            with open(candidate, encoding="utf-8") as f:
-                payload = json.load(f)
-            rows = payload.get("headlines", []) if isinstance(payload, dict) else []
-            if rows:
-                return [r for r in rows if isinstance(r, dict)]
-        except Exception:
-            continue
+    if not FRONTEND_HEADLINE_CACHE_PATH.exists():
+        return []
+    try:
+        with open(FRONTEND_HEADLINE_CACHE_PATH, encoding="utf-8") as f:
+            payload = json.load(f)
+        rows = payload.get("headlines", []) if isinstance(payload, dict) else []
+        if rows:
+            return [r for r in rows if isinstance(r, dict)]
+    except Exception:
+        return []
     return []
 
 
@@ -1804,6 +1788,38 @@ def resolve_briefing_system_prompt() -> tuple[str, dict[str, Any]]:
     return fallback_text, fallback_meta
 
 
+def resolve_briefing_en_prompts() -> tuple[str, str, dict[str, Any]]:
+    fallback_meta: dict[str, Any] = {
+        "page": "briefing_en",
+        "version": "v1.1",
+        "key": "briefing_en",
+        "source": "inline_fallback",
+        "user_source": "inline_fallback",
+        "fallback_used": True,
+    }
+
+    if load_prompt_text is None:
+        return SYSTEM_PROMPT, USER_TEMPLATE, fallback_meta
+
+    try:
+        system_prompt = load_prompt_text(DAILY_BRIEFING_EN_SYSTEM_PROMPT_SOURCE).strip()
+        user_template = load_prompt_text(DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE).strip()
+        if system_prompt and user_template:
+            return system_prompt, user_template, {
+                "page": "briefing_en",
+                "version": "v1.1",
+                "key": "briefing_en",
+                "source": DAILY_BRIEFING_EN_SYSTEM_PROMPT_SOURCE,
+                "user_source": DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE,
+                "fallback_used": False,
+            }
+        print("[build_daily_briefing_v3] WARN briefing EN prompt files are empty; using inline fallback")
+    except Exception as exc:
+        print(f"[build_daily_briefing_v3] WARN briefing EN prompt load failed: {exc}")
+
+    return SYSTEM_PROMPT, USER_TEMPLATE, fallback_meta
+
+
 # ?? Stale check ???????????????????????????????????????????????????????????????
 def is_stale(max_minutes: int = 1440, slot: str | None = None) -> bool:
     if not OUT_PATH.exists():
@@ -1929,10 +1945,15 @@ def main() -> None:
         ms.get("generated_at"),
     )
     briefing_system_prompt, briefing_prompt_meta = resolve_briefing_system_prompt()
+    briefing_prompt_meta = dict(briefing_prompt_meta or {})
+    briefing_prompt_meta["registry_version"] = briefing_prompt_meta.get("registry_version") or briefing_prompt_meta.get("version", "unknown")
+    briefing_prompt_meta["version"] = RELEASE_VERSION
+    briefing_prompt_meta["release"] = RELEASE_VERSION
     print(
         "[build_daily_briefing_v3] briefing prompt "
         f"source={briefing_prompt_meta.get('source')} "
-        f"version={briefing_prompt_meta.get('version')}"
+        f"version={briefing_prompt_meta.get('version')} "
+        f"registry_version={briefing_prompt_meta.get('registry_version')}"
     )
     try:
         narrative_plan = json.loads(ctx.get("narrative_plan_json", "{}"))
@@ -1947,6 +1968,10 @@ def main() -> None:
 
     if lang == "en":
         # EN fill: generate English fields, preserve existing Korean
+        briefing_en_system_prompt, briefing_en_user_template, briefing_prompt_meta = resolve_briefing_en_prompts()
+        briefing_prompt_meta = dict(briefing_prompt_meta or {})
+        briefing_prompt_meta["version"] = RELEASE_VERSION
+        briefing_prompt_meta["release"] = RELEASE_VERSION
         existing: dict = {}
         if OUT_PATH.exists():
             try:
@@ -1955,10 +1980,10 @@ def main() -> None:
             except Exception:
                 pass
 
-        user_msg = USER_TEMPLATE.format(**ctx)
+        user_msg = briefing_en_user_template.format(**ctx)
         print(f"[build_daily_briefing_v3] lang=en  model={MODEL_ID}  context={len(user_msg)} chars")
         parsed, in_tok, out_tok, _ = _call_llm_json_with_retry(
-            client, system_prompt=SYSTEM_PROMPT,
+            client, system_prompt=briefing_en_system_prompt,
             user_content=user_msg, max_tokens=8192, retries=1,
         )
         cost = in_tok * PRICE_IN + out_tok * PRICE_OUT
@@ -2009,6 +2034,7 @@ def main() -> None:
             "slot":         slot,
             "model":        MODEL_ID,
             "lang":         "en",
+            "release":      RELEASE_VERSION,
             "tokens": {
                 "input":    (prev_tokens.get("input", 0) or 0) + in_tok,
                 "output":   (prev_tokens.get("output", 0) or 0) + out_tok,
@@ -2068,6 +2094,7 @@ def main() -> None:
             "slot":         slot,
             "model":        MODEL_ID,
             "lang":         "ko",
+            "release":      RELEASE_VERSION,
             "tokens": {"input": in_tok, "output": out_tok, "cost_usd": round(cost, 6)},
             "freshness": freshness,
             "prompt": briefing_prompt_meta,

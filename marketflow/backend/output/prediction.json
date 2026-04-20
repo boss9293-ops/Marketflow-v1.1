@@ -1,13 +1,14 @@
 {
-  "timestamp": "2026-04-17T22:46:54.946631",
+  "timestamp": "2026-04-19T10:35:47.050171",
   "spy": {
-    "bullish_probability": 17.9,
-    "direction": "Bearish",
-    "confidence": "High"
+    "bullish_probability": 50.0,
+    "direction": "Neutral",
+    "confidence": "Low"
   },
   "qqq": {
-    "bullish_probability": 30,
-    "direction": "Bearish",
-    "confidence": "High"
-  }
+    "bullish_probability": 50.0,
+    "direction": "Neutral",
+    "confidence": "Low"
+  },
+  "note": "Market data unavailable - fallback values"
 }

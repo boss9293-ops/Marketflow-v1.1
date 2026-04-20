@@ -1,39 +1,40 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 
 _CACHE: Dict[str, str] = {}
 _FILE_DIR = Path(__file__).resolve().parent
+_MARKETFLOW_DIR = _FILE_DIR.parent.parent
+_CANONICAL_PROMPT_ROOT = (_MARKETFLOW_DIR / "prompts").resolve()
 
 
-def _prompt_root_candidates() -> list[Path]:
-    roots: list[Path] = []
-    seen: set[str] = set()
-    for base in (
-        Path.cwd(),
-        _FILE_DIR.parent,
-        _FILE_DIR.parents[1] if len(_FILE_DIR.parents) > 1 else None,
-        _FILE_DIR.parents[2] if len(_FILE_DIR.parents) > 2 else None,
-    ):
-        if base is None:
-            continue
-        candidate = (base / "prompts").resolve()
-        key = str(candidate)
-        if key in seen:
-            continue
-        seen.add(key)
-        roots.append(candidate)
-    return roots
+def canonical_prompt_root() -> Path:
+    return _CANONICAL_PROMPT_ROOT
+
+
+def prompt_root_candidates() -> list[Path]:
+    root = canonical_prompt_root()
+    return [root] if root.exists() else []
 
 
 def _candidate_paths(path: str) -> list[Path]:
     raw = Path(path)
     if raw.is_absolute():
-        return [raw]
+        resolved = raw.resolve()
+        for root in prompt_root_candidates():
+            try:
+                resolved.relative_to(root)
+                return [resolved]
+            except ValueError:
+                continue
+        return []
 
     text = str(raw).replace("\\", "/").strip("/")
+    if ".." in Path(text).parts:
+        return []
     variants = [raw]
 
     if text.startswith("marketflow/prompts/"):
@@ -43,7 +44,7 @@ def _candidate_paths(path: str) -> list[Path]:
     if text.startswith("prompts/"):
         variants.append(Path(text.removeprefix("prompts/")))
 
-    roots = _prompt_root_candidates()
+    roots = prompt_root_candidates()
     candidates: list[Path] = []
     seen: set[str] = set()
     for variant in variants:
@@ -63,6 +64,10 @@ def _resolve_prompt_path(path: str) -> Path:
     raise FileNotFoundError(f"Prompt file not found: {path}")
 
 
+def resolve_prompt_path(path: str) -> Path:
+    return _resolve_prompt_path(path)
+
+
 def load_prompt(path: str) -> str:
     resolved = _resolve_prompt_path(path)
     cache_key = str(resolved)
@@ -73,6 +78,39 @@ def load_prompt(path: str) -> str:
     content = resolved.read_text(encoding="utf-8")
     _CACHE[cache_key] = content
     return content
+
+
+def strip_frontmatter(text: str) -> str:
+    clean = (text or "").strip()
+    if clean.startswith("---"):
+        parts = clean.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+    return clean
+
+
+def load_prompt_text(path: str) -> str:
+    try:
+        return strip_frontmatter(load_prompt(path))
+    except FileNotFoundError:
+        return ""
+
+
+def load_prompt_registry() -> Dict[str, Any]:
+    seen: set[str] = set()
+    for root in prompt_root_candidates():
+        candidate = (root / "_registry.json").resolve()
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        if not candidate.exists():
+            continue
+        try:
+            return json.loads(candidate.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return {}
 
 
 def get_engine_knowledge() -> Dict[str, str]:

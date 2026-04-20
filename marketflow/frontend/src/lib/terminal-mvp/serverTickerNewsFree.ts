@@ -5,7 +5,7 @@ import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { hasPromoSignals, isFreeNewsSource, scoreNewsSource, scoreNewsText } from '@/lib/newsQuality'
-import { resolveNewsHistoryCandidates } from '@/lib/newsHistoryPaths'
+import { resolveNewsHistoryPath } from '@/lib/newsHistoryPaths'
 import { ET_TIMEZONE, type ETDateString, type NewsDetail, type TickerNewsItem } from '@/lib/terminal-mvp/types'
 import { upsertNewsDetails } from '@/lib/terminal-mvp/serverNewsStore'
 
@@ -16,7 +16,7 @@ const TICKER_NEWS_FETCH_ATTEMPTS = 1
 const TICKER_NEWS_RETRY_DELAY_MS = 150
 const TICKER_NEWS_HTTP_TIMEOUT_MS = 2200
 const TICKER_NEWS_CRUMB_TIMEOUT_MS = 1500
-const TICKER_NEWS_HISTORY_PATHS = resolveNewsHistoryCandidates('ticker-news-history-v2-1630.json')
+const TICKER_NEWS_HISTORY_PATH = resolveNewsHistoryPath('ticker-news-history-v2-1630.json')
 const MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 const MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
 
@@ -194,33 +194,30 @@ const loadTickerHistoryFromDisk = async (): Promise<void> => {
   if (tickerHistoryLoaded) return
   tickerHistoryLoaded = true
 
-  for (const candidate of TICKER_NEWS_HISTORY_PATHS) {
-    try {
-      const raw = await fs.readFile(candidate, 'utf8')
-      const parsed = JSON.parse(raw) as StoredTickerNewsPayload
-      if (!parsed || typeof parsed !== 'object' || !parsed.symbols || typeof parsed.symbols !== 'object') {
-        continue
-      }
-
-      for (const [symbol, payload] of Object.entries(parsed.symbols)) {
-        if (!payload || typeof payload !== 'object') continue
-        const timeline = Array.isArray(payload.timeline)
-          ? payload.timeline.filter(isTickerNewsItem).slice(0, TICKER_NEWS_HISTORY_MAX_ITEMS)
-          : []
-        if (!timeline.length) continue
-        const keepIds = new Set(timeline.map((item) => item.id))
-        const details = Array.isArray(payload.details)
-          ? payload.details.filter(isNewsDetail).filter((item) => keepIds.has(item.id))
-          : []
-        tickerNewsHistory.set(symbol, {
-          timelineById: new Map(sortNewsItems(timeline).map((item) => [item.id, item])),
-          detailsById: new Map(sortNewsItems(details).map((item) => [item.id, item])),
-        })
-      }
+  try {
+    const raw = await fs.readFile(TICKER_NEWS_HISTORY_PATH, 'utf8')
+    const parsed = JSON.parse(raw) as StoredTickerNewsPayload
+    if (!parsed || typeof parsed !== 'object' || !parsed.symbols || typeof parsed.symbols !== 'object') {
       return
-    } catch {
-      // try next candidate
     }
+
+    for (const [symbol, payload] of Object.entries(parsed.symbols)) {
+      if (!payload || typeof payload !== 'object') continue
+      const timeline = Array.isArray(payload.timeline)
+        ? payload.timeline.filter(isTickerNewsItem).slice(0, TICKER_NEWS_HISTORY_MAX_ITEMS)
+        : []
+      if (!timeline.length) continue
+      const keepIds = new Set(timeline.map((item) => item.id))
+      const details = Array.isArray(payload.details)
+        ? payload.details.filter(isNewsDetail).filter((item) => keepIds.has(item.id))
+        : []
+      tickerNewsHistory.set(symbol, {
+        timelineById: new Map(sortNewsItems(timeline).map((item) => [item.id, item])),
+        detailsById: new Map(sortNewsItems(details).map((item) => [item.id, item])),
+      })
+    }
+  } catch {
+    // no cache yet
   }
 }
 
@@ -239,18 +236,11 @@ const persistTickerHistoryNow = async (): Promise<void> => {
     updatedAt: new Date().toISOString(),
     symbols,
   }
-  let lastError: unknown = null
-  for (const candidate of TICKER_NEWS_HISTORY_PATHS) {
-    try {
-      await fs.mkdir(path.dirname(candidate), { recursive: true })
-      await fs.writeFile(candidate, JSON.stringify(payload, null, 2), 'utf8')
-      return
-    } catch (err) {
-      lastError = err
-    }
-  }
-  if (lastError) {
-    console.warn('[terminal-ticker-news] history cache write failed:', lastError)
+  try {
+    await fs.mkdir(path.dirname(TICKER_NEWS_HISTORY_PATH), { recursive: true })
+    await fs.writeFile(TICKER_NEWS_HISTORY_PATH, JSON.stringify(payload, null, 2), 'utf8')
+  } catch (error) {
+    console.warn('[terminal-ticker-news] history cache write failed:', error)
   }
 }
 

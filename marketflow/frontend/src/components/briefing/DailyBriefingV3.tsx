@@ -29,6 +29,8 @@ export type BriefingV3RiskCheck = {
 export type DailyBriefingV3PromptMeta = {
   page?: string
   version?: string
+  registry_version?: string
+  release?: string
   key?: string
   source?: string
   fallback_used?: boolean
@@ -49,6 +51,7 @@ export type DailyBriefingV3Data = {
   data_date: string
   slot?: string
   model: string
+  release?: string
   tokens: { input: number; output: number; cost_usd: number }
   freshness?: DailyBriefingV3Freshness
   prompt?: DailyBriefingV3PromptMeta

@@ -3,6 +3,7 @@ Portfolio-level weighted valuation and risk engine.
 """
 from __future__ import annotations
 
+from dataclasses import asdict, is_dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -29,13 +30,19 @@ def _normalize_positions(positions: Iterable[Any]) -> Tuple[List[Dict[str, Any]]
     seen_index: Dict[str, int] = {}
 
     for index, item in enumerate(positions):
-        if not isinstance(item, dict):
+        if isinstance(item, dict):
+            payload = item
+        elif is_dataclass(item):
+            payload = asdict(item)
+        elif hasattr(item, "__dict__"):
+            payload = dict(vars(item))
+        else:
             errors.append({"index": index, "error": "position must be an object"})
             continue
 
-        ticker = str(item.get("ticker") or item.get("symbol") or "").strip().upper()
-        shares = safe_float(item.get("shares") or item.get("quantity") or item.get("qty"))
-        label = str(item.get("label") or item.get("name") or "").strip() or None
+        ticker = str(payload.get("ticker") or payload.get("symbol") or "").strip().upper()
+        shares = safe_float(payload.get("shares") or payload.get("quantity") or payload.get("qty"))
+        label = str(payload.get("label") or payload.get("name") or "").strip() or None
 
         if not ticker:
             errors.append({"index": index, "error": "ticker is required"})

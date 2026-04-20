@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-17T22:46:36.575773",
+  "timestamp": "2026-04-19T10:35:32.246371",
   "total_scanned": 88,
   "signals": [
     {
@@ -12,7 +12,7 @@
       "signal_type": "APPROACHING",
       "score": 61,
       "market_regime": "SPY_SIDE",
-      "mcap_tier": "B",
+      "mcap_tier": "C",
       "current_price": 52.66,
       "pivot": 54.8,
       "breakout_price": 55.9,
@@ -38,43 +38,6 @@
       "retest_depth_pct": 0.0,
       "retest_vol_ratio": 1.0,
       "vol_dryup_ratio": 1.24
-    },
-    {
-      "ticker": "MU",
-      "name": "MU",
-      "pattern": "VCP",
-      "grade": "C",
-      "stage": "Near",
-      "stage_color": "#f59e0b",
-      "signal_type": "APPROACHING",
-      "score": 39,
-      "market_regime": "SPY_SIDE",
-      "mcap_tier": "A",
-      "current_price": 455.07,
-      "pivot": 471.34,
-      "breakout_price": 480.77,
-      "stop_loss": 302.15,
-      "risk_reward": 0.57,
-      "breakout_close_pct": -3.45,
-      "distance_to_pivot_pct": 3.45,
-      "c1": 152.06,
-      "c2": 136.51,
-      "c3": 112.61,
-      "r12": 1.11,
-      "r23": 1.21,
-      "base_range_pct": 51.3,
-      "rsi": 74.8,
-      "atrp_pct": 5.85,
-      "volume_ratio": 1.01,
-      "above_ema50_ratio": 0.55,
-      "ema_sep_pct": 36.99,
-      "ema50": 397.52,
-      "ema200": 290.19,
-      "52w_high": 465.66,
-      "52w_low": 66.74,
-      "retest_depth_pct": 0.0,
-      "retest_vol_ratio": 1.0,
-      "vol_dryup_ratio": 1.67
     }
   ]
 }

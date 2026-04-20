@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-import json
 import os
 import re
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 from .providers import Article, CompositeNewsProvider, GoogleNewsRSSProvider, PremiumNewsProvider, ReutersRSSProvider, YahooNewsProvider
-
-try:
-    from backend.services.data_contract import artifact_path as contract_artifact_path
-except Exception:
-    contract_artifact_path = None  # type: ignore[assignment]
+from .news_paths import (
+    CONTEXT_NEWS_PATH,
+    MARKET_HEADLINES_HISTORY_PATH,
+    news_history_file,
+    news_last_good_file,
+    read_json_file,
+    write_json_file,
+)
 
 
 KEYWORDS = [
@@ -76,34 +79,9 @@ def _repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
-def _artifact_file(relative_path: str) -> str:
-    rel = str(relative_path or "").replace("\\", "/").strip("/")
-    if contract_artifact_path is not None:
-        try:
-            return str(contract_artifact_path(rel))
-        except Exception:
-            pass
-    if not rel:
-        return os.path.join(_repo_root(), "backend", "output")
-    if rel.startswith("cache/"):
-        return os.path.join(_repo_root(), "backend", "output", "cache", rel[len("cache/"):])
-    return os.path.join(_repo_root(), "backend", "output", rel)
-
-
-def _output_cache_dir() -> str:
-    return os.path.join(_repo_root(), "backend", "output", "cache")
-
-
-def _news_cache_dir(date_str: str, region: str) -> str:
-    return os.path.join(_repo_root(), "backend", "output", "news_cache", date_str)
-
-
-def _safe_read_json(path: str) -> Optional[Dict[str, Any]]:
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return None
+def _read_json_dict(path: Path | str) -> Optional[Dict[str, Any]]:
+    payload = read_json_file(path)
+    return payload if isinstance(payload, dict) else None
 
 
 def _latest_macro_snapshot() -> Optional[Dict[str, Any]]:
@@ -113,7 +91,7 @@ def _latest_macro_snapshot() -> Optional[Dict[str, Any]]:
     files = sorted(fn for fn in os.listdir(d) if re.match(r"^\d{4}-\d{2}-\d{2}\.json$", fn))
     if not files:
         return None
-    return _safe_read_json(os.path.join(d, files[-1]))
+    return _read_json_dict(Path(d) / files[-1])
 
 
 def _sanitize_text(text: str) -> str:
@@ -199,40 +177,21 @@ def _pick_provider() -> Tuple[str, Any]:
 
 
 def _load_last_good(region: str) -> Optional[Dict[str, Any]]:
-    p = os.path.join(_repo_root(), "backend", "output", "news_cache", f"last_good_{region}.json")
-    return _safe_read_json(p)
+    return _read_json_dict(news_last_good_file(region))
 
 
 def _save_last_good(region: str, payload: Dict[str, Any]) -> None:
-    p = os.path.join(_repo_root(), "backend", "output", "news_cache", f"last_good_{region}.json")
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-
-
-def _frontend_headlines_file() -> str:
-    return _artifact_file("cache/market-headlines-history.json")
-
-
-def _legacy_frontend_headlines_file() -> str:
-    return os.path.join(_repo_root(), "frontend", ".cache", "market-headlines-history.json")
+    write_json_file(news_last_good_file(region), payload)
 
 
 def _load_frontend_headlines() -> List[Dict[str, Any]]:
-    candidates = [_frontend_headlines_file(), _legacy_frontend_headlines_file()]
-    seen: set[str] = set()
-    for candidate in candidates:
-        if not candidate or candidate in seen:
-            continue
-        seen.add(candidate)
-        data = _safe_read_json(candidate)
-        if not isinstance(data, dict):
-            continue
-        rows = data.get("headlines") or []
-        if not rows:
-            continue
-        return [row for row in rows if isinstance(row, dict)]
-    return []
+    data = _read_json_dict(MARKET_HEADLINES_HISTORY_PATH)
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("headlines") or []
+    if not rows:
+        return []
+    return [row for row in rows if isinstance(row, dict)]
 
 
 def _articles_from_frontend_headlines(rows: List[Dict[str, Any]]) -> List[Article]:
@@ -289,10 +248,8 @@ def _latest_validation_badge() -> Dict[str, Any]:
     )
     if not files:
         return {"status": "Watch", "snapshot_date": None, "revision_detected": False}
-    try:
-        with open(os.path.join(d, files[-1]), "r", encoding="utf-8") as f:
-            snap = json.load(f)
-    except Exception:
+    snap = _read_json_dict(Path(d) / files[-1])
+    if not isinstance(snap, dict):
         return {"status": "Watch", "snapshot_date": None, "revision_detected": False}
 
     regression = snap.get("regression") or {}
@@ -462,19 +419,17 @@ def build_context_news_cache(region: str = "us", limit: int = 5, slot: str | Non
     }
 
     # Persist date cache
-    d = _news_cache_dir(today, region)
-    os.makedirs(d, exist_ok=True)
-    with open(os.path.join(d, f"{region}.json"), "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    d = news_history_file(today, region)
+    os.makedirs(d.parent, exist_ok=True)
+    write_json_file(d, payload)
 
     # Persist last-good when fresh/partial
     if status in ("Fresh", "Partial"):
         _save_last_good(region, payload)
 
     # Write frontend cache bridge
-    out_path = _artifact_file("cache/context_news.json")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    out_path = CONTEXT_NEWS_PATH
+    os.makedirs(out_path.parent, exist_ok=True)
+    write_json_file(out_path, payload)
 
     return payload

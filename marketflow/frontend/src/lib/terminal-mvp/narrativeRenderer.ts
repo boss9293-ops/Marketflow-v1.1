@@ -44,7 +44,7 @@ export function renderNarrativeBrief(input: NarrativeRenderInput): NarrativeRend
     spine.CATALYST,
     spine.INSTITUTION,
     spine.NUMBERS,
-    [spine.RELATIVE_VIEW, spine.CONFIDENCE].filter(Boolean).join(' '),
+    spine.CONFIDENCE,
     spine.RISK,
   ])
 

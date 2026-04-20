@@ -9,9 +9,11 @@ interface TodayContextPayload {
   success: boolean
   text: string
   prompt_version: string
+  prompt_registry_version?: string
   prompt_key: string
   prompt_source: string
   fallback_used: boolean
+  release?: string
   message: string
 }
 

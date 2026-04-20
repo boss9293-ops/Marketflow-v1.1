@@ -4,46 +4,44 @@ import json
 import os
 import hashlib
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 try:
     from backend.ai.ai_router import generate_text
     from backend.ai.providers import AIProvider
-    from backend.services.data_contract import artifact_path as contract_artifact_path
+    from backend.news.news_paths import (
+        CONTEXT_NARRATIVE_CACHE_PATH,
+        CONTEXT_NARRATIVE_OUTPUT_PATH,
+        CONTEXT_NARRATIVE_USAGE_PATH,
+        CONTEXT_NEWS_PATH,
+        read_json_file,
+        write_json_file,
+    )
 except Exception:
     from ai.ai_router import generate_text  # type: ignore
     from ai.providers import AIProvider  # type: ignore
-    contract_artifact_path = None  # type: ignore[assignment]
+    from news.news_paths import (  # type: ignore
+        CONTEXT_NARRATIVE_CACHE_PATH,
+        CONTEXT_NARRATIVE_OUTPUT_PATH,
+        CONTEXT_NARRATIVE_USAGE_PATH,
+        CONTEXT_NEWS_PATH,
+        read_json_file,
+        write_json_file,
+    )
 
 
-def _repo_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+def _cache_file() -> Path:
+    return CONTEXT_NARRATIVE_CACHE_PATH
 
 
-def _artifact_file(relative_path: str) -> str:
-    rel = str(relative_path or "").replace("\\", "/").strip("/")
-    if contract_artifact_path is not None:
-        try:
-            return str(contract_artifact_path(rel))
-        except Exception:
-            pass
-    if not rel:
-        return os.path.join(_repo_root(), "backend", "output")
-    if rel.startswith("cache/"):
-        return os.path.join(_repo_root(), "backend", "output", "cache", rel[len("cache/"):])
-    return os.path.join(_repo_root(), "backend", "output", rel)
+def _context_news_file() -> Path:
+    return CONTEXT_NEWS_PATH
 
 
-def _cache_file() -> str:
-    return _artifact_file("cache/context_narrative_cache.json")
-
-
-def _context_news_file() -> str:
-    return _artifact_file("cache/context_news.json")
-
-def _usage_file() -> str:
-    return _artifact_file("cache/context_narrative_usage.json")
+def _usage_file() -> Path:
+    return CONTEXT_NARRATIVE_USAGE_PATH
 
 
 ET_ZONE = ZoneInfo("America/New_York")
@@ -51,19 +49,13 @@ MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
 
 
-def _read_json(path: str) -> Dict[str, Any]:
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+def _read_json(path: Path) -> Dict[str, Any]:
+    data = read_json_file(path)
+    return data if isinstance(data, dict) else {}
 
 
-def _write_json(path: str, payload: Dict[str, Any]) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+def _write_json(path: Path, payload: Dict[str, Any]) -> None:
+    write_json_file(path, payload)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -510,5 +502,5 @@ def build_context_narrative(
     # TTL by date: drop non-today entries
     items = {k: v for k, v in items.items() if str(v.get("date")) == date_key}
     _write_json(_cache_file(), {"updated_at": now.isoformat(), "items": items})
-    _write_json(os.path.join(_repo_root(), "backend", "output", "cache", "context_narrative.json"), payload)
+    _write_json(CONTEXT_NARRATIVE_OUTPUT_PATH, payload)
     return payload

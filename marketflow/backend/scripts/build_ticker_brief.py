@@ -13,11 +13,11 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import requests
 
 # ?? 寃쎈줈 遺?몄뒪?몃옪 ????????????????????????????????????????????????????????
 SCRIPT_DIR  = Path(__file__).resolve().parent
@@ -31,6 +31,16 @@ try:
 except ImportError:
     from backend.news.providers import CompositeNewsProvider, Article
 
+try:
+    from utils.prompt_loader import load_prompt_text
+except ImportError:
+    from backend.utils.prompt_loader import load_prompt_text  # type: ignore
+
+try:
+    from ai.ai_router import AIProvider, generate_text
+except ImportError:
+    from backend.ai.ai_router import AIProvider, generate_text  # type: ignore
+
 BRIEFS_DIR = BACKEND_DIR / "output" / "cache" / "ticker_briefs"
 BRIEFS_DIR.mkdir(parents=True, exist_ok=True)
 ROOT = str(BACKEND_DIR.parent.parent)  # us_market_complete root
@@ -38,10 +48,13 @@ ROOT = str(BACKEND_DIR.parent.parent)  # us_market_complete root
 ET_ZONE     = ZoneInfo("America/New_York")
 KEEP_DAYS   = 90
 DIRECTNESS_THRESHOLD = 4
-
-ANTHROPIC_URL  = "https://api.anthropic.com/v1/messages"
-CLAUDE_MODEL   = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001").strip()
-ANTHROPIC_KEY  = os.getenv("ANTHROPIC_API_KEY", "").strip()
+TICKER_BRIEF_PROMPT_VERSION = "v1.1"
+TICKER_BRIEF_PROMPT_SOURCE = "engine_narrative/ticker_brief_v1.md"
+TICKER_BRIEF_PROVIDER_ORDER = (AIProvider.CLAUDE, AIProvider.GPT)
+TICKER_BRIEF_CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001").strip() or "claude-haiku-4-5-20251001"
+TICKER_BRIEF_GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+os.environ.setdefault("CLAUDE_MODEL", TICKER_BRIEF_CLAUDE_MODEL)
+os.environ.setdefault("GPT_MODEL", TICKER_BRIEF_GPT_MODEL)
 
 DEFAULT_WATCHLIST = [
     "NVDA", "GOOGL", "AMZN", "INTC", "CAT",
@@ -282,37 +295,35 @@ def extract_events(items: list[dict], threshold: int = DIRECTNESS_THRESHOLD, tar
 # 4. Terminal X ?꾨＼?꾪듃
 # ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
+@lru_cache(maxsize=1)
+def _load_ticker_brief_prompt_core() -> str:
+    try:
+        prompt = load_prompt_text(TICKER_BRIEF_PROMPT_SOURCE).strip()
+        if prompt:
+            return prompt
+    except Exception as e:
+        print(f"  [WARN] ticker brief prompt load failed: {e}")
+    return "You are a Bloomberg terminal analyst. Write a Terminal X style end-of-day brief."
+
+
 def build_prompt(symbol: str, price: dict, events: list[dict], date_et: str) -> str:
-    close    = price.get("close", 0)
-    open_px  = price.get("open", 0)
-    chg      = price.get("change1d", 0)
+    close = price.get("close", 0)
+    open_px = price.get("open", 0)
+    chg = price.get("change1d", 0)
     open_chg = price.get("openChg", 0)
     direction = "up" if chg >= 0 else "down"
-
-    bull_w = sum(e["directness"] for e in events if e["sentiment"] == "bullish")
-    bear_w = sum(e["directness"] for e in events if e["sentiment"] == "bearish")
 
     event_lines = "\n".join(
         f"[{i+1}] d={e['directness']} {e['cluster']} {e['sentiment']}\n    {e['headline']}"
         for i, e in enumerate(events[:8])
     )
 
-    return f"""You are a Bloomberg terminal analyst. Write a Terminal X style end-of-day brief.
+    prompt_core = _load_ticker_brief_prompt_core()
 
-STRUCTURE (strict):
-1. "{symbol} closed {direction} {{X}}% at ${{Y}}, {{one clause connecting to primary driver}}"
-2. Primary driver sentence ??ONE catalyst, specific actor + number
-3-4. Supporting catalysts stacked (names + numbers, no vague language)
-5. Headwind sentence ??always acknowledge counterforce ("These catalysts offset..." or "Sentiment was tempered by...")
-
-RULES:
-- Every claim needs a number or a named entity
-- No adjectives without data (not "strong" ??say "+4.52%")
-- One flowing paragraph, 4-6 sentences
-- Bloomberg tone: dry, precise, zero fluff
+    return f"""{prompt_core}
 
 PRICE ({date_et}):
-  Open: ${open_px} ({'+' if open_chg>=0 else ''}{open_chg}%)  Close: ${close} ({'+' if chg>=0 else ''}{chg}%)
+  Open: ${open_px} ({'+' if open_chg >= 0 else ''}{open_chg}%)  Close: ${close} ({'+' if chg >= 0 else ''}{chg}%)
 
 NEWS EVENTS (directness-ranked):
 {event_lines}
@@ -324,21 +335,40 @@ Write the brief now:"""
 # 5. Claude ?몄텧 + ?대갚
 # ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 
-def call_claude(prompt: str) -> str:
-    if not ANTHROPIC_KEY:
-        return ""
-    try:
-        r = requests.post(
-            ANTHROPIC_URL,
-            headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": CLAUDE_MODEL, "max_tokens": 400, "messages": [{"role": "user", "content": prompt}]},
-            timeout=(10, 20),
-        )
-        r.raise_for_status()
-        return r.json()["content"][0]["text"].strip()
-    except Exception as e:
-        print(f"  [WARN] Claude API: {e}")
-        return ""
+def call_brief_llm(prompt: str) -> tuple[str, str, str]:
+    system = "You are a Bloomberg terminal analyst. Follow the user's instructions exactly."
+    last_error = ""
+
+    for provider in TICKER_BRIEF_PROVIDER_ORDER:
+        try:
+            result = generate_text(
+                task="ticker_brief",
+                system=system,
+                user=prompt,
+                temperature=0.35,
+                max_tokens=400,
+                provider=provider,
+            )
+        except Exception as exc:
+            last_error = str(exc)
+            print(f"  [WARN] {provider.value} API: {exc}")
+            continue
+
+        if result.error:
+            last_error = result.error
+            print(f"  [WARN] {provider.value} API: {result.error}")
+            continue
+
+        text = (result.text or "").strip()
+        if text:
+            return text, result.provider, result.model
+
+        last_error = "empty response"
+        print(f"  [WARN] {provider.value} API: empty response")
+
+    if last_error:
+        print(f"  [WARN] ticker brief LLM fallback: {last_error}")
+    return "", "", ""
 
 def fallback_brief(symbol: str, price: dict, events: list[dict]) -> str:
     """LLM ?놁쓣 ??猷?湲곕컲"""
@@ -394,7 +424,7 @@ def load_briefs(symbol: str) -> list[dict]:
 
 def run_ticker(symbol: str, date_et: str) -> dict:
     print("\n" + "=" * 52)
-    print(f"  {symbol}  {date_et}  {'(LLM)' if ANTHROPIC_KEY else '(fallback)'}")
+    print(f"  {symbol}  {date_et}  (LLM)")
     print("=" * 52)
 
     news   = fetch_news(symbol, date_et)
@@ -410,8 +440,12 @@ def run_ticker(symbol: str, date_et: str) -> dict:
         headline = str(e.get("headline") or "")[:52]
         print(f"    {bar} {score}/10 {sent} {headline}")
 
-    prompt     = build_prompt(symbol, price, events, date_et)
-    brief_text = call_claude(prompt) or fallback_brief(symbol, price, events)
+    prompt = build_prompt(symbol, price, events, date_et)
+    brief_text, llm_provider, llm_model = call_brief_llm(prompt)
+    if not brief_text:
+        brief_text = fallback_brief(symbol, price, events)
+        llm_provider = "fallback"
+        llm_model = ""
 
     print(f"\n  BRIEF:\n  {brief_text[:280]}...")
 
@@ -429,6 +463,10 @@ def run_ticker(symbol: str, date_et: str) -> dict:
         "signal_strength": sig_str,
         "price":           price,
         "events":          events[:8],
+        "prompt_version":  TICKER_BRIEF_PROMPT_VERSION,
+        "prompt_source":   TICKER_BRIEF_PROMPT_SOURCE,
+        "llm_provider":    llm_provider,
+        "llm_model":       llm_model,
     }
 
     out = save_brief(symbol, date_et, payload)
@@ -449,7 +487,7 @@ def main() -> None:
     print(sep)
     print(f"  Ticker Brief Builder  {date_et} ET")
     print(f"  Symbols : {', '.join(symbols)}")
-    print(f"  LLM     : {'Claude ' + CLAUDE_MODEL if ANTHROPIC_KEY else 'rule-based fallback'}")
+    print(f"  LLM     : Claude({TICKER_BRIEF_CLAUDE_MODEL}) -> GPT({TICKER_BRIEF_GPT_MODEL}) -> rule-based fallback")
     print(f"  Cache   : {BRIEFS_DIR}")
     print(sep)
 

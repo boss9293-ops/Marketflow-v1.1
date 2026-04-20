@@ -172,6 +172,10 @@ ACCOUNT_MANAGER_OUTPUT_SCHEMA = {
 }
 
 
+STRUCTURED_PROVIDER_ORDER = (AIProvider.GPT, AIProvider.CLAUDE)
+PORTFOLIO_PROVIDER_ORDER = (AIProvider.CLAUDE, AIProvider.GPT)
+
+
 SYSTEM_PROMPT = (
     "You are a MarketFlow account portfolio manager.\n"
     "Use the supplied engine knowledge and narrative template as authoritative instructions.\n"
@@ -1197,7 +1201,7 @@ def _call_structured_llm(
     output_tool_name: str = "return_json",
 ) -> Any:
     last_error = ""
-    provider_order = providers or (AIProvider.GPT, AIProvider.CLAUDE)
+    provider_order = providers or STRUCTURED_PROVIDER_ORDER
     for provider in provider_order:
         try:
             result = generate_text(
@@ -1678,6 +1682,16 @@ def _normalize_portfolio_output(data: Any, portfolio_data: Dict[str, Any], engin
     }
 
 
+def _fill_missing_fields(target: Dict[str, Any], fallback: Dict[str, Any], required_keys: tuple[str, ...]) -> list[str]:
+    missing_keys: list[str] = []
+    for key in required_keys:
+        if target.get(key):
+            continue
+        target[key] = fallback.get(key)
+        missing_keys.append(key)
+    return missing_keys
+
+
 def generate_briefing(engine_data: dict) -> dict:
     """
     Load engine knowledge + briefing template, combine with engine data, call the LLM,
@@ -1697,7 +1711,12 @@ def generate_briefing(engine_data: dict) -> dict:
             "Do not use return-based performance analysis.",
         ],
     )
-    data = _call_structured_llm(task="narrative_briefing", prompt=prompt, max_tokens=1400)
+    data = _call_structured_llm(
+        task="narrative_briefing",
+        prompt=prompt,
+        max_tokens=1400,
+        providers=STRUCTURED_PROVIDER_ORDER,
+    )
     return _normalize_briefing_output(data, engine_data)
 
 
@@ -1721,7 +1740,12 @@ def generate_watchlist(stock_data: list, engine_data: dict) -> list:
             "Keep the explanation structural and avoid return-based analysis.",
         ],
     )
-    data = _call_structured_llm(task="narrative_watchlist", prompt=prompt, max_tokens=max(1400, 320 * max(len(stock_items), 1)))
+    data = _call_structured_llm(
+        task="narrative_watchlist",
+        prompt=prompt,
+        max_tokens=max(1400, 320 * max(len(stock_items), 1)),
+        providers=STRUCTURED_PROVIDER_ORDER,
+    )
     return _normalize_watchlist_output(data, stock_items)
 
 
@@ -1758,7 +1782,7 @@ def generate_portfolio(portfolio_data: dict, engine_data: dict) -> dict:
         task="narrative_portfolio",
         prompt=prompt,
         max_tokens=1800,
-        providers=(AIProvider.CLAUDE, AIProvider.GPT),
+        providers=PORTFOLIO_PROVIDER_ORDER,
         output_schema=ACCOUNT_MANAGER_OUTPUT_SCHEMA,
         output_tool_name="return_account_manager_output",
     )
@@ -1780,9 +1804,7 @@ def generate_portfolio(portfolio_data: dict, engine_data: dict) -> dict:
             llm_provider or "unknown",
         )
         merged = dict(result)
-        for key in required_keys:
-            if not merged.get(key):
-                merged[key] = fallback.get(key)
+        missing_keys = _fill_missing_fields(merged, fallback, required_keys)
         merged.setdefault("llm_provider", llm_provider or "unknown")
         merged["llm_fallback_keys"] = missing_keys
         result = merged

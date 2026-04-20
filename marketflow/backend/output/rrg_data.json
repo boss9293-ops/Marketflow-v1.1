@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-17T22:49:03.578812",
+  "timestamp": "2026-04-19T10:41:40.426879",
   "benchmark": "SPY",
   "sectors": [
     {
@@ -10,10 +10,6 @@
         "momentum": 102.8989
       },
       "trail": [
-        {
-          "ratio": 103.5325,
-          "momentum": 98.8043
-        },
         {
           "ratio": 103.2272,
           "momentum": 99.7051
@@ -200,7 +196,7 @@
         }
       ],
       "price": 154.35,
-      "change": 44.29
+      "change": 44.28
     },
     {
       "symbol": "XLV",
@@ -210,10 +206,6 @@
         "momentum": 97.4576
       },
       "trail": [
-        {
-          "ratio": 90.7255,
-          "momentum": 101.8311
-        },
         {
           "ratio": 92.0103,
           "momentum": 101.4161
@@ -400,7 +392,7 @@
         }
       ],
       "price": 148.8,
-      "change": 2.67
+      "change": 1.5
     },
     {
       "symbol": "XLF",
@@ -410,10 +402,6 @@
         "momentum": 99.4313
       },
       "trail": [
-        {
-          "ratio": 98.6183,
-          "momentum": 99.5478
-        },
         {
           "ratio": 98.7993,
           "momentum": 100.1836
@@ -600,7 +588,7 @@
         }
       ],
       "price": 52.43,
-      "change": 8.06
+      "change": 6.0
     },
     {
       "symbol": "XLE",
@@ -610,10 +598,6 @@
         "momentum": 92.413
       },
       "trail": [
-        {
-          "ratio": 93.4756,
-          "momentum": 99.6112
-        },
         {
           "ratio": 92.9076,
           "momentum": 99.3923
@@ -800,7 +784,7 @@
         }
       ],
       "price": 55.02,
-      "change": 22.59
+      "change": 18.94
     },
     {
       "symbol": "XLY",
@@ -810,10 +794,6 @@
         "momentum": 102.1315
       },
       "trail": [
-        {
-          "ratio": 101.6912,
-          "momentum": 98.9302
-        },
         {
           "ratio": 101.0544,
           "momentum": 99.3738
@@ -1000,7 +980,7 @@
         }
       ],
       "price": 120.41,
-      "change": 22.43
+      "change": 21.97
     },
     {
       "symbol": "XLP",
@@ -1010,10 +990,6 @@
         "momentum": 96.6356
       },
       "trail": [
-        {
-          "ratio": 96.5258,
-          "momentum": 102.0735
-        },
         {
           "ratio": 96.2801,
           "momentum": 99.7455
@@ -1200,7 +1176,7 @@
         }
       ],
       "price": 82.46,
-      "change": 3.71
+      "change": 3.95
     },
     {
       "symbol": "XLI",
@@ -1210,10 +1186,6 @@
         "momentum": 97.0368
       },
       "trail": [
-        {
-          "ratio": 102.4529,
-          "momentum": 100.0986
-        },
         {
           "ratio": 101.753,
           "momentum": 99.3169
@@ -1400,7 +1372,7 @@
         }
       ],
       "price": 173.51,
-      "change": 32.32
+      "change": 31.2
     },
     {
       "symbol": "XLB",
@@ -1410,10 +1382,6 @@
         "momentum": 95.7253
       },
       "trail": [
-        {
-          "ratio": 98.1538,
-          "momentum": 101.3657
-        },
         {
           "ratio": 97.5259,
           "momentum": 99.3603
@@ -1600,7 +1568,7 @@
         }
       ],
       "price": 51.88,
-      "change": 20.68
+      "change": 20.95
     },
     {
       "symbol": "XLRE",
@@ -1610,10 +1578,6 @@
         "momentum": 99.1009
       },
       "trail": [
-        {
-          "ratio": 95.1985,
-          "momentum": 99.7569
-        },
         {
           "ratio": 96.4131,
           "momentum": 101.2758
@@ -1800,7 +1764,7 @@
         }
       ],
       "price": 44.48,
-      "change": 7.31
+      "change": 7.15
     },
     {
       "symbol": "XLU",
@@ -1810,10 +1774,6 @@
         "momentum": 93.746
       },
       "trail": [
-        {
-          "ratio": 98.4789,
-          "momentum": 101.2489
-        },
         {
           "ratio": 97.832,
           "momentum": 99.3431
@@ -2000,7 +1960,7 @@
         }
       ],
       "price": 46.16,
-      "change": 17.05
+      "change": 17.23
     },
     {
       "symbol": "XLC",
@@ -2010,10 +1970,6 @@
         "momentum": 99.9984
       },
       "trail": [
-        {
-          "ratio": 100.5826,
-          "momentum": 100.9507
-        },
         {
           "ratio": 100.0808,
           "momentum": 99.5011
@@ -2200,7 +2156,7 @@
         }
       ],
       "price": 119.1,
-      "change": 23.32
+      "change": 22.03
     }
   ]
 }

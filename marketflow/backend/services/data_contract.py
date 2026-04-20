@@ -35,6 +35,8 @@ DEFAULT_ARTIFACT_KEYS: tuple[str, ...] = (
     "cache/health_snapshot.json",
     "cache/action_snapshot.json",
     "cache/context_news.json",
+    "cache/context_narrative.json",
+    "cache/ticker_brief_index.json",
     "cache/market-headlines-history.json",
     "cache/ticker-news-history-v2-1630.json",
     "cache/context_narrative_cache.json",
@@ -140,12 +142,16 @@ def source_profile() -> str:
 
 
 def artifact_path(relative_path: str) -> Path:
-    rel = str(relative_path).replace("\\", "/").strip("/")
+    rel = str(relative_path or "").replace("\\", "/").strip()
+    root = output_root().resolve()
     if not rel:
-        return output_root().resolve()
-    if rel.startswith("cache/"):
-        return (cache_root() / rel[len("cache/") :]).resolve()
-    return (output_root() / Path(rel)).resolve()
+        return root
+    candidate = (root / Path(rel)).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Artifact path escapes output root: {relative_path!r}") from exc
+    return candidate
 
 
 def data_paths(snapshot_name: str = DEFAULT_SNAPSHOT_NAME) -> DataPaths:

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const RAILWAY_URL = 'https://marketflow-production-09df.up.railway.app'
+import { backendApiUrl } from '@/lib/backendApi'
 
 async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
   const { path } = await params
   const pathStr = path.join('/')
-  const url = `${RAILWAY_URL}/${pathStr}${req.nextUrl.search}`
+  const url = `${backendApiUrl(pathStr)}${req.nextUrl.search}`
 
   const contentType = req.headers.get('Content-Type') || 'application/json'
   const body =

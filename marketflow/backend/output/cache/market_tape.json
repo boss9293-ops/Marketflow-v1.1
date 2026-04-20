@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-04-18T02:17:56.903766",
+  "generated_at": "2026-04-19T22:52:37.190258",
   "data_date": "2026-04-17",
   "items": [
     {
       "symbol": "SPY",
       "name": "S&P 500",
       "last": 710.14,
-      "chg": 8.49,
-      "chg_pct": 1.21,
+      "chg": 8.4803,
+      "chg_pct": 1.2086,
       "spark_1d": [
         655.24,
         655.83,
@@ -25,10 +25,10 @@
     },
     {
       "symbol": "QQQ",
-      "name": "NASDAQ 100",
+      "name": "Nasdaq 100",
       "last": 648.85,
-      "chg": 8.39,
-      "chg_pct": 1.31,
+      "chg": 8.3799,
+      "chg_pct": 1.3084,
       "spark_1d": [
         584.31,
         584.98,
@@ -48,8 +48,8 @@
       "symbol": "DIA",
       "name": "Dow Jones",
       "last": 494.22,
-      "chg": 8.5956,
-      "chg_pct": 1.77,
+      "chg": 8.5898,
+      "chg_pct": 1.7688,
       "spark_1d": [
         465.48,
         465.06,
@@ -69,8 +69,8 @@
       "symbol": "IWM",
       "name": "Russell 2000",
       "last": 275.78,
-      "chg": 5.8309,
-      "chg_pct": 2.16,
+      "chg": 5.8301,
+      "chg_pct": 2.1597,
       "spark_1d": [
         249.56,
         251.29,
@@ -88,50 +88,10 @@
     },
     {
       "symbol": "VIX",
-      "name": "VIX",
-      "last": 17.48,
-      "chg": -0.4592,
-      "chg_pct": -2.56,
-      "spark_1d": []
-    },
-    {
-      "symbol": "US10Y",
-      "name": "10Y Treasury",
-      "last": 4.25,
-      "chg": -0.063,
-      "chg_pct": -1.46,
-      "spark_1d": []
-    },
-    {
-      "symbol": "US5Y",
-      "name": "5Y Treasury",
-      "last": 3.84,
-      "chg": -0.0752,
-      "chg_pct": -1.92,
-      "spark_1d": []
-    },
-    {
-      "symbol": "DXY",
-      "name": "Dollar Index",
-      "last": 98.23,
-      "chg": 0.0098,
-      "chg_pct": 0.01,
-      "spark_1d": []
-    },
-    {
-      "symbol": "BTCUSD",
-      "name": "Bitcoin",
-      "last": 77182.58,
-      "chg": 2029.1428,
-      "chg_pct": 2.7,
-      "spark_1d": []
-    },
-    {
-      "symbol": "GOLD",
-      "name": "Gold",
-      "last": 4849.4,
-      "chg": 64.1227,
-      "chg_pct": 1.34,
+      "name": "Volatility",
+      "last": 24.17,
+      "chg": null,
+      "chg_pct": 1.2568,
       "spark_1d": []
     }
   ]

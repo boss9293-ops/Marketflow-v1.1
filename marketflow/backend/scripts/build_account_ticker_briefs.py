@@ -11,15 +11,20 @@ from pathlib import Path
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
+from services.data_contract import artifact_path, live_db_path
+
+try:
+    from backend.news.news_paths import TICKER_BRIEF_INDEX_PATH
+except Exception:
+    from news.news_paths import TICKER_BRIEF_INDEX_PATH  # type: ignore
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 ROOT_DIR = BACKEND_DIR.parent
-OUTPUT_DIR = BACKEND_DIR / "output"
-CACHE_DIR = OUTPUT_DIR / "cache"
-SUMMARY_PATH = CACHE_DIR / "ticker_brief_index.json"
+SUMMARY_PATH = TICKER_BRIEF_INDEX_PATH
 TICKER_BRIEF_SCRIPT = SCRIPT_DIR / "build_ticker_brief.py"
-DB_PATH = ROOT_DIR / "marketflow" / "data" / "marketflow.db"
+DB_PATH = live_db_path()
 ET_ZONE = ZoneInfo("America/New_York")
 CHUNK_SIZE = 20
 CHUNK_TIMEOUT_SEC = 1800
@@ -30,7 +35,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 try:
-    from build_ticker_brief import DEFAULT_WATCHLIST  # type: ignore
+    from build_ticker_brief import DEFAULT_WATCHLIST, TICKER_BRIEF_PROMPT_VERSION  # type: ignore
 except Exception:
     DEFAULT_WATCHLIST = [
         "NVDA",
@@ -44,6 +49,7 @@ except Exception:
         "QQQ",
         "SPY",
     ]
+    TICKER_BRIEF_PROMPT_VERSION = "unknown"  # type: ignore[assignment]
 
 
 def _load_json(path: Path) -> Any:
@@ -118,8 +124,8 @@ def _extract_positions_from_file(path: Path) -> list[str]:
 
 def _collect_holdings_symbols() -> list[str]:
     sources = [
-        BACKEND_DIR / "output" / "my_holdings_tabs.json",
-        BACKEND_DIR / "output" / "my_holdings_ts.json",
+        artifact_path("my_holdings_tabs.json"),
+        artifact_path("my_holdings_ts.json"),
     ]
     symbols: list[str] = []
     seen: set[str] = set()
@@ -195,6 +201,7 @@ def _write_summary(symbols: list[str], holdings: list[str], watchlist: list[str]
         "generated_at": datetime.now(tz=ET_ZONE).isoformat(timespec="seconds"),
         "date": datetime.now(tz=ET_ZONE).date().isoformat(),
         "builder": "build_ticker_brief.py",
+        "prompt_version": TICKER_BRIEF_PROMPT_VERSION,
         "symbol_count": len(symbols),
         "holdings_count": len(holdings),
         "watchlist_count": len(watchlist),
@@ -204,8 +211,8 @@ def _write_summary(symbols: list[str], holdings: list[str], watchlist: list[str]
         "source_files": [
             str(path.relative_to(ROOT_DIR))
             for path in [
-                BACKEND_DIR / "output" / "my_holdings_tabs.json",
-                BACKEND_DIR / "output" / "my_holdings_ts.json",
+                artifact_path("my_holdings_tabs.json"),
+                artifact_path("my_holdings_ts.json"),
                 DB_PATH,
             ]
             if path.exists()

@@ -2458,7 +2458,7 @@
       {
         "sector": "Dividend",
         "count": 12,
-        "avg_score": 37.36
+        "avg_score": 37.37
       },
       {
         "sector": "Diversified Banks",
@@ -2643,7 +2643,7 @@
       {
         "sector": "Apparel, Accessories & Luxury Goods",
         "count": 4,
-        "avg_score": 26.28
+        "avg_score": 26.29
       },
       {
         "sector": "Fertilizers & Agricultural Chemicals",
@@ -2773,7 +2773,7 @@
       {
         "sector": "Environmental & Facilities Services",
         "count": 4,
-        "avg_score": 15.47
+        "avg_score": 15.46
       },
       {
         "sector": "Health Care Equipment",
@@ -3336,6 +3336,6 @@
     }
   ],
   "data_version": "smart_money_v1",
-  "generated_at": "2026-04-17T22:52:43",
+  "generated_at": "2026-04-19T10:44:50",
   "rerun_hint": "python backend/scripts/build_smart_money.py"
 }

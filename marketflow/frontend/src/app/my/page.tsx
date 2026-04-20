@@ -148,12 +148,13 @@ type PortfolioNarrativeMeta = {
   cache_scope?: string
   cache_namespace?: string
   llm_provider?: string
+  release?: string
 }
 
 const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
   ? '/api/flask'  // Vercel: proxy via next.config.js rewrites → Railway
   : (process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001')
-const PORTFOLIO_NARRATIVE_VERSION = 'news_first_v4'
+const PORTFOLIO_NARRATIVE_VERSION = 'v1.1'
 
 function panelStyle() {
   return {
@@ -1396,6 +1397,7 @@ export default function MyPage() {
           cache_scope: asText(json?.cache_scope) || 'subscriber_daily',
           cache_namespace: asText(json?.cache_namespace) || '',
           llm_provider: asText(json?.llm_provider) || '',
+          release: asText(json?.release) || PORTFOLIO_NARRATIVE_VERSION,
         })
         portfolioNarrativeLoadedSignatureRef.current = requestSignature
       } catch {

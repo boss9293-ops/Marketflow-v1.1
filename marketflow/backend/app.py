@@ -73,9 +73,13 @@ if _BACKEND_DIR not in sys.path:
 
 from db_utils import db_connect as _db_connect, resolve_marketflow_db
 try:
-    from utils.prompt_loader import load_prompt as _shared_load_prompt
+    from utils.prompt_loader import load_prompt_text as _shared_load_prompt_text
 except Exception:
-    _shared_load_prompt = None
+    _shared_load_prompt_text = None
+try:
+    from services.release_config import RELEASE_VERSION
+except Exception:
+    RELEASE_VERSION = "v1.1"
 
 import tempfile
 
@@ -182,6 +186,10 @@ from jobs.scheduler import start_scheduler
 
 
 from news.context_narrative import build_context_narrative
+try:
+    from news.news_paths import CONTEXT_NEWS_PATH, DAILY_BRIEFING_V3_PATH, read_json_file as _read_news_artifact_json
+except Exception:
+    from backend.news.news_paths import CONTEXT_NEWS_PATH, DAILY_BRIEFING_V3_PATH, read_json_file as _read_news_artifact_json  # type: ignore
 
 
 _CACHE_STORE: dict = {}
@@ -1070,9 +1078,6 @@ def load_json_or_none(filename):
 # ???? Navigator AI helpers ????????????????????????????????????????????????????????????????????????????????????????????????
 
 
-PROMPT_DIR = os.path.join(os.path.dirname(__file__), 'prompts')
-
-
 AI_CACHE_PATH = os.path.join(OUTPUT_DIR, 'navigator_ai_cache.json')
 
 
@@ -1143,34 +1148,12 @@ def _ai_rate_allow(ip: str, provider: str) -> bool:
 
 
 def _load_prompt(name: str) -> str:
-    if _shared_load_prompt is not None:
-        try:
-            return _shared_load_prompt(name)
-        except FileNotFoundError:
-            pass
-        except Exception:
-            pass
-
-    candidates = []
-    seen = set()
-    for base in (
-        PROMPT_DIR,
-        os.path.join(os.path.dirname(__file__), '..', 'prompts'),
-        os.path.join(os.getcwd(), 'prompts'),
-        os.path.join(os.getcwd(), 'marketflow', 'prompts'),
-    ):
-        candidate = os.path.abspath(os.path.join(base, name))
-        if candidate in seen:
-            continue
-        seen.add(candidate)
-        candidates.append(candidate)
-
-    for path in candidates:
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                return f.read()
-
-    return ""
+    if _shared_load_prompt_text is None:
+        return ""
+    try:
+        return _shared_load_prompt_text(name)
+    except Exception:
+        return ""
 
 
 
@@ -1415,9 +1398,15 @@ def _parse_ai_lines(text: str) -> dict:
     return out
 
 def load_context_news_cache():
+    if _read_news_artifact_json is None:
+        return None
+    return _read_news_artifact_json(CONTEXT_NEWS_PATH)
 
 
-    return load_json_or_none_cached('cache/context_news.json')
+def load_daily_briefing_cache():
+    if _read_news_artifact_json is None:
+        return None
+    return _read_news_artifact_json(DAILY_BRIEFING_V3_PATH)
 
 
 
@@ -1495,7 +1484,7 @@ def load_validation_snapshot_latest():
 def load_macro_snapshot_latest():
 
 
-    # v1.0 preferred path
+    # canonical snapshot path
 
 
     latest_path = os.path.join(MACRO_SNAPSHOT_DATA_DIR, 'macro_snapshot_latest.json')
@@ -1639,7 +1628,7 @@ def _macro_snapshot_files():
     paths = []
 
 
-    # v1.0 data snapshots
+    # timestamped snapshot files
 
 
     d_new = MACRO_SNAPSHOT_DATA_DIR
@@ -3877,28 +3866,17 @@ def context_narrative():
     force = str(request.args.get('force', 'false')).lower() in ('1', 'true', 'yes', 'y')
 
 
-    try:
-
-
-        _run_backend_script(
-
-
-            'build_context_news.py',
-
-
-            extra_args=['--region', region, '--limit', '5'],
-
-
-            timeout=180,
-
-
-        )
-
-
-    except Exception:
-
-
-        pass
+    context_news = load_context_news_cache()
+    should_refresh_news = force or not isinstance(context_news, dict) or not str(context_news.get('date') or '').strip()
+    if should_refresh_news:
+        try:
+            _run_backend_script(
+                'build_context_news.py',
+                extra_args=['--region', region, '--limit', '5'],
+                timeout=180,
+            )
+        except Exception:
+            pass
 
 
     try:
@@ -5256,7 +5234,13 @@ def briefing_cards():
         success = bool(text)
 
         if not success and fallback_path:
-            fb_data = load_json_or_none(fallback_path)
+            if (
+                _read_news_artifact_json is not None
+                and os.path.basename(str(fallback_path or "")).strip() == DAILY_BRIEFING_V3_PATH.name
+            ):
+                fb_data = load_daily_briefing_cache()
+            else:
+                fb_data = load_json_or_none(fallback_path)
             text = _daily_briefing_summary_text(fb_data)
             success = bool(text)
 
@@ -5291,7 +5275,10 @@ def briefing_cards():
             "text": text.strip(),
 
 
-            "prompt_version": meta.get("version", "v1.0.0"),
+            "prompt_version": RELEASE_VERSION,
+
+
+            "prompt_registry_version": meta.get("version", "unknown"),
 
 
             "prompt_key": meta.get("key", page_name),
@@ -5301,6 +5288,9 @@ def briefing_cards():
 
 
             "fallback_used": meta.get("fallback_used", False),
+
+
+            "release": RELEASE_VERSION,
 
 
             "message": "" if success else "Failed to load normal briefing data"
@@ -5348,7 +5338,7 @@ def today_context():
 
 
 
-    data = load_json_or_none('cache/daily_briefing_v3.json')
+    data = load_daily_briefing_cache()
 
 
     if isinstance(data, dict):
@@ -5390,7 +5380,10 @@ def today_context():
         "text": text,
 
 
-        "prompt_version": meta.get("version", "v1.0.0"),
+        "prompt_version": RELEASE_VERSION,
+
+
+        "prompt_registry_version": meta.get("version", "unknown"),
 
 
         "prompt_key": meta.get("key", "today_context"),
@@ -5400,6 +5393,9 @@ def today_context():
 
 
         "fallback_used": meta.get("fallback_used", False),
+
+
+        "release": RELEASE_VERSION,
 
 
         "message": "" if success else "Failed to load today context"

@@ -1,79 +1,79 @@
 {
-  "generated_at": "2026-04-17T22:45:15",
+  "generated_at": "2026-04-19T10:35:13",
   "mode": "snapshot",
   "source": "market_data.json",
   "events": [
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "S&P 500 (SPY)",
       "importance": "High",
       "forecast": "-",
-      "actual": "710.14 (+1.21%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "NASDAQ 100 (QQQ)",
       "importance": "High",
       "forecast": "-",
-      "actual": "648.85 (+1.31%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "Russell 2000 (IWM)",
       "importance": "High",
       "forecast": "-",
-      "actual": "275.78 (+2.16%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "US 10Y Treasury (^TNX)",
       "importance": "High",
       "forecast": "-",
-      "actual": "4.25 (-1.46%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "VIX (^VIX)",
       "importance": "High",
       "forecast": "-",
-      "actual": "17.48 (-2.56%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "Dollar Index (DXY)",
       "importance": "Medium",
       "forecast": "-",
-      "actual": "98.23 (+0.01%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "Gold (GC=F)",
       "importance": "Medium",
       "forecast": "-",
-      "actual": "4849.40 (+1.34%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "Crude Oil (CL=F)",
       "importance": "Medium",
       "forecast": "-",
-      "actual": "84.00 (-11.29%)"
+      "actual": "-"
     },
     {
-      "date": "2026-04-17",
+      "date": "2026-04-19",
       "time": "N/A",
       "event": "Bitcoin (BTC-USD)",
       "importance": "Low",
       "forecast": "-",
-      "actual": "77182.58 (+2.70%)"
+      "actual": "-"
     }
   ],
   "rerun_hint": "python backend/scripts/build_economic_calendar.py"
