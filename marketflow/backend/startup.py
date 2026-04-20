@@ -16,6 +16,14 @@ BUILD_LOG_DIR = os.path.join(OUTPUT, "cache", "build_logs")
 ET_ZONE = ZoneInfo("America/New_York")
 MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
+TURSO_SYNC_ENV_NAMES = (
+    "TURSO_DATABASE_URL",
+    "LIBSQL_URL",
+    "TURSO_URL",
+    "TURSO_AUTH_TOKEN",
+    "LIBSQL_AUTH_TOKEN",
+    "TURSO_TOKEN",
+)
 
 os.makedirs(os.path.join(BASE, "data"), exist_ok=True)
 os.makedirs(os.path.dirname(LIVE_DB_PATH), exist_ok=True)
@@ -36,9 +44,29 @@ def _script_env(extra: dict[str, str] | None = None) -> dict[str, str]:
         env.update(extra)
     return env
 
+def _has_turso_sync_env() -> bool:
+    has_url = any(os.environ.get(name, "").strip() for name in ("TURSO_DATABASE_URL", "LIBSQL_URL", "TURSO_URL"))
+    has_token = any(os.environ.get(name, "").strip() for name in ("TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN", "TURSO_TOKEN"))
+    return has_url and has_token
+
+
+def _clear_local_sqlite_seed(db_path: str) -> None:
+    for suffix in ("", "-wal", "-shm", "-info"):
+        target = db_path if not suffix else f"{db_path}{suffix}"
+        if os.path.exists(target):
+            try:
+                os.remove(target)
+                print(f"[startup] Cleared local seed artifact: {os.path.basename(target)}", flush=True)
+            except Exception as exc:
+                print(f"[startup] Failed to clear {target}: {exc}", flush=True)
+
+
 # 1. Download DB if missing
 db_abs = os.path.abspath(DB_PATH)
-if not os.path.exists(db_abs) or os.path.getsize(db_abs) < 100_000_000:
+if _has_turso_sync_env():
+    print("[startup] Turso env detected; skipping GitHub seed DB and bootstrapping from Turso.", flush=True)
+    _clear_local_sqlite_seed(db_abs)
+elif not os.path.exists(db_abs) or os.path.getsize(db_abs) < 100_000_000:
     print(f"[startup] Downloading marketflow.db ...", flush=True)
     try:
         urllib.request.urlretrieve(DB_URL, db_abs)
@@ -324,7 +352,7 @@ def _load_json(path: str):
 
 
 def _sqlite_artifacts(db_path: str) -> list[str]:
-    return [db_path, f"{db_path}-wal", f"{db_path}-shm"]
+    return [db_path, f"{db_path}-wal", f"{db_path}-shm", f"{db_path}-info"]
 
 
 def _move_sqlite_artifacts(src_db: str, backup_root: str) -> list[tuple[str, str]]:
