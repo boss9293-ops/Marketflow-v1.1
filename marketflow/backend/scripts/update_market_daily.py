@@ -212,6 +212,79 @@ def validate_required_table(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
+def ensure_market_daily_conflict_target(conn: sqlite3.Connection, log_write) -> None:
+    """Ensure market_daily(date) can satisfy ON CONFLICT(date).
+
+    Older Railway/local DBs may have been created before date was a PRIMARY KEY.
+    If so, add a UNIQUE index after removing duplicate dates by keeping the
+    most recent row for each date.
+    """
+
+    cols_info = conn.execute("PRAGMA table_info(market_daily)").fetchall()
+    if not cols_info:
+        raise RuntimeError("market_daily table is missing PRAGMA metadata")
+
+    date_col = next((row for row in cols_info if row[1] == "date"), None)
+    if date_col is None:
+        raise RuntimeError("market_daily table is missing the 'date' column")
+
+    # Already safe if date is the PRIMARY KEY.
+    if int(date_col[5] or 0) > 0:
+        return
+
+    # Or safe if there is a unique index on date.
+    for idx in conn.execute("PRAGMA index_list(market_daily)").fetchall():
+        is_unique = int(idx[2] or 0) == 1
+        if not is_unique:
+            continue
+        idx_name = idx[1]
+        idx_cols = [row[2] for row in conn.execute(f"PRAGMA index_info('{idx_name}')").fetchall()]
+        if idx_cols == ["date"]:
+            return
+
+    dup_dates = conn.execute(
+        """
+        SELECT date, COUNT(*) AS cnt
+        FROM market_daily
+        GROUP BY date
+        HAVING cnt > 1
+        ORDER BY date
+        """
+    ).fetchall()
+
+    if dup_dates:
+        log_write(
+            f"[MIGRATE] market_daily has {len(dup_dates)} duplicate date(s); "
+            "deduplicating before adding UNIQUE(date)"
+        )
+        data_cols = [row[1] for row in cols_info if row[1] != "date"]
+        select_cols = ["rowid", "date", *data_cols]
+        select_sql = f"SELECT {', '.join(select_cols)} FROM market_daily WHERE date = ? ORDER BY rowid ASC"
+        insert_cols = ["date", *data_cols]
+        insert_sql = (
+            f"INSERT INTO market_daily ({', '.join(insert_cols)}) "
+            f"VALUES ({', '.join(['?'] * len(insert_cols))})"
+        )
+        for date_value, _cnt in dup_dates:
+            rows = conn.execute(select_sql, (date_value,)).fetchall()
+            if not rows:
+                continue
+            merged = {col: None for col in insert_cols}
+            merged["date"] = date_value
+            for row in rows:
+                for idx, col in enumerate(data_cols, start=2):
+                    value = row[idx]
+                    if value is not None:
+                        merged[col] = value
+            conn.execute("DELETE FROM market_daily WHERE date = ?", (date_value,))
+            conn.execute(insert_sql, tuple(merged[col] for col in insert_cols))
+        conn.commit()
+
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_market_daily_date ON market_daily(date)")
+    conn.commit()
+    log_write("[MIGRATE] market_daily now enforces UNIQUE(date)")
+
+
 def run_verification_queries(conn: sqlite3.Connection, log_write) -> None:
     a = conn.execute("SELECT COUNT(*) FROM market_daily").fetchone()[0]
     log_write(f"[VERIFY-a] SELECT COUNT(*) FROM market_daily; => {a}")
@@ -320,6 +393,7 @@ def main() -> int:
         conn = db_connect(path)
         try:
             validate_required_table(conn)
+            ensure_market_daily_conflict_target(conn, log_write)
 
             sql = """
             INSERT INTO market_daily (
