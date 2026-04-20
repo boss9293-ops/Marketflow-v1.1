@@ -1967,8 +1967,7 @@ def main() -> None:
 
     api_key = _load_api_key()
     if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY / CLAUDE_API_KEY not found", file=sys.stderr)
-        sys.exit(1)
+        print("[build_daily_briefing_v3] WARN: ANTHROPIC_API_KEY / CLAUDE_API_KEY not found; using rule-based fallback.", flush=True)
 
     refreshed_news = _refresh_context_news(slot)
     ms, overview, rv1, re_data, sp, econ_cal, earnings, movers, news = _load_inputs()
@@ -1999,6 +1998,52 @@ def main() -> None:
     except Exception:
         narrative_plan = {}
     hook_fallback = build_hook(ctx, rv1, re_data, narrative_plan)
+
+    if not api_key:
+        sections = []
+        for sid, title in SECTION_META:
+            fallback_sec = build_fallback_section_payload(sid, ctx.get(sid, ""), rv1)
+            sections.append({
+                "id": sid,
+                "title": title,
+                "structural": fallback_sec["structural"],
+                "structural_ko": fallback_sec["structural"],
+                "implication": fallback_sec["implication"],
+                "implication_ko": fallback_sec["implication"],
+                "signal": fallback_sec["signal"],
+                "color": SIGNAL_COLOR.get(fallback_sec["signal"], "#64748b"),
+            })
+
+        one_line = build_one_line(sections, rv1)
+        output = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_date":    ctx["data_date"],
+            "slot":         slot,
+            "model":        "rules",
+            "lang":         lang,
+            "release":      RELEASE_VERSION,
+            "tokens": {"input": 0, "output": 0, "cost_usd": 0.0},
+            "freshness": freshness,
+            "prompt": briefing_prompt_meta,
+            "hook":       hook_fallback,
+            "hook_ko":    hook_fallback,
+            "sections":   sections,
+            "risk_check": risk_check,
+            "one_line":   one_line,
+            "one_line_ko": one_line,
+        }
+
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with open(OUT_PATH, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+
+        print(f"[build_daily_briefing_v3] saved -> {OUT_PATH}  lang={lang} slot={slot} (fallback)")
+        if freshness.get("warning"):
+            print(f"  Freshness: {freshness['status']}  {freshness['warning']}")
+        for sec in sections:
+            print(f"  [{sec['id']:20}] signal={sec['signal']:8}")
+        print(f"  Risk: triggered={risk_check['triggered']}  level={risk_check['level']}  mss={risk_check['mss']}")
+        return
 
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
