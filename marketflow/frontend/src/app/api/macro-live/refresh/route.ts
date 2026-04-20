@@ -7,6 +7,12 @@ import { readdir } from 'fs/promises'
 export const dynamic = 'force-dynamic'
 
 const execFileAsync = promisify(execFile)
+
+const IS_SERVERLESS = Boolean(
+  process.env.VERCEL === '1' ||
+  process.env.VERCEL_ENV ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+)
 const US_TZ = 'America/New_York'
 
 function getUsDateString(d = new Date()): string {
@@ -74,6 +80,14 @@ export async function POST(req: Request) {
   try {
     const payload = (await req.json().catch(() => ({}))) as { force?: boolean }
     const force = payload?.force === true
+
+    if (IS_SERVERLESS) {
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: 'serverless — refresh not supported' },
+        { headers: { 'Cache-Control': 'no-store' } }
+      )
+    }
+
     if (!force && (await isUpToDate())) {
       return NextResponse.json({ ok: true, skipped: true }, { headers: { 'Cache-Control': 'no-store' } })
     }

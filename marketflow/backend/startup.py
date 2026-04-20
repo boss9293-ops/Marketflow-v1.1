@@ -1,5 +1,5 @@
 """Railway startup script: downloads DB, runs builds, starts gunicorn."""
-import os, sys, subprocess, threading, urllib.request, datetime, json, shutil
+import os, sys, subprocess, threading, urllib.request, datetime, json
 from zoneinfo import ZoneInfo
 
 from services.data_contract import live_db_path
@@ -16,57 +16,15 @@ BUILD_LOG_DIR = os.path.join(OUTPUT, "cache", "build_logs")
 ET_ZONE = ZoneInfo("America/New_York")
 MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
-TURSO_SYNC_ENV_NAMES = (
-    "TURSO_DATABASE_URL",
-    "LIBSQL_URL",
-    "TURSO_URL",
-    "TURSO_AUTH_TOKEN",
-    "LIBSQL_AUTH_TOKEN",
-    "TURSO_TOKEN",
-)
 
 os.makedirs(os.path.join(BASE, "data"), exist_ok=True)
 os.makedirs(os.path.dirname(LIVE_DB_PATH), exist_ok=True)
 os.makedirs(os.path.join(OUTPUT, "cache"), exist_ok=True)
 os.makedirs(BUILD_LOG_DIR, exist_ok=True)
 
-
-def _script_env(extra: dict[str, str] | None = None) -> dict[str, str]:
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONUTF8"] = "1"
-    pythonpath_parts = [BASE, SCRIPTS]
-    existing_pythonpath = env.get("PYTHONPATH", "").strip()
-    if existing_pythonpath:
-        pythonpath_parts.append(existing_pythonpath)
-    env["PYTHONPATH"] = os.pathsep.join(part for part in pythonpath_parts if part)
-    if extra:
-        env.update(extra)
-    return env
-
-def _has_turso_sync_env() -> bool:
-    has_url = any(os.environ.get(name, "").strip() for name in ("TURSO_DATABASE_URL", "LIBSQL_URL", "TURSO_URL"))
-    has_token = any(os.environ.get(name, "").strip() for name in ("TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN", "TURSO_TOKEN"))
-    return has_url and has_token
-
-
-def _clear_local_sqlite_seed(db_path: str) -> None:
-    for suffix in ("", "-wal", "-shm", "-info"):
-        target = db_path if not suffix else f"{db_path}{suffix}"
-        if os.path.exists(target):
-            try:
-                os.remove(target)
-                print(f"[startup] Cleared local seed artifact: {os.path.basename(target)}", flush=True)
-            except Exception as exc:
-                print(f"[startup] Failed to clear {target}: {exc}", flush=True)
-
-
 # 1. Download DB if missing
 db_abs = os.path.abspath(DB_PATH)
-if _has_turso_sync_env():
-    print("[startup] Turso env detected; skipping GitHub seed DB and bootstrapping from Turso.", flush=True)
-    _clear_local_sqlite_seed(db_abs)
-elif not os.path.exists(db_abs) or os.path.getsize(db_abs) < 100_000_000:
+if not os.path.exists(db_abs) or os.path.getsize(db_abs) < 100_000_000:
     print(f"[startup] Downloading marketflow.db ...", flush=True)
     try:
         urllib.request.urlretrieve(DB_URL, db_abs)
@@ -109,12 +67,6 @@ def _pull_turso_db_if_configured() -> bool:
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     print("[startup][TURSO] Pulling latest DB snapshot into live DB...", flush=True)
     start_time = datetime.datetime.now().timestamp()
-    backup_root = f"{db_abs}.turso-backup"
-    stale_state_markers = (
-        "db file exists but metadata file does not",
-        "metadata file exists but db file does not",
-        "local state is incorrect",
-    )
     try:
         conn = libsql.connect(DB_PATH, sync_url=turso_url, auth_token=auth_token)
         try:
@@ -133,35 +85,6 @@ def _pull_turso_db_if_configured() -> bool:
         print(f"[startup][TURSO] Live DB refreshed from Turso in {duration:.1f}s ({db_size_mb}MB).", flush=True)
         return True
     except Exception as exc:
-        message = str(exc)
-        if any(marker in message for marker in stale_state_markers):
-            print("[startup][TURSO] Existing DB looks like a stale replica; resetting local sync state and retrying once.", flush=True)
-            moved: list[tuple[str, str]] = []
-            try:
-                moved = _move_sqlite_artifacts(db_abs, backup_root)
-                # Retry against a clean local replica path.
-                conn = libsql.connect(DB_PATH, sync_url=turso_url, auth_token=auth_token)
-                try:
-                    if hasattr(conn, "sync"):
-                        conn.sync()
-                    else:
-                        print("[startup][TURSO] libsql connection has no sync(); using local DB as-is.", flush=True)
-                finally:
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
-
-                duration = datetime.datetime.now().timestamp() - start_time
-                db_size_mb = os.path.getsize(DB_PATH) // 1024 // 1024 if os.path.exists(DB_PATH) else 0
-                print(f"[startup][TURSO][OK] Recreated replica and refreshed from Turso in {duration:.1f}s ({db_size_mb}MB).", flush=True)
-                _cleanup_sqlite_artifacts(moved)
-                return True
-            except Exception as retry_exc:
-                duration = datetime.datetime.now().timestamp() - start_time
-                print(f"[startup][TURSO][FAIL] Retry after stale-state reset failed after {duration:.1f}s: {retry_exc}", flush=True)
-                _restore_sqlite_artifacts(moved)
-                return False
         duration = datetime.datetime.now().timestamp() - start_time
         print(f"[startup][TURSO][FAIL] Pull failed after {duration:.1f}s: {exc}", flush=True)
         return False
@@ -187,6 +110,10 @@ def _clear_risk_outputs() -> None:
             print(f"[startup][TURSO] Failed to clear {rel_path}: {exc}", flush=True)
 
 
+if _pull_turso_db_if_configured():
+    _clear_risk_outputs()
+
+
 def _auto_import_holdings_from_sheets() -> bool:
     sheet_id = _env_value("GOOGLE_SHEETS_ID", "").strip()
     sheet_url = _env_value("GOOGLE_SHEETS_URL", "").strip()
@@ -200,7 +127,10 @@ def _auto_import_holdings_from_sheets() -> bool:
         return True
 
     tabs = os.environ.get("GOOGLE_SHEETS_TABS", "Goal,미국1,미국2,미국3,미국4,미국5,미국6,한국1")
-    env = _script_env({"GOOGLE_SERVICE_ACCOUNT_JSON": sa_json})
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    env["GOOGLE_SERVICE_ACCOUNT_JSON"] = sa_json
 
     print(f"[startup][SHEETS] Importing holdings tabs before news/brief builds... (sa_source={sa_source})", flush=True)
     try:
@@ -351,46 +281,6 @@ def _load_json(path: str):
         return None
 
 
-def _sqlite_artifacts(db_path: str) -> list[str]:
-    return [db_path, f"{db_path}-wal", f"{db_path}-shm", f"{db_path}-info"]
-
-
-def _move_sqlite_artifacts(src_db: str, backup_root: str) -> list[tuple[str, str]]:
-    moved: list[tuple[str, str]] = []
-    for src in _sqlite_artifacts(src_db):
-        if not os.path.exists(src):
-            continue
-        dst = f"{backup_root}{src[len(src_db):]}"
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.move(src, dst)
-        moved.append((src, dst))
-    return moved
-
-
-def _restore_sqlite_artifacts(moved: list[tuple[str, str]]) -> None:
-    for src, dst in reversed(moved):
-        if not os.path.exists(dst):
-            continue
-        try:
-            os.makedirs(os.path.dirname(src), exist_ok=True)
-            shutil.move(dst, src)
-        except Exception as exc:
-            print(f"[startup][TURSO] Failed to restore {src}: {exc}", flush=True)
-
-
-def _cleanup_sqlite_artifacts(moved: list[tuple[str, str]]) -> None:
-    for _, dst in moved:
-        try:
-            if os.path.exists(dst):
-                os.remove(dst)
-        except Exception:
-            pass
-
-
-if _pull_turso_db_if_configured():
-    _clear_risk_outputs()
-
-
 def _sync_turso_if_configured() -> None:
     sync_script = os.path.join(SCRIPTS, "sync_marketflow_to_turso.py")
     if not os.path.exists(sync_script):
@@ -483,7 +373,7 @@ def _is_ai_briefings_fresh(out_path: str) -> bool:
     )
 
 
-def run_builds():
+def run_builds(force_daily: bool = False):
     had_failure = False
     failed_scripts: list[str] = []
 
@@ -502,18 +392,19 @@ def run_builds():
     for script, outfile in BUILDS:
         out_path = os.path.join(OUTPUT, outfile) if outfile else None
         if script in DAILY_BUILDS:
-            if script == "build_context_news.py" and out_path and _is_context_news_fresh(out_path):
-                print(f"[build][SKIP-market-slot] {script}", flush=True)
-                continue
-            if script == "build_daily_briefing_v3.py" and out_path and _is_daily_briefing_v3_fresh(out_path):
-                print(f"[build][SKIP-market-date] {script}", flush=True)
-                continue
-            if script == "build_ai_briefings.py" and out_path and _is_ai_briefings_fresh(out_path):
-                print(f"[build][SKIP-market-slot] {script}", flush=True)
-                continue
-            if out_path and _is_today(out_path):
-                print(f"[build][SKIP-today] {script}", flush=True)
-                continue
+            if not force_daily:
+                if script == "build_context_news.py" and out_path and _is_context_news_fresh(out_path):
+                    print(f"[build][SKIP-market-slot] {script}", flush=True)
+                    continue
+                if script == "build_daily_briefing_v3.py" and out_path and _is_daily_briefing_v3_fresh(out_path):
+                    print(f"[build][SKIP-market-date] {script}", flush=True)
+                    continue
+                if script == "build_ai_briefings.py" and out_path and _is_ai_briefings_fresh(out_path):
+                    print(f"[build][SKIP-market-slot] {script}", flush=True)
+                    continue
+                if out_path and _is_today(out_path):
+                    print(f"[build][SKIP-today] {script}", flush=True)
+                    continue
         elif out_path and os.path.exists(out_path):
             print(f"[build][SKIP] {script}", flush=True)
             continue
@@ -523,11 +414,8 @@ def run_builds():
         try:
             r = subprocess.run(
                 [sys.executable, os.path.join(SCRIPTS, script)] + extra,
-                cwd=BASE,
-                timeout=600,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                env=_script_env(),
+                cwd=BASE, timeout=600,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
             full_output = r.stdout.decode("utf-8", errors="replace")
             tail = full_output[-4000:]
@@ -572,6 +460,31 @@ build_thread = threading.Thread(target=run_builds, daemon=True)
 build_thread.start()
 
 os.environ["STARTUP_MANAGES_BUILDS"] = "1"
+
+
+def _schedule_daily_rebuild() -> None:
+    """Background thread: triggers a forced rebuild at 5:00 PM ET on weekdays (market close +30min)."""
+    import time as _time
+    while True:
+        now = datetime.datetime.now(ET_ZONE)
+        target = now.replace(hour=17, minute=0, second=0, microsecond=0)
+        if now >= target:
+            target += datetime.timedelta(days=1)
+        # Skip weekends (Mon=0 … Sun=6)
+        while target.weekday() >= 5:
+            target += datetime.timedelta(days=1)
+        wait_secs = (target - now).total_seconds()
+        print(f"[scheduler] Next market-close rebuild: {target.strftime('%Y-%m-%d %H:%M ET')} (in {wait_secs/3600:.1f}h)", flush=True)
+        _time.sleep(wait_secs)
+        now = datetime.datetime.now(ET_ZONE)
+        if now.weekday() < 5:
+            print(f"[scheduler] Market-close rebuild triggered at {now.strftime('%Y-%m-%d %H:%M ET')}", flush=True)
+            run_builds(force_daily=True)
+        else:
+            print(f"[scheduler] Weekend — skipping rebuild.", flush=True)
+
+scheduler_thread = threading.Thread(target=_schedule_daily_rebuild, daemon=True)
+scheduler_thread.start()
 
 # 3. Start gunicorn
 print(f"[startup] Starting gunicorn on port {PORT}", flush=True)
