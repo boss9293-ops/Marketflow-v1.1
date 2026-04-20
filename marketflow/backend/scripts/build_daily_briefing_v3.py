@@ -19,6 +19,17 @@ Run:    python3 marketflow/backend/scripts/build_daily_briefing_v3.py
 """
 from __future__ import annotations
 
+import os
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPT_DIR.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
 import json
 
 # ── DeepL KO→EN translation (file-cached, 5 trading days) ──────────────────
@@ -196,6 +207,11 @@ except Exception:
         )
     except Exception:
         build_context_news_cache = None  # type: ignore[assignment]
+
+if "DAILY_BRIEFING_V3_PATH" not in globals():
+    DAILY_BRIEFING_V3_PATH = BACKEND_DIR / "output" / "cache" / "daily_briefing_v3.json"  # type: ignore[assignment]
+if "MARKET_HEADLINES_HISTORY_PATH" not in globals():
+    MARKET_HEADLINES_HISTORY_PATH = BACKEND_DIR / "output" / "cache" / "market-headlines-history.json"  # type: ignore[assignment]
 
 OUT_PATH    = DAILY_BRIEFING_V3_PATH
 FRONTEND_HEADLINE_CACHE_PATH = MARKET_HEADLINES_HISTORY_PATH

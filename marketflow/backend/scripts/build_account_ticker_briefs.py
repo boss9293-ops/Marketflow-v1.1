@@ -1,26 +1,34 @@
 from __future__ import annotations
 
+import sys
 import json
 import os
 import re
 import sqlite3
 import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPT_DIR.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from services.data_contract import artifact_path, live_db_path
 
 try:
     from backend.news.news_paths import TICKER_BRIEF_INDEX_PATH
 except Exception:
-    from news.news_paths import TICKER_BRIEF_INDEX_PATH  # type: ignore
+    try:
+        from news.news_paths import TICKER_BRIEF_INDEX_PATH  # type: ignore
+    except Exception:
+        TICKER_BRIEF_INDEX_PATH = BACKEND_DIR / "output" / "cache" / "ticker_brief_index.json"  # type: ignore[assignment]
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-BACKEND_DIR = SCRIPT_DIR.parent
 ROOT_DIR = BACKEND_DIR.parent
 SUMMARY_PATH = TICKER_BRIEF_INDEX_PATH
 TICKER_BRIEF_SCRIPT = SCRIPT_DIR / "build_ticker_brief.py"
@@ -28,11 +36,6 @@ DB_PATH = live_db_path()
 ET_ZONE = ZoneInfo("America/New_York")
 CHUNK_SIZE = 20
 CHUNK_TIMEOUT_SEC = 1800
-
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
 
 try:
     from build_ticker_brief import DEFAULT_WATCHLIST, TICKER_BRIEF_PROMPT_VERSION  # type: ignore
