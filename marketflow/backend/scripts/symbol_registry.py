@@ -31,8 +31,8 @@ NASDAQ_100_STOCKS = [
     "PANW", "PAYX", "PCAR", "PSTG", "PYPL", "QCOM", "REGN", "ROST", "SGEN", "SIRI",
     "SKYW", "SNPS", "SPLK", "STLD", "TEAM", "TCOM", "TECH", "TMDX", "TRIP", "TSLA",
     "TTD", "TTWO", "TWLO", "TWST", "TXNM", "UBER", "ULTI", "VEEV", "VRSN", "VRSK",
-    "VRTX", "WDAY", "WERN", "WFM", "WKME", "XMTR", "YELP", "ZETA", "ZMBK", "ZM",
-    "ZS", "ZSCL", "ADBE", "AMAT", "AMD", "ANET", "ANSS", "ARM", "BCPC", "CPRT",
+    "VRTX", "WDAY", "WERN", "WFM", "XMTR", "YELP", "ZETA", "ZM",
+    "ZS", "ADBE", "AMAT", "AMD", "ANET", "ANSS", "ARM", "BCPC", "CPRT",
     "CTSH", "DASH", "DDOG", "DOCN", "EBAY", "ENPH", "FLEX", "FTNT", "GDDY", "GLPI",
 ]
 
@@ -52,11 +52,11 @@ SP500_TOP200 = [
     "LULU", "SSRM", "TWLO", "MTCH", "RBLX", "VEEV", "SLAB", "DDOG", "TPL", "SPLK",
     "FICO", "FANG", "ANSS", "PAYC", "GDDY", "IDXX", "XMTR", "JKHY", "WFM", "ZTS",
     "YELP", "HUBS", "APA", "MRO", "LYG", "CC", "PFE", "MRVL", "ANET", "CYBR",
-    "ACGL", "MTD", "SQ", "CCI", "CTRA", "CMS", "DPZ", "PLUG", "DXCM", "ZMBK",
+    "ACGL", "MTD", "SQ", "CCI", "CTRA", "CMS", "DPZ", "PLUG", "DXCM",
     "TYL", "COIN", "NTAP", "PTC", "ROP", "WDAY", "ROKU", "CHWY", "DE", "EWBC",
     "BLDR", "FOXA", "FSLR", "ECOL", "NDAQ", "ALGN", "APH", "ROG", "VRX", "PLAN",
     "QRVO", "LITE", "FLR", "TPR", "CMS", "KNSL", "OMC", "EQIX", "IPG", "QVAL",
-    "DLTR", "CPRI", "NKE", "DKNG", "PZZA", "NKTR", "ZEN", "ATUS", "TENB", "PTON",
+    "DLTR", "CPRI", "NKE", "DKNG", "PZZA", "NKTR", "ATUS", "TENB", "PTON",
 ]
 
 DOW_30 = [
