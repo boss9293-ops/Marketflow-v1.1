@@ -22,6 +22,20 @@ os.makedirs(os.path.dirname(LIVE_DB_PATH), exist_ok=True)
 os.makedirs(os.path.join(OUTPUT, "cache"), exist_ok=True)
 os.makedirs(BUILD_LOG_DIR, exist_ok=True)
 
+
+def _script_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    pythonpath_parts = [BASE, SCRIPTS]
+    existing_pythonpath = env.get("PYTHONPATH", "").strip()
+    if existing_pythonpath:
+        pythonpath_parts.append(existing_pythonpath)
+    env["PYTHONPATH"] = os.pathsep.join(part for part in pythonpath_parts if part)
+    if extra:
+        env.update(extra)
+    return env
+
 # 1. Download DB if missing
 db_abs = os.path.abspath(DB_PATH)
 if not os.path.exists(db_abs) or os.path.getsize(db_abs) < 100_000_000:
@@ -127,10 +141,7 @@ def _auto_import_holdings_from_sheets() -> bool:
         return True
 
     tabs = os.environ.get("GOOGLE_SHEETS_TABS", "Goal,미국1,미국2,미국3,미국4,미국5,미국6,한국1")
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONUTF8"] = "1"
-    env["GOOGLE_SERVICE_ACCOUNT_JSON"] = sa_json
+    env = _script_env({"GOOGLE_SERVICE_ACCOUNT_JSON": sa_json})
 
     print(f"[startup][SHEETS] Importing holdings tabs before news/brief builds... (sa_source={sa_source})", flush=True)
     try:
@@ -413,8 +424,11 @@ def run_builds():
         try:
             r = subprocess.run(
                 [sys.executable, os.path.join(SCRIPTS, script)] + extra,
-                cwd=BASE, timeout=600,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                cwd=BASE,
+                timeout=600,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env=_script_env(),
             )
             full_output = r.stdout.decode("utf-8", errors="replace")
             tail = full_output[-4000:]

@@ -10,6 +10,22 @@ def _backend_dir() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
+def _script_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    backend_dir = _backend_dir()
+    scripts_dir = os.path.join(backend_dir, "scripts")
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    pythonpath_parts = [backend_dir, scripts_dir]
+    existing_pythonpath = env.get("PYTHONPATH", "").strip()
+    if existing_pythonpath:
+        pythonpath_parts.append(existing_pythonpath)
+    env["PYTHONPATH"] = os.pathsep.join(part for part in pythonpath_parts if part)
+    if extra:
+        env.update(extra)
+    return env
+
+
 def build_validation_snapshot(market_proxy: str = "QQQ") -> bool:
     """
     APScheduler job wrapper for backend/scripts/build_validation_snapshot.py.
@@ -17,9 +33,7 @@ def build_validation_snapshot(market_proxy: str = "QQQ") -> bool:
     """
     backend_dir = _backend_dir()
     script = os.path.join(backend_dir, "scripts", "build_validation_snapshot.py")
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONUTF8"] = "1"
+    env = _script_env()
     market_proxy = (market_proxy or "QQQ").upper()
     if market_proxy not in ("QQQ", "SPY"):
         market_proxy = "QQQ"
@@ -41,4 +55,3 @@ def build_validation_snapshot(market_proxy: str = "QQQ") -> bool:
     if out:
         print(f"[ValidationGuardScheduler] {out}")
     return True
-
