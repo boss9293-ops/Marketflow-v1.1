@@ -1,7 +1,0 @@
-{
-  "generated_at": "2026-04-19T10:35:17",
-  "source": "yfinance",
-  "earnings": [],
-  "errors": [],
-  "rerun_hint": "python backend/scripts/build_earnings_calendar.py"
-}
