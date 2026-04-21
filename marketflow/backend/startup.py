@@ -162,6 +162,171 @@ def _read_kv(key: str) -> str:
         return ""
 
 
+def _pull_cache_series_from_turso() -> None:
+    """Turso의 cache_series_data를 로컴 cache.db로 pull.
+    build_cache_series.py 실행 전 호출하여 Stooq/FRED fetch 실패 시 fallback으로 사용.
+    """
+    import sqlite3 as _sqlite3, json as _json, urllib.request as _urlreq, urllib.error as _urlerr
+
+    turso_url = _env_value("TURSO_DATABASE_URL", "LIBSQL_URL", "TURSO_URL")
+    token = _env_value("TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN", "TURSO_TOKEN")
+    if not turso_url or not token:
+        print("[startup][cache_series_pull] Skipped (no Turso env vars)", flush=True)
+        return
+
+    http_url = turso_url.replace("libsql://", "https://").rstrip("/")
+    pipe_url = f"{http_url}/v2/pipeline"
+
+    cache_db_path = os.path.join(BASE, "..", "data", "cache.db")
+    cache_db_path = os.path.abspath(cache_db_path)
+    os.makedirs(os.path.dirname(cache_db_path), exist_ok=True)
+
+    def _turso_query(sql: str, params: list | None = None) -> list:
+        stmt = {"sql": sql}
+        if params:
+            stmt["args"] = [{"type": "text", "value": str(p)} for p in params]
+        body = _json.dumps({"requests": [{"type": "execute", "stmt": stmt}, {"type": "close"}]}).encode()
+        req = _urlreq.Request(
+            pipe_url,
+            data=body,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with _urlreq.urlopen(req, timeout=30) as resp:
+                result = _json.loads(resp.read())
+            return result["results"][0]["response"]["result"]["rows"]
+        except Exception as exc:
+            raise RuntimeError(f"Turso query failed: {exc}")
+
+    try:
+        rows = _turso_query("SELECT symbol, date, value, source, asof, quality FROM cache_series_data")
+    except Exception as exc:
+        print(f"[startup][cache_series_pull] Turso fetch failed: {exc}", flush=True)
+        return
+
+    if not rows:
+        print("[startup][cache_series_pull] No rows in Turso cache_series_data", flush=True)
+        return
+
+    try:
+        con = _sqlite3.connect(cache_db_path)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS series_data (
+                symbol TEXT NOT NULL, date TEXT NOT NULL, value REAL NOT NULL,
+                source TEXT, asof TEXT, quality TEXT,
+                PRIMARY KEY (symbol, date)
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS series_meta (
+                symbol TEXT PRIMARY KEY, source TEXT, unit TEXT, freq TEXT,
+                last_updated TEXT, quality TEXT, notes TEXT
+            )
+        """)
+        parsed = [
+            (r[0]["value"], r[1]["value"], float(r[2]["value"]), r[3]["value"], r[4]["value"], r[5]["value"])
+            for r in rows
+        ]
+        con.executemany(
+            "INSERT OR REPLACE INTO series_data (symbol, date, value, source, asof, quality) "
+            "VALUES (?,?,?,?,?,?)",
+            parsed,
+        )
+        con.commit()
+        con.close()
+        syms = {r[0] for r in parsed}
+        print(f"[startup][cache_series_pull] {len(parsed)} rows pulled | symbols: {sorted(syms)}", flush=True)
+    except Exception as exc:
+        print(f"[startup][cache_series_pull] DB write failed: {exc}", flush=True)
+
+
+def _push_cache_series_to_turso() -> None:
+    """Railway의 cache.db series_data를 Turso에 push (build_cache_series 성공 후 호출).
+    다음 배포 시 _pull_cache_series_from_turso()가 이 데이터를 복원하여 FRED fetch 없이 동작.
+    """
+    import sqlite3 as _sqlite3, json as _json, urllib.request as _urlreq
+
+    turso_url = _env_value("TURSO_DATABASE_URL", "LIBSQL_URL", "TURSO_URL")
+    token = _env_value("TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN", "TURSO_TOKEN")
+    if not turso_url or not token:
+        return
+
+    http_url = turso_url.replace("libsql://", "https://").rstrip("/")
+    pipe_url = f"{http_url}/v2/pipeline"
+
+    cache_db_path = os.path.join(BASE, "..", "data", "cache.db")
+    cache_db_path = os.path.abspath(cache_db_path)
+    if not os.path.exists(cache_db_path):
+        print("[startup][cache_series_push] cache.db not found, skipping push", flush=True)
+        return
+
+    SYMBOLS = ["PUT_CALL", "HY_OAS", "IG_OAS", "FSI", "VIX", "VIXCLS", "WALCL", "RRP", "EFFR", "DGS10", "DGS2"]
+
+    def _turso_pipe(requests_list: list) -> None:
+        body = _json.dumps({"requests": requests_list}).encode()
+        req = _urlreq.Request(
+            pipe_url,
+            data=body,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with _urlreq.urlopen(req, timeout=30) as resp:
+            resp.read()
+
+    try:
+        _turso_pipe([
+            {"type": "execute", "stmt": {"sql": (
+                "CREATE TABLE IF NOT EXISTS cache_series_data ("
+                "symbol TEXT NOT NULL, date TEXT NOT NULL, value REAL NOT NULL,"
+                "source TEXT, asof TEXT, quality TEXT, PRIMARY KEY (symbol, date))"
+            )}},
+            {"type": "close"},
+        ])
+
+        con = _sqlite3.connect(cache_db_path)
+        con.row_factory = _sqlite3.Row
+        ph = ",".join(f"'{s}'" for s in SYMBOLS)
+        try:
+            rows = con.execute(
+                f"SELECT symbol, date, value, source, asof, quality FROM series_data "
+                f"WHERE symbol IN ({ph}) ORDER BY symbol, date"
+            ).fetchall()
+        except Exception:
+            rows = []
+        con.close()
+
+        if not rows:
+            print("[startup][cache_series_push] No rows to push", flush=True)
+            return
+
+        BATCH = 80
+        total = 0
+        sql = (
+            "INSERT OR REPLACE INTO cache_series_data "
+            "(symbol, date, value, source, asof, quality) VALUES (?,?,?,?,?,?)"
+        )
+        for i in range(0, len(rows), BATCH):
+            batch = rows[i: i + BATCH]
+            stmts = [
+                {"type": "execute", "stmt": {
+                    "sql": sql,
+                    "args": [{"type": "text", "value": str(c) if c is not None else ""} for c in (
+                        r["symbol"], r["date"], r["value"], r["source"] or "", r["asof"] or "", r["quality"] or ""
+                    )]
+                }}
+                for r in batch
+            ]
+            stmts.append({"type": "close"})
+            _turso_pipe(stmts)
+            total += len(batch)
+
+        syms = {r["symbol"] for r in rows}
+        print(f"[startup][cache_series_push] {total} rows pushed | symbols: {sorted(syms)}", flush=True)
+    except Exception as exc:
+        print(f"[startup][cache_series_push] FAILED: {exc}", flush=True)
+
+
 def _auto_import_holdings_from_sheets() -> bool:
     sheet_id = _env_value("GOOGLE_SHEETS_ID", "").strip()
     sheet_url = _env_value("GOOGLE_SHEETS_URL", "").strip()
@@ -438,6 +603,10 @@ def run_builds(force_daily: bool = False):
     had_failure = False
     failed_scripts: list[str] = []
 
+    # Turso에서 cache series 데이터(PUT_CALL, HY_OAS 등)를 미리 pull
+    # → build_cache_series.py가 Stooq/FRED fetch 없이 기존 데이터 사용 가능
+    _pull_cache_series_from_turso()
+
     if not _auto_import_holdings_from_sheets():
         had_failure = True
         failed_scripts.append("auto_import_holdings_from_sheets")
@@ -508,6 +677,10 @@ def run_builds(force_daily: bool = False):
                 "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
                 "error": str(e),
             })
+
+    # cache_series 데이터는 빌드 성공/실패 무관하게 항상 Turso에 push
+    # → FRED 500이 반복되어도 이전 성공 데이터가 Turso에 축적됨
+    _push_cache_series_to_turso()
 
     if had_failure:
         failed_list = ", ".join(failed_scripts[:10]) if failed_scripts else "unknown"

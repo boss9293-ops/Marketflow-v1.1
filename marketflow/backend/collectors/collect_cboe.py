@@ -68,6 +68,42 @@ def _utc_asof() -> str:
     return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
+def fetch_put_call_from_cboe_cdn(limit_days: int = 1400) -> List[Tuple[str, float]]:
+    """Fetch CBOE total put/call ratio from CBOE CDN (no auth required)."""
+    url = "https://cdn.cboe.com/api/global/us_indices/daily_prices/CPC_History.json"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"CBOE CDN request failed: {exc}")
+    # Format: {"data": {"chart_data": [{"date_time": "2024-01-02T00:00:00", "cpc": "0.88"}, ...]}}
+    # OR:     {"data": [{"date": "2024-01-02", "value": 0.88}, ...]}
+    raw = data.get("data", data)
+    if isinstance(raw, dict):
+        raw = raw.get("chart_data") or raw.get("historical") or []
+    if not raw:
+        raise RuntimeError("CBOE CDN returned empty data")
+    out: List[Tuple[str, float]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        d = str(item.get("date_time") or item.get("date") or "")[:10]
+        v = item.get("cpc") or item.get("value") or item.get("close")
+        if not d or v is None:
+            continue
+        try:
+            out.append((d, float(v)))
+        except (ValueError, TypeError):
+            continue
+    out.sort(key=lambda x: x[0])
+    if limit_days and len(out) > limit_days:
+        out = out[-limit_days:]
+    if len(out) < 50:
+        raise RuntimeError(f"CBOE CDN returned too few rows: {len(out)}")
+    return out
+
+
 def fetch_put_call_from_stooq(limit_days: int = 1200) -> List[Tuple[str, float]]:
     r = requests.get(STOOQ_PC_URL, timeout=30)
     r.raise_for_status()
@@ -171,8 +207,8 @@ def upsert_points(store: CacheStore, symbol: str, rows: List[Tuple[str, float]],
     return store.upsert_series_points(pts)
 
 
-def run() -> dict:
-    store = CacheStore()
+def run(cache_db_path: str = None) -> dict:
+    store = CacheStore(db_path=cache_db_path)
     store.init_schema()
     asof = _utc_asof()
     try:
@@ -190,6 +226,19 @@ def run() -> dict:
         store.close()
         return {"written": n, "source": "STOOQ", "quality": "OK"}
     except Exception as stooq_err:
+        # ── Fallback 0: CBOE CDN (direct, no auth) ───────────────────────────
+        try:
+            pc_rows = fetch_put_call_from_cboe_cdn(limit_days=1400)
+            n = upsert_points(store, PC_SYMBOL, pc_rows, source="CBOE_CDN", quality="OK", asof=asof)
+            store.upsert_series_meta(
+                symbol=PC_SYMBOL, source="CBOE_CDN", unit="ratio", freq="D",
+                last_updated=asof, quality="OK",
+                notes=f"CBOE CDN (stooq_err={repr(stooq_err)})",
+            )
+            store.close()
+            return {"written": n, "source": "CBOE_CDN", "quality": "OK"}
+        except Exception as cboe_err:
+            print(f"[collect_cboe] CBOE CDN also failed: {cboe_err}", flush=True)
         # ── Fallback 1: VIX from cache.db ────────────────────────────────────
         end_date = dt.date.today().isoformat()
         start_date = (dt.date.today() - dt.timedelta(days=365 * 4)).isoformat()

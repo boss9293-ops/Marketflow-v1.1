@@ -20,7 +20,10 @@ def build_script_env(
     pythonpath = env.get("PYTHONPATH", "").strip()
     env["PYTHONPATH"] = backend_path if not pythonpath else backend_path + os.pathsep + pythonpath
 
-    if include_google_sa and not env.get("GOOGLE_SERVICE_ACCOUNT_JSON") and google_sa_json:
+    if include_google_sa and google_sa_json:
+        # Always inject the resolved SA JSON (from DB/file/env) so that
+        # subprocess scripts receive a fully-validated value even if the
+        # raw env var is malformed or escaped incorrectly (Railway quirk).
         env["GOOGLE_SERVICE_ACCOUNT_JSON"] = google_sa_json
 
     return env

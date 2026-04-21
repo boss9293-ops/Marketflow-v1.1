@@ -170,6 +170,7 @@ def upsert_series(
 # ── FRED fetcher ──────────────────────────────────────────────────────────────
 
 def fetch_fred(series_id: str, start_date: str) -> List[Tuple[str, float]]:
+    import time as _time
     try:
         import urllib.request, urllib.parse
     except ImportError:
@@ -181,11 +182,20 @@ def fetch_fred(series_id: str, start_date: str) -> List[Tuple[str, float]]:
         "observation_start": start_date,
     })
     url = f"{FRED_BASE_URL}?{params}"
-    try:
-        with urllib.request.urlopen(url, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except Exception as exc:
-        raise RuntimeError(f"FRED request failed for {series_id}: {exc}")
+    last_exc: Exception = RuntimeError("no attempts")
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            break
+        except Exception as exc:
+            last_exc = RuntimeError(f"FRED request failed for {series_id}: {exc}")
+            if "500" in str(exc) and attempt < 2:
+                wait = 10 * (attempt + 1)
+                print(f"[cache_series] FRED {series_id} 500 error, retry in {wait}s ({attempt+1}/3)", flush=True)
+                _time.sleep(wait)
+            else:
+                raise last_exc
     out: List[Tuple[str, float]] = []
     for obs in data.get("observations", []):
         d = obs.get("date", "")
@@ -233,13 +243,23 @@ def main() -> int:
     results: dict = {}
     generated_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
-    # ── PUT_CALL (collector fallback: Stooq -> proxy) ─────────────────────────
+    # ── VIX 먼저 처리 (PUT_CALL VIX proxy 폴백에 필요) ───────────────────────
+    if FRED_API_KEY and needs_update(conn, "VIX", max_stale_days=3):
+        try:
+            start = (date.today() - timedelta(days=365 * 4)).isoformat()
+            rows = fetch_fred(FRED_SERIES["VIX"], start)
+            upsert_series(conn, "VIX", rows, source="FRED/VIXCLS", notes="FRED VIXCLS pre-fetch for PUT_CALL proxy")
+            print(f"[cache_series] VIX pre-fetch: {len(rows)} rows, last={rows[-1][0] if rows else None}", flush=True)
+        except Exception as exc:
+            print(f"[cache_series] VIX pre-fetch FAILED: {exc}", flush=True)
+
+    # ── PUT_CALL (collector fallback: Stooq -> CBOE CDN -> VIX proxy) ────────
     if needs_update(conn, "PUT_CALL"):
         try:
             collect_result = {}
             conn.close()
             try:
-                collect_result = collect_cboe()
+                collect_result = collect_cboe(cache_db_path=CACHE_DB)
             finally:
                 conn = sqlite3.connect(CACHE_DB)
                 ensure_schema(conn)
@@ -257,7 +277,12 @@ def main() -> int:
             }
         except Exception as exc:
             print(f"[cache_series] PUT_CALL FAILED: {exc}", flush=True)
-            results["PUT_CALL"] = {"ok": False, "error": str(exc)}
+            last = last_date_in_db(conn, "PUT_CALL")
+            if last:
+                print(f"[cache_series] PUT_CALL: using cached data (last={last})", flush=True)
+                results["PUT_CALL"] = {"ok": True, "last": last, "source": "cache_fallback", "fallback": True}
+            else:
+                results["PUT_CALL"] = {"ok": False, "error": str(exc)}
     else:
         last = last_date_in_db(conn, "PUT_CALL")
         print(f"[cache_series] PUT_CALL: skip (last={last})", flush=True)
@@ -265,13 +290,20 @@ def main() -> int:
 
     # ── FRED series ───────────────────────────────────────────────────────────
     if not FRED_API_KEY:
-        print("[cache_series] FRED_API_KEY not set — skipping HY_OAS, IG_OAS, FSI, VIX", flush=True)
-        for sym in ("HY_OAS", "IG_OAS", "FSI", "VIX"):
-            results[sym] = {"ok": False, "error": "FRED_API_KEY not set"}
+        print("[cache_series] FRED_API_KEY not set — using cached data for FRED symbols", flush=True)
+        for sym in FRED_SERIES:
+            last = last_date_in_db(conn, sym)
+            if last:
+                print(f"[cache_series] {sym}: using cached data (last={last})", flush=True)
+                results[sym] = {"ok": True, "last": last, "source": "cache_fallback", "fallback": True}
+            else:
+                results[sym] = {"ok": False, "error": "FRED_API_KEY not set"}
     else:
         start = (date.today() - timedelta(days=365 * 4)).isoformat()
         fred_stale_days = {"HY_OAS": 3, "IG_OAS": 3, "FSI": 10, "VIX": 3}
         for symbol, series_id in FRED_SERIES.items():
+            if symbol == "VIX" and results.get("VIX"):
+                continue  # already pre-fetched above
             stale = fred_stale_days.get(symbol, 5)
             if not needs_update(conn, symbol, max_stale_days=stale):
                 last = last_date_in_db(conn, symbol)
@@ -286,7 +318,12 @@ def main() -> int:
                 results[symbol] = {"ok": True, "rows": n, "last": last}
             except Exception as exc:
                 print(f"[cache_series] {symbol} FAILED: {exc}", flush=True)
-                results[symbol] = {"ok": False, "error": str(exc)}
+                last = last_date_in_db(conn, symbol)
+                if last:
+                    print(f"[cache_series] {symbol}: using cached data (last={last})", flush=True)
+                    results[symbol] = {"ok": True, "last": last, "source": "cache_fallback", "fallback": True}
+                else:
+                    results[symbol] = {"ok": False, "error": str(exc)}
 
     conn.close()
 

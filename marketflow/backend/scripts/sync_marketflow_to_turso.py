@@ -26,8 +26,11 @@ DEFAULT_TURSO_URL = "https://marketos-boss9293.aws-us-east-1.turso.io"
 # 업로드 대상 심볼 (macro LiveTimeline + 주요 ETF)
 TARGET_SYMBOLS = ["QQQ", "TQQQ", "SPY", "IWM", "TLT", "GLD", "VXX", "SOXL", "SOXS"]
 
+# cache.db에서 Turso로 올릴 macro series 심볼
+CACHE_SERIES_SYMBOLS = ["PUT_CALL", "HY_OAS", "IG_OAS", "FSI", "VIX", "VIXCLS", "WALCL", "RRP", "EFFR", "DGS10", "DGS2"]
+
 # HTTP 배치 크기 (Turso 파이프라인은 요청당 최대 ~100 statements 권장)
-BATCH_SIZE = 100
+BATCH_SIZE = 80
 
 
 def _env(*names: str) -> str:
@@ -110,7 +113,10 @@ def main() -> int:
     mkt_cutoff = mkt_latest or "2020-01-01"
     print(f"[TURSO-SYNC] ohlcv cutoff={ohlcv_cutoff}  market cutoff={mkt_cutoff}", flush=True)
 
-    # ── 2. 로컬 DB에서 신규 데이터만 읽기
+    # ── 2. 로컬 cache.db에서 series_data 읽기 (PUT_CALL, HY_OAS 등)
+    _sync_cache_series(pipe_url, token)
+
+    # ── 2b. 로컬 DB에서 신규 데이터만 읽기
     src = sqlite3.connect(local_db)
     src.row_factory = sqlite3.Row
 
@@ -160,10 +166,6 @@ def main() -> int:
     print(f"[TURSO-SYNC] New ohlcv rows: {len(ohlcv_rows)}", flush=True)
     print(f"[TURSO-SYNC] New market rows: {len(market_rows)}", flush=True)
 
-    if not ohlcv_rows and not market_rows:
-        print(f"[TURSO-SYNC] Already up-to-date. ({time.time()-t0:.1f}s)", flush=True)
-        return 0
-
     # ── 3. ohlcv_daily upsert
     if ohlcv_rows:
         sql = (
@@ -205,6 +207,104 @@ def main() -> int:
         flush=True,
     )
     return 0
+
+
+def _sync_cache_series(pipe_url: str, token: str) -> None:
+    """로컬 cache.db의 series_data를 Turso에 업로드.
+    서버(Railway)는 Stooq/FRED fetch 대신 이 데이터를 사용합니다.
+    """
+    import os
+    cache_db = os.environ.get(
+        "CACHE_DB_PATH",
+        str(Path(__file__).resolve().parents[2] / "data" / "cache.db")
+    )
+    if not os.path.exists(cache_db):
+        print(f"[TURSO-SYNC][cache_series] cache.db not found: {cache_db} — skipping", flush=True)
+        return
+
+    try:
+        src = sqlite3.connect(cache_db)
+        src.row_factory = sqlite3.Row
+
+        # Turso에 테이블 생성 (없으면)
+        _turso_pipeline(pipe_url, token, [
+            {"type": "execute", "stmt": {"sql": """
+                CREATE TABLE IF NOT EXISTS cache_series_data (
+                    symbol  TEXT NOT NULL,
+                    date    TEXT NOT NULL,
+                    value   REAL NOT NULL,
+                    source  TEXT,
+                    asof    TEXT,
+                    quality TEXT,
+                    PRIMARY KEY (symbol, date)
+                )
+            """}},
+            {"type": "execute", "stmt": {"sql": """
+                CREATE TABLE IF NOT EXISTS cache_series_meta (
+                    symbol       TEXT PRIMARY KEY,
+                    source       TEXT,
+                    unit         TEXT,
+                    freq         TEXT,
+                    last_updated TEXT,
+                    quality      TEXT,
+                    notes        TEXT
+                )
+            """}},
+            {"type": "close"},
+        ])
+
+        total_rows = 0
+        ph = ",".join(f"'{s}'" for s in CACHE_SERIES_SYMBOLS)
+        try:
+            data_rows = src.execute(
+                f"SELECT symbol, date, value, source, asof, quality "
+                f"FROM series_data WHERE symbol IN ({ph}) ORDER BY symbol, date"
+            ).fetchall()
+        except Exception as exc:
+            print(f"[TURSO-SYNC][cache_series] series_data read failed: {exc}", flush=True)
+            src.close()
+            return
+
+        if data_rows:
+            sql = (
+                "INSERT OR REPLACE INTO cache_series_data "
+                "(symbol, date, value, source, asof, quality) VALUES (?,?,?,?,?,?)"
+            )
+            for i in range(0, len(data_rows), BATCH_SIZE):
+                batch = [
+                    (r["symbol"], r["date"], r["value"], r["source"], r["asof"], r["quality"])
+                    for r in data_rows[i : i + BATCH_SIZE]
+                ]
+                _insert_batch(pipe_url, token, sql, batch)
+                total_rows += len(batch)
+            print(f"[TURSO-SYNC][cache_series] series_data: {total_rows} rows uploaded", flush=True)
+        else:
+            print("[TURSO-SYNC][cache_series] series_data: no rows in cache.db", flush=True)
+
+        # series_meta 업로드
+        try:
+            meta_rows = src.execute(
+                f"SELECT symbol, source, unit, freq, last_updated, quality, notes "
+                f"FROM series_meta WHERE symbol IN ({ph})"
+            ).fetchall()
+        except Exception:
+            meta_rows = []
+
+        if meta_rows:
+            sql = (
+                "INSERT OR REPLACE INTO cache_series_meta "
+                "(symbol, source, unit, freq, last_updated, quality, notes) VALUES (?,?,?,?,?,?,?)"
+            )
+            _insert_batch(pipe_url, token, sql, [
+                (r["symbol"], r["source"], r["unit"], r["freq"],
+                 r["last_updated"], r["quality"], r["notes"])
+                for r in meta_rows
+            ])
+            print(f"[TURSO-SYNC][cache_series] series_meta: {len(meta_rows)} rows uploaded", flush=True)
+
+        src.close()
+    except Exception as exc:
+        print(f"[TURSO-SYNC][cache_series] FAILED: {exc}", flush=True)
 
 
 if __name__ == "__main__":
