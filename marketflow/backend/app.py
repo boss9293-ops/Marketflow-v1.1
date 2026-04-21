@@ -8812,6 +8812,44 @@ def my_holdings_sa_email():
 
 
 
+
+
+
+_SHEETS_URL_KEY = 'google_sheets_url'
+
+
+@app.route('/api/my/holdings/sheet-url', methods=['GET'])
+def my_holdings_get_sheet_url():
+    from services.google_sa_store import _connect, _read_db_value
+    url = os.environ.get('GOOGLE_SHEETS_URL', '').strip()
+    source = 'env'
+    if not url:
+        url = os.environ.get('GOOGLE_SHEETS_ID', '').strip()
+        if url: source = 'env_id'
+    if not url:
+        try:
+            with _connect() as conn:
+                url = _read_db_value(conn, _SHEETS_URL_KEY)
+                if url: source = 'db'
+        except Exception:
+            pass
+    return jsonify({'sheet_url': url, 'source': source or 'none'})
+
+
+@app.route('/api/my/holdings/sheet-url', methods=['POST'])
+def my_holdings_save_sheet_url():
+    from services.google_sa_store import _connect, _write_db_value
+    data = request.get_json(silent=True) or {}
+    url = (data.get('sheet_url') or '').strip()
+    if not url:
+        return jsonify({'error': 'sheet_url required'}), 400
+    try:
+        with _connect() as conn:
+            _write_db_value(conn, _SHEETS_URL_KEY, url)
+        return jsonify({'ok': True, 'source': 'db'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/backtests/symbols', methods=['GET'])
 
 

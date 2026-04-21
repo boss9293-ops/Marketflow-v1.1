@@ -676,8 +676,8 @@ export default function MyPage() {
     }
   }
 
-  async function handleLoadTabs() {
-    const sheetId = extractSheetId(sheetUrl)
+  async function handleLoadTabs(overrideUrl?: string) {
+    const sheetId = extractSheetId(overrideUrl || sheetUrl)
     if (!sheetId) {
       setMessage('Invalid Google Sheets link or ID.')
       return
@@ -727,9 +727,16 @@ export default function MyPage() {
     await importTabs(sheetId, tabsCsv)
   }
 
-  // localStorage에 sheetUrl 저장
+  // localStorage + 백엔드에 sheetUrl 저장
   useEffect(() => {
-    if (sheetUrl) try { localStorage.setItem('holdings_sheet_url', sheetUrl) } catch {}
+    if (sheetUrl) {
+      try { localStorage.setItem('holdings_sheet_url', sheetUrl) } catch {}
+      fetch(`${API_BASE}/api/my/holdings/sheet-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet_url: sheetUrl }),
+      }).catch(() => {})
+    }
   }, [sheetUrl])
 
   useEffect(() => {
@@ -759,11 +766,25 @@ export default function MyPage() {
     fetchHoldings()
     fetchSaEmail()
     fetchMarketIndices()
-    refreshTabs().then(() => {
-      // localStorage에 저장된 URL이 있고 탭 메타가 없으면 자동 로드
-      const saved = (() => { try { return localStorage.getItem('holdings_sheet_url') || '' } catch { return '' } })()
-      if (saved && !tabsMeta) handleLoadTabs()
-    })
+    const initTabs = async () => {
+      let activeUrl = sheetUrl  // from localStorage init
+      if (!activeUrl) {
+        try {
+          const r = await fetch(`${API_BASE}/api/my/holdings/sheet-url`, { cache: 'no-store' })
+          if (r.ok) {
+            const j = await r.json()
+            if (j.sheet_url) {
+              activeUrl = j.sheet_url
+              setSheetUrl(j.sheet_url)
+              try { localStorage.setItem('holdings_sheet_url', j.sheet_url) } catch {}
+            }
+          }
+        } catch {}
+      }
+      await refreshTabs()
+      if (activeUrl && !tabsMeta) handleLoadTabs(activeUrl)
+    }
+    initTabs()
     refreshTs()
     fetchCredsStatus()
   }, [])

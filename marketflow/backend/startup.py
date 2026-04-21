@@ -150,9 +150,27 @@ if _pull_turso_db_if_configured():
     _clear_risk_outputs()
 
 
+def _read_kv(key: str) -> str:
+    """Read a value from app_kv in the live DB."""
+    try:
+        import sqlite3 as _sqlite3
+        con = _sqlite3.connect(DB_PATH, check_same_thread=False)
+        row = con.execute("SELECT value FROM app_kv WHERE key=?", (key,)).fetchone()
+        con.close()
+        return (row[0] or "").strip() if row else ""
+    except Exception:
+        return ""
+
+
 def _auto_import_holdings_from_sheets() -> bool:
     sheet_id = _env_value("GOOGLE_SHEETS_ID", "").strip()
     sheet_url = _env_value("GOOGLE_SHEETS_URL", "").strip()
+    # Fallback: read from app_kv (stored by UI and synced via Turso)
+    if not sheet_id and not sheet_url:
+        kv_url = _read_kv("google_sheets_url")
+        if kv_url:
+            sheet_url = kv_url
+            print(f"[startup][SHEETS] sheet_url loaded from app_kv: {kv_url[:60]}...", flush=True)
     if not sheet_id and not sheet_url:
         print("[startup][SHEETS] Google Sheets source not configured; skipping holdings import.", flush=True)
         return True
