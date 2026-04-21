@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readCacheJsonOrNull } from '@/lib/readCacheJson'
-import { resolveBackendBaseUrl } from '@/lib/backendApi'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,10 +21,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const { force = false, lang = 'ko' } = body as { force?: boolean; lang?: string }
 
-  const backendUrl = resolveBackendBaseUrl()
-
   try {
-    const res = await fetch(`${backendUrl}/api/briefing/v3/generate`, {
+    const proxyUrl = new URL('/api/flask/api/briefing/v3/generate', req.nextUrl.origin)
+    const res = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ force, lang }),

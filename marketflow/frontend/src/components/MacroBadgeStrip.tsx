@@ -4,8 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { refreshMacroStore, useMacroStore } from '@/stores/macroStore'
 import { pickLang, useLangMode } from '@/lib/useLangMode'
-
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+import { clientApiUrl } from '@/lib/backendApi'
 
 type ValidationStatus = {
   status?: 'OK' | 'Watch'
@@ -54,7 +53,7 @@ export default function MacroBadgeStrip() {
 
   useEffect(() => {
     let alive = true
-    fetch(`${API_BASE}/api/macro/validation/status`, { cache: 'no-store' })
+    fetch(clientApiUrl('/api/macro/validation/status'), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((json) => { if (alive) setValidation(json || null) })
       .catch(() => { if (alive) setValidation(null) })

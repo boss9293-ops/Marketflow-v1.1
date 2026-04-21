@@ -3,8 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { rollingPercentile, bandFromPercentile, refBandText, type Point } from '@/lib/macro/normalize'
 import { coverageRatio, isStale, qualityLabel } from '@/lib/macro/quality'
-
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+import { clientApiUrl } from '@/lib/backendApi'
 
 export type MacroSnapshotV2 = {
   snapshot_date: string
@@ -43,7 +42,7 @@ export async function refreshMacroStore(): Promise<void> {
   const timeoutMs = 12000
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(`${API_BASE}/api/macro/v2/latest`, {
+    const res = await fetch(clientApiUrl('/api/macro/v2/latest'), {
       cache: 'no-store',
       signal: controller.signal,
     })
@@ -74,7 +73,7 @@ export async function refreshMacroStore(): Promise<void> {
     })
   } catch (e: any) {
     const msg = e?.name === 'AbortError'
-      ? `Request timeout (${timeoutMs / 1000}s): ${API_BASE}/api/macro/v2/latest`
+      ? `Request timeout (${timeoutMs / 1000}s): ${clientApiUrl('/api/macro/v2/latest')}`
       : (e?.message || 'Failed to load macro snapshot')
     setState({ loading: false, error: msg })
   } finally {

@@ -1,8 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
 
-import { backendApiUrl } from '@/lib/backendApi'
-
 type DataManifestArtifact = {
   relative_path?: string | null
   exists?: boolean | null
@@ -57,7 +55,7 @@ function normalizeApiPath(pathname: string): string {
 
 async function readJsonFromBackend<T>(pathname: string): Promise<T | null> {
   try {
-    const res = await fetch(backendApiUrl(normalizeApiPath(pathname)), { cache: 'no-store' })
+    const res = await fetch(`/api/flask${normalizeApiPath(pathname)}`, { cache: 'no-store' })
     if (!res.ok) return null
     return (await res.json()) as T
   } catch {

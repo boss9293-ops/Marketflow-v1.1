@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { classifySeriesStale, resolveCrossAssetMvpState } from '@/lib/macroLayer'
-
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+import { clientApiUrl } from '@/lib/backendApi'
 
 type MacroSummaryResponse = {
   asof_date?: string | null
@@ -76,7 +75,7 @@ export default function MacroSidebarLayer({ compact = false, open = false, onNav
 
   useEffect(() => {
     let alive = true
-    fetch(`${API_BASE}/api/macro/summary`, { cache: 'no-store' })
+    fetch(clientApiUrl('/api/macro/summary'), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((json) => {
         if (!alive) return
@@ -254,4 +253,3 @@ export default function MacroSidebarLayer({ compact = false, open = false, onNav
     </div>
   )
 }
-

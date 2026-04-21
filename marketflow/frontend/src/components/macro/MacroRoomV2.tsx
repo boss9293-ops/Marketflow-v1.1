@@ -8,6 +8,7 @@ import EarlyWarningTab from '@/components/macro/tabs/EarlyWarningTab'
 import InfoTip from '@/components/ui/InfoTip'
 import { refreshMacroStore, useMacroStore } from '@/stores/macroStore'
 import { pickLang, useLangMode } from '@/lib/useLangMode'
+import { clientApiUrl } from '@/lib/backendApi'
 import { MACRO_TERM_COPY } from '@/lib/macroCopy'
 import { UI_TEXT } from '@/lib/uiText'
 import {
@@ -26,7 +27,6 @@ import {
   ReferenceArea,
 } from 'recharts'
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
 const HISTORY_LOOKBACK_DAYS = 1095
 const HISTORY_TABLE_ROWS = 30
 
@@ -251,7 +251,7 @@ export default function MacroRoomV2() {
 
   useEffect(() => {
     let alive = true
-    fetch(`${API_BASE}/api/macro/snapshots?limit=${HISTORY_LOOKBACK_DAYS}`, { cache: 'no-store' })
+    fetch(clientApiUrl(`/api/macro/snapshots?limit=${HISTORY_LOOKBACK_DAYS}`), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((json) => {
         if (alive) setHistory(Array.isArray(json) ? json : [])
@@ -266,7 +266,7 @@ export default function MacroRoomV2() {
 
   useEffect(() => {
     let alive = true
-    fetch(`${API_BASE}/api/macro/terminal_series?years=3&scope=${m2Scope}`, { cache: 'no-store' })
+    fetch(clientApiUrl(`/api/macro/terminal_series?years=3&scope=${m2Scope}`), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { rows: [] }))
       .then((json) => {
         const rows = Array.isArray(json?.rows) ? json.rows : []
@@ -300,7 +300,7 @@ export default function MacroRoomV2() {
 
   useEffect(() => {
     let alive = true
-    fetch(`${API_BASE}/api/macro/revisions?limit=10`, { cache: 'no-store' })
+    fetch(clientApiUrl('/api/macro/revisions?limit=10'), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((json) => {
         if (alive) setRevisions(Array.isArray(json) ? json : [])
