@@ -441,6 +441,44 @@ def _run_builds_if_needed():
 
 _run_builds_if_needed()
 
+# ── Manual rebuild endpoint ───────────────────────────────────────────────────
+_rebuild_lock = threading.Lock()
+_rebuild_running = False
+
+@app.route('/api/admin/rebuild', methods=['POST'])
+def admin_rebuild():
+    """Trigger a forced full rebuild. Requires X-Pipeline-Token header."""
+    expected = os.environ.get('MARKETFLOW_DAILY_PIPELINE_TOKEN', '')
+    token = request.headers.get('X-Pipeline-Token', '')
+    if not expected or token != expected:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    global _rebuild_running
+    with _rebuild_lock:
+        if _rebuild_running:
+            return jsonify({'status': 'already_running'}), 202
+
+        _rebuild_running = True
+
+    def _do_rebuild():
+        global _rebuild_running
+        try:
+            if os.environ.get('STARTUP_MANAGES_BUILDS'):
+                import startup as _startup
+                _startup.run_builds(force_daily=True)
+            else:
+                _run_builds_if_needed()
+        finally:
+            _rebuild_running = False
+
+    t = threading.Thread(target=_do_rebuild, daemon=True)
+    t.start()
+    return jsonify({'status': 'started', 'message': 'Full rebuild triggered'}), 202
+
+@app.route('/api/admin/rebuild', methods=['GET'])
+def admin_rebuild_status():
+    return jsonify({'running': _rebuild_running})
+
 
 CACHE_DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'cache.db')
 MY_HOLDINGS_PATH = os.path.join(OUTPUT_DIR, 'my_holdings.json')
