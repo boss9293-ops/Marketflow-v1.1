@@ -30,11 +30,11 @@ export default async function LegacySRASPage() {
             </h1>
             <div style={{ fontSize: '0.6rem', color: '#374151', marginTop: 3 }}>
               Original 9-indicator macro score 쨌 See{' '}
-              <a href="/risk-v1" style={{ color: '#6366f1' }}>Standard Risk System</a> for the current version.
+              <a href="/risk-v1" style={{ color: '#6366f1' }}>표준위험분석</a> for the current version.
             </div>
           </div>
           <a href="/crash" style={{ fontSize: '0.65rem', color: '#6b7280', textDecoration: 'none', padding: '0.3rem 0.7rem', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8 }}>
-            ??Crash Hub
+            ??크래시 허브
           </a>
         </div>
 

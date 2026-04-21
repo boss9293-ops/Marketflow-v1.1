@@ -2021,7 +2021,7 @@ export default function MyPage() {
               />
             </div>
             <button
-              onClick={handleLoadTabs}
+              onClick={() => handleLoadTabs()}
               style={{
                 border: '1px solid rgba(14,165,233,0.4)',
                 background: 'rgba(14,165,233,0.15)',

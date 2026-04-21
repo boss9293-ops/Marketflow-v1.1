@@ -71,9 +71,9 @@ def fetch_news(symbol: str, date_et: str) -> list[dict]:
     ?뱀씪 ?꾩껜 ?댁뒪 ?섏쭛 (prev 16:00 ~ today 16:30 ET).
     """
     day_start    = datetime.strptime(date_et, "%Y-%m-%d").replace(tzinfo=ET_ZONE)
-    window_start = (day_start - timedelta(hours=24)).timestamp()
+    window_start = (day_start - timedelta(days=4)).timestamp()
     window_end   = (day_start + timedelta(hours=16, minutes=30)).timestamp()
-    day_start_str = (day_start - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")
+    day_start_str = (day_start - timedelta(days=4)).strftime("%Y-%m-%dT%H:%M:%S")
     day_end_str   = (day_start + timedelta(hours=16, minutes=30)).strftime("%Y-%m-%dT%H:%M:%S")
 
     provider = CompositeNewsProvider()
@@ -84,7 +84,7 @@ def fetch_news(symbol: str, date_et: str) -> list[dict]:
             topics=[symbol],
             date_from=day_start_str,
             date_to=day_end_str,
-            limit=30,
+            limit=80,
         )
     except Exception as e:
         print(f"  [WARN] CompositeNewsProvider failed: {e}")
@@ -260,7 +260,9 @@ def _score(headline: str, summary: str, source: str, published_at: str, target: 
     if target and target in h_tickers:                          s += 3
     elif h_tickers:                                             s += 1
     hrs = _hours_ago(published_at)
-    if hrs < 4:    s += 1
+    if hrs < 4:    s += 2
+    elif hrs < 24: s += 1
+    elif hrs > 72: s -= 2
     elif hrs > 48: s -= 1
     if REUTERS_RE.search(source):   s += 1
     if VAGUE_RE.search(text):       s -= 2
@@ -306,21 +308,22 @@ def _load_ticker_brief_prompt_core() -> str:
     return "You are a Bloomberg terminal analyst. Write a Terminal X style end-of-day brief."
 
 
-def build_prompt(symbol: str, price: dict, events: list[dict], date_et: str) -> str:
+def build_prompt(symbol: str, price: dict, events: list[dict], date_et: str, evidence_grade: str = "SUFFICIENT") -> str:
     close = price.get("close", 0)
     open_px = price.get("open", 0)
     chg = price.get("change1d", 0)
     open_chg = price.get("openChg", 0)
-    direction = "up" if chg >= 0 else "down"
 
     event_lines = "\n".join(
-        f"[{i+1}] d={e['directness']} {e['cluster']} {e['sentiment']}\n    {e['headline']}"
+        f"[{i+1}] d={e['directness']} {e['cluster']} {e['sentiment']} date={e.get('publishedAt','')[:10]}\n    {e['headline']}"
         for i, e in enumerate(events[:8])
-    )
+    ) or "(none)"
 
     prompt_core = _load_ticker_brief_prompt_core()
 
     return f"""{prompt_core}
+
+EVIDENCE_GRADE: {evidence_grade}
 
 PRICE ({date_et}):
   Open: ${open_px} ({'+' if open_chg >= 0 else ''}{open_chg}%)  Close: ${close} ({'+' if chg >= 0 else ''}{chg}%)
@@ -346,7 +349,7 @@ def call_brief_llm(prompt: str) -> tuple[str, str, str]:
                 system=system,
                 user=prompt,
                 temperature=0.35,
-                max_tokens=400,
+                max_tokens=650,
                 provider=provider,
             )
         except Exception as exc:
@@ -431,7 +434,14 @@ def run_ticker(symbol: str, date_et: str) -> dict:
     price  = fetch_price(symbol)
     events = extract_events(news, target=symbol)
 
-    print(f"  events: {len(events)}/{len(news)} passed (threshold={DIRECTNESS_THRESHOLD})")
+    if not events and news:
+        events = extract_events(news, threshold=2, target=symbol)
+        print(f"  [adaptive] threshold lowered to 2: {len(events)} events")
+
+    n_ev = len(events)
+    evidence_grade = "THIN" if n_ev == 0 else "SPARSE" if n_ev <= 2 else "SUFFICIENT"
+
+    print(f"  events: {n_ev}/{len(news)} passed  grade={evidence_grade}")
     for e in events[:5]:
         score = int(e.get("directness", 0))
         score = max(0, min(10, score))
@@ -440,7 +450,7 @@ def run_ticker(symbol: str, date_et: str) -> dict:
         headline = str(e.get("headline") or "")[:52]
         print(f"    {bar} {score}/10 {sent} {headline}")
 
-    prompt = build_prompt(symbol, price, events, date_et)
+    prompt = build_prompt(symbol, price, events, date_et, evidence_grade=evidence_grade)
     brief_text, llm_provider, llm_model = call_brief_llm(prompt)
     if not brief_text:
         brief_text = fallback_brief(symbol, price, events)

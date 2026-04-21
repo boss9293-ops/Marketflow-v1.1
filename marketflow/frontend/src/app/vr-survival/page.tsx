@@ -234,7 +234,7 @@ function buildAssetHref(
 const NAV_ITEMS = [
   { href: '/risk-v1', label: 'Standard (QQQ)', accent: '#f59e0b', border: 'rgba(245,158,11,0.26)', bg: 'rgba(245,158,11,0.08)' },
   { href: '/backtest', label: 'Backtests', accent: '#38bdf8', border: 'rgba(56,189,248,0.26)', bg: 'rgba(56,189,248,0.08)' },
-  { href: '/crash', label: 'Crash Hub', accent: '#fb7185', border: 'rgba(251,113,133,0.26)', bg: 'rgba(251,113,133,0.08)' },
+  { href: '/crash', label: '크래시 허브', accent: '#fb7185', border: 'rgba(251,113,133,0.26)', bg: 'rgba(251,113,133,0.08)' },
   { href: '/dashboard', label: 'Dashboard', accent: '#22c55e', border: 'rgba(34,197,94,0.26)', bg: 'rgba(34,197,94,0.08)' },
 ] as const
 
@@ -322,6 +322,16 @@ export default async function VRSurvivalPage({
   const heroSubtitle = heroText.subtitle[cl]
   const heroBody = heroText.body[cl]
   const disclaimer = heroText.disclaimer[cl]
+  const heroCaption = isSoxl
+    ? 'MARKETFLOW - SEMICONDUCTOR RESEARCH'
+    : cl === 'ko'
+      ? 'MARKETFLOW - 레버리지 생존법'
+      : 'MARKETFLOW - LEVERAGE SURVIVAL'
+  const heroTitle = isSoxl
+    ? 'Semiconductor Regime Monitor'
+    : cl === 'ko'
+      ? '레버리지 생존법'
+      : 'Leverage Survival'
 
   if (!effectiveRaw && asset === 'tqqq') {
     return (
@@ -355,10 +365,10 @@ export default async function VRSurvivalPage({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              {isSoxl ? 'MARKETFLOW - SEMICONDUCTOR RESEARCH' : 'MARKETFLOW - SURVIVAL LAB'}
+              {heroCaption}
             </div>
             <h1 style={{ fontSize: '2.3rem', fontWeight: 900, color: '#f8fafc', margin: '0.35rem 0 0' }}>
-              {isSoxl ? 'Semiconductor Regime Monitor' : 'VR Survival Lab'}
+              {heroTitle}
             </h1>
             <div style={{ fontSize: '0.92rem', color: '#94a3b8', marginTop: 8, lineHeight: 1.6, maxWidth: 760 }}>
               {heroSubtitle}
@@ -487,7 +497,7 @@ export default async function VRSurvivalPage({
             />
 
             <div style={{ fontSize: '0.75rem', color: '#475569', textAlign: 'center', paddingTop: '0.4rem' }}>
-              Generated: {effectiveRaw?.run_id ?? 'Unknown'} - VR Survival Lab
+              Generated: {effectiveRaw?.run_id ?? 'Unknown'} - {cl === 'ko' ? '레버리지 생존법' : 'Leverage Survival'}
             </div>
           </>
         ) : (

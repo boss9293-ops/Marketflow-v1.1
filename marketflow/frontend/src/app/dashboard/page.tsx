@@ -117,25 +117,25 @@ type MssSeriesPoint = {
 }
 
 const DASHBOARD_UI = {
-  pageTitle: { ko: 'Risk Security Manager - Beta', en: 'Risk Security Manager - Beta' },
-  pageSubtitle: { ko: 'Structure first. Detail later.', en: 'Structure first. Detail later.' },
-  asOf: { ko: 'AS OF', en: 'AS OF' },
-  cardRegime: { ko: 'Market Regime & Posture', en: 'Market Regime & Posture' },
-  cardLeverage: { ko: 'Leverage Lens', en: 'Leverage Lens' },
-  cardQueue: { ko: 'Positioning Queue', en: 'Positioning Queue' },
-  cardEvent: { ko: 'Event Clock (24h)', en: 'Event Clock (24h)' },
-  cardNews: { ko: 'News Slice', en: 'News Slice' },
-  cardBreadth: { ko: 'Breadth & Flow', en: 'Breadth & Flow' },
+  pageTitle: { ko: '오늘의 위험상황 렌즈', en: 'Risk Security Manager - Beta' },
+  pageSubtitle: { ko: '구조부터, 디테일은 나중에.', en: 'Structure first. Detail later.' },
+  asOf: { ko: '기준일', en: 'AS OF' },
+  cardRegime: { ko: '시장 국면 및 포지션', en: 'Market Regime & Posture' },
+  cardLeverage: { ko: '레버리지 렌즈', en: 'Leverage Lens' },
+  cardQueue: { ko: '포지션 큐', en: 'Positioning Queue' },
+  cardEvent: { ko: '24시간 이벤트 시계', en: 'Event Clock (24h)' },
+  cardNews: { ko: '뉴스 슬라이스', en: 'News Slice' },
+  cardBreadth: { ko: '시장 폭 & 흐름', en: 'Breadth & Flow' },
   gateScore: { ko: 'Gate Score', en: 'Gate Score' },
   breadthPulse: { ko: 'Breadth Pulse', en: 'Breadth Pulse' },
   whyMatters: { ko: '왜 중요한가', en: 'Why this matters' },
-  openLeverageLens: { ko: 'Open Leverage Lens', en: 'Open Leverage Lens' },
-  fullBriefing: { ko: 'Full Briefing', en: 'Full Briefing' },
-  newsDetail: { ko: 'News Detail', en: 'News Detail' },
-  railIndices: { ko: 'Indices', en: 'Indices' },
-  railRatesFx: { ko: 'Rates & FX', en: 'Rates & FX' },
-  railCommoditiesAlt: { ko: 'Commodities & Alt', en: 'Commodities & Alt' },
-  railHeadlineTape: { ko: 'Headline Tape', en: 'Headline Tape' },
+  openLeverageLens: { ko: '레버리지 렌즈 열기', en: 'Open Leverage Lens' },
+  fullBriefing: { ko: '전체 브리핑', en: 'Full Briefing' },
+  newsDetail: { ko: '뉴스 상세', en: 'News Detail' },
+  railIndices: { ko: '지수', en: 'Indices' },
+  railRatesFx: { ko: '금리 & 환율', en: 'Rates & FX' },
+  railCommoditiesAlt: { ko: '원자재 & 대체자산', en: 'Commodities & Alt' },
+  railHeadlineTape: { ko: '헤드라인 테이프', en: 'Headline Tape' },
   sourceDailyBriefingCache: { ko: 'Source: Daily briefing cache', en: 'Source: Daily briefing cache' },
   gateEstimated: { ko: 'est', en: 'est' },
   flowShiftDetected: { ko: 'shift detected', en: 'shift detected' },
@@ -669,6 +669,8 @@ export default async function DashboardPage() {
     buildLadderRow(tapeMap, 'WTI', 'WTI', ['CL=F']),
     buildLadderRow(tapeMap, 'BTC', 'Bitcoin', ['BTCUSD']),
   ]
+  const hasRatesFxData = ratesFxRows.some((row) => row.last != null || row.chgPct != null)
+  const hasCommodityData = commodityRows.some((row) => row.last != null || row.chgPct != null)
 
   const queueRows = [
     engineText(contentLang, DASHBOARD_ENGINE.queueCore, { exposureBand, regime: regimeLabel }),
@@ -889,16 +891,16 @@ export default async function DashboardPage() {
                   </h3>
                   <div className={styles.valueRow}>
                     <span className={`${styles.pill} ${regime === 'BULL' ? styles.pillGreen : regime === 'BEAR' ? styles.pillRed : styles.pillAmber}`}>
-                      {uiText(uiLang, DASHBOARD_UI.labelRegime)} {regimeLabel}
+                      {uiText(contentLang, DASHBOARD_UI.labelRegime)} {regimeLabel}
                     </span>
                     <span className={`${styles.pill} ${riskLevel === 'LOW' ? styles.pillGreen : riskLevel === 'HIGH' ? styles.pillRed : styles.pillAmber}`}>
-                      {uiText(uiLang, DASHBOARD_UI.labelRisk)} {riskLevelLabel}
+                      {uiText(contentLang, DASHBOARD_UI.labelRisk)} {riskLevelLabel}
                     </span>
-                    <span className={styles.pill}>{uiText(uiLang, DASHBOARD_UI.labelExposure)} {exposureBand}</span>
+                    <span className={styles.pill}>{uiText(contentLang, DASHBOARD_UI.labelExposure)} {exposureBand}</span>
                   </div>
                   <p className={styles.meta}>
-                    {uiText(uiLang, DASHBOARD_UI.labelGate)} {computedGate != null ? computedGate.toFixed(1) : '--'}
-                    {gateIsEstimated ? ` (${uiText(uiLang, DASHBOARD_UI.gateEstimated)})` : ''} - MSS {mssScore != null ? mssScore.toFixed(1) : '--'} - {uiText(uiLang, DASHBOARD_UI.labelDrawdown)} {formatPct(drawdownPct)}
+                    {uiText(contentLang, DASHBOARD_UI.labelGate)} {computedGate != null ? computedGate.toFixed(1) : '--'}
+                    {gateIsEstimated ? ` (${uiText(contentLang, DASHBOARD_UI.gateEstimated)})` : ''} - MSS {mssScore != null ? mssScore.toFixed(1) : '--'} - {uiText(contentLang, DASHBOARD_UI.labelDrawdown)} {formatPct(drawdownPct)}
                   </p>
                   <p className={styles.gateGuide}>
                     {engineText(contentLang, DASHBOARD_ENGINE.gateGuide, {
@@ -911,7 +913,7 @@ export default async function DashboardPage() {
                 {regimeGauge != null ? (
                   <div className={styles.gaugeWrap}>
                     <HalfGauge value={regimeGauge} />
-                    <p className={styles.gaugeLabel}>{uiText(uiLang, DASHBOARD_UI.gateScore)}</p>
+                    <p className={styles.gaugeLabel}>{uiText(contentLang, DASHBOARD_UI.gateScore)}</p>
                   </div>
                 ) : null}
               </div>
@@ -978,7 +980,7 @@ export default async function DashboardPage() {
               
               <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
                 <p className={styles.headline} style={{ fontSize: '1.05rem', margin: 0 }}>
-                  {uiText(uiLang, DASHBOARD_UI.emotionTitle)}: {emotionBadge}
+                  {uiText(contentLang, DASHBOARD_UI.emotionTitle)}: {emotionBadge}
                 </p>
               </div>
 
@@ -993,7 +995,7 @@ export default async function DashboardPage() {
 
               <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <p className={styles.meta} style={{ fontWeight: 'bold', color: 'var(--fg-primary, #f8fafc)', marginBottom: '0.25rem' }}>
-                  💡 {uiText(uiLang, DASHBOARD_UI.whyMatters)}:
+                  💡 {uiText(contentLang, DASHBOARD_UI.whyMatters)}:
                 </p>
                 <p className={styles.teaser}>{whyMatters}</p>
               </div>
@@ -1013,23 +1015,23 @@ export default async function DashboardPage() {
               <div className={styles.gaugeRow}>
                 <div>
                   <h3 className={styles.headline}>
-                    {breadthState} - {uiText(uiLang, DASHBOARD_UI.labelFlow)}{' '}
+                    {breadthState} - {uiText(contentLang, DASHBOARD_UI.labelFlow)}{' '}
                     {latestSnapshot?.phase_shift_flag
-                      ? uiText(uiLang, DASHBOARD_UI.flowShiftDetected)
-                      : uiText(uiLang, DASHBOARD_UI.flowMonitorMode)}
+                      ? uiText(contentLang, DASHBOARD_UI.flowShiftDetected)
+                      : uiText(contentLang, DASHBOARD_UI.flowMonitorMode)}
                   </h3>
                   <div className={styles.valueRow}>
-                    <span className={styles.pill}>{uiText(uiLang, DASHBOARD_UI.labelAboveMa200)} {breadthPct != null ? `${breadthPct.toFixed(1)}%` : '--'}</span>
-                    <span className={styles.pill}>{uiText(uiLang, DASHBOARD_UI.labelGate)} d5 {formatPct(typeof latestSnapshot?.gate_delta_5d === 'number' ? latestSnapshot.gate_delta_5d : null)}</span>
-                    <span className={styles.pill}>{uiText(uiLang, DASHBOARD_UI.labelTracked)} {latestSnapshot?.total_stocks ?? '--'} {uiText(uiLang, DASHBOARD_UI.labelNames)}</span>
+                    <span className={styles.pill}>{uiText(contentLang, DASHBOARD_UI.labelAboveMa200)} {breadthPct != null ? `${breadthPct.toFixed(1)}%` : '--'}</span>
+                    <span className={styles.pill}>{uiText(contentLang, DASHBOARD_UI.labelGate)} d5 {formatPct(typeof latestSnapshot?.gate_delta_5d === 'number' ? latestSnapshot.gate_delta_5d : null)}</span>
+                    <span className={styles.pill}>{uiText(contentLang, DASHBOARD_UI.labelTracked)} {latestSnapshot?.total_stocks ?? '--'} {uiText(contentLang, DASHBOARD_UI.labelNames)}</span>
                   </div>
                   <p className={styles.meta}>
-                    {uiText(uiLang, DASHBOARD_UI.labelBreadth)} {localizeByMap(riskV1.breadth?.health_label, contentLang, BREADTH_LABELS)} - {uiText(uiLang, DASHBOARD_UI.labelDivergence)} {localizeByMap(riskV1.breadth?.divergence_signal, contentLang, DIVERGENCE_LABELS)}
+                    {uiText(contentLang, DASHBOARD_UI.labelBreadth)} {localizeByMap(riskV1.breadth?.health_label, contentLang, BREADTH_LABELS)} - {uiText(contentLang, DASHBOARD_UI.labelDivergence)} {localizeByMap(riskV1.breadth?.divergence_signal, contentLang, DIVERGENCE_LABELS)}
                   </p>
                 </div>
                 <div className={styles.gaugeWrap}>
                   <HalfGauge value={breadthGauge} />
-                  <p className={styles.gaugeLabel}>{uiText(uiLang, DASHBOARD_UI.breadthPulse)}</p>
+                  <p className={styles.gaugeLabel}>{uiText(contentLang, DASHBOARD_UI.breadthPulse)}</p>
                 </div>
               </div>
             </article>
@@ -1065,6 +1067,13 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            {!hasRatesFxData && (
+              <p className={styles.tapeSource} style={{ marginTop: 8 }}>
+                {uiLang === 'ko'
+                  ? '현재 캐시에는 금리/환율 데이터가 없어 표시되지 않습니다.'
+                  : 'No rates/FX data is present in the current cache.'}
+              </p>
+            )}
           </section>
 
           <section className={styles.railSection}>
@@ -1080,6 +1089,13 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            {!hasCommodityData && (
+              <p className={styles.tapeSource} style={{ marginTop: 8 }}>
+                {uiLang === 'ko'
+                  ? '현재 캐시에는 원자재/대체자산 데이터가 없어 표시되지 않습니다.'
+                  : 'No commodities/alternatives data is present in the current cache.'}
+              </p>
+            )}
           </section>
 
           <section className={styles.railSection}>
@@ -1089,7 +1105,7 @@ export default async function DashboardPage() {
                 <article className={styles.tapeItem} key={`tape-${idx}`}>
                   <p className={styles.tapeTime}>{item.time}</p>
                   <p className={styles.tapeHeadline}>{item.text}</p>
-                  <p className={styles.tapeSource}>{uiText(uiLang, DASHBOARD_UI.sourceDailyBriefingCache)}</p>
+                  <p className={styles.tapeSource}>{uiText(contentLang, DASHBOARD_UI.sourceDailyBriefingCache)}</p>
                 </article>
               ))}
             </div>

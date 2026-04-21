@@ -16,7 +16,7 @@ export default function CrashHubPage() {
             MarketFlow 쨌 Crash Protection
           </div>
           <h1 style={{ fontSize: '2.6rem', fontWeight: 900, color: '#e5e7eb', margin: '0.39rem 0 0' }}>
-            Crash Hub
+            크래시 허브
           </h1>
           <p style={{ fontSize: '0.94rem', color: '#9ca3af', marginTop: '0.52rem', lineHeight: 1.5 }}>
             Risk management tools for equity and leveraged ETF investors.
@@ -47,7 +47,7 @@ export default function CrashHubPage() {
                     <div style={{ fontSize: '0.81rem', color: '#9ca3af' }}>QQQ 쨌 Long-only</div>
                   </div>
                   <div style={{ fontSize: '1.43rem', fontWeight: 800, color: '#e5e7eb', marginBottom: 6 }}>
-                    Standard Risk System
+                    표준위험분석
                   </div>
                   <div style={{ fontSize: '0.88rem', color: '#9ca3af', lineHeight: 1.5 }}>
                     4-component macro score (Trend 쨌 Depth 쨌 Volatility 쨌 Drawdown).
@@ -65,7 +65,7 @@ export default function CrashHubPage() {
             </div>
           </a>
 
-          {/* VR Survival (TQQQ) */}
+          {/* Leverage Survival (TQQQ) */}
           <a href="/vr-survival" style={{ textDecoration: 'none' }}>
             <div style={{
               background: '#111318',
@@ -79,12 +79,12 @@ export default function CrashHubPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <div style={{ background: 'rgba(167,139,250,0.15)', borderRadius: 6, padding: '0.2rem 0.65rem', fontSize: '0.78rem', color: '#a78bfa', fontWeight: 700, letterSpacing: '0.08em' }}>
-                      VR SURVIVAL
+                      LEVERAGE SURVIVAL
                     </div>
                     <div style={{ fontSize: '0.81rem', color: '#9ca3af' }}>TQQQ 쨌 3횞 Leveraged</div>
                   </div>
                   <div style={{ fontSize: '1.43rem', fontWeight: 800, color: '#e5e7eb', marginBottom: 6 }}>
-                    VR Leverage Survival
+                    레버리지 생존법
                   </div>
                   <div style={{ fontSize: '0.88rem', color: '#9ca3af', lineHeight: 1.5 }}>
                     4-layer architecture: Macro Score ??State Machine ??Pool Control ??Re-Entry Discipline.

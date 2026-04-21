@@ -20,7 +20,7 @@ export default async function RiskV1Page() {
           </code>
         </p>
         <a href="/crash" style={{ color: '#6366f1' }}>
-          {pickLang(uiLang, 'Crash Hub로 돌아가기', 'Back to Crash Hub')}
+          {pickLang(uiLang, '크래시 허브로 돌아가기', 'Back to Crash Hub')}
         </a>
         <div style={{ marginTop: '1rem' }}>
           <RiskV1RefreshButton uiLang={uiLang} />

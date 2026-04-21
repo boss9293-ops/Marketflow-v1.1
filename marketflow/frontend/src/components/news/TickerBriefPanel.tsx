@@ -75,14 +75,19 @@ function SignalBars({ value }: { value: number }) {
   )
 }
 
+const BRIEF_COLLAPSE_THRESHOLD = 5
+
 function BriefCard({ day }: { day: TickerBriefDay }) {
   const { price, brief, sentiment, signal_strength, events, date, generated_at } = day
   const change = price?.change1d ?? 0
   const close = price?.close ?? 0
   const dir = change >= 0 ? '+' : ''
+  const [expanded, setExpanded] = useState(false)
 
   // Split brief into lines for display (split on period+space)
   const sentences = brief.split(/(?<=\.)\s+/).filter(Boolean)
+  const needsToggle = sentences.length > BRIEF_COLLAPSE_THRESHOLD
+  const visible = needsToggle && !expanded ? sentences.slice(0, BRIEF_COLLAPSE_THRESHOLD) : sentences
 
   return (
     <div className={`rounded-lg border p-4 space-y-3 ${SENTIMENT_BG[sentiment]}`}>
@@ -122,7 +127,7 @@ function BriefCard({ day }: { day: TickerBriefDay }) {
 
       {/* Brief text */}
       <div className="space-y-1.5">
-        {sentences.map((s, i) => (
+        {visible.map((s, i) => (
           <p
             key={i}
             className={`text-sm leading-relaxed ${
@@ -134,6 +139,14 @@ function BriefCard({ day }: { day: TickerBriefDay }) {
             {s}
           </p>
         ))}
+        {needsToggle && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors mt-0.5 font-mono"
+          >
+            {expanded ? '▲ less' : `▼ more (${sentences.length - BRIEF_COLLAPSE_THRESHOLD} more)`}
+          </button>
+        )}
       </div>
 
       {/* Top events */}

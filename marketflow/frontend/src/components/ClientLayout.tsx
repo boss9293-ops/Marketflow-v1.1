@@ -194,9 +194,7 @@ export default function ClientLayout({
                 value={uiLang}
                 onChange={(next) => {
                   setUiLang(next)
-                  setContentLang(next)
                   persistUiLang(next)
-                  persistContentLang(next)
                   router.refresh()
                 }}
               />
