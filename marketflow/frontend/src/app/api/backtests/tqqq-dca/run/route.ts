@@ -280,6 +280,8 @@ async function runBacktest(rawParams: Record<string, unknown>) {
       mdd_pct: +mdd.toFixed(2),
       buy_count: buyCount, sell_count: sellCount,
       realized_pnl: +realizedPnl.toFixed(2),
+      unrealized_pnl: +(totalShares * (curve[curve.length-1] as any).close - investedCost).toFixed(2),
+      cash_realized: +cashRealized.toFixed(2),
       pool_balance: +poolBalance.toFixed(2),
       bh: {
         total_invested: +bhCost.toFixed(2),
