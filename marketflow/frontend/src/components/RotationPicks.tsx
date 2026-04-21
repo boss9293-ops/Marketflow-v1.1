@@ -283,15 +283,13 @@ function StockRow({ s, rank }: { s: RotationStock; rank: number }) {
   )
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
-
 export default function RotationPicks() {
   const [data, setData] = useState<SectorRotationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(false)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/sector-rotation`)
+    fetch('/api/sector-rotation')
       .then(r => r.json())
       .then(d => {
         if (!d.error) setData(d)
