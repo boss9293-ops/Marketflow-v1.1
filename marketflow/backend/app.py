@@ -98,6 +98,7 @@ from services.google_sa_store import (
     delete_google_service_account_json,
     get_google_service_account_json,
     get_google_service_account_status,
+    resolve_google_service_account_json,
     save_google_service_account_json,
 )
 from services.script_env import build_script_env
@@ -8750,6 +8751,41 @@ def my_holdings_credentials_save():
 def my_holdings_credentials_delete():
     delete_google_service_account_json()
     return jsonify({'ok': True, 'message': 'Credentials removed.'})
+
+
+@app.route('/api/my/holdings/sa-diag')
+def my_holdings_sa_diag():
+    """Diagnose GOOGLE_SERVICE_ACCOUNT_JSON env var format (no secrets leaked)."""
+    import json as _json
+    env_raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+    env_stripped = env_raw.strip()
+    sa_raw, source = resolve_google_service_account_json()
+
+    env_diag = {
+        "env_set": bool(env_raw),
+        "env_len": len(env_raw),
+        "env_stripped_len": len(env_stripped),
+        "env_first_char": repr(env_stripped[:1]) if env_stripped else "",
+        "env_last_char": repr(env_stripped[-1:]) if env_stripped else "",
+        "env_starts_with_brace": env_stripped.startswith("{"),
+        "env_starts_with_quote": env_stripped.startswith('"'),
+        "env_json_valid": False,
+        "env_json_error": None,
+    }
+    if env_stripped:
+        try:
+            parsed = _json.loads(env_stripped)
+            env_diag["env_json_valid"] = True
+            env_diag["env_json_type_field"] = parsed.get("type") if isinstance(parsed, dict) else None
+            env_diag["env_json_is_service_account"] = parsed.get("type") == "service_account" if isinstance(parsed, dict) else False
+        except Exception as je:
+            env_diag["env_json_error"] = str(je)
+
+    return jsonify({
+        "source": source,
+        "configured": bool(sa_raw),
+        "env": env_diag,
+    })
 
 
 @app.route('/api/my/holdings/sa-email')
