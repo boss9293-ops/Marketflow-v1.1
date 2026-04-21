@@ -130,7 +130,32 @@ def main() -> int:
            ORDER BY date""",
         [mkt_cutoff],
     ).fetchall()
+
+    # app_kv: config 데이터 (SA JSON, Sheets URL 등) — 항상 전체 upsert
+    try:
+        src.execute("SELECT 1 FROM app_kv LIMIT 1")
+        kv_rows = src.execute("SELECT key, value, updated_at FROM app_kv").fetchall()
+    except Exception:
+        kv_rows = []
     src.close()
+
+    # ── 2b. app_kv → Turso 항상 동기화 (Railway에서 SA JSON 접근 위해 필수)
+    if kv_rows:
+        create_kv = (
+            "CREATE TABLE IF NOT EXISTS app_kv "
+            "(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        )
+        _turso_pipeline(pipe_url, token, [
+            {"type": "execute", "stmt": {"sql": create_kv}},
+            {"type": "close"},
+        ])
+        kv_sql = (
+            "INSERT OR REPLACE INTO app_kv (key, value, updated_at) VALUES (?,?,?)"
+        )
+        _insert_batch(pipe_url, token, kv_sql, [
+            (r["key"], r["value"], r["updated_at"]) for r in kv_rows
+        ])
+        print(f"[TURSO-SYNC] app_kv: {len(kv_rows)} rows synced", flush=True)
 
     print(f"[TURSO-SYNC] New ohlcv rows: {len(ohlcv_rows)}", flush=True)
     print(f"[TURSO-SYNC] New market rows: {len(market_rows)}", flush=True)
