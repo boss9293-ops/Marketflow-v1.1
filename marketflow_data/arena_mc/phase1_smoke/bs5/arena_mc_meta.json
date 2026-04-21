@@ -1,0 +1,54 @@
+{
+  "framework": "Arena Monte Carlo Backtest Framework (Phase 1)",
+  "source_series": "QQQ",
+  "source_meta": {
+    "source_series": "QQQ",
+    "asset_return_model": "synthetic_3x_from_qqq",
+    "notes": [
+      "Phase 1 defaults to QQQ daily returns, transformed into a synthetic TQQQ-style path."
+    ]
+  },
+  "horizon_days": 63,
+  "warmup_days": 200,
+  "block_size": 5,
+  "n_paths": 3,
+  "seed": 7,
+  "strategy_list": [
+    "Buy & Hold",
+    "VR Original (Capped)",
+    "MA200 (50%)",
+    "MA200 + LB30",
+    "LB30",
+    "LB25",
+    "Adaptive"
+  ],
+  "initial_conditions": {
+    "initial_capital": 10000.0,
+    "initial_invested_pct": 80.0,
+    "initial_cash_pct": 20.0
+  },
+  "global_constraints": {
+    "min_cash_pct": 20.0,
+    "max_invested_pct": 80.0,
+    "cycle_additional_cap_pct": 50.0
+  },
+  "warning_layer_notes": [
+    "Warning metrics are path-level diagnostics and do not execute trades.",
+    "scenario_hint is a classification handoff, not a trading signal."
+  ],
+  "vr_original_phase1_assumption": "Monte Carlo uses a path-local capped Vmin baseline for VR Original because archive-date defense intent cannot be replayed on synthetic dates.",
+  "scenario_counts": {
+    "V": 0,
+    "Correction": 3,
+    "Bear": 0,
+    "Mixed": 0
+  },
+  "warning_state_counts": {
+    "NORMAL": 0,
+    "WATCH": 0,
+    "ALERT": 0,
+    "DEFENSE_READY": 0,
+    "DEFENSE_ACTIVE": 0,
+    "RECOVERY_MODE": 3
+  }
+}

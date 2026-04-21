@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface Signal {
   ticker: string
@@ -17,7 +18,7 @@ export default function SmartMoneyChart() {
   const [data, setData] = useState<{ signals: Signal[] } | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/smart-money')
+    fetch(clientApiUrl('/api/smart-money'))
       .then(r => r.json())
       .then(setData)
       .catch(() => {})

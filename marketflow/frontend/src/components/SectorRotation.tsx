@@ -1,6 +1,7 @@
 'use client'
 
 import { CSSProperties, useEffect, useMemo, useState } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
 interface SectorRow {
@@ -96,14 +97,14 @@ function PerformanceChart({
   )
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
+// clientApiUrl() is used inline: /api/flask proxy in production, localhost in dev
 
 export default function SectorRotation() {
   const [data, setData] = useState<SectorPerformanceResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/sector-performance`)
+    fetch(clientApiUrl('/api/sector-performance'))
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()

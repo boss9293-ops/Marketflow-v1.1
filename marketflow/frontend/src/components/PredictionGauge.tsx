@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import CircularProgress from './CircularProgress'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface PredData {
   spy: { bullish_probability: number; direction: string; confidence: string }
@@ -11,7 +12,7 @@ export default function PredictionGauge() {
   const [data, setData] = useState<PredData | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/prediction')
+    fetch(clientApiUrl('/api/prediction'))
       .then(r => r.json())
       .then(setData)
       .catch(() => {})

@@ -1,0 +1,27 @@
+{
+  "sourceSeries": "QQQ",
+  "horizonDays": 63,
+  "blockSize": 10,
+  "nPaths": 4,
+  "randomSeed": 42,
+  "initialInvestedPct": 0.8,
+  "initialCashPct": 0.2,
+  "strategies": [
+    "BUY_HOLD",
+    "VR_ORIGINAL_CAPPED",
+    "MA200_50",
+    "MA200_LB30",
+    "LB30",
+    "LB25",
+    "ADAPTIVE"
+  ],
+  "crashInjection": {
+    "enabled": true,
+    "crashLengthDays": 10,
+    "recoveryLengthDays": 20,
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "useHistoricalEpisodeTemplate": false,
+    "episodeTemplateKey": null
+  }
+}

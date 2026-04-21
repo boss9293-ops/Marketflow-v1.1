@@ -1,0 +1,4 @@
+{
+  "provider": "fred",
+  "series": ["M2SL", "DGS10", "FEDFUNDS", "CPIAUCSL", "BAMLH0A0HYM2", "SOFR"]
+}

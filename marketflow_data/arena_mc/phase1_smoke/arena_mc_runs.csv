@@ -1,0 +1,22 @@
+pathId,blockSize,horizonDays,sourceSeries,strategy,finalEquity,cagr,maxDrawdown,recoveryDays,survival,minCashPctObserved,maxCapitalUsagePct,cycleCapHitCount,warningLeadTimeAvg,falseDefenseRate,missedReboundCost,warningState,scenarioHint,constraintViolation
+bs05-p0001,5,63,QQQ,Buy & Hold,10396.48,0.168276,-18.81,29,True,20.0,80.0,0,7.0,0.0,0.0,RECOVERY_MODE,Correction,False
+bs05-p0001,5,63,QQQ,VR Original (Capped),10069.42,0.028058,-12.87,30,True,20.0,80.0,0,7.0,0.0,8.87,RECOVERY_MODE,Correction,False
+bs05-p0001,5,63,QQQ,MA200 (50%),8948.3,-0.358846,-22.19,,True,20.0,80.0,0,7.0,0.0,8.56,RECOVERY_MODE,Correction,False
+bs05-p0001,5,63,QQQ,MA200 + LB30,9460.62,-0.198915,-14.96,,True,20.0,80.0,0,7.0,0.0,8.87,RECOVERY_MODE,Correction,False
+bs05-p0001,5,63,QQQ,LB30,9460.62,-0.198915,-14.96,,True,20.0,80.0,0,7.0,0.0,8.87,RECOVERY_MODE,Correction,False
+bs05-p0001,5,63,QQQ,LB25,9680.91,-0.121656,-14.96,,True,20.0,80.0,1,7.0,0.0,10.52,RECOVERY_MODE,Correction,False
+bs05-p0001,5,63,QQQ,Adaptive,8948.3,-0.358846,-22.19,,True,20.0,80.0,0,7.0,0.0,8.56,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,Buy & Hold,6733.49,-0.794429,-37.17,,True,20.0,80.0,0,,0.0,0.0,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,VR Original (Capped),7880.38,-0.614354,-24.61,,True,20.0,80.0,0,,0.0,2.63,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,MA200 (50%),7780.72,-0.633496,-26.32,,True,20.0,80.0,0,,0.0,1.56,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,MA200 + LB30,8164.54,-0.555648,-21.89,,True,20.0,80.0,0,,0.0,2.63,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,LB30,8164.54,-0.555648,-21.89,,True,20.0,80.0,0,,0.0,2.63,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,LB25,8164.54,-0.555648,-21.89,,True,20.0,80.0,0,,0.0,2.63,RECOVERY_MODE,Correction,False
+bs05-p0002,5,63,QQQ,Adaptive,8641.64,-0.44232,-18.17,,True,20.0,80.0,0,,0.0,1.56,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,Buy & Hold,9645.82,-0.134322,-28.26,31,True,20.0,80.0,0,2.0,0.0,0.0,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,VR Original (Capped),9060.87,-0.325969,-24.31,,True,20.0,80.0,0,2.0,0.0,10.3,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,MA200 (50%),9550.67,-0.167977,-26.98,33,True,20.0,80.0,0,2.0,0.0,4.22,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,MA200 + LB30,9169.39,-0.293094,-24.31,33,True,20.0,80.0,1,2.0,0.0,7.21,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,LB30,9169.39,-0.293094,-24.31,33,True,20.0,80.0,1,2.0,0.0,7.21,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,LB25,9190.26,-0.286636,-24.31,33,True,20.0,80.0,1,2.0,0.0,7.04,RECOVERY_MODE,Correction,False
+bs05-p0003,5,63,QQQ,Adaptive,8839.13,-0.389567,-24.57,28,True,20.0,80.0,0,2.0,0.0,10.05,RECOVERY_MODE,Correction,False

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface RiskData {
   var_95: Record<string, number>
@@ -14,7 +15,7 @@ export default function RiskMetrics() {
   const [data, setData] = useState<RiskData | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/risk')
+    fetch(clientApiUrl('/api/risk'))
       .then(r => r.json())
       .then(setData)
       .catch(() => {})

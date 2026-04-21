@@ -1,0 +1,7 @@
+Task 1 (Post-close)
+- Trigger: Weekdays 16:45 (CT)
+- Action: python.exe "D:\path\to\marketflow\backend\scripts\run_daily_snapshot.py"
+
+Task 2 (Premarket)
+- Trigger: Weekdays 07:30 (CT)
+- Action: python.exe "D:\path\to\marketflow\backend\scripts\run_daily_snapshot.py"

@@ -1,0 +1,916 @@
+{
+  "generated_at": "2026-04-13T07:06:10",
+  "leaders": [
+    {
+      "symbol": "KLAC",
+      "name": "KLA Corporation",
+      "sector": "Semiconductor Materials & Equipment",
+      "price": 1737.28,
+      "change_pct": 0.58,
+      "volume": 686400,
+      "vol_ratio": 0.71,
+      "rsi14": 70.4,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+",
+        "GAP_UP"
+      ],
+      "hot_score": 80,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "AMD",
+      "name": "Advanced Micro Devices",
+      "sector": "Semiconductors",
+      "price": 245.04,
+      "change_pct": 3.55,
+      "volume": 36398600,
+      "vol_ratio": 1.1,
+      "rsi14": 70.2,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+",
+        "GAP_UP"
+      ],
+      "hot_score": 80,
+      "streak": 1,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "DLR",
+      "name": "Digital Realty",
+      "sector": "Data Center REITs",
+      "price": 188.87,
+      "change_pct": 0.38,
+      "volume": 1317100,
+      "vol_ratio": 0.77,
+      "rsi14": 70.6,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 70,
+      "streak": 6,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "JBL",
+      "name": "Jabil",
+      "sector": "Electronic Manufacturing Services",
+      "price": 299.5,
+      "change_pct": 2.21,
+      "volume": 1155800,
+      "vol_ratio": 0.96,
+      "rsi14": 65.8,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+",
+        "GAP_UP"
+      ],
+      "hot_score": 65,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "AMAT",
+      "name": "Applied Materials",
+      "sector": "Semiconductor Materials & Equipment",
+      "price": 399.49,
+      "change_pct": 0.42,
+      "volume": 6397400,
+      "vol_ratio": 1.02,
+      "rsi14": 66.2,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+",
+        "GAP_UP"
+      ],
+      "hot_score": 65,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "SNDK",
+      "name": "Sandisk",
+      "sector": "Technology Hardware, Storage & Peripherals",
+      "price": 851.77,
+      "change_pct": 0.02,
+      "volume": 13277400,
+      "vol_ratio": 0.72,
+      "rsi14": 68.3,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+",
+        "GAP_UP"
+      ],
+      "hot_score": 65,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "MRVL",
+      "name": "MRVL",
+      "sector": "Tech",
+      "price": 128.49,
+      "change_pct": 7.14,
+      "volume": 41136500,
+      "vol_ratio": 1.83,
+      "rsi14": 79.5,
+      "ai_score": 80,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 60,
+      "streak": 2,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "AVGO",
+      "name": "Broadcom",
+      "sector": "Semiconductors",
+      "price": 371.55,
+      "change_pct": 4.69,
+      "volume": 29929600,
+      "vol_ratio": 1.18,
+      "rsi14": 70.9,
+      "ai_score": 80,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 60,
+      "streak": 1,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "AMZN",
+      "name": "Amazon",
+      "sector": "Broadline Retail",
+      "price": 238.38,
+      "change_pct": 2.02,
+      "volume": 56842200,
+      "vol_ratio": 1.33,
+      "rsi14": 71.4,
+      "ai_score": 80,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 60,
+      "streak": 1,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "STX",
+      "name": "Seagate Technology",
+      "sector": "Technology Hardware, Storage & Peripherals",
+      "price": 503.13,
+      "change_pct": 0.47,
+      "volume": 3431500,
+      "vol_ratio": 0.91,
+      "rsi14": 68.9,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 4,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "GEV",
+      "name": "GE Vernova",
+      "sector": "Heavy Electrical Equipment",
+      "price": 991.32,
+      "change_pct": 2.41,
+      "volume": 2161300,
+      "vol_ratio": 0.89,
+      "rsi14": 69.3,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "FLEX",
+      "name": "FLEX",
+      "sector": "Tech",
+      "price": 76.74,
+      "change_pct": 2.31,
+      "volume": 3953900,
+      "vol_ratio": 1.16,
+      "rsi14": 66.9,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "FIX",
+      "name": "Comfort Systems USA",
+      "sector": "Construction & Engineering",
+      "price": 1592.84,
+      "change_pct": 1.17,
+      "volume": 241200,
+      "vol_ratio": 0.67,
+      "rsi14": 65.4,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "TER",
+      "name": "Teradyne",
+      "sector": "Semiconductor Materials & Equipment",
+      "price": 367.99,
+      "change_pct": 1.04,
+      "volume": 3112200,
+      "vol_ratio": 1.02,
+      "rsi14": 69.0,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "GLW",
+      "name": "Corning Inc.",
+      "sector": "Electronic Components",
+      "price": 171.24,
+      "change_pct": 0.85,
+      "volume": 9880500,
+      "vol_ratio": 0.86,
+      "rsi14": 69.6,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    }
+  ],
+  "trending": [
+    {
+      "symbol": "Q",
+      "name": "Qnity Electronics",
+      "sector": "Semiconductor Materials & Equipment",
+      "price": 130.65,
+      "change_pct": 0.59,
+      "volume": 1390100,
+      "vol_ratio": 0.87,
+      "rsi14": 65.3,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "KEYS",
+      "name": "Keysight Technologies",
+      "sector": "Electronic Equipment & Instruments",
+      "price": 324.18,
+      "change_pct": 0.38,
+      "volume": 1178400,
+      "vol_ratio": 1.01,
+      "rsi14": 69.8,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "GRMN",
+      "name": "Garmin",
+      "sector": "Consumer Electronics",
+      "price": 256.89,
+      "change_pct": 0.14,
+      "volume": 711400,
+      "vol_ratio": 1.2,
+      "rsi14": 66.7,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "IRM",
+      "name": "Iron Mountain",
+      "sector": "Other Specialized REITs",
+      "price": 109.37,
+      "change_pct": 0.63,
+      "volume": 1062400,
+      "vol_ratio": 0.87,
+      "rsi14": 63.2,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 2,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "PWR",
+      "name": "Quanta Services",
+      "sector": "Construction & Engineering",
+      "price": 585.36,
+      "change_pct": 0.57,
+      "volume": 611400,
+      "vol_ratio": 0.58,
+      "rsi14": 61.3,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 2,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "APD",
+      "name": "Air Products",
+      "sector": "Industrial Gases",
+      "price": 298.71,
+      "change_pct": 0.33,
+      "volume": 863300,
+      "vol_ratio": 0.69,
+      "rsi14": 65.8,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 2,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "CC",
+      "name": "CC",
+      "sector": "Finance",
+      "price": 22.71,
+      "change_pct": 3.98,
+      "volume": 2674600,
+      "vol_ratio": 0.77,
+      "rsi14": 66.0,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 1,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "ROG",
+      "name": "ROG",
+      "sector": "Finance",
+      "price": 117.96,
+      "change_pct": 2.09,
+      "volume": 178400,
+      "vol_ratio": 1.0,
+      "rsi14": 69.9,
+      "ai_score": 100,
+      "tags": [
+        "HOT",
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "AI_SCORE_90+"
+      ],
+      "hot_score": 55,
+      "streak": 1,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "SLAB",
+      "name": "SLAB",
+      "sector": "Finance",
+      "price": 211.22,
+      "change_pct": 0.4,
+      "volume": 272900,
+      "vol_ratio": 0.72,
+      "rsi14": 76.1,
+      "ai_score": 60,
+      "tags": [
+        "HOT",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D"
+      ],
+      "hot_score": 50,
+      "streak": 5,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "MPWR",
+      "name": "Monolithic Power Systems",
+      "sector": "Semiconductors",
+      "price": 1353.85,
+      "change_pct": 1.47,
+      "volume": 522400,
+      "vol_ratio": 0.99,
+      "rsi14": 73.4,
+      "ai_score": 60,
+      "tags": [
+        "HOT",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D"
+      ],
+      "hot_score": 50,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "INTC",
+      "name": "Intel",
+      "sector": "Semiconductors",
+      "price": 62.38,
+      "change_pct": 1.07,
+      "volume": 98439700,
+      "vol_ratio": 0.97,
+      "rsi14": 75.5,
+      "ai_score": 80,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D"
+      ],
+      "hot_score": 50,
+      "streak": 3,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "NFLX",
+      "name": "Netflix",
+      "sector": "Movies & Entertainment",
+      "price": 103.01,
+      "change_pct": 0.94,
+      "volume": 25678900,
+      "vol_ratio": 0.71,
+      "rsi14": 72.7,
+      "ai_score": 80,
+      "tags": [
+        "HOT",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D"
+      ],
+      "hot_score": 50,
+      "streak": 2,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "STT",
+      "name": "State Street Corporation",
+      "sector": "Asset Management & Custody Banks",
+      "price": 139.42,
+      "change_pct": 0.67,
+      "volume": 2351600,
+      "vol_ratio": 1.42,
+      "rsi14": 73.3,
+      "ai_score": 60,
+      "tags": [
+        "HOT",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "RSI>70",
+        "NEW_HIGH_20D"
+      ],
+      "hot_score": 50,
+      "streak": 2,
+      "is_hot": true,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "SOXL",
+      "name": "Direxion Daily Semiconductor Bull 3X Shares",
+      "sector": "Leverage",
+      "price": 76.39,
+      "change_pct": 6.13,
+      "volume": 78239100,
+      "vol_ratio": 0.81,
+      "rsi14": 69.2,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "CARR",
+      "name": "Carrier Global",
+      "sector": "Building Products",
+      "price": 63.34,
+      "change_pct": 3.06,
+      "volume": 7428600,
+      "vol_ratio": 1.24,
+      "rsi14": 65.3,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "FNGU",
+      "name": "MicroSectors FANG+ Index 3X Leveraged ETN",
+      "sector": "Leverage",
+      "price": 19.57,
+      "change_pct": 2.35,
+      "volume": 6003600,
+      "vol_ratio": 0.96,
+      "rsi14": 59.1,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "SOXX",
+      "name": "iShares Semiconductor ETF",
+      "sector": "Sector",
+      "price": 386.6,
+      "change_pct": 2.1,
+      "volume": 5589900,
+      "vol_ratio": 0.74,
+      "rsi14": 69.7,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "CRH",
+      "name": "CRH plc",
+      "sector": "Construction Materials",
+      "price": 117.89,
+      "change_pct": 2.07,
+      "volume": 6357900,
+      "vol_ratio": 1.21,
+      "rsi14": 65.4,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "ASML",
+      "name": "ASML",
+      "sector": "Tech",
+      "price": 1478.28,
+      "change_pct": 2.05,
+      "volume": 1518200,
+      "vol_ratio": 0.89,
+      "rsi14": 61.4,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    },
+    {
+      "symbol": "FCX",
+      "name": "Freeport-McMoRan",
+      "sector": "Copper",
+      "price": 67.8,
+      "change_pct": 2.03,
+      "volume": 15705000,
+      "vol_ratio": 0.93,
+      "rsi14": 66.6,
+      "ai_score": 80,
+      "tags": [
+        "GAIN",
+        "AI",
+        "BREAKOUT"
+      ],
+      "triggers": [
+        "3D_UP",
+        "NEW_HIGH_20D",
+        "GAP_UP"
+      ],
+      "hot_score": 45,
+      "streak": 0,
+      "is_hot": false,
+      "date": "2026-04-10"
+    }
+  ],
+  "summary": {
+    "data_date": "2026-04-10",
+    "total_symbols": 715,
+    "hot_symbols": 28,
+    "streak_3plus": 17,
+    "avg_hot_score": 8.66,
+    "leaders_count": 15,
+    "trending_count": 20,
+    "trigger_counts": {
+      "3D_UP": 133,
+      "VOLUME_2X": 19,
+      "RSI>70": 14,
+      "NEW_HIGH_20D": 125,
+      "AI_SCORE_90+": 35,
+      "GAP_UP": 41
+    }
+  }
+}

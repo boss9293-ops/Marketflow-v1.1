@@ -1,0 +1,98 @@
+{
+  "_doc": "VR Action Model (WO-SA10) — standalone sample. Source: smart_analyzer_sample.json",
+  "scenarios": [
+    {
+      "name": "2022-like structural pressure",
+      "runtime_mode": "LOCKDOWN",
+      "vr_action_policy": {
+        "runtime_mode": "LOCKDOWN",
+        "permissions": {
+          "base_buy": "BLOCK",
+          "rebound_buy": "BLOCK",
+          "aggressive_add": "BLOCK",
+          "defensive_buy": "BLOCK",
+          "maintenance_buy": "BLOCK",
+          "reduce_risk": "PRIORITIZE",
+          "hold": "ALLOW"
+        },
+        "sizing_profile": {
+          "base_buy_pct": 0,
+          "rebound_buy_pct": 0,
+          "aggressive_add_pct": 0,
+          "defensive_buy_pct": 0,
+          "maintenance_buy_pct": 0
+        },
+        "action_summary": "LOCKDOWN: 모든 매수·추가 진입이 차단됩니다. 감축/보유만 허용됩니다.",
+        "action_reason": "정책 상태가 LOCKDOWN 수준으로 최강 제한이 적용됩니다. 충격 플래그로 반등 추격이 추가 억제됩니다."
+      },
+      "debug_vr_action_policy": {
+        "mode_rule": "mode=LOCKDOWN",
+        "gate_consistency_rule": "no_gate_override",
+        "shock_override_rule": "shock_flag=true_no_change_needed",
+        "structural_override_rule": "structural_risk_flag=false"
+      }
+    },
+    {
+      "name": "2020-like shock event",
+      "runtime_mode": "LOCKDOWN",
+      "vr_action_policy": {
+        "runtime_mode": "LOCKDOWN",
+        "permissions": {
+          "base_buy": "BLOCK",
+          "rebound_buy": "BLOCK",
+          "aggressive_add": "BLOCK",
+          "defensive_buy": "BLOCK",
+          "maintenance_buy": "BLOCK",
+          "reduce_risk": "PRIORITIZE",
+          "hold": "ALLOW"
+        },
+        "sizing_profile": {
+          "base_buy_pct": 0,
+          "rebound_buy_pct": 0,
+          "aggressive_add_pct": 0,
+          "defensive_buy_pct": 0,
+          "maintenance_buy_pct": 0
+        },
+        "action_summary": "LOCKDOWN: 모든 매수·추가 진입이 차단됩니다. 감축/보유만 허용됩니다.",
+        "action_reason": "정책 상태가 LOCKDOWN 수준으로 최강 제한이 적용됩니다. 충격 플래그로 반등 추격이 추가 억제됩니다."
+      },
+      "debug_vr_action_policy": {
+        "mode_rule": "mode=LOCKDOWN",
+        "gate_consistency_rule": "no_gate_override",
+        "shock_override_rule": "shock_flag=true_no_change_needed",
+        "structural_override_rule": "structural_risk_flag=false"
+      }
+    },
+    {
+      "name": "mixed macro and event backdrop",
+      "runtime_mode": "LIMITED",
+      "vr_action_policy": {
+        "runtime_mode": "LIMITED",
+        "permissions": {
+          "base_buy": "LIMIT",
+          "rebound_buy": "LIMIT",
+          "aggressive_add": "BLOCK",
+          "defensive_buy": "ALLOW",
+          "maintenance_buy": "LIMIT",
+          "reduce_risk": "ALLOW",
+          "hold": "ALLOW"
+        },
+        "sizing_profile": {
+          "base_buy_pct": 50,
+          "rebound_buy_pct": 40,
+          "aggressive_add_pct": 0,
+          "defensive_buy_pct": 70,
+          "maintenance_buy_pct": 50
+        },
+        "action_summary": "LIMITED: 기본 매수와 방어 매수는 제한 허용됩니다. 적극적 추가는 차단.",
+        "action_reason": "제한적 참여만 허용되는 신중한 실행 상태입니다."
+      },
+      "debug_vr_action_policy": {
+        "mode_rule": "mode=LIMITED",
+        "gate_consistency_rule": "no_gate_override",
+        "shock_override_rule": "shock_flag=false",
+        "structural_override_rule": "structural_risk_flag=false"
+      }
+    }
+  ]
+}

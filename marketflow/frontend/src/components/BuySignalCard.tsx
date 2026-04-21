@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface GateData {
   score: number
@@ -11,7 +12,7 @@ export default function BuySignalCard() {
   const [data, setData] = useState<GateData | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/market/gate')
+    fetch(clientApiUrl('/api/market/gate'))
       .then(r => r.json())
       .then(setData)
       .catch(() => setData({ score: 65, status: 'YELLOW', signal: 'SELECTIVE' }))

@@ -1,0 +1,8 @@
+strategy,blockSize,horizonDays,sourceSeries,nRuns,medianFinalEquity,p10FinalEquity,p90FinalEquity,medianMaxDrawdown,p90MaxDrawdown,medianRecoveryDays,worst5RecoveryDays,survivalProbability,poolSurvivalProbability,medianFalseDefenseRate,medianWarningLeadTime
+Buy & Hold,5,63,QQQ,3,9645.82,7315.96,10246.35,-28.26,-20.7,30.0,30.9,1.0,1.0,0.0,4.5
+VR Original (Capped),5,63,QQQ,3,9060.87,8116.48,9867.71,-24.31,-15.16,30.0,30.0,1.0,1.0,0.0,4.5
+MA200 (50%),5,63,QQQ,3,8948.3,8014.24,9430.2,-26.32,-23.02,33.0,33.0,1.0,1.0,0.0,4.5
+MA200 + LB30,5,63,QQQ,3,9169.39,8365.51,9402.37,-21.89,-16.35,33.0,33.0,1.0,1.0,0.0,4.5
+LB30,5,63,QQQ,3,9169.39,8365.51,9402.37,-21.89,-16.35,33.0,33.0,1.0,1.0,0.0,4.5
+LB25,5,63,QQQ,3,9190.26,8369.68,9582.78,-21.89,-16.35,33.0,33.0,1.0,1.0,0.0,4.5
+Adaptive,5,63,QQQ,3,8839.13,8681.14,8926.47,-22.19,-18.97,28.0,28.0,1.0,1.0,0.0,4.5

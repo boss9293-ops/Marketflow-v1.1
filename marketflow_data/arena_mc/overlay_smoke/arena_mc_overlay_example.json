@@ -1,0 +1,29 @@
+{
+  "current": {
+    "dd3": -10.55,
+    "dd5": -5.96,
+    "dd6": -5.81,
+    "peakDD": -10.55,
+    "reboundFromLow": null,
+    "ma200Gap": null,
+    "warningState": "WATCH",
+    "scenarioHint": "Mixed"
+  },
+  "overlay": {
+    "mcCrashRiskScore": 50,
+    "mcBearPathSimilarity": 50,
+    "mcVShapeOdds20d": 0,
+    "mcRecoveryOdds20d": 100,
+    "mcCashStressRisk": 0,
+    "mcFalseRecoveryRisk": 100,
+    "mcWarningConfidence": 84.77,
+    "dominantMcScenario": "Mixed",
+    "overlayReason": "Similar MC paths show better-than-usual recovery odds over the next 20 trading days. False-recovery risk remains elevated, so rebounds should be treated cautiously."
+  },
+  "similarPathIds": [
+    "mc-0001",
+    "mc-0004",
+    "mc-0003",
+    "mc-0002"
+  ]
+}

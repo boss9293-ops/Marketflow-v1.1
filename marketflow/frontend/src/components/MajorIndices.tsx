@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface IndexData { name: string; price: number; change_pct: number }
 interface MarketData {
@@ -25,7 +26,7 @@ export default function MajorIndices() {
   const [refresh, setRefresh] = useState(0)
 
   const load = () =>
-    fetch('http://localhost:5001/api/market/indices')
+    fetch(clientApiUrl('/api/market/indices'))
       .then(r => r.json())
       .then(setData)
       .catch(() => {})

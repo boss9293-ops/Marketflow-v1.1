@@ -1,0 +1,5 @@
+{
+  "provider": "stooq",
+  "interval": "d",
+  "symbols": ["tqqq.us", "qqq.us", "spy.us", "iwm.us", "dia.us", "vix.us", "dxy.us", "xauusd", "btcusd"]
+}

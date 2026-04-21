@@ -1,0 +1,593 @@
+{
+  "generated_at": "2026-04-04T01:33:24",
+  "db_path": "D:\\Youtube_pro\\000-Code_develop\\주식분석\\us_market_complete\\marketflow\\data\\marketflow.db",
+  "universe_symbols": {
+    "total_symbols": 544,
+    "sector_null_count": 20,
+    "sector_null_ratio": 0.03676470588235294,
+    "is_active_distribution": [
+      {
+        "is_active": 1,
+        "count": 544
+      }
+    ]
+  },
+  "ohlcv_daily": {
+    "total_rows": 404057,
+    "symbol_row_count_stats": {
+      "min": 109,
+      "median": 535.0,
+      "max": 6808
+    },
+    "duplicate_symbol_date_groups": 0,
+    "date_range": {
+      "min": "1999-03-10",
+      "max": "2026-04-02"
+    },
+    "close_null": {
+      "count": 0,
+      "ratio": 0.0
+    },
+    "volume_zero": {
+      "count": 105,
+      "ratio": 0.00025986432607280656
+    },
+    "extreme_ret1d_gt_30pct_top20": [
+      {
+        "symbol": "SOXL",
+        "date": "2025-04-09",
+        "prev_close": 8.25,
+        "close": 12.77,
+        "ret1d_pct": 54.78787878787878,
+        "abs_ret1d_pct": 54.78787878787878
+      },
+      {
+        "symbol": "APA",
+        "date": "2020-03-09",
+        "prev_close": 19.5412,
+        "close": 9.01539,
+        "ret1d_pct": -53.864706363989924,
+        "abs_ret1d_pct": 53.864706363989924
+      },
+      {
+        "symbol": "GL",
+        "date": "2024-04-11",
+        "prev_close": 104.93,
+        "close": 49.17,
+        "ret1d_pct": -53.14018869722672,
+        "abs_ret1d_pct": 53.14018869722672
+      },
+      {
+        "symbol": "APP",
+        "date": "2024-11-07",
+        "prev_close": 168.55,
+        "close": 246.53,
+        "ret1d_pct": 46.26520320379708,
+        "abs_ret1d_pct": 46.26520320379708
+      },
+      {
+        "symbol": "FISV",
+        "date": "2025-10-29",
+        "prev_close": 126.17,
+        "close": 70.6,
+        "ret1d_pct": -44.0437504953634,
+        "abs_ret1d_pct": 44.0437504953634
+      },
+      {
+        "symbol": "DXCM",
+        "date": "2024-07-26",
+        "prev_close": 107.85,
+        "close": 64.0,
+        "ret1d_pct": -40.65832174316179,
+        "abs_ret1d_pct": 40.65832174316179
+      },
+      {
+        "symbol": "CNC",
+        "date": "2025-07-02",
+        "prev_close": 56.65,
+        "close": 33.78,
+        "ret1d_pct": -40.37069726390114,
+        "abs_ret1d_pct": 40.37069726390114
+      },
+      {
+        "symbol": "TECL",
+        "date": "2025-04-09",
+        "prev_close": 37.33,
+        "close": 51.83,
+        "ret1d_pct": 38.84275381730511,
+        "abs_ret1d_pct": 38.84275381730511
+      },
+      {
+        "symbol": "TTD",
+        "date": "2025-08-08",
+        "prev_close": 88.33000183105469,
+        "close": 54.22999954223633,
+        "ret1d_pct": -38.6052321769902,
+        "abs_ret1d_pct": 38.6052321769902
+      },
+      {
+        "symbol": "SOXL",
+        "date": "2020-03-16",
+        "prev_close": 8.50164,
+        "close": 5.22029,
+        "ret1d_pct": -38.59667075999453,
+        "abs_ret1d_pct": 38.59667075999453
+      },
+      {
+        "symbol": "WST",
+        "date": "2025-02-13",
+        "prev_close": 322.2799987792969,
+        "close": 199.11000061035156,
+        "ret1d_pct": -38.21831905035297,
+        "abs_ret1d_pct": 38.21831905035297
+      },
+      {
+        "symbol": "PSKY",
+        "date": "2025-08-13",
+        "prev_close": 10.97,
+        "close": 15.0,
+        "ret1d_pct": 36.73655423883317,
+        "abs_ret1d_pct": 36.73655423883317
+      },
+      {
+        "symbol": "ALGN",
+        "date": "2025-07-31",
+        "prev_close": 203.57,
+        "close": 129.01,
+        "ret1d_pct": -36.626221938399574,
+        "abs_ret1d_pct": 36.626221938399574
+      },
+      {
+        "symbol": "TECL",
+        "date": "2020-03-16",
+        "prev_close": 15.662,
+        "close": 9.998,
+        "ret1d_pct": -36.16396373387818,
+        "abs_ret1d_pct": 36.16396373387818
+      },
+      {
+        "symbol": "ORCL",
+        "date": "2025-09-10",
+        "prev_close": 241.51,
+        "close": 328.33,
+        "ret1d_pct": 35.948821994948446,
+        "abs_ret1d_pct": 35.948821994948446
+      },
+      {
+        "symbol": "SNPS",
+        "date": "2025-09-10",
+        "prev_close": 604.37,
+        "close": 387.78,
+        "ret1d_pct": -35.83731819911644,
+        "abs_ret1d_pct": 35.83731819911644
+      },
+      {
+        "symbol": "TECL",
+        "date": "2020-03-13",
+        "prev_close": 11.558,
+        "close": 15.662,
+        "ret1d_pct": 35.50787333448695,
+        "abs_ret1d_pct": 35.50787333448695
+      },
+      {
+        "symbol": "SQQQ",
+        "date": "2025-04-09",
+        "prev_close": 257.559,
+        "close": 166.682,
+        "ret1d_pct": -35.283954356089296,
+        "abs_ret1d_pct": 35.283954356089296
+      },
+      {
+        "symbol": "TQQQ",
+        "date": "2025-04-09",
+        "prev_close": 19.3771,
+        "close": 26.2065,
+        "ret1d_pct": 35.24469605874976,
+        "abs_ret1d_pct": 35.24469605874976
+      },
+      {
+        "symbol": "ALGN",
+        "date": "2020-10-22",
+        "prev_close": 335.81,
+        "close": 453.23,
+        "ret1d_pct": 34.96620112563653,
+        "abs_ret1d_pct": 34.96620112563653
+      }
+    ]
+  },
+  "indicators_daily": {
+    "total_rows": 341666,
+    "coverage_stats": {
+      "min": 0.1007912584777694,
+      "median": 1.0,
+      "max": 1.174059929494712
+    },
+    "low_coverage_symbols_top20": [
+      {
+        "symbol": "SPY",
+        "ohlcv_rows": 5308,
+        "indicator_rows": 535,
+        "coverage": 0.1007912584777694
+      },
+      {
+        "symbol": "A",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AAPL",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ABBV",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ABT",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ACGL",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ACN",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ADBE",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ADI",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ADM",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ADP",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "ADSK",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AEE",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AEP",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AES",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AFL",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AIG",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AIZ",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AJG",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      },
+      {
+        "symbol": "AKAM",
+        "ohlcv_rows": 1782,
+        "indicator_rows": 535,
+        "coverage": 0.3002244668911336
+      }
+    ],
+    "sma200_null_ratio": 0.31658403235908755,
+    "rsi14_null_ratio": 0.02069857697283312
+  },
+  "market_daily": {
+    "total_rows": 7393,
+    "date_range": {
+      "min": "1999-03-10",
+      "max": "2026-04-04"
+    },
+    "null_ratios": {
+      "vix": {
+        "count": 6103,
+        "ratio": 0.8255106181523062
+      },
+      "dxy": {
+        "count": 6099,
+        "ratio": 0.8249695658054916
+      },
+      "us10y": {
+        "count": 6104,
+        "ratio": 0.8256458812390098
+      }
+    },
+    "spikes_abs_pct_gt_30_top30": [
+      {
+        "date": "2025-01-09",
+        "column": "gold",
+        "prev_value": 245.86000061035156,
+        "value": 2683.800048828125,
+        "pct_change": 9.915968608824317,
+        "abs_pct_change": 9.915968608824317
+      },
+      {
+        "date": "2025-07-04",
+        "column": "gold",
+        "prev_value": 307.1400146484375,
+        "value": 3332.5,
+        "pct_change": 9.850100413697279,
+        "abs_pct_change": 9.850100413697279
+      },
+      {
+        "date": "2021-05-25",
+        "column": "us2y",
+        "prev_value": 0.003000000026077032,
+        "value": 0.009999999776482582,
+        "pct_change": 2.3333332298530483,
+        "abs_pct_change": 2.3333332298530483
+      },
+      {
+        "date": "2021-03-23",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.009999999776482582,
+        "pct_change": 1.0,
+        "abs_pct_change": 1.0
+      },
+      {
+        "date": "2021-05-04",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.009999999776482582,
+        "pct_change": 1.0,
+        "abs_pct_change": 1.0
+      },
+      {
+        "date": "2021-05-11",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.009999999776482582,
+        "pct_change": 1.0,
+        "abs_pct_change": 1.0
+      },
+      {
+        "date": "2021-05-18",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.009999999776482582,
+        "pct_change": 1.0,
+        "abs_pct_change": 1.0
+      },
+      {
+        "date": "2026-02-17",
+        "column": "gold",
+        "prev_value": 5014.10009765625,
+        "value": 448.20001220703125,
+        "pct_change": -0.9106120732578645,
+        "abs_pct_change": 0.9106120732578645
+      },
+      {
+        "date": "2025-01-10",
+        "column": "gold",
+        "prev_value": 2683.800048828125,
+        "value": 248.2100067138672,
+        "pct_change": -0.9075154623302703,
+        "abs_pct_change": 0.9075154623302703
+      },
+      {
+        "date": "2024-12-18",
+        "column": "vix",
+        "prev_value": 15.869999885559082,
+        "value": 27.6200008392334,
+        "pct_change": 0.7403907396600702,
+        "abs_pct_change": 0.7403907396600702
+      },
+      {
+        "date": "2021-12-21",
+        "column": "us2y",
+        "prev_value": 0.03799999877810478,
+        "value": 0.06499999761581421,
+        "pct_change": 0.7105263080499507,
+        "abs_pct_change": 0.7105263080499507
+      },
+      {
+        "date": "2021-03-19",
+        "column": "us2y",
+        "prev_value": 0.003000000026077032,
+        "value": 0.004999999888241291,
+        "pct_change": 0.6666666149265241,
+        "abs_pct_change": 0.6666666149265241
+      },
+      {
+        "date": "2021-03-18",
+        "column": "us2y",
+        "prev_value": 0.00800000037997961,
+        "value": 0.003000000026077032,
+        "pct_change": -0.6250000145519146,
+        "abs_pct_change": 0.6250000145519146
+      },
+      {
+        "date": "2021-04-30",
+        "column": "us2y",
+        "prev_value": 0.00800000037997961,
+        "value": 0.003000000026077032,
+        "pct_change": -0.6250000145519146,
+        "abs_pct_change": 0.6250000145519146
+      },
+      {
+        "date": "2021-03-30",
+        "column": "us2y",
+        "prev_value": 0.00800000037997961,
+        "value": 0.013000000268220901,
+        "pct_change": 0.6249999563442563,
+        "abs_pct_change": 0.6249999563442563
+      },
+      {
+        "date": "2021-05-28",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.00800000037997961,
+        "pct_change": 0.6000001117587115,
+        "abs_pct_change": 0.6000001117587115
+      },
+      {
+        "date": "2022-01-04",
+        "column": "us2y",
+        "prev_value": 0.05299999937415123,
+        "value": 0.07999999821186066,
+        "pct_change": 0.5094339463497743,
+        "abs_pct_change": 0.5094339463497743
+      },
+      {
+        "date": "2025-04-04",
+        "column": "vix",
+        "prev_value": 30.020000457763672,
+        "value": 45.310001373291016,
+        "pct_change": 0.5093271379872046,
+        "abs_pct_change": 0.5093271379872046
+      },
+      {
+        "date": "2021-03-24",
+        "column": "us2y",
+        "prev_value": 0.009999999776482582,
+        "value": 0.014999999664723873,
+        "pct_change": 0.5,
+        "abs_pct_change": 0.5
+      },
+      {
+        "date": "2021-04-08",
+        "column": "us2y",
+        "prev_value": 0.009999999776482582,
+        "value": 0.004999999888241291,
+        "pct_change": -0.5,
+        "abs_pct_change": 0.5
+      },
+      {
+        "date": "2021-04-13",
+        "column": "us2y",
+        "prev_value": 0.009999999776482582,
+        "value": 0.014999999664723873,
+        "pct_change": 0.5,
+        "abs_pct_change": 0.5
+      },
+      {
+        "date": "2021-05-19",
+        "column": "us2y",
+        "prev_value": 0.009999999776482582,
+        "value": 0.004999999888241291,
+        "pct_change": -0.5,
+        "abs_pct_change": 0.5
+      },
+      {
+        "date": "2021-05-26",
+        "column": "us2y",
+        "prev_value": 0.009999999776482582,
+        "value": 0.004999999888241291,
+        "pct_change": -0.5,
+        "abs_pct_change": 0.5
+      },
+      {
+        "date": "2021-06-02",
+        "column": "us2y",
+        "prev_value": 0.009999999776482582,
+        "value": 0.014999999664723873,
+        "pct_change": 0.5,
+        "abs_pct_change": 0.5
+      },
+      {
+        "date": "2021-03-16",
+        "column": "us2y",
+        "prev_value": 0.014999999664723873,
+        "value": 0.00800000037997961,
+        "pct_change": -0.4666666294137628,
+        "abs_pct_change": 0.4666666294137628
+      },
+      {
+        "date": "2021-12-30",
+        "column": "us2y",
+        "prev_value": 0.04500000178813934,
+        "value": 0.02500000037252903,
+        "pct_change": -0.44444445824181533,
+        "abs_pct_change": 0.44444445824181533
+      },
+      {
+        "date": "2021-06-16",
+        "column": "us2y",
+        "prev_value": 0.019999999552965164,
+        "value": 0.02800000086426735,
+        "pct_change": 0.40000007450580766,
+        "abs_pct_change": 0.40000007450580766
+      },
+      {
+        "date": "2021-04-09",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.003000000026077032,
+        "pct_change": -0.3999999813735481,
+        "abs_pct_change": 0.3999999813735481
+      },
+      {
+        "date": "2021-05-20",
+        "column": "us2y",
+        "prev_value": 0.004999999888241291,
+        "value": 0.003000000026077032,
+        "pct_change": -0.3999999813735481,
+        "abs_pct_change": 0.3999999813735481
+      },
+      {
+        "date": "2025-04-03",
+        "column": "vix",
+        "prev_value": 21.510000228881836,
+        "value": 30.020000457763672,
+        "pct_change": 0.395629945993925,
+        "abs_pct_change": 0.395629945993925
+      }
+    ]
+  }
+}

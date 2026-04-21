@@ -1,0 +1,5 @@
+pathId,severity,recoveryShape,dd3Min,dd5Min,dd6Min,peakDDMin,rebound20d,ma200GapMin,dominantScenario,referenceWarningState,continuationRisk,vShape20d,recovery20d,cashStress,falseRecovery,warningConfidenceScore,survivalStats
+mc-0001,SHARP,DEAD_CAT,-12.6,-18.09,-20.11,-25.26,15.59,,Mixed,NORMAL,true,false,true,false,true,91,[object Object]
+mc-0002,SHARP,DEAD_CAT,-12.6,-18.09,-20.11,-30,15.79,,Mixed,NORMAL,true,false,true,false,true,92,[object Object]
+mc-0003,SHARP,DEAD_CAT,-12.6,-18.09,-20.11,-28.7,15.9,,Mixed,NORMAL,true,false,true,false,true,78,[object Object]
+mc-0004,SHARP,DEAD_CAT,-12.6,-18.09,-20.11,-28.16,16.14,,Mixed,NORMAL,true,false,true,false,true,78,[object Object]

@@ -1,0 +1,752 @@
+{
+  "scenarios": [
+    {
+      "name": "2022-like structural pressure",
+      "input": {
+        "price_state": "repeated failed rallies with rolling drawdown",
+        "vr_state": "risk-off confirmed",
+        "macro_state": "inflation pressure and restrictive policy remain dominant",
+        "macro_trend": "persistent deterioration with higher for longer pricing",
+        "rates": {
+          "us10y": 4.72,
+          "us2y": 5.08,
+          "spread": -0.36
+        },
+        "volatility": {
+          "vix": 31,
+          "spike": true,
+          "level": "high"
+        },
+        "drawdown": {
+          "dd3": -0.09,
+          "dd5": -0.13,
+          "peak_dd": -0.18
+        },
+        "liquidity": {
+          "rrp": 0.3,
+          "fed_balance_sheet_trend": "SHRINKING",
+          "m2_trend": "DOWN",
+          "tga_trend": "UP"
+        },
+        "credit": {
+          "hy_oas": 5.4,
+          "ig_spread": 1.9,
+          "credit_state": "STRESSING"
+        },
+        "internals": {
+          "breadth_state": "WEAK",
+          "ad_line_trend": "DOWN",
+          "new_high_low_state": "NEGATIVE",
+          "volume_state": "EXPANDING_SELL",
+          "divergence_state": "RISK"
+        },
+        "news_summary": [
+          "hot CPI keeps higher-for-longer pricing alive",
+          "liquidity conditions remain tight across risk assets"
+        ]
+      },
+      "output": {
+        "market_type": "STRUCTURAL",
+        "confidence": "HIGH",
+        "key_drivers": [
+          "금리와 인플레이션 압력이 구조적 부담으로 작용합니다.",
+          "유동성 배경이 긴축적으로 남아 있어 압력이 쉽게 풀리기 어렵습니다.",
+          "신용 스프레드가 구조적 스트레스를 시사합니다.",
+          "반복 하락 압력과 반등 실패 패턴이 누적됩니다.",
+          "역사적 패턴은 지속 하락 위험을 시사합니다."
+        ],
+        "interpretation": "현재 국면은 거시 압력과 지속성이 높은 구조적 환경에 가깝습니다. 유동성과 신용 여건이 함께 경직돼 압력이 더 오래 남을 수 있습니다. 하락 속도도 비정상적으로 빨라 단순 헤드라인 변동으로만 보기 어렵습니다. 따라서 대응은 보수적으로 두는 편이 일관됩니다. 과거 유사 국면들을 보면 초기 충격 이후에도 압력이 이어진 경우가 많았습니다.",
+        "strategy": "DEFENSIVE",
+        "summary": "하락 속도 리스크가 커서 전략은 DEFENSIVE로 더 보수적으로 둡니다.",
+        "memory": {
+          "top_match": "2022_inflation_cycle",
+          "similarity": 60,
+          "structural_probability": 67,
+          "rebound_probability": 33
+        },
+        "scenario": {
+          "rebound_probability": 0,
+          "sideways_probability": 0,
+          "continuation_probability": 100,
+          "dominant_path": "CONTINUATION",
+          "path_summary": "구조적 압력이 남아 있어 추가 하락 지속 가능성이 더 큽니다."
+        },
+        "bridge": {
+          "posture": "DEFENSIVE",
+          "risk_pressure": "HIGH",
+          "rebound_permission": "BLOCKED",
+          "continuation_bias": 100,
+          "rebound_bias": 0,
+          "sideways_bias": 0,
+          "mc_bias": {
+            "rebound_weight": 0,
+            "sideways_weight": 0,
+            "continuation_weight": 100
+          },
+          "vr_hint": {
+            "posture_bias": "DEFENSIVE",
+            "buy_bias": "BLOCK",
+            "caution_reason": "구조적 하락 지속 가능성이 높아 방어 우선입니다."
+          },
+          "bridge_summary": "구조적 압력이 강해 MC와 VR 모두 보수적 편향으로 해석하는 것이 맞습니다."
+        },
+        "research_desk": {
+          "headline": {
+            "title": "구조적 리스크 압력이 남아 있습니다",
+            "subtitle": "현재 분류: STRUCTURAL · 우세 경로: CONTINUATION · 포지션 편향: DEFENSIVE",
+            "tone": "RISK"
+          },
+          "regime_card": {
+            "market_type": "STRUCTURAL",
+            "confidence": "HIGH",
+            "strategy": "DEFENSIVE",
+            "summary": "하락 속도 리스크가 커서 전략은 DEFENSIVE로 더 보수적으로 둡니다."
+          },
+          "scenario_card": {
+            "dominant_path": "CONTINUATION",
+            "rebound_probability": 0,
+            "sideways_probability": 0,
+            "continuation_probability": 100,
+            "summary": "추가 하락 지속 가능성이 가장 우세합니다."
+          },
+          "posture_card": {
+            "posture": "DEFENSIVE",
+            "risk_pressure": "HIGH",
+            "rebound_permission": "BLOCKED",
+            "buy_bias": "BLOCK",
+            "summary": "방어 우선 구간으로 반등 참여는 현재 제한됩니다."
+          },
+          "key_points": [
+            "구조적 압력이 우세한 국면으로 빠른 회복을 기대하기 어렵습니다.",
+            "단기 우세 경로는 추가 하락 지속(100%)입니다.",
+            "브리지 포지셔닝은 DEFENSIVE로 해석됩니다.",
+            "과거 유사 사례는 구조적 하락 지속 위험을 시사합니다.",
+            "하락 속도 지표가 높아 단기 리스크 경계가 필요합니다."
+          ],
+          "evidence_card": {
+            "macro": 94,
+            "persistence": 86,
+            "reaction": 80,
+            "event": 0,
+            "velocity": 100,
+            "liquidity": 100,
+            "credit": 100,
+            "internals": 100
+          },
+          "memory_card": {
+            "top_match": "2022_inflation_cycle",
+            "similarity_score": 60,
+            "structural_probability": 67,
+            "rebound_probability": 33,
+            "continuation_probability": 0,
+            "summary": "유사 과거 패턴은 구조적 지속 위험을 시사합니다."
+          },
+          "research_note": "현재 구간은 구조적 압력이 남아 있는 것으로 해석됩니다. 단기 우세 경로도 추가 하락 지속 쪽에 더 가깝습니다. 따라서 브리지 포지셔닝은 방어 우선으로 보는 것이 적절합니다. 과거 유사 패턴도 현재 방어 편향을 지지합니다."
+        },
+        "vr_policy": {
+          "version": "v1",
+          "source": "SMART_ANALYZER",
+          "posture_bias": "DEFENSIVE",
+          "risk_pressure": "HIGH",
+          "buy_bias": "BLOCK",
+          "rebound_permission": "BLOCKED",
+          "continuation_bias": 100,
+          "rebound_bias": 0,
+          "sideways_bias": 0,
+          "structural_risk_flag": true,
+          "shock_flag": true,
+          "policy_state": "RED",
+          "caution_reason": "하락 속도 이상징후가 있어 반등 추격은 차단하는 편이 안전합니다.",
+          "policy_summary": "VR는 현재 RED 정책 상태로, 신규 매수는 차단하고 방어 우선으로 해석하는 것이 적절합니다."
+        },
+        "debug": {
+          "macro_score": 94,
+          "persistence_score": 86,
+          "reaction_score": 80,
+          "event_score": 0,
+          "velocity_score": 100,
+          "liquidity_score": 100,
+          "credit_score": 100,
+          "internals_score": 100,
+          "shock_flag": true,
+          "classification_reason": [
+            "기본 분류는 STRUCTURAL입니다.",
+            "macro_score가 60 이상이라 구조 압력이 강합니다.",
+            "persistence_score가 60 이상이라 반복 압력이 확인됩니다.",
+            "velocity_score가 70 이상이라 비정상적 하락 가속이 감지됩니다.",
+            "liquidity_score가 높아 유동성 배경이 구조 압력을 보강합니다.",
+            "credit_score가 높아 스트레스가 신용시장으로 번질 가능성을 시사합니다.",
+            "internals_score가 높아 지수 표면 아래 약세가 확인됩니다."
+          ],
+          "memory": {
+            "top_match_id": "2022_inflation_cycle",
+            "similarity_score": 60,
+            "structural_probability": 67,
+            "rebound_probability": 33
+          }
+        },
+        "debug_scenario": {
+          "rebound_raw": 0,
+          "sideways_raw": 0,
+          "continuation_raw": 100,
+          "dominant_path": "CONTINUATION"
+        },
+        "debug_bridge": {
+          "posture_rule": "Rule A: strategy=DEFENSIVE",
+          "risk_pressure_rule": "HIGH: continuation_probability>=60",
+          "rebound_permission_rule": "BLOCKED: posture=DEFENSIVE",
+          "mc_bias_source": "scenario_probability_direct_v1"
+        },
+        "debug_vr_policy": {
+          "policy_state_rule": "RED: posture=DEFENSIVE",
+          "structural_risk_rule": "market_type=STRUCTURAL",
+          "buy_bias_source": "bridge.vr_hint.buy_bias",
+          "shock_flag_source": "analyzer.debug.shock_flag"
+        },
+        "vr_runtime_policy": {
+          "runtime_mode": "LOCKDOWN",
+          "buy_gate": "BLOCKED",
+          "rebound_gate": "BLOCKED",
+          "add_exposure_gate": "BLOCKED",
+          "sizing_bias": 0,
+          "defensive_bias": 100,
+          "continuation_pressure": 100,
+          "policy_applied": true,
+          "policy_source": "VR_POLICY_PORT",
+          "runtime_reason": "충격 + 구조적 압력 + 매수 차단이 동시 발생해 모든 포지션 추가가 잠금 상태입니다.",
+          "runtime_summary": "VR 런타임은 LOCKDOWN 상태로, 모든 매수·추가 진입이 차단됩니다."
+        },
+        "debug_vr_runtime_policy": {
+          "runtime_mode_rule": "LOCKDOWN: RED+(shock|structural)+buy=BLOCK",
+          "buy_gate_rule": "buy_gate: buy_bias=BLOCK→BLOCKED",
+          "rebound_gate_rule": "rebound_gate: BLOCKED",
+          "add_exposure_gate_rule": "add_exposure_gate: LOCKDOWN→BLOCKED",
+          "sizing_bias_rule": "sizing_bias: LOCKDOWN→0"
+        },
+        "vr_action_policy": {
+          "runtime_mode": "LOCKDOWN",
+          "permissions": {
+            "base_buy": "BLOCK",
+            "rebound_buy": "BLOCK",
+            "aggressive_add": "BLOCK",
+            "defensive_buy": "BLOCK",
+            "maintenance_buy": "BLOCK",
+            "reduce_risk": "PRIORITIZE",
+            "hold": "ALLOW"
+          },
+          "sizing_profile": {
+            "base_buy_pct": 0,
+            "rebound_buy_pct": 0,
+            "aggressive_add_pct": 0,
+            "defensive_buy_pct": 0,
+            "maintenance_buy_pct": 0
+          },
+          "action_summary": "LOCKDOWN: 모든 매수·추가 진입이 차단됩니다. 감축/보유만 허용됩니다.",
+          "action_reason": "정책 상태가 LOCKDOWN 수준으로 최강 제한이 적용됩니다. 충격 플래그로 반등 추격이 추가 억제됩니다."
+        },
+        "debug_vr_action_policy": {
+          "mode_rule": "mode=LOCKDOWN",
+          "gate_consistency_rule": "no_gate_override",
+          "shock_override_rule": "shock_flag=true_no_change_needed",
+          "structural_override_rule": "structural_risk_flag=false"
+        }
+      }
+    },
+    {
+      "name": "2020-like shock event",
+      "input": {
+        "price_state": "panic gap lower followed by oversold bounce potential",
+        "vr_state": "tactical washout with rebound watch",
+        "macro_state": "macro backdrop is relatively stable",
+        "macro_trend": "sideways with limited persistence",
+        "rates": {
+          "us10y": 2.05,
+          "us2y": 0.75,
+          "spread": 1.3
+        },
+        "volatility": {
+          "vix": 48,
+          "spike": true,
+          "level": "high"
+        },
+        "drawdown": {
+          "dd3": -0.085,
+          "dd5": -0.13,
+          "peak_dd": -0.17
+        },
+        "liquidity": {
+          "rrp": 1.8,
+          "fed_balance_sheet_trend": "FLAT",
+          "m2_trend": "FLAT",
+          "tga_trend": "DOWN"
+        },
+        "credit": {
+          "hy_oas": 3.6,
+          "ig_spread": 1.2,
+          "credit_state": "NEUTRAL"
+        },
+        "internals": {
+          "breadth_state": "NEUTRAL",
+          "ad_line_trend": "FLAT",
+          "new_high_low_state": "MIXED",
+          "volume_state": "NORMAL",
+          "divergence_state": "NONE"
+        },
+        "news_summary": [
+          "pandemic shutdown shock hits global markets",
+          "emergency policy headline drives one-day panic"
+        ]
+      },
+      "output": {
+        "market_type": "HYBRID",
+        "confidence": "MED",
+        "key_drivers": [
+          "단기 하락 속도가 빨라 리스크 해석을 더 보수적으로 봐야 합니다.",
+          "이벤트 요인이 방향성을 증폭시키고 있습니다.",
+          "시장 반응이 충분히 강해 체제 전환 가능성을 열어둬야 합니다.",
+          "과거 유사 사례들은 단기 반등 가능성을 지지합니다."
+        ],
+        "interpretation": "현재 국면은 이벤트와 구조 압력이 함께 작동하는 혼합형 구간입니다. 이벤트 충격이 먼저 보이지만 거시 배경이 약해 쉽게 끝난다고 단정하기 어렵습니다. 하락 속도도 비정상적으로 빨라 단순 헤드라인 변동으로만 보기 어렵습니다. 따라서 과도한 확신보다 중립적 해석이 적절합니다. 역사적으로 유사한 충격 이후에는 단기 반등이 뒤따른 사례가 더 많았습니다.",
+        "strategy": "DEFENSIVE",
+        "summary": "하락 속도 리스크가 커서 전략은 DEFENSIVE로 더 보수적으로 둡니다.",
+        "memory": {
+          "top_match": "2025_tariff_shock",
+          "similarity": 70,
+          "structural_probability": 0,
+          "rebound_probability": 100
+        },
+        "scenario": {
+          "rebound_probability": 45,
+          "sideways_probability": 41,
+          "continuation_probability": 14,
+          "dominant_path": "REBOUND",
+          "path_summary": "반등 여지가 열려 있으나 거시 배경을 함께 확인해야 합니다."
+        },
+        "bridge": {
+          "posture": "DEFENSIVE",
+          "risk_pressure": "HIGH",
+          "rebound_permission": "BLOCKED",
+          "continuation_bias": 11,
+          "rebound_bias": 54,
+          "sideways_bias": 35,
+          "mc_bias": {
+            "rebound_weight": 54,
+            "sideways_weight": 35,
+            "continuation_weight": 11
+          },
+          "vr_hint": {
+            "posture_bias": "DEFENSIVE",
+            "buy_bias": "BLOCK",
+            "caution_reason": "하락 속도가 극단적이라 즉각적 방어가 필요합니다."
+          },
+          "bridge_summary": "구조적 압력이 강해 MC와 VR 모두 보수적 편향으로 해석하는 것이 맞습니다."
+        },
+        "research_desk": {
+          "headline": {
+            "title": "혼합 신호 구간이지만 단기 반등 가능성이 열려 있습니다",
+            "subtitle": "현재 분류: HYBRID · 우세 경로: REBOUND · 포지션 편향: DEFENSIVE",
+            "tone": "CAUTION"
+          },
+          "regime_card": {
+            "market_type": "HYBRID",
+            "confidence": "MED",
+            "strategy": "DEFENSIVE",
+            "summary": "하락 속도 리스크가 커서 전략은 DEFENSIVE로 더 보수적으로 둡니다."
+          },
+          "scenario_card": {
+            "dominant_path": "REBOUND",
+            "rebound_probability": 54,
+            "sideways_probability": 35,
+            "continuation_probability": 11,
+            "summary": "반등 가능성이 열려 있으나 확인 과정이 더 필요합니다."
+          },
+          "posture_card": {
+            "posture": "DEFENSIVE",
+            "risk_pressure": "HIGH",
+            "rebound_permission": "BLOCKED",
+            "buy_bias": "BLOCK",
+            "summary": "방어 우선 구간으로 반등 참여는 현재 제한됩니다."
+          },
+          "key_points": [
+            "이벤트와 구조 압력이 혼재한 혼합형 국면입니다.",
+            "단기 우세 경로는 반등 가능성(54%)이며 추가 확인이 필요합니다.",
+            "브리지 포지셔닝은 DEFENSIVE로 해석됩니다.",
+            "과거 유사 사례는 단기 반등 가능성을 부분적으로 지지합니다.",
+            "하락 속도 지표가 높아 단기 리스크 경계가 필요합니다."
+          ],
+          "evidence_card": {
+            "macro": 0,
+            "persistence": 0,
+            "reaction": 100,
+            "event": 96,
+            "velocity": 100
+          },
+          "memory_card": {
+            "top_match": "2025_tariff_shock",
+            "similarity_score": 70,
+            "structural_probability": 0,
+            "rebound_probability": 100,
+            "continuation_probability": 0,
+            "summary": "과거 유사 사례는 단기 반등 가능성을 지지합니다."
+          },
+          "research_note": "현재 구간은 이벤트와 구조 압력이 혼재하는 혼합형 국면입니다. 단기적으로는 반등 가능성이 열려 있으나 추가 확인이 필요합니다. 따라서 브리지 포지셔닝은 방어 우선으로 보는 것이 적절합니다."
+        },
+        "vr_policy": {
+          "version": "v1",
+          "source": "SMART_ANALYZER",
+          "posture_bias": "DEFENSIVE",
+          "risk_pressure": "HIGH",
+          "buy_bias": "BLOCK",
+          "rebound_permission": "BLOCKED",
+          "continuation_bias": 11,
+          "rebound_bias": 54,
+          "sideways_bias": 35,
+          "structural_risk_flag": false,
+          "shock_flag": true,
+          "policy_state": "RED",
+          "caution_reason": "하락 속도 이상징후가 있어 반등 추격은 차단하는 편이 안전합니다.",
+          "policy_summary": "VR는 현재 RED 정책 상태로, 신규 매수는 차단하고 방어 우선으로 해석하는 것이 적절합니다."
+        },
+        "debug": {
+          "macro_score": 0,
+          "persistence_score": 0,
+          "reaction_score": 100,
+          "event_score": 96,
+          "velocity_score": 100,
+          "liquidity_score": 0,
+          "credit_score": 0,
+          "internals_score": 0,
+          "shock_flag": true,
+          "classification_reason": [
+            "기본 분류는 EVENT입니다.",
+            "macro_score가 60 미만이라 구조 압력 단독 지배는 아닙니다.",
+            "persistence_score가 40 이하라 일회성 충격 가능성이 남아 있습니다.",
+            "event_score가 60 이상이라 이벤트 트리거가 충분히 강합니다.",
+            "velocity_score가 70 이상이라 비정상적 하락 가속이 감지됩니다.",
+            "속도 조정 후 분류는 HYBRID입니다."
+          ],
+          "memory": {
+            "top_match_id": "2025_tariff_shock",
+            "similarity_score": 70,
+            "structural_probability": 0,
+            "rebound_probability": 100
+          }
+        },
+        "debug_scenario": {
+          "rebound_raw": 50,
+          "sideways_raw": 45,
+          "continuation_raw": 15,
+          "dominant_path": "REBOUND"
+        },
+        "debug_bridge": {
+          "posture_rule": "Rule A: strategy=DEFENSIVE",
+          "risk_pressure_rule": "HIGH: velocity_score>=75",
+          "rebound_permission_rule": "BLOCKED: posture=DEFENSIVE",
+          "mc_bias_source": "scenario_probability_direct_v1"
+        },
+        "debug_vr_policy": {
+          "policy_state_rule": "RED: posture=DEFENSIVE",
+          "structural_risk_rule": "no_structural_trigger",
+          "buy_bias_source": "bridge.vr_hint.buy_bias",
+          "shock_flag_source": "analyzer.debug.shock_flag"
+        },
+        "vr_runtime_policy": {
+          "runtime_mode": "LOCKDOWN",
+          "buy_gate": "BLOCKED",
+          "rebound_gate": "BLOCKED",
+          "add_exposure_gate": "BLOCKED",
+          "sizing_bias": 0,
+          "defensive_bias": 100,
+          "continuation_pressure": 11,
+          "policy_applied": true,
+          "policy_source": "VR_POLICY_PORT",
+          "runtime_reason": "충격 + 구조적 압력 + 매수 차단이 동시 발생해 모든 포지션 추가가 잠금 상태입니다.",
+          "runtime_summary": "VR 런타임은 LOCKDOWN 상태로, 모든 매수·추가 진입이 차단됩니다."
+        },
+        "debug_vr_runtime_policy": {
+          "runtime_mode_rule": "LOCKDOWN: RED+(shock|structural)+buy=BLOCK",
+          "buy_gate_rule": "buy_gate: buy_bias=BLOCK→BLOCKED",
+          "rebound_gate_rule": "rebound_gate: BLOCKED",
+          "add_exposure_gate_rule": "add_exposure_gate: LOCKDOWN→BLOCKED",
+          "sizing_bias_rule": "sizing_bias: LOCKDOWN→0"
+        },
+        "vr_action_policy": {
+          "runtime_mode": "LOCKDOWN",
+          "permissions": {
+            "base_buy": "BLOCK",
+            "rebound_buy": "BLOCK",
+            "aggressive_add": "BLOCK",
+            "defensive_buy": "BLOCK",
+            "maintenance_buy": "BLOCK",
+            "reduce_risk": "PRIORITIZE",
+            "hold": "ALLOW"
+          },
+          "sizing_profile": {
+            "base_buy_pct": 0,
+            "rebound_buy_pct": 0,
+            "aggressive_add_pct": 0,
+            "defensive_buy_pct": 0,
+            "maintenance_buy_pct": 0
+          },
+          "action_summary": "LOCKDOWN: 모든 매수·추가 진입이 차단됩니다. 감축/보유만 허용됩니다.",
+          "action_reason": "정책 상태가 LOCKDOWN 수준으로 최강 제한이 적용됩니다. 충격 플래그로 반등 추격이 추가 억제됩니다."
+        },
+        "debug_vr_action_policy": {
+          "mode_rule": "mode=LOCKDOWN",
+          "gate_consistency_rule": "no_gate_override",
+          "shock_override_rule": "shock_flag=true_no_change_needed",
+          "structural_override_rule": "structural_risk_flag=false"
+        }
+      }
+    },
+    {
+      "name": "mixed macro and event backdrop",
+      "input": {
+        "price_state": "sharp selloff followed by unstable rebound",
+        "vr_state": "mixed risk-off with selective buying",
+        "macro_state": "growth is slowing while inflation remains sticky",
+        "macro_trend": "soft deterioration with incomplete confirmation",
+        "rates": {
+          "us10y": 4.18,
+          "us2y": 4.63,
+          "spread": -0.45
+        },
+        "volatility": {
+          "vix": 24,
+          "spike": true,
+          "level": "elevated"
+        },
+        "drawdown": {
+          "dd3": -0.09,
+          "dd5": -0.11,
+          "peak_dd": -0.16
+        },
+        "liquidity": {
+          "rrp": 0.7,
+          "fed_balance_sheet_trend": "SHRINKING",
+          "m2_trend": "FLAT",
+          "tga_trend": "FLAT"
+        },
+        "credit": {
+          "hy_oas": 4.0,
+          "ig_spread": 1.4,
+          "credit_state": "NEUTRAL"
+        },
+        "internals": {
+          "breadth_state": "WEAK",
+          "ad_line_trend": "DOWN",
+          "new_high_low_state": "MIXED",
+          "volume_state": "NORMAL",
+          "divergence_state": "RISK"
+        },
+        "news_summary": [
+          "regional banking concern triggers renewed selling",
+          "investors remain worried about restrictive rates"
+        ]
+      },
+      "output": {
+        "market_type": "HYBRID",
+        "confidence": "MED",
+        "key_drivers": [
+          "거시 부담이 남아 있어 이벤트만으로 설명되지는 않습니다.",
+          "시장 내부 지표 약세가 헤드라인 이상의 손상을 확인합니다.",
+          "단기 하락 속도가 빨라 리스크 해석을 더 보수적으로 봐야 합니다.",
+          "시장 반응이 충분히 강해 체제 전환 가능성을 열어둬야 합니다."
+        ],
+        "interpretation": "현재 국면은 이벤트와 구조 압력이 함께 작동하는 혼합형 구간입니다. 거시 부담이 더 크지만 이벤트가 하락 압력을 증폭시키고 있습니다. 하락 속도도 비정상적으로 빨라 단순 헤드라인 변동으로만 보기 어렵습니다. 따라서 과도한 확신보다 중립적 해석이 적절합니다. 현재 환경은 과거 구조적 압력 구간과 정렬됩니다.",
+        "strategy": "WAIT",
+        "summary": "혼합형 국면이므로 전략은 WAIT로 보수적으로 접근합니다.",
+        "memory": {
+          "top_match": "2020_pre_crash_vol_spike",
+          "similarity": 70,
+          "structural_probability": 25,
+          "rebound_probability": 31
+        },
+        "scenario": {
+          "rebound_probability": 25,
+          "sideways_probability": 46,
+          "continuation_probability": 29,
+          "dominant_path": "SIDEWAYS",
+          "path_summary": "횡보 후 방향 결정 가능성이 높아 보입니다."
+        },
+        "bridge": {
+          "posture": "CAUTIOUS",
+          "risk_pressure": "MED",
+          "rebound_permission": "LIMITED",
+          "continuation_bias": 29,
+          "rebound_bias": 25,
+          "sideways_bias": 46,
+          "mc_bias": {
+            "rebound_weight": 25,
+            "sideways_weight": 46,
+            "continuation_weight": 29
+          },
+          "vr_hint": {
+            "posture_bias": "CAUTIOUS",
+            "buy_bias": "LIMIT",
+            "caution_reason": "하락 속도와 지속 압력이 병존해 신중한 접근이 필요합니다."
+          },
+          "bridge_summary": "단기적으로는 방어 우위 구간으로 해석되며, 반등 참여는 제한적으로 보는 것이 적절합니다."
+        },
+        "research_desk": {
+          "headline": {
+            "title": "혼합 신호 구간으로 방향성 확신은 아직 제한적입니다",
+            "subtitle": "현재 분류: HYBRID · 우세 경로: SIDEWAYS · 포지션 편향: CAUTIOUS",
+            "tone": "CAUTION"
+          },
+          "regime_card": {
+            "market_type": "HYBRID",
+            "confidence": "MED",
+            "strategy": "WAIT",
+            "summary": "혼합형 국면이므로 전략은 WAIT로 보수적으로 접근합니다."
+          },
+          "scenario_card": {
+            "dominant_path": "SIDEWAYS",
+            "rebound_probability": 25,
+            "sideways_probability": 46,
+            "continuation_probability": 29,
+            "summary": "횡보 후 방향 결정 가능성이 높아 보입니다."
+          },
+          "posture_card": {
+            "posture": "CAUTIOUS",
+            "risk_pressure": "MED",
+            "rebound_permission": "LIMITED",
+            "buy_bias": "LIMIT",
+            "summary": "제한적 반등 참여는 가능하나 과도한 확신은 피해야 합니다."
+          },
+          "key_points": [
+            "이벤트와 구조 압력이 혼재한 혼합형 국면입니다.",
+            "단기 우세 경로는 횡보 후 관망(46%)입니다.",
+            "브리지 포지셔닝은 CAUTIOUS로 해석됩니다.",
+            "과거 유사 사례는 단기 반등 가능성을 부분적으로 지지합니다."
+          ],
+          "evidence_card": {
+            "macro": 50,
+            "persistence": 0,
+            "reaction": 80,
+            "event": 30,
+            "velocity": 60,
+            "liquidity": 30,
+            "internals": 60
+          },
+          "memory_card": {
+            "top_match": "2020_pre_crash_vol_spike",
+            "similarity_score": 70,
+            "structural_probability": 25,
+            "rebound_probability": 31,
+            "continuation_probability": 44,
+            "summary": "과거 유사 사례는 단기 반등 가능성을 지지합니다."
+          },
+          "research_note": "현재 구간은 이벤트와 구조 압력이 혼재하는 혼합형 국면입니다. 단기적으로는 방향성이 결정되지 않은 횡보 가능성이 더 높습니다. 따라서 브리지 포지셔닝은 신중한 접근이 권고됩니다. 과거 유사 사례는 단기 반등 가능성을 부분적으로 지지합니다."
+        },
+        "vr_policy": {
+          "version": "v1",
+          "source": "SMART_ANALYZER",
+          "posture_bias": "CAUTIOUS",
+          "risk_pressure": "MED",
+          "buy_bias": "LIMIT",
+          "rebound_permission": "LIMITED",
+          "continuation_bias": 29,
+          "rebound_bias": 25,
+          "sideways_bias": 46,
+          "structural_risk_flag": false,
+          "shock_flag": false,
+          "policy_state": "ORANGE",
+          "caution_reason": "이벤트성 반등 여지가 있으나 확인 전까지는 제한적 대응이 적절합니다.",
+          "policy_summary": "현재는 ORANGE 상태로, 제한적 대응은 가능하지만 적극적 매수는 보류하는 편이 맞습니다."
+        },
+        "debug": {
+          "macro_score": 50,
+          "persistence_score": 0,
+          "reaction_score": 80,
+          "event_score": 30,
+          "velocity_score": 60,
+          "liquidity_score": 30,
+          "credit_score": 0,
+          "internals_score": 60,
+          "shock_flag": false,
+          "classification_reason": [
+            "기본 분류는 HYBRID입니다.",
+            "macro_score가 60 미만이라 구조 압력 단독 지배는 아닙니다.",
+            "persistence_score가 40 이하라 일회성 충격 가능성이 남아 있습니다.",
+            "reaction_score가 높아 시장 반응 강도가 분명합니다.",
+            "velocity_score가 높아 하락 속도를 무시할 수 없습니다.",
+            "internals_score가 높아 지수 표면 아래 약세가 확인됩니다.",
+            "spread 악화가 구조 압력 판단을 보강합니다."
+          ],
+          "memory": {
+            "top_match_id": "2020_pre_crash_vol_spike",
+            "similarity_score": 70,
+            "structural_probability": 25,
+            "rebound_probability": 31
+          }
+        },
+        "debug_scenario": {
+          "rebound_raw": 35,
+          "sideways_raw": 65,
+          "continuation_raw": 40,
+          "dominant_path": "SIDEWAYS"
+        },
+        "debug_bridge": {
+          "posture_rule": "Rule B: internals_score>=60",
+          "risk_pressure_rule": "MED: internals_score>=50",
+          "rebound_permission_rule": "LIMITED: default",
+          "mc_bias_source": "scenario_probability_direct_v1"
+        },
+        "debug_vr_policy": {
+          "policy_state_rule": "ORANGE: posture=CAUTIOUS",
+          "structural_risk_rule": "no_structural_trigger",
+          "buy_bias_source": "bridge.vr_hint.buy_bias",
+          "shock_flag_source": "analyzer.debug.shock_flag"
+        },
+        "vr_runtime_policy": {
+          "runtime_mode": "LIMITED",
+          "buy_gate": "LIMITED",
+          "rebound_gate": "LIMITED",
+          "add_exposure_gate": "LIMITED",
+          "sizing_bias": 50,
+          "defensive_bias": 50,
+          "continuation_pressure": 29,
+          "policy_applied": true,
+          "policy_source": "VR_POLICY_PORT",
+          "runtime_reason": "제한적 대응 범위 내에서만 진입이 허용됩니다.",
+          "runtime_summary": "VR 런타임은 LIMITED 상태로, 제한된 범위 내 대응만 허용됩니다."
+        },
+        "debug_vr_runtime_policy": {
+          "runtime_mode_rule": "LIMITED: policy_state=ORANGE",
+          "buy_gate_rule": "buy_gate: buy_bias=LIMIT→LIMITED",
+          "rebound_gate_rule": "rebound_gate: LIMITED",
+          "add_exposure_gate_rule": "add_exposure_gate: LIMITED→LIMITED",
+          "sizing_bias_rule": "sizing_bias: LIMITED→50"
+        },
+        "vr_action_policy": {
+          "runtime_mode": "LIMITED",
+          "permissions": {
+            "base_buy": "LIMIT",
+            "rebound_buy": "LIMIT",
+            "aggressive_add": "BLOCK",
+            "defensive_buy": "ALLOW",
+            "maintenance_buy": "LIMIT",
+            "reduce_risk": "ALLOW",
+            "hold": "ALLOW"
+          },
+          "sizing_profile": {
+            "base_buy_pct": 50,
+            "rebound_buy_pct": 40,
+            "aggressive_add_pct": 0,
+            "defensive_buy_pct": 70,
+            "maintenance_buy_pct": 50
+          },
+          "action_summary": "LIMITED: 기본 매수와 방어 매수는 제한 허용됩니다. 적극적 추가는 차단.",
+          "action_reason": "제한적 참여만 허용되는 신중한 실행 상태입니다."
+        },
+        "debug_vr_action_policy": {
+          "mode_rule": "mode=LIMITED",
+          "gate_consistency_rule": "no_gate_override",
+          "shock_override_rule": "shock_flag=false",
+          "structural_override_rule": "structural_risk_flag=false"
+        }
+      }
+    }
+  ]
+}

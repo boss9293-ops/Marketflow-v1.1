@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-02-16T23:24:51",
+  "source_perf_ts": null,
+  "source_rotation_ts": null,
+  "phase": "unknown",
+  "phase_label": "unknown",
+  "phase_color": "#6b7280",
+  "leading_sectors": [],
+  "lagging_sectors": [],
+  "sector_perf": [],
+  "rotation_picks_top": [],
+  "coverage": {
+    "ohlcv_symbols": 29,
+    "total_universe": 518,
+    "coverage_pct": 5.6,
+    "latest_date": "2026-02-13",
+    "etf_covered": [],
+    "etf_missing": [
+      "XLK",
+      "XLV",
+      "XLF",
+      "XLE",
+      "XLY",
+      "XLP",
+      "XLI",
+      "XLB",
+      "XLRE",
+      "XLU",
+      "XLC"
+    ],
+    "etf_missing_cnt": 11,
+    "low_coverage": true
+  },
+  "etf_registry_update": {
+    "added": 13,
+    "already": 2
+  }
+}

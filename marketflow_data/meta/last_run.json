@@ -1,0 +1,113 @@
+{
+  "run_time": "2026-03-16T23:56:41.849569Z",
+  "ok_count": 0,
+  "warn_count": 0,
+  "fail_count": 15,
+  "per_symbol": {
+    "tqqq.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "qqq.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "spy.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "iwm.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "dia.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "vix.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "dxy.us": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "xauusd": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "btcusd": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "M2SL": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "DGS10": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "FEDFUNDS": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "CPIAUCSL": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "BAMLH0A0HYM2": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    },
+    "SOFR": {
+      "status": "fail",
+      "last_date": null,
+      "warnings": [
+        "missing file"
+      ]
+    }
+  }
+}

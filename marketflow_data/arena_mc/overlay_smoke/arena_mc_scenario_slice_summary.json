@@ -1,0 +1,72 @@
+[
+  {
+    "strategy": "BUY_HOLD",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 83.23,
+    "medianMaxDrawdown": -22.8,
+    "medianRecoveryDays": null
+  },
+  {
+    "strategy": "VR_ORIGINAL_CAPPED",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 81.31,
+    "medianMaxDrawdown": -22.4,
+    "medianRecoveryDays": null
+  },
+  {
+    "strategy": "MA200_50",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 82.99,
+    "medianMaxDrawdown": -23.4,
+    "medianRecoveryDays": null
+  },
+  {
+    "strategy": "MA200_LB30",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 82.99,
+    "medianMaxDrawdown": -23.4,
+    "medianRecoveryDays": null
+  },
+  {
+    "strategy": "LB30",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 81.31,
+    "medianMaxDrawdown": -22.4,
+    "medianRecoveryDays": null
+  },
+  {
+    "strategy": "LB25",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 81.31,
+    "medianMaxDrawdown": -22.4,
+    "medianRecoveryDays": null
+  },
+  {
+    "strategy": "ADAPTIVE",
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "survivalProbability": 1,
+    "medianFinalEquity": 81.39,
+    "medianMaxDrawdown": -22,
+    "medianRecoveryDays": null
+  }
+]

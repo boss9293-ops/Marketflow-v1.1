@@ -1,0 +1,5 @@
+pathId,strategyContext,injectionApplied,severity,recoveryShape,leadTimeToAlert,leadTimeToDefenseReady,leadTimeToDefenseActive,missedCrash,falseAlertCount,falseDefenseCount,recoveryDetectionLag,warningPersistenceDays
+mc-0001,,true,SHARP,DEAD_CAT,-3,,-10,false,0,0,3,6
+mc-0002,,true,SHARP,DEAD_CAT,,-4,-6,false,0,0,3,34
+mc-0003,,true,SHARP,DEAD_CAT,-4,-5,-7,false,0,0,3,46
+mc-0004,,true,SHARP,DEAD_CAT,-4,-5,-7,false,0,0,3,38

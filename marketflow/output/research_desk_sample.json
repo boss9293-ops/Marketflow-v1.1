@@ -1,0 +1,165 @@
+[
+  {
+    "name": "2022-like structural pressure",
+    "research_desk": {
+      "headline": {
+        "title": "구조적 리스크 압력이 남아 있습니다",
+        "subtitle": "현재 분류: STRUCTURAL · 우세 경로: CONTINUATION · 포지션 편향: DEFENSIVE",
+        "tone": "RISK"
+      },
+      "regime_card": {
+        "market_type": "STRUCTURAL",
+        "confidence": "HIGH",
+        "strategy": "DEFENSIVE",
+        "summary": "하락 속도 리스크가 커서 전략은 DEFENSIVE로 더 보수적으로 둡니다."
+      },
+      "scenario_card": {
+        "dominant_path": "CONTINUATION",
+        "rebound_probability": 0,
+        "sideways_probability": 0,
+        "continuation_probability": 100,
+        "summary": "추가 하락 지속 가능성이 가장 우세합니다."
+      },
+      "posture_card": {
+        "posture": "DEFENSIVE",
+        "risk_pressure": "HIGH",
+        "rebound_permission": "BLOCKED",
+        "buy_bias": "BLOCK",
+        "summary": "방어 우선 구간으로 반등 참여는 현재 제한됩니다."
+      },
+      "key_points": [
+        "구조적 압력이 우세한 국면으로 빠른 회복을 기대하기 어렵습니다.",
+        "단기 우세 경로는 추가 하락 지속(100%)입니다.",
+        "브리지 포지셔닝은 DEFENSIVE로 해석됩니다.",
+        "과거 유사 사례는 구조적 하락 지속 위험을 시사합니다.",
+        "하락 속도 지표가 높아 단기 리스크 경계가 필요합니다."
+      ],
+      "evidence_card": {
+        "macro": 94,
+        "persistence": 86,
+        "reaction": 80,
+        "event": 0,
+        "velocity": 100,
+        "liquidity": 100,
+        "credit": 100,
+        "internals": 100
+      },
+      "memory_card": {
+        "top_match": "2022_inflation_cycle",
+        "similarity_score": 60,
+        "structural_probability": 67,
+        "rebound_probability": 33,
+        "continuation_probability": 0,
+        "summary": "유사 과거 패턴은 구조적 지속 위험을 시사합니다."
+      },
+      "research_note": "현재 구간은 구조적 압력이 남아 있는 것으로 해석됩니다. 단기 우세 경로도 추가 하락 지속 쪽에 더 가깝습니다. 따라서 브리지 포지셔닝은 방어 우선으로 보는 것이 적절합니다. 과거 유사 패턴도 현재 방어 편향을 지지합니다."
+    }
+  },
+  {
+    "name": "2020-like shock event",
+    "research_desk": {
+      "headline": {
+        "title": "혼합 신호 구간이지만 단기 반등 가능성이 열려 있습니다",
+        "subtitle": "현재 분류: HYBRID · 우세 경로: REBOUND · 포지션 편향: DEFENSIVE",
+        "tone": "CAUTION"
+      },
+      "regime_card": {
+        "market_type": "HYBRID",
+        "confidence": "MED",
+        "strategy": "DEFENSIVE",
+        "summary": "하락 속도 리스크가 커서 전략은 DEFENSIVE로 더 보수적으로 둡니다."
+      },
+      "scenario_card": {
+        "dominant_path": "REBOUND",
+        "rebound_probability": 54,
+        "sideways_probability": 35,
+        "continuation_probability": 11,
+        "summary": "반등 가능성이 열려 있으나 확인 과정이 더 필요합니다."
+      },
+      "posture_card": {
+        "posture": "DEFENSIVE",
+        "risk_pressure": "HIGH",
+        "rebound_permission": "BLOCKED",
+        "buy_bias": "BLOCK",
+        "summary": "방어 우선 구간으로 반등 참여는 현재 제한됩니다."
+      },
+      "key_points": [
+        "이벤트와 구조 압력이 혼재한 혼합형 국면입니다.",
+        "단기 우세 경로는 반등 가능성(54%)이며 추가 확인이 필요합니다.",
+        "브리지 포지셔닝은 DEFENSIVE로 해석됩니다.",
+        "과거 유사 사례는 단기 반등 가능성을 부분적으로 지지합니다.",
+        "하락 속도 지표가 높아 단기 리스크 경계가 필요합니다."
+      ],
+      "evidence_card": {
+        "macro": 0,
+        "persistence": 0,
+        "reaction": 100,
+        "event": 96,
+        "velocity": 100
+      },
+      "memory_card": {
+        "top_match": "2025_tariff_shock",
+        "similarity_score": 70,
+        "structural_probability": 0,
+        "rebound_probability": 100,
+        "continuation_probability": 0,
+        "summary": "과거 유사 사례는 단기 반등 가능성을 지지합니다."
+      },
+      "research_note": "현재 구간은 이벤트와 구조 압력이 혼재하는 혼합형 국면입니다. 단기적으로는 반등 가능성이 열려 있으나 추가 확인이 필요합니다. 따라서 브리지 포지셔닝은 방어 우선으로 보는 것이 적절합니다."
+    }
+  },
+  {
+    "name": "mixed macro and event backdrop",
+    "research_desk": {
+      "headline": {
+        "title": "혼합 신호 구간으로 방향성 확신은 아직 제한적입니다",
+        "subtitle": "현재 분류: HYBRID · 우세 경로: SIDEWAYS · 포지션 편향: CAUTIOUS",
+        "tone": "CAUTION"
+      },
+      "regime_card": {
+        "market_type": "HYBRID",
+        "confidence": "MED",
+        "strategy": "WAIT",
+        "summary": "혼합형 국면이므로 전략은 WAIT로 보수적으로 접근합니다."
+      },
+      "scenario_card": {
+        "dominant_path": "SIDEWAYS",
+        "rebound_probability": 25,
+        "sideways_probability": 46,
+        "continuation_probability": 29,
+        "summary": "횡보 후 방향 결정 가능성이 높아 보입니다."
+      },
+      "posture_card": {
+        "posture": "CAUTIOUS",
+        "risk_pressure": "MED",
+        "rebound_permission": "LIMITED",
+        "buy_bias": "LIMIT",
+        "summary": "제한적 반등 참여는 가능하나 과도한 확신은 피해야 합니다."
+      },
+      "key_points": [
+        "이벤트와 구조 압력이 혼재한 혼합형 국면입니다.",
+        "단기 우세 경로는 횡보 후 관망(46%)입니다.",
+        "브리지 포지셔닝은 CAUTIOUS로 해석됩니다.",
+        "과거 유사 사례는 단기 반등 가능성을 부분적으로 지지합니다."
+      ],
+      "evidence_card": {
+        "macro": 50,
+        "persistence": 0,
+        "reaction": 80,
+        "event": 30,
+        "velocity": 60,
+        "liquidity": 30,
+        "internals": 60
+      },
+      "memory_card": {
+        "top_match": "2020_pre_crash_vol_spike",
+        "similarity_score": 70,
+        "structural_probability": 25,
+        "rebound_probability": 31,
+        "continuation_probability": 44,
+        "summary": "과거 유사 사례는 단기 반등 가능성을 지지합니다."
+      },
+      "research_note": "현재 구간은 이벤트와 구조 압력이 혼재하는 혼합형 국면입니다. 단기적으로는 방향성이 결정되지 않은 횡보 가능성이 더 높습니다. 따라서 브리지 포지셔닝은 신중한 접근이 권고됩니다. 과거 유사 사례는 단기 반등 가능성을 부분적으로 지지합니다."
+    }
+  }
+]

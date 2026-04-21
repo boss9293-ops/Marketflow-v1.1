@@ -1,0 +1,50 @@
+[
+  {
+    "severity": "ALL",
+    "recoveryShape": "ALL",
+    "nRuns": 4,
+    "medianLeadTimeToAlert": -4,
+    "medianLeadTimeToDefenseReady": -5,
+    "medianLeadTimeToDefenseActive": -7,
+    "missedCrashRate": 0,
+    "avgFalseAlertCount": 0,
+    "avgFalseDefenseCount": 0,
+    "medianRecoveryDetectionLag": 3
+  },
+  {
+    "severity": "ALL",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "medianLeadTimeToAlert": -4,
+    "medianLeadTimeToDefenseReady": -5,
+    "medianLeadTimeToDefenseActive": -7,
+    "missedCrashRate": 0,
+    "avgFalseAlertCount": 0,
+    "avgFalseDefenseCount": 0,
+    "medianRecoveryDetectionLag": 3
+  },
+  {
+    "severity": "SHARP",
+    "recoveryShape": "ALL",
+    "nRuns": 4,
+    "medianLeadTimeToAlert": -4,
+    "medianLeadTimeToDefenseReady": -5,
+    "medianLeadTimeToDefenseActive": -7,
+    "missedCrashRate": 0,
+    "avgFalseAlertCount": 0,
+    "avgFalseDefenseCount": 0,
+    "medianRecoveryDetectionLag": 3
+  },
+  {
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "nRuns": 4,
+    "medianLeadTimeToAlert": -4,
+    "medianLeadTimeToDefenseReady": -5,
+    "medianLeadTimeToDefenseActive": -7,
+    "missedCrashRate": 0,
+    "avgFalseAlertCount": 0,
+    "avgFalseDefenseCount": 0,
+    "medianRecoveryDetectionLag": 3
+  }
+]

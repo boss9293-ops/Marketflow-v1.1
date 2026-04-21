@@ -1,0 +1,77 @@
+[
+  {
+    "name": "2022-like structural pressure",
+    "vr_policy": {
+      "version": "v1",
+      "source": "SMART_ANALYZER",
+      "posture_bias": "DEFENSIVE",
+      "risk_pressure": "HIGH",
+      "buy_bias": "BLOCK",
+      "rebound_permission": "BLOCKED",
+      "continuation_bias": 100,
+      "rebound_bias": 0,
+      "sideways_bias": 0,
+      "structural_risk_flag": true,
+      "shock_flag": true,
+      "policy_state": "RED",
+      "caution_reason": "하락 속도 이상징후가 있어 반등 추격은 차단하는 편이 안전합니다.",
+      "policy_summary": "VR는 현재 RED 정책 상태로, 신규 매수는 차단하고 방어 우선으로 해석하는 것이 적절합니다."
+    },
+    "debug_vr_policy": {
+      "policy_state_rule": "RED: posture=DEFENSIVE",
+      "structural_risk_rule": "market_type=STRUCTURAL",
+      "buy_bias_source": "bridge.vr_hint.buy_bias",
+      "shock_flag_source": "analyzer.debug.shock_flag"
+    }
+  },
+  {
+    "name": "2020-like shock event",
+    "vr_policy": {
+      "version": "v1",
+      "source": "SMART_ANALYZER",
+      "posture_bias": "DEFENSIVE",
+      "risk_pressure": "HIGH",
+      "buy_bias": "BLOCK",
+      "rebound_permission": "BLOCKED",
+      "continuation_bias": 11,
+      "rebound_bias": 54,
+      "sideways_bias": 35,
+      "structural_risk_flag": false,
+      "shock_flag": true,
+      "policy_state": "RED",
+      "caution_reason": "하락 속도 이상징후가 있어 반등 추격은 차단하는 편이 안전합니다.",
+      "policy_summary": "VR는 현재 RED 정책 상태로, 신규 매수는 차단하고 방어 우선으로 해석하는 것이 적절합니다."
+    },
+    "debug_vr_policy": {
+      "policy_state_rule": "RED: posture=DEFENSIVE",
+      "structural_risk_rule": "no_structural_trigger",
+      "buy_bias_source": "bridge.vr_hint.buy_bias",
+      "shock_flag_source": "analyzer.debug.shock_flag"
+    }
+  },
+  {
+    "name": "mixed macro and event backdrop",
+    "vr_policy": {
+      "version": "v1",
+      "source": "SMART_ANALYZER",
+      "posture_bias": "CAUTIOUS",
+      "risk_pressure": "MED",
+      "buy_bias": "LIMIT",
+      "rebound_permission": "LIMITED",
+      "continuation_bias": 29,
+      "rebound_bias": 25,
+      "sideways_bias": 46,
+      "structural_risk_flag": false,
+      "shock_flag": false,
+      "policy_state": "ORANGE",
+      "caution_reason": "이벤트성 반등 여지가 있으나 확인 전까지는 제한적 대응이 적절합니다.",
+      "policy_summary": "현재는 ORANGE 상태로, 제한적 대응은 가능하지만 적극적 매수는 보류하는 편이 맞습니다."
+    },
+    "debug_vr_policy": {
+      "policy_state_rule": "ORANGE: posture=CAUTIOUS",
+      "structural_risk_rule": "no_structural_trigger",
+      "buy_bias_source": "bridge.vr_hint.buy_bias",
+      "shock_flag_source": "analyzer.debug.shock_flag"
+    }
+  }
+]

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface RegimeData {
   trend: string
@@ -15,7 +16,7 @@ export default function RegimeIndicator() {
   const [data, setData] = useState<RegimeData | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/regime')
+    fetch(clientApiUrl('/api/regime'))
       .then(r => r.json())
       .then(setData)
       .catch(() => {})

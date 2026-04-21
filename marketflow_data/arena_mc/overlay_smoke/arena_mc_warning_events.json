@@ -1,0 +1,57 @@
+[
+  {
+    "pathId": "mc-0001",
+    "startDay": 21,
+    "peakWarningState": "ALERT",
+    "endDay": 26,
+    "durationDays": 6,
+    "firstAlertDay": 22,
+    "firstDefenseReadyDay": null,
+    "firstDefenseActiveDay": null,
+    "firstRecoveryModeDay": null
+  },
+  {
+    "pathId": "mc-0001",
+    "startDay": 29,
+    "peakWarningState": "DEFENSE_ACTIVE",
+    "endDay": 63,
+    "durationDays": 35,
+    "firstAlertDay": null,
+    "firstDefenseReadyDay": null,
+    "firstDefenseActiveDay": 29,
+    "firstRecoveryModeDay": 32
+  },
+  {
+    "pathId": "mc-0002",
+    "startDay": 30,
+    "peakWarningState": "DEFENSE_ACTIVE",
+    "endDay": 63,
+    "durationDays": 34,
+    "firstAlertDay": null,
+    "firstDefenseReadyDay": 31,
+    "firstDefenseActiveDay": 33,
+    "firstRecoveryModeDay": 40
+  },
+  {
+    "pathId": "mc-0003",
+    "startDay": 18,
+    "peakWarningState": "DEFENSE_ACTIVE",
+    "endDay": 63,
+    "durationDays": 46,
+    "firstAlertDay": 19,
+    "firstDefenseReadyDay": 20,
+    "firstDefenseActiveDay": 22,
+    "firstRecoveryModeDay": 28
+  },
+  {
+    "pathId": "mc-0004",
+    "startDay": 26,
+    "peakWarningState": "DEFENSE_ACTIVE",
+    "endDay": 63,
+    "durationDays": 38,
+    "firstAlertDay": 27,
+    "firstDefenseReadyDay": 28,
+    "firstDefenseActiveDay": 30,
+    "firstRecoveryModeDay": 36
+  }
+]

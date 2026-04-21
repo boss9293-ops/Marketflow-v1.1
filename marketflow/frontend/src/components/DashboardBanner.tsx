@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import CircularProgress from './CircularProgress'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface GateData   { score: number; status: string; signal: string }
 interface RegimeData { trend: string; risk_appetite: string; cycle: string; confidence: string }
@@ -30,10 +31,10 @@ export default function DashboardBanner() {
   const [risk,   setRisk]   = useState<RiskData | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/market/gate').then(r => r.json()).then(setGate).catch(() => {})
-    fetch('http://localhost:5001/api/regime').then(r => r.json()).then(setRegime).catch(() => {})
-    fetch('http://localhost:5001/api/prediction').then(r => r.json()).then(setPred).catch(() => {})
-    fetch('http://localhost:5001/api/risk').then(r => r.json()).then(setRisk).catch(() => {})
+    fetch(clientApiUrl('/api/market/gate')).then(r => r.json()).then(setGate).catch(() => {})
+    fetch(clientApiUrl('/api/regime')).then(r => r.json()).then(setRegime).catch(() => {})
+    fetch(clientApiUrl('/api/prediction')).then(r => r.json()).then(setPred).catch(() => {})
+    fetch(clientApiUrl('/api/risk')).then(r => r.json()).then(setRisk).catch(() => {})
   }, [])
 
   const signal = gate?.signal as keyof typeof SIGNAL_CFG | undefined

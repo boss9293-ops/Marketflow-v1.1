@@ -1,0 +1,2 @@
+45 16 * * 1-5  python /path/scripts/run_daily_snapshot.py >> /path/logs/cron.log 2>&1
+30 7  * * 1-5  python /path/scripts/run_daily_snapshot.py >> /path/logs/cron.log 2>&1

@@ -1,0 +1,62 @@
+[
+  {
+    "pathId": "mc-0001",
+    "strategyContext": null,
+    "injectionApplied": true,
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "leadTimeToAlert": -3,
+    "leadTimeToDefenseReady": null,
+    "leadTimeToDefenseActive": -10,
+    "missedCrash": false,
+    "falseAlertCount": 0,
+    "falseDefenseCount": 0,
+    "recoveryDetectionLag": 3,
+    "warningPersistenceDays": 6
+  },
+  {
+    "pathId": "mc-0002",
+    "strategyContext": null,
+    "injectionApplied": true,
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "leadTimeToAlert": null,
+    "leadTimeToDefenseReady": -4,
+    "leadTimeToDefenseActive": -6,
+    "missedCrash": false,
+    "falseAlertCount": 0,
+    "falseDefenseCount": 0,
+    "recoveryDetectionLag": 3,
+    "warningPersistenceDays": 34
+  },
+  {
+    "pathId": "mc-0003",
+    "strategyContext": null,
+    "injectionApplied": true,
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "leadTimeToAlert": -4,
+    "leadTimeToDefenseReady": -5,
+    "leadTimeToDefenseActive": -7,
+    "missedCrash": false,
+    "falseAlertCount": 0,
+    "falseDefenseCount": 0,
+    "recoveryDetectionLag": 3,
+    "warningPersistenceDays": 46
+  },
+  {
+    "pathId": "mc-0004",
+    "strategyContext": null,
+    "injectionApplied": true,
+    "severity": "SHARP",
+    "recoveryShape": "DEAD_CAT",
+    "leadTimeToAlert": -4,
+    "leadTimeToDefenseReady": -5,
+    "leadTimeToDefenseActive": -7,
+    "missedCrash": false,
+    "falseAlertCount": 0,
+    "falseDefenseCount": 0,
+    "recoveryDetectionLag": 3,
+    "warningPersistenceDays": 38
+  }
+]

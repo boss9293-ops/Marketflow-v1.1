@@ -1,0 +1,5 @@
+severity,recoveryShape,nRuns,medianLeadTimeToAlert,medianLeadTimeToDefenseReady,medianLeadTimeToDefenseActive,missedCrashRate,avgFalseAlertCount,avgFalseDefenseCount,medianRecoveryDetectionLag
+ALL,ALL,4,-4,-5,-7,0,0,0,3
+ALL,DEAD_CAT,4,-4,-5,-7,0,0,0,3
+SHARP,ALL,4,-4,-5,-7,0,0,0,3
+SHARP,DEAD_CAT,4,-4,-5,-7,0,0,0,3

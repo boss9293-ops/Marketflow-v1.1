@@ -1,0 +1,8 @@
+strategy,nRuns,medianFinalEquity,p10FinalEquity,p90FinalEquity,medianMaxDrawdown,p90MaxDrawdown,medianRecoveryDays,worst5RecoveryDays,survivalProbability,medianMinCashPctObserved,medianMaxCapitalUsagePct,medianCycleCapHitCount,medianWarningLeadTime,medianFalseDefenseRate,medianMissedReboundCost
+BUY_HOLD,4,83.23,79.28,90.38,-22.8,-23.77,,,1,20,80,0,,,0
+VR_ORIGINAL_CAPPED,4,81.31,79.26,87.93,-22.4,-22.99,,,1,20,80,0,,,1.49
+MA200_50,4,82.99,78.83,90.4,-23.4,-24.37,,,1,20,80,0,,,-0.23500000000000001
+MA200_LB30,4,82.99,78.83,90.4,-23.4,-24.37,,,1,20,80,0,,,-0.23500000000000001
+LB30,4,81.31,79.26,87.93,-22.4,-22.99,,,1,20,80,0,,,1.49
+LB25,4,81.31,79.26,87.93,-22.4,-22.99,,,1,20,80,0,,,1.49
+ADAPTIVE,4,81.39,79.55,88,-22,-22.45,,,1,20,80,0,,,1.95

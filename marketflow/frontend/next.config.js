@@ -38,7 +38,7 @@ const nextConfig = {
     return config
   },
   async rewrites() {
-    // Proxy /api/flask/* → Railway backend (bypasses CORS + env var issues)
+    // Proxy /api/flask/* → Railway backend (bypasses CORS + env var issues on client side)
     return [
       {
         source: '/api/flask/:path*',

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { clientApiUrl } from '@/lib/backendApi'
 
 interface RegimeData {
   trend: string; risk_appetite: string; cycle: string; confidence: string
@@ -22,10 +23,10 @@ export default function SummaryCards() {
   const [risk,   setRisk]   = useState<RiskData   | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/regime').then(r => r.json()).then(setRegime).catch(() => {})
-    fetch('http://localhost:5001/api/prediction').then(r => r.json()).then(setPred).catch(() => {})
-    fetch('http://localhost:5001/api/sectors').then(r => r.json()).then(setSector).catch(() => {})
-    fetch('http://localhost:5001/api/risk').then(r => r.json()).then(setRisk).catch(() => {})
+    fetch(clientApiUrl('/api/regime')).then(r => r.json()).then(setRegime).catch(() => {})
+    fetch(clientApiUrl('/api/prediction')).then(r => r.json()).then(setPred).catch(() => {})
+    fetch(clientApiUrl('/api/sectors')).then(r => r.json()).then(setSector).catch(() => {})
+    fetch(clientApiUrl('/api/risk')).then(r => r.json()).then(setRisk).catch(() => {})
   }, [])
 
   const riskLevel =
