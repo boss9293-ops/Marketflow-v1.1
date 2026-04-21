@@ -272,6 +272,8 @@ async function runBacktest(rawParams: Record<string, unknown>) {
     summary: {
       ticker,
       period: { start: first.d, end: last.d, days: Math.round(days) },
+      initial_capital: initCap,
+      total_invested: +totalCost.toFixed(2),
       final_value: +final.toFixed(2),
       total_return_pct: +totalReturn.toFixed(2),
       cagr_pct: +cagr.toFixed(2),
@@ -280,6 +282,7 @@ async function runBacktest(rawParams: Record<string, unknown>) {
       realized_pnl: +realizedPnl.toFixed(2),
       pool_balance: +poolBalance.toFixed(2),
       bh: {
+        total_invested: +bhCost.toFixed(2),
         final_value: +bhFinal.toFixed(2),
         total_return_pct: +bhReturn.toFixed(2),
         cagr_pct: +bhCagr.toFixed(2),
