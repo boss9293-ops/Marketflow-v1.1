@@ -1682,6 +1682,10 @@ export default function TQQQDCAStrategy() {
 
 
             <input type="date" value={params.end_date} onChange={e => set('end_date', e.target.value)} style={inp(130)} />
+            <button
+              onClick={() => set('end_date', new Date().toISOString().slice(0, 10))}
+              style={{ marginLeft: 6, padding: '3px 10px', fontSize: 12, borderRadius: 6, border: '1px solid #444', background: params.end_date === new Date().toISOString().slice(0, 10) ? '#4ade80' : '#2a2a2a', color: params.end_date === new Date().toISOString().slice(0, 10) ? '#000' : '#ccc', cursor: 'pointer' }}
+            >오늘</button>
 
 
           </div>
