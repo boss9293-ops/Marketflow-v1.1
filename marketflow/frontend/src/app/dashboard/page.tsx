@@ -10,17 +10,19 @@ import ContentLangToggle from '@/components/ContentLangToggle'
 
 export const dynamic = 'force-dynamic'
 
-type MarketTapeItem = {
+type CorePriceSnapshotItem = {
   symbol?: string | null
+  asset_class?: string | null
   name?: string | null
-  last?: number | null
-  chg_pct?: number | null
+  price?: number | null
+  change_pct?: number | null
 }
 
-type MarketTapeCache = {
-  data_date?: string
+type CorePriceSnapshotCache = {
+  timestamp?: string
   generated_at?: string
-  items?: MarketTapeItem[]
+  as_of?: string
+  records?: CorePriceSnapshotItem[]
 }
 
 type DailyBriefing = Partial<DailyBriefingV3Data> & {
@@ -545,18 +547,18 @@ function HalfGauge({
 }
 
 const buildLadderRow = (
-  tapeMap: Map<string, MarketTapeItem>,
+  records: Map<string, CorePriceSnapshotItem>,
   symbol: string,
   label: string,
   aliases: string[] = [],
 ): LadderRow => {
   const keys = [symbol, ...aliases].map((item) => item.toUpperCase())
-  const found = keys.map((key) => tapeMap.get(key)).find(Boolean)
+  const found = keys.map((key) => records.get(key)).find(Boolean)
   return {
     symbol,
     label,
-    last: typeof found?.last === 'number' ? found.last : null,
-    chgPct: typeof found?.chg_pct === 'number' ? found.chg_pct : null,
+    last: typeof found?.price === 'number' ? found.price : null,
+    chgPct: typeof found?.change_pct === 'number' ? found.change_pct : null,
   }
 }
 
@@ -564,8 +566,8 @@ export default async function DashboardPage() {
   const uiLang = normalizeUiLang(cookies().get(UI_LANG_COOKIE)?.value)
   const contentLang: UiLang = normalizeContentLang(cookies().get(CONTENT_LANG_COOKIE)?.value)
 
-  const [marketTape, dailyBriefing, snapshots, riskV1, vrPattern, current90d] = await Promise.all([
-    readCacheJson<MarketTapeCache>('market_tape.json', { items: [] }),
+  const [coreSnapshot, dailyBriefing, snapshots, riskV1, vrPattern, current90d] = await Promise.all([
+    readCacheJson<CorePriceSnapshotCache>('cache/core_price_snapshot_latest.json', {}),
     readCacheJson<DailyBriefing>('daily_briefing_v3.json', {}),
     readCacheJson<SnapshotsCache>('snapshots_120d.json', { snapshots: [] }),
     readCacheJson<RiskV1Cache>('risk_v1.json', {}),
@@ -573,11 +575,11 @@ export default async function DashboardPage() {
     readCacheJson<Current90dCache>('current_90d.json', {}),
   ])
 
-  const tapeItems = Array.isArray(marketTape.items) ? marketTape.items : []
-  const tapeMap = new Map<string, MarketTapeItem>()
-  for (const row of tapeItems) {
+  const coreRecords = Array.isArray(coreSnapshot.records) ? coreSnapshot.records : []
+  const coreRecordMap = new Map<string, CorePriceSnapshotItem>()
+  for (const row of coreRecords) {
     if (!row?.symbol) continue
-    tapeMap.set(String(row.symbol).toUpperCase(), row)
+    coreRecordMap.set(String(row.symbol).toUpperCase(), row)
   }
 
   const latestSnapshot = (snapshots.snapshots || []).at(-1) || null
@@ -652,25 +654,24 @@ export default async function DashboardPage() {
   )
 
   const indexRows: LadderRow[] = [
-    buildLadderRow(tapeMap, 'SPY', 'S&P 500'),
-    buildLadderRow(tapeMap, 'QQQ', 'NASDAQ 100'),
-    buildLadderRow(tapeMap, 'IWM', 'Russell 2000'),
-    buildLadderRow(tapeMap, 'VIX', 'Volatility'),
+    buildLadderRow(coreRecordMap, 'SPX', 'S&P 500'),
+    buildLadderRow(coreRecordMap, 'NDX', 'NASDAQ 100'),
+    buildLadderRow(coreRecordMap, 'RUT', 'Russell 2000'),
+    buildLadderRow(coreRecordMap, 'VIX', 'Volatility'),
   ]
 
   const ratesFxRows: LadderRow[] = [
-    buildLadderRow(tapeMap, 'US10Y', '10Y Treasury'),
-    buildLadderRow(tapeMap, 'US5Y', '5Y Treasury'),
-    buildLadderRow(tapeMap, 'DXY', 'Dollar Index'),
+    buildLadderRow(coreRecordMap, 'US10Y', '10Y Treasury'),
+    buildLadderRow(coreRecordMap, 'DXY', 'Dollar Index'),
   ]
 
   const commodityRows: LadderRow[] = [
-    buildLadderRow(tapeMap, 'GOLD', 'Gold', ['GC=F']),
-    buildLadderRow(tapeMap, 'WTI', 'WTI', ['CL=F']),
-    buildLadderRow(tapeMap, 'BTC', 'Bitcoin', ['BTCUSD']),
+    buildLadderRow(coreRecordMap, 'GOLD', 'Gold'),
+    buildLadderRow(coreRecordMap, 'WTI', 'WTI Crude Oil'),
   ]
-  const hasRatesFxData = ratesFxRows.some((row) => row.last != null || row.chgPct != null)
-  const hasCommodityData = commodityRows.some((row) => row.last != null || row.chgPct != null)
+  const visibleIndexRows = indexRows.filter((row) => row.last != null || row.chgPct != null)
+  const visibleRatesFxRows = ratesFxRows.filter((row) => row.last != null || row.chgPct != null)
+  const visibleCommodityRows = commodityRows.filter((row) => row.last != null || row.chgPct != null)
 
   const queueRows = [
     engineText(contentLang, DASHBOARD_ENGINE.queueCore, { exposureBand, regime: regimeLabel }),
@@ -858,7 +859,8 @@ export default async function DashboardPage() {
   }))
 
   const asOf =
-    marketTape.data_date ||
+    (typeof coreSnapshot.as_of === 'string' ? coreSnapshot.as_of.slice(0, 10) : '') ||
+    (typeof coreSnapshot.generated_at === 'string' ? coreSnapshot.generated_at.slice(0, 10) : '') ||
     dailyBriefing.data_date ||
     latestSnapshot?.date ||
     vrPattern.snapshot?.as_of_date ||
@@ -1042,8 +1044,8 @@ export default async function DashboardPage() {
           <section className={styles.railSection}>
             <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railIndices)}</p>
             <table className={styles.ladder}>
-              <tbody>
-                {indexRows.map((row) => (
+                <tbody>
+                {visibleIndexRows.map((row) => (
                   <tr key={`idx-${row.symbol}`}>
                     <td className={styles.sym}>{row.symbol}</td>
                     <td className={toneClass(row.chgPct)}>{formatPct(row.chgPct)}</td>
@@ -1055,32 +1057,25 @@ export default async function DashboardPage() {
           </section>
 
           <section className={styles.railSection}>
-            <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railRatesFx)}</p>
-            <table className={styles.ladder}>
-              <tbody>
-                {ratesFxRows.map((row) => (
+              <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railRatesFx)}</p>
+              <table className={styles.ladder}>
+                <tbody>
+                {visibleRatesFxRows.map((row) => (
                   <tr key={`rates-${row.symbol}`}>
                     <td className={styles.sym}>{row.symbol}</td>
                     <td className={toneClass(row.chgPct)}>{formatPct(row.chgPct)}</td>
                     <td className={styles.last}>{formatNumber(row.last)}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-            {!hasRatesFxData && (
-              <p className={styles.tapeSource} style={{ marginTop: 8 }}>
-                {uiLang === 'ko'
-                  ? '현재 캐시에는 금리/환율 데이터가 없어 표시되지 않습니다.'
-                  : 'No rates/FX data is present in the current cache.'}
-              </p>
-            )}
+                </tbody>
+              </table>
           </section>
 
           <section className={styles.railSection}>
             <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railCommoditiesAlt)}</p>
             <table className={styles.ladder}>
               <tbody>
-                {commodityRows.map((row) => (
+                {visibleCommodityRows.map((row) => (
                   <tr key={`cmd-${row.symbol}`}>
                     <td className={styles.sym}>{row.symbol}</td>
                     <td className={toneClass(row.chgPct)}>{formatPct(row.chgPct)}</td>
@@ -1089,13 +1084,6 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
-            {!hasCommodityData && (
-              <p className={styles.tapeSource} style={{ marginTop: 8 }}>
-                {uiLang === 'ko'
-                  ? '현재 캐시에는 원자재/대체자산 데이터가 없어 표시되지 않습니다.'
-                  : 'No commodities/alternatives data is present in the current cache.'}
-              </p>
-            )}
           </section>
 
           <section className={styles.railSection}>
