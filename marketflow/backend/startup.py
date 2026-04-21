@@ -76,6 +76,15 @@ def _pull_turso_db_if_configured() -> bool:
             except Exception as rm_err:
                 print(f"[startup][TURSO] Could not remove {path}: {rm_err}", flush=True)
 
+    # Proactive: if db file exists but no metadata companion, it's a plain SQLite (e.g. downloaded from
+    # GitHub releases). Wipe it before libsql tries to open it as an embedded replica.
+    if os.path.exists(DB_PATH):
+        import glob as _glob
+        companions = [p for p in _glob.glob(DB_PATH + "*") if p != DB_PATH]
+        if not companions:
+            print("[startup][TURSO] Plain SQLite detected (no libsql metadata) — removing before sync.", flush=True)
+            _wipe_libsql_state()
+
     def _do_sync() -> bool:
         conn = libsql.connect(DB_PATH, sync_url=turso_url, auth_token=auth_token)
         try:
