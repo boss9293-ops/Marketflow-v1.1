@@ -86,18 +86,50 @@ def is_excluded_tab(title: str) -> bool:
 
 
 def load_service_account_info(raw: str) -> Dict[str, Any]:
-    if raw.startswith("{"):
+    import base64 as _b64
+
+    raw = (raw or "").strip()
+
+    # Attempt 1: direct JSON parse (covers plain JSON and pretty-printed)
+    try:
         data = json.loads(raw)
-        if not isinstance(data, dict):
-            raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON must decode to a JSON object.")
-        return data
+        if isinstance(data, dict):
+            return data
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Attempt 2: strip outer single or double quotes (Railway sometimes wraps value)
+    for stripped in (raw.strip('"'), raw.strip("'")):
+        if stripped and stripped != raw:
+            try:
+                data = json.loads(stripped)
+                if isinstance(data, dict):
+                    return data
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+    # Attempt 3: base64-decoded JSON (some platforms encode multiline values)
+    try:
+        decoded = _b64.b64decode(raw + "==").decode("utf-8")
+        data = json.loads(decoded)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    # Attempt 4: file path
     if os.path.exists(raw):
         with open(raw, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, dict):
             raise ValueError("Service account file must contain a JSON object.")
         return data
-    raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON must be a JSON string or valid file path.")
+
+    first_chars = repr(raw[:40]) if raw else "(empty)"
+    raise ValueError(
+        f"GOOGLE_SERVICE_ACCOUNT_JSON must be a JSON string or valid file path. "
+        f"Value starts with: {first_chars}"
+    )
 
 
 def fetch_range(sheet_id: str, tab_title: str, cell_range: str, sa_info: Dict[str, Any]) -> List[List[Any]]:
