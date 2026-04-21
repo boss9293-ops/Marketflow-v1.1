@@ -690,6 +690,76 @@ def run_builds(force_daily: bool = False):
     else:
         _sync_turso_if_configured()
 
+# ── Build concurrency lock (인트라데이 vs 전체 빌드 충돌 방지) ──────────────
+_BUILD_LOCK = threading.Lock()
+
+# 1시간 간격 인트라데이 업데이트 대상 (리스크 엔진 핵심 데이터)
+INTRADAY_SCRIPTS = [
+    ("update_ohlcv.py",   ["--years", "1"], 300),
+    ("build_risk_v1.py",  [],               180),
+]
+
+
+def _run_intraday_builds() -> None:
+    """장중 1시간 간격: OHLCV 갱신 + 리스크 엔진 재계산."""
+    if not _BUILD_LOCK.acquire(blocking=False):
+        print("[intraday] Skipped — full build already running", flush=True)
+        return
+    try:
+        now_str = datetime.datetime.now(ET_ZONE).strftime("%H:%M ET")
+        print(f"[intraday] Starting OHLCV+risk update at {now_str}", flush=True)
+        for script, args, timeout in INTRADAY_SCRIPTS:
+            try:
+                r = subprocess.run(
+                    [sys.executable, os.path.join(SCRIPTS, script), *args],
+                    cwd=BASE, timeout=timeout,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                )
+                output = r.stdout.decode("utf-8", errors="replace")[-1500:]
+                status = "OK" if r.returncode == 0 else "FAIL"
+                print(f"[intraday][{status}] {script}\n{output}", flush=True)
+            except Exception as exc:
+                print(f"[intraday][ERROR] {script}: {exc}", flush=True)
+    finally:
+        _BUILD_LOCK.release()
+
+
+def _schedule_intraday_updates() -> None:
+    """장중 매 정시(9:30~16:30 ET, 평일)마다 OHLCV+risk 업데이트."""
+    import time as _time
+    while True:
+        now = datetime.datetime.now(ET_ZONE)
+        minutes = now.hour * 60 + now.minute
+        is_weekday = now.weekday() < 5
+        # 9:30 AM ~ 4:30 PM ET (장 시작~종가 확정)
+        in_market = MARKET_OPEN_MINUTES_ET <= minutes <= MARKET_CLOSE_MINUTES_ET + 30
+
+        if is_weekday and in_market:
+            _run_intraday_builds()
+            # 다음 정시까지 대기
+            now2 = datetime.datetime.now(ET_ZONE)
+            next_hour = (now2 + datetime.timedelta(hours=1)).replace(
+                minute=0, second=0, microsecond=0
+            )
+            wait = max((next_hour - now2).total_seconds(), 60)
+            print(f"[intraday] Next update at {next_hour.strftime('%H:%M ET')} (in {wait/60:.0f}m)", flush=True)
+            _time.sleep(wait)
+        else:
+            # 다음 장 시작(9:30 ET)까지 대기
+            target = now.replace(
+                hour=MARKET_OPEN_MINUTES_ET // 60,
+                minute=MARKET_OPEN_MINUTES_ET % 60,
+                second=0, microsecond=0,
+            )
+            if now >= target:
+                target += datetime.timedelta(days=1)
+            while target.weekday() >= 5:
+                target += datetime.timedelta(days=1)
+            wait = max((target - datetime.datetime.now(ET_ZONE)).total_seconds(), 60)
+            print(f"[intraday] Market closed — waiting until {target.strftime('%Y-%m-%d %H:%M ET')}", flush=True)
+            _time.sleep(wait)
+
+
 build_thread = threading.Thread(target=run_builds, daemon=True)
 build_thread.start()
 
@@ -697,14 +767,14 @@ os.environ["STARTUP_MANAGES_BUILDS"] = "1"
 
 
 def _schedule_daily_rebuild() -> None:
-    """Background thread: triggers a forced rebuild at 5:00 PM ET on weekdays (market close +30min)."""
+    """Background thread: 평일 장종료+30분(4:30 PM ET) 전체 재빌드."""
     import time as _time
     while True:
         now = datetime.datetime.now(ET_ZONE)
-        target = now.replace(hour=17, minute=0, second=0, microsecond=0)
+        # 4:30 PM ET = 16:30
+        target = now.replace(hour=16, minute=30, second=0, microsecond=0)
         if now >= target:
             target += datetime.timedelta(days=1)
-        # Skip weekends (Mon=0 … Sun=6)
         while target.weekday() >= 5:
             target += datetime.timedelta(days=1)
         wait_secs = (target - now).total_seconds()
@@ -713,12 +783,18 @@ def _schedule_daily_rebuild() -> None:
         now = datetime.datetime.now(ET_ZONE)
         if now.weekday() < 5:
             print(f"[scheduler] Market-close rebuild triggered at {now.strftime('%Y-%m-%d %H:%M ET')}", flush=True)
-            run_builds(force_daily=True)
+            # 인트라데이 업데이트 완료 대기 후 전체 빌드
+            with _BUILD_LOCK:
+                run_builds(force_daily=True)
         else:
             print(f"[scheduler] Weekend — skipping rebuild.", flush=True)
 
+
 scheduler_thread = threading.Thread(target=_schedule_daily_rebuild, daemon=True)
 scheduler_thread.start()
+
+intraday_thread = threading.Thread(target=_schedule_intraday_updates, daemon=True)
+intraday_thread.start()
 
 # 3. Start gunicorn
 print(f"[startup] Starting gunicorn on port {PORT}", flush=True)
