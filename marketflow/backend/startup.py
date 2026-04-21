@@ -65,9 +65,18 @@ def _pull_turso_db_if_configured() -> bool:
             pass
 
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    print("[startup][TURSO] Pulling latest DB snapshot into live DB...", flush=True)
-    start_time = datetime.datetime.now().timestamp()
-    try:
+
+    def _wipe_libsql_state() -> None:
+        """Delete the db file and all libSQL companion files so next connect starts fresh."""
+        import glob as _glob
+        for path in _glob.glob(DB_PATH + "*"):
+            try:
+                os.remove(path)
+                print(f"[startup][TURSO] Removed stale libsql file: {os.path.basename(path)}", flush=True)
+            except Exception as rm_err:
+                print(f"[startup][TURSO] Could not remove {path}: {rm_err}", flush=True)
+
+    def _do_sync() -> bool:
         conn = libsql.connect(DB_PATH, sync_url=turso_url, auth_token=auth_token)
         try:
             if hasattr(conn, "sync"):
@@ -79,13 +88,31 @@ def _pull_turso_db_if_configured() -> bool:
                 conn.close()
             except Exception:
                 pass
+        return True
 
+    print("[startup][TURSO] Pulling latest DB snapshot into live DB...", flush=True)
+    start_time = datetime.datetime.now().timestamp()
+    try:
+        _do_sync()
         duration = datetime.datetime.now().timestamp() - start_time
         db_size_mb = os.path.getsize(DB_PATH) // 1024 // 1024 if os.path.exists(DB_PATH) else 0
         print(f"[startup][TURSO] Live DB refreshed from Turso in {duration:.1f}s ({db_size_mb}MB).", flush=True)
         return True
     except Exception as exc:
         duration = datetime.datetime.now().timestamp() - start_time
+        exc_str = str(exc)
+        if "invalid local state" in exc_str or "metadata file does not" in exc_str or "db file exists" in exc_str:
+            print(f"[startup][TURSO] Corrupted local state detected — wiping and retrying. ({exc_str})", flush=True)
+            _wipe_libsql_state()
+            try:
+                _do_sync()
+                duration2 = datetime.datetime.now().timestamp() - start_time
+                db_size_mb = os.path.getsize(DB_PATH) // 1024 // 1024 if os.path.exists(DB_PATH) else 0
+                print(f"[startup][TURSO] Live DB refreshed (after wipe) in {duration2:.1f}s ({db_size_mb}MB).", flush=True)
+                return True
+            except Exception as exc2:
+                print(f"[startup][TURSO][FAIL] Retry after wipe also failed: {exc2}", flush=True)
+                return False
         print(f"[startup][TURSO][FAIL] Pull failed after {duration:.1f}s: {exc}", flush=True)
         return False
 
