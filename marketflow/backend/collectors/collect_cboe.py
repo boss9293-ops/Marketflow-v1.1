@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import datetime as dt
 import csv
+import json
 import os
 import sqlite3
 import sys
+import urllib.parse
+import urllib.request
 from typing import List, Tuple
 
 import requests
@@ -57,6 +60,8 @@ except ModuleNotFoundError:
 PC_SYMBOL = "PUT_CALL"
 VIX_SYMBOL = "VIX"
 STOOQ_PC_URL = "https://stooq.com/q/d/l/?s=cboe_pc&i=d"
+FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
+FRED_VIXCLS_ID = "VIXCLS"
 
 
 def _utc_asof() -> str:
@@ -127,6 +132,40 @@ def compute_proxy_pc_from_vix(vix_series: List[Tuple[str, float]]) -> List[Tuple
     return out
 
 
+def fetch_vix_from_fred(limit_days: int = 1400) -> List[Tuple[str, float]]:
+    """Fetch VIXCLS from FRED API as a last-resort VIX source for proxy computation."""
+    fred_key = os.environ.get("FRED_API_KEY", "").strip()
+    if not fred_key:
+        raise RuntimeError("FRED_API_KEY not set; cannot fetch VIX from FRED")
+    start = (dt.date.today() - dt.timedelta(days=limit_days)).isoformat()
+    params = urllib.parse.urlencode({
+        "series_id": FRED_VIXCLS_ID,
+        "api_key": fred_key,
+        "file_type": "json",
+        "observation_start": start,
+    })
+    url = f"{FRED_BASE_URL}?{params}"
+    try:
+        with urllib.request.urlopen(url, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"FRED VIXCLS request failed: {exc}")
+    out: List[Tuple[str, float]] = []
+    for obs in data.get("observations", []):
+        d = obs.get("date", "")
+        v = obs.get("value", "")
+        if v in ("", ".", "null"):
+            continue
+        try:
+            out.append((d, float(v)))
+        except ValueError:
+            continue
+    out.sort(key=lambda x: x[0])
+    if len(out) < 50:
+        raise RuntimeError(f"FRED VIXCLS returned too few rows: {len(out)}")
+    return out
+
+
 def upsert_points(store: CacheStore, symbol: str, rows: List[Tuple[str, float]], source: str, quality: str, asof: str) -> int:
     pts = [SeriesPoint(symbol=symbol, date=d, value=v, source=source, asof=asof, quality=quality) for d, v in rows]
     return store.upsert_series_points(pts)
@@ -150,12 +189,28 @@ def run() -> dict:
         )
         store.close()
         return {"written": n, "source": "STOOQ", "quality": "OK"}
-    except Exception as e:
+    except Exception as stooq_err:
+        # ── Fallback 1: VIX from cache.db ────────────────────────────────────
         end_date = dt.date.today().isoformat()
         start_date = (dt.date.today() - dt.timedelta(days=365 * 4)).isoformat()
         vix_series = store.get_series_range(VIX_SYMBOL, start_date, end_date)
+        vix_source = "cache.db"
+
+        # ── Fallback 2: VIX from marketflow.db ───────────────────────────────
         if len(vix_series) < 50:
             vix_series = load_vix_from_market_daily(limit_days=1400)
+            vix_source = "marketflow.db"
+
+        # ── Fallback 3: VIX from FRED API (critical for Railway/server) ──────
+        if len(vix_series) < 50:
+            try:
+                fred_vix = fetch_vix_from_fred(limit_days=1400)
+                vix_series = fred_vix
+                vix_source = "FRED/VIXCLS"
+                print(f"[collect_cboe] STOOQ failed ({stooq_err}); using FRED VIXCLS proxy ({len(vix_series)} rows)", flush=True)
+            except Exception as fred_err:
+                print(f"[collect_cboe] FRED VIX fallback also failed: {fred_err}", flush=True)
+
         if len(vix_series) < 50:
             store.upsert_series_meta(
                 symbol=PC_SYMBOL,
@@ -164,10 +219,11 @@ def run() -> dict:
                 freq="D",
                 last_updated=asof,
                 quality="NA",
-                notes=f"PROXY failed: VIX series not available; original error={repr(e)}",
+                notes=f"PROXY failed: no VIX source available (stooq_err={repr(stooq_err)})",
             )
             store.close()
             return {"written": 0, "source": "PROXY", "quality": "NA"}
+
         proxy_rows = compute_proxy_pc_from_vix(vix_series)
         n = upsert_points(store, PC_SYMBOL, proxy_rows, source="PROXY", quality="PARTIAL", asof=asof)
         store.upsert_series_meta(
@@ -177,10 +233,10 @@ def run() -> dict:
             freq="D",
             last_updated=asof,
             quality="PARTIAL",
-            notes=f"PROXY derived from VIX (monotonic mapping). original error={repr(e)}",
+            notes=f"PROXY derived from VIX via {vix_source} (stooq_err={repr(stooq_err)})",
         )
         store.close()
-        return {"written": n, "source": "PROXY", "quality": "PARTIAL"}
+        return {"written": n, "source": f"PROXY/{vix_source}", "quality": "PARTIAL"}
 
 
 def main() -> None:
