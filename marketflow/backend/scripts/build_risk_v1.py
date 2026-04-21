@@ -31,7 +31,9 @@ if sys.platform == "win32":
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.dirname(SCRIPTS_DIR)
-DATA_DIR = os.path.join(BACKEND_DIR, "..", "data")
+# Railway (flat /app): BACKEND_DIR/data exists; local: ../data (one level up from backend/)
+_data_candidate = os.path.join(BACKEND_DIR, "data")
+DATA_DIR = _data_candidate if os.path.isdir(_data_candidate) else os.path.join(BACKEND_DIR, "..", "data")
 OUTPUT_DIR = os.path.join(BACKEND_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
