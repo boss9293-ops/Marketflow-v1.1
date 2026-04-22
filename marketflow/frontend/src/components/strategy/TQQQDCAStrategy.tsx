@@ -1186,10 +1186,23 @@ export default function TQQQDCAStrategy() {
       })
 
 
-      const data = await r.json()
+      const raw = await r.text()
+      let data: any = null
+
+      try {
+        data = raw ? JSON.parse(raw) : null
+      } catch {
+        const preview = raw ? raw.slice(0, 220) : r.statusText
+        throw new Error(`Backtest API ${r.status}: ${preview}`)
+      }
 
 
-      if (data.error) { setError(data.error); return }
+      if (!r.ok) {
+        setError(data?.error || `Backtest API ${r.status}`)
+        return
+      }
+
+      if (data?.error) { setError(data.error); return }
 
 
       setResult(data)
