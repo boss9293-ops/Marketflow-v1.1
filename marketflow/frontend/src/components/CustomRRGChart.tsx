@@ -229,7 +229,11 @@ const RANGE_RS: Record<string, Record<string, number>> = {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-const FLASK = 'http://localhost:5001'
+const FLASK = (() => {
+  if (typeof window === 'undefined') return ''
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1' ? 'http://localhost:5001' : '/api/flask'
+})()
 const DEFAULT_SYMS = ['TSLA', 'NVDA']
 
 export default function CustomRRGChart() {
