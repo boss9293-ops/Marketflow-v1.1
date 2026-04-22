@@ -236,6 +236,7 @@ const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 5
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
 
+
 // ── 메인 컴포넌트 ─────────────────────────────────────
 export default function RRGChart() {
   const [data,       setData]       = useState<RRGResponse | null>(null)

@@ -228,12 +228,13 @@ const RANGE_RS: Record<string, Record<string, number>> = {
   weekly: { '3mo': 13,  '6mo': 26,  '12mo': 52  },
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
 const FLASK = (() => {
   if (typeof window === 'undefined') return ''
   const h = window.location.hostname
   return h === 'localhost' || h === '127.0.0.1' ? 'http://localhost:5001' : '/api/flask'
 })()
+
+// ── Main component ────────────────────────────────────────────────────────────
 const DEFAULT_SYMS = ['TSLA', 'NVDA']
 
 export default function CustomRRGChart() {
