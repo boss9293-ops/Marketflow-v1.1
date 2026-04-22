@@ -777,7 +777,10 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'vr_survival.json': ('build_vr_survival.py', 600),
     'vr_survival_playback.json': ('build_vr_survival.py', 600),
     'condition_study_2018.json': ('build_condition_study.py', 600),
+    'core_price_snapshot_latest.json': ('run_market_data_update.py', 300),
     'macro_layer.json': ('macro_fred4_pipeline.py', 600),
+    'macro_summary.json': ('macro_fred4_pipeline.py', 600),
+    'macro_detail.json': ('macro_fred4_pipeline.py', 600),
 }
 _DATA_BUILD_LOCKS: dict[str, threading.Lock] = {}
 _DATA_BUILD_LOCKS_GUARD = threading.Lock()

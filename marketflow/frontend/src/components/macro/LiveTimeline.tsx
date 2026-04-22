@@ -189,6 +189,29 @@ const withReturnSeries = (arr: LivePoint[]) => {
   }))
 }
 
+const smoothNumericValue = (arr: LivePoint[], index: number, key: keyof LivePoint, radius = 2) => {
+  const values: number[] = []
+  const start = Math.max(0, index - radius)
+  const end = Math.min(arr.length - 1, index + radius)
+  for (let i = start; i <= end; i++) {
+    const value = arr[i]?.[key]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      values.push(value)
+    }
+  }
+  if (!values.length) return null
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+const withDisplaySmoothing = (arr: LivePoint[]) =>
+  arr.map((point, index) => ({
+    ...point,
+    mps_display: smoothNumericValue(arr, index, 'mps'),
+    vix_display: smoothNumericValue(arr, index, 'vix'),
+    qqq_ret_display: smoothNumericValue(arr, index, 'qqq_ret'),
+    tqqq_ret_display: smoothNumericValue(arr, index, 'tqqq_ret'),
+  }))
+
 const computeExtremes = (arr: LivePoint[], key: keyof LivePoint): RangeStat => {
   let minVal: number | null = null
   let maxVal: number | null = null
@@ -250,7 +273,7 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate,
   const focusSeries = useMemo(() => withReturnSeries(focusSeriesRaw), [focusSeriesRaw])
   const focusWithFlags = useMemo(
     () =>
-      focusSeries.map((p) => ({
+      withDisplaySmoothing(focusSeries).map((p) => ({
         ...p,
         isMpsHigh: typeof p.mps === 'number' && p.mps >= 70,
         isVixHigh: typeof p.vix === 'number' && p.vix >= 25,
@@ -670,12 +693,12 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate,
                 }
                 return null
               })}
-              <Line yAxisId="left" type="monotone" dataKey="mps" stroke="#10b981" strokeWidth={2} dot={false} name="Macro Pressure Score" />
-              <Line yAxisId="left" type="monotone" dataKey="vix" stroke="#fbbf24" strokeWidth={1.5} dot={false} name="VIX" />
+              <Line yAxisId="left" type="natural" dataKey="mps_display" stroke="#10b981" strokeWidth={2} dot={false} name="Macro Pressure Score" />
+              <Line yAxisId="left" type="natural" dataKey="vix_display" stroke="#fbbf24" strokeWidth={1.5} dot={false} name="VIX" />
               <Line
                 yAxisId="right"
-                type="monotone"
-                dataKey="qqq_ret"
+                type="natural"
+                dataKey="qqq_ret_display"
                 stroke="#ef4444"
                 strokeWidth={1.5}
                 strokeDasharray="5 5"
@@ -684,8 +707,8 @@ export default function LiveTimeline({ series, currentMps, currentVix, dataDate,
               />
               <Line
                 yAxisId="right"
-                type="monotone"
-                dataKey="tqqq_ret"
+                type="natural"
+                dataKey="tqqq_ret_display"
                 stroke="#f97316"
                 strokeWidth={1}
                 strokeDasharray="3 3"
