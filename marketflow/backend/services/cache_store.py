@@ -19,13 +19,35 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _has_series_data(path: Path) -> bool:
+    if not path.exists():
+        return False
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=2)
+        try:
+            row = conn.execute(
+                "SELECT 1 FROM series_data LIMIT 1"
+            ).fetchone()
+            return row is not None
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
 def resolve_db_path(db_path: Optional[str] = None) -> str:
     if db_path:
         return str(Path(db_path).expanduser().resolve())
     env_path = os.getenv("CACHE_DB_PATH")
     if env_path:
         return str(Path(env_path).expanduser().resolve())
-    return str((_project_root() / "data" / "cache.db").resolve())
+    root = _project_root()
+    project_cache = root / "data" / "cache.db"
+    backend_cache = root / "backend" / "data" / "cache.db"
+    for candidate in (project_cache, backend_cache):
+        if _has_series_data(candidate):
+            return str(candidate.resolve())
+    return str(project_cache.resolve())
 
 
 DEFAULT_DB_PATH = resolve_db_path()

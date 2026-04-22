@@ -69,6 +69,11 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         """
     )
     _ensure_column(conn, "fmp_consensus_snapshot", "eps_ladder_json", "TEXT")
+    # Older DBs may have the table without a usable unique constraint for upserts.
+    # Keep a unique index on ticker so ON CONFLICT(ticker) works even after schema drift.
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_fmp_consensus_snapshot_ticker ON fmp_consensus_snapshot(ticker)"
+    )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_fmp_consensus_snapshot_updated_at ON fmp_consensus_snapshot(updated_at)"
     )
@@ -560,8 +565,7 @@ def save_fmp_consensus_snapshot(snapshot: Dict[str, Any], *, db_path: Optional[s
     try:
         ensure_schema(conn)
         now = _now_iso()
-        conn.execute(
-            """
+        sql = """
             INSERT INTO fmp_consensus_snapshot (
                 ticker,
                 source,
@@ -597,27 +601,58 @@ def save_fmp_consensus_snapshot(snapshot: Dict[str, Any], *, db_path: Optional[s
                 raw_price_target_json=excluded.raw_price_target_json,
                 payload_json=excluded.payload_json,
                 updated_at=excluded.updated_at
-            """,
-            (
-                symbol,
-                str(snapshot.get("source") or "fmp"),
-                str(snapshot.get("captured_at") or now),
-                snapshot.get("source_asof"),
-                snapshot.get("eps_estimate_fy1"),
-                snapshot.get("eps_estimate_fy2"),
-                _json_dumps(snapshot.get("eps_ladder") or []),
-                snapshot.get("target_mean"),
-                snapshot.get("target_high"),
-                snapshot.get("target_low"),
-                snapshot.get("analyst_count"),
-                snapshot.get("target_analyst_count"),
-                _json_dumps(snapshot.get("analyst_estimates_raw") or []),
-                _json_dumps(snapshot.get("price_target_raw") or {}),
-                snapshot.get("payload_json") or _json_dumps(snapshot),
-                now,
-                now,
-            ),
+            """
+        values = (
+            symbol,
+            str(snapshot.get("source") or "fmp"),
+            str(snapshot.get("captured_at") or now),
+            snapshot.get("source_asof"),
+            snapshot.get("eps_estimate_fy1"),
+            snapshot.get("eps_estimate_fy2"),
+            _json_dumps(snapshot.get("eps_ladder") or []),
+            snapshot.get("target_mean"),
+            snapshot.get("target_high"),
+            snapshot.get("target_low"),
+            snapshot.get("analyst_count"),
+            snapshot.get("target_analyst_count"),
+            _json_dumps(snapshot.get("analyst_estimates_raw") or []),
+            _json_dumps(snapshot.get("price_target_raw") or {}),
+            snapshot.get("payload_json") or _json_dumps(snapshot),
+            now,
+            now,
         )
+
+        try:
+            conn.execute(sql, values)
+        except sqlite3.OperationalError as exc:
+            if "ON CONFLICT clause does not match" not in str(exc):
+                raise
+            # Fallback for legacy DB files where the unique constraint was not present.
+            conn.execute("DELETE FROM fmp_consensus_snapshot WHERE ticker = ?", (symbol,))
+            conn.execute(
+                """
+                INSERT INTO fmp_consensus_snapshot (
+                    ticker,
+                    source,
+                    captured_at,
+                    source_asof,
+                    eps_estimate_fy1,
+                    eps_estimate_fy2,
+                    eps_ladder_json,
+                    target_mean,
+                    target_high,
+                    target_low,
+                    analyst_count,
+                    target_analyst_count,
+                    raw_estimates_json,
+                    raw_price_target_json,
+                    payload_json,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                values,
+            )
         conn.commit()
     finally:
         conn.close()

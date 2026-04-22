@@ -29,8 +29,10 @@ function getUsDateString(d = new Date()): string {
 }
 
 async function runScript(scriptPath: string) {
+  const cacheDbPath = join(process.cwd(), '..', 'backend', 'data', 'cache.db')
   const env = {
     ...process.env,
+    CACHE_DB_PATH: process.env.CACHE_DB_PATH || cacheDbPath,
     PYTHONIOENCODING: 'utf-8',
     PYTHONUTF8: '1',
   }
@@ -101,15 +103,18 @@ export async function POST(req: Request) {
     const backfillSnapshots = join(scriptsDir, 'backfill_macro_snapshots.py')
 
     const warnings: string[] = []
+    const cacheDbPath = join(process.cwd(), '..', 'backend', 'data', 'cache.db')
+    const scriptEnv = {
+      ...process.env,
+      CACHE_DB_PATH: process.env.CACHE_DB_PATH || cacheDbPath,
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1',
+    }
 
     try {
       const days = await computeRefreshDays()
       await execFileAsync(process.env.PYTHON_BIN || 'python', ['-X', 'utf8', updateDaily, '--days', String(days)], {
-        env: {
-          ...process.env,
-          PYTHONIOENCODING: 'utf-8',
-          PYTHONUTF8: '1',
-        },
+        env: scriptEnv,
       })
     } catch (e) {
       warnings.push(`update_market_daily failed: ${String(e)}`)
@@ -120,11 +125,7 @@ export async function POST(req: Request) {
     await runScript(buildOverview)
     await runScript(buildActionSnapshot)
     await execFileAsync(process.env.PYTHON_BIN || 'python', ['-X', 'utf8', backfillSnapshots, '--years', '3'], {
-      env: {
-        ...process.env,
-        PYTHONIOENCODING: 'utf-8',
-        PYTHONUTF8: '1',
-      },
+      env: scriptEnv,
     })
 
     return NextResponse.json(

@@ -4602,6 +4602,148 @@ def macro_terminal_series():
 
 
 
+@app.route('/api/macro/live_series')
+def macro_live_series():
+    years = _safe_int(request.args.get('years', 3), 3)
+    years = max(1, min(10, years))
+
+    try:
+        conn = _db_connect(DB_PATH, row_factory=True)
+    except Exception as exc:
+        return jsonify({'rows': [], 'error': str(exc)}), 500
+
+    qqq_rows = []
+    tqqq_rows = []
+    vix_rows = []
+
+    try:
+        qqq_rows = conn.execute(
+            """
+            SELECT date, close
+            FROM ohlcv_daily
+            WHERE symbol = 'QQQ'
+            ORDER BY date ASC
+            """
+        ).fetchall()
+        tqqq_rows = conn.execute(
+            """
+            SELECT date, close
+            FROM ohlcv_daily
+            WHERE symbol = 'TQQQ'
+            ORDER BY date ASC
+            """
+        ).fetchall()
+        try:
+            vix_rows = conn.execute(
+                """
+                SELECT date, vix
+                FROM market_daily
+                WHERE vix IS NOT NULL
+                ORDER BY date ASC
+                """
+            ).fetchall()
+        except Exception:
+            vix_rows = []
+    except Exception as exc:
+        return jsonify({'rows': [], 'error': str(exc)}), 500
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    if not qqq_rows:
+        return jsonify({'rows': [], 'error': 'QQQ series missing'}), 404
+
+    if not vix_rows and os.path.exists(CACHE_DB_PATH):
+        try:
+            cache_conn = _db_connect(CACHE_DB_PATH, row_factory=True)
+            try:
+                vix_rows = cache_conn.execute(
+                    """
+                    SELECT date, value AS vix
+                    FROM series_data
+                    WHERE symbol = 'VIX'
+                    ORDER BY date ASC
+                    """
+                ).fetchall()
+            finally:
+                try:
+                    cache_conn.close()
+                except Exception:
+                    pass
+        except Exception:
+            vix_rows = []
+
+    def _parse_date(value):
+        try:
+            return datetime.strptime(str(value)[:10], '%Y-%m-%d')
+        except Exception:
+            return None
+
+    qqq_latest = _parse_date(qqq_rows[-1]['date'])
+    if qqq_latest is None:
+        return jsonify({'rows': [], 'error': 'QQQ series date parse failed'}), 500
+
+    try:
+        start_dt = qqq_latest.replace(year=qqq_latest.year - years)
+    except Exception:
+        start_dt = qqq_latest - timedelta(days=365 * years)
+
+    tqqq_by_date = {
+        str(row['date']): _safe_float(row['close'])
+        for row in tqqq_rows
+        if str(row['date']) and _safe_float(row['close']) is not None
+    }
+    vix_by_date = {
+        str(row['date']): _safe_float(row['vix'])
+        for row in vix_rows
+        if str(row['date']) and _safe_float(row['vix']) is not None
+    }
+
+    rows = []
+    last_tqqq = None
+    last_vix = None
+
+    for row in qqq_rows:
+        date_value = str(row['date'])
+        dt_value = _parse_date(date_value)
+        if dt_value is None or dt_value < start_dt:
+            continue
+
+        qqq_value = _safe_float(row['close'])
+        if qqq_value is None:
+            continue
+
+        exact_tqqq = tqqq_by_date.get(date_value)
+        if exact_tqqq is not None:
+            last_tqqq = exact_tqqq
+
+        exact_vix = vix_by_date.get(date_value)
+        if exact_vix is not None:
+            last_vix = exact_vix
+
+        rows.append({
+            'date': date_value,
+            'qqq_n': qqq_value,
+            'tqqq_n': last_tqqq,
+            'vix': last_vix,
+        })
+
+    if not rows:
+        return jsonify({'rows': [], 'error': 'no live series rows'}), 404
+
+    return jsonify({
+        'rows': rows,
+        'meta': {
+            'years': years,
+            'source': 'marketflow-db',
+            'last_date': rows[-1]['date'],
+        },
+    })
+
+
+
 @app.route('/api/macro/revisions')
 
 

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { readCacheJson } from '@/lib/readCacheJson'
+import { backendApiUrl } from '@/lib/backendApi'
 import {
   adjustExposureBandUpper,
   formatMacroMetricRow,
@@ -240,6 +241,37 @@ async function readLiveMpsSnapshots(): Promise<{ byDate: Map<string, number>; la
 }
 
 async function readLiveMarketSeries(): Promise<{ rows: MarketHistoryRow[]; lastDate: string | null }> {
+  // Prefer the backend API first so Vercel SSR does not depend on local SQLite or Turso.
+  try {
+    const res = await fetch(backendApiUrl('/api/macro/live_series?years=3'), {
+      cache: 'no-store',
+    })
+    if (res.ok) {
+      const json = (await res.json()) as {
+        rows?: Array<{ date?: string; qqq_n?: number | null; tqqq_n?: number | null; vix?: number | null }>
+        meta?: { last_date?: string | null }
+      }
+      const rows = Array.isArray(json?.rows)
+        ? json.rows
+            .map((row) => ({
+              date: String(row?.date || ''),
+              qqq_n: typeof row?.qqq_n === 'number' ? row.qqq_n : null,
+              tqqq_n: typeof row?.tqqq_n === 'number' ? row.tqqq_n : null,
+              vix: typeof row?.vix === 'number' ? row.vix : null,
+            }))
+            .filter((row) => Boolean(row.date))
+        : []
+      if (rows.length > 0) {
+        return {
+          rows,
+          lastDate: json?.meta?.last_date || rows[rows.length - 1]?.date || null,
+        }
+      }
+    }
+  } catch {
+    // Fall back to local DB / Turso below.
+  }
+
   // 1차: 로컬 SQLite DB (로컬 개발 환경)
   try {
     const path = await import('path')
