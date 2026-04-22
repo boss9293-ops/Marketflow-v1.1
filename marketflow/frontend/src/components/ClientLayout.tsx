@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { SessionProvider } from 'next-auth/react'
 import Sidebar from '@/components/Sidebar'
 import WatchlistSidebar from '@/components/WatchlistSidebar'
@@ -42,6 +42,7 @@ export default function ClientLayout({
   const [sidebarWidth, setSidebarWidth]       = useState(SIDEBAR_DEFAULT)
   const [isDragging, setIsDragging]           = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const [uiLang, setUiLang]                   = useState<UiLang>(initialUiLang)
   const [contentLang, setContentLang]         = useState<ContentLang>(initialContentLang)
 
@@ -60,6 +61,12 @@ export default function ClientLayout({
   useEffect(() => { applyUiLangToDocument(uiLang); persistUiLang(uiLang) }, [uiLang])
   useEffect(() => { applyContentLangToDocument(contentLang); persistContentLang(contentLang) }, [contentLang])
 
+  useEffect(() => {
+    setWatchlistOpen(false)
+    setMobileSidebarOpen(false)
+    setIsDragging(false)
+  }, [pathname])
+
   // ── Resize drag ──────────────────────────────────────────────────────────
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -77,11 +84,14 @@ export default function ClientLayout({
       )
     }
     const onUp = () => setIsDragging(false)
+    const onBlur = () => setIsDragging(false)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
+    window.addEventListener('blur', onBlur)
     return () => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('blur', onBlur)
     }
   }, [isDragging])
 
@@ -194,7 +204,9 @@ export default function ClientLayout({
                 value={uiLang}
                 onChange={(next) => {
                   setUiLang(next)
+                  setContentLang(next)
                   persistUiLang(next)
+                  persistContentLang(next)
                   router.refresh()
                 }}
               />

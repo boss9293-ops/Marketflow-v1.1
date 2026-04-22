@@ -1,6 +1,8 @@
 import fs from 'fs/promises'
 import path from 'path'
 
+import { backendApiUrl } from '@/lib/backendApi'
+
 type DataManifestArtifact = {
   relative_path?: string | null
   exists?: boolean | null
@@ -53,11 +55,23 @@ function normalizeApiPath(pathname: string): string {
   return rel ? `/${rel}` : '/'
 }
 
-async function readJsonFromBackend<T>(pathname: string): Promise<T | null> {
+async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 2500): Promise<T | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(`/api/flask${normalizeApiPath(pathname)}`, { cache: 'no-store' })
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal })
     if (!res.ok) return null
     return (await res.json()) as T
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function readJsonFromBackend<T>(pathname: string): Promise<T | null> {
+  try {
+    return await fetchJsonWithTimeout<T>(backendApiUrl(normalizeApiPath(pathname)))
   } catch {
     return null
   }
@@ -199,6 +213,10 @@ async function readArtifactJson<T>(filename: string): Promise<T | null> {
   const remote = await readJsonFromBackend<T>(`/api/data/${normalizeRelativePath(filename)}`)
   if (remote !== null) {
     return remote
+  }
+
+  if (process.env.VERCEL) {
+    return null
   }
 
   return readJsonFromLocalCandidates<T>(filename)

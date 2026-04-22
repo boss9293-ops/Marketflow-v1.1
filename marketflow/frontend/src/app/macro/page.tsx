@@ -143,6 +143,31 @@ function shiftIsoDate(date: string, days: number) {
   return base.toISOString().slice(0, 10)
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      resolve(fallback)
+    }, timeoutMs)
+
+    promise
+      .then((value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(value)
+      })
+      .catch(() => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(fallback)
+      })
+  })
+}
+
 async function readLiveMpsSnapshots(): Promise<{ byDate: Map<string, number>; lastDate: string | null }> {
   // 1차: 로컬 파일 시스템 (로컬 개발 환경)
   try {
@@ -185,7 +210,13 @@ async function readLiveMpsSnapshots(): Promise<{ byDate: Map<string, number>; la
 
   // 2차: Railway 백엔드 API (프로덕션 Vercel)
   try {
-    const res = await fetch('/api/flask/api/macro/snapshots?limit=400', {
+    const rawUrl =
+      process.env.NEXT_PUBLIC_BACKEND_API ||
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      'https://marketflow-v11-production.up.railway.app'
+    const backendUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
+    const res = await fetch(`${backendUrl}/api/macro/snapshots?limit=400`, {
       cache: 'no-store',
     })
     if (res.ok) {
@@ -330,6 +361,10 @@ async function readLiveMarketSeries(): Promise<{ rows: MarketHistoryRow[]; lastD
 
 export default async function MacroPage({ searchParams }: { searchParams: { tab?: string } }) {
   const currentTab = (String(searchParams.tab || 'status') as 'status' | 'validation')
+  const emptyLiveMpsSnapshots = { byDate: new Map<string, number>(), lastDate: null as string | null }
+  const emptyLiveMarketSeries = { rows: [] as MarketHistoryRow[], lastDate: null as string | null }
+  const liveMpsSnapshotsPromise = withTimeout(readLiveMpsSnapshots(), 1800, emptyLiveMpsSnapshots)
+  const liveMarketSeriesPromise = withTimeout(readLiveMarketSeries(), 2200, emptyLiveMarketSeries)
   const [overview, tape, action, macroLayer, macroSummary, macroDetail, conditionStudy, liveMpsSnapshots] = await Promise.all([
     readCacheJson<OverviewCache>('overview.json', {}),
     readCacheJson<TapeCache>('market_tape.json', { items: [] }),
@@ -338,7 +373,7 @@ export default async function MacroPage({ searchParams }: { searchParams: { tab?
     readCacheJson<MacroSummaryApi>('macro_summary.json', {}),
     readCacheJson<MacroDetailApi>('macro_detail.json', {}),
     readCacheJson<ConditionStudyCache | null>('condition_study_2018.json', null),
-    readLiveMpsSnapshots(),
+    liveMpsSnapshotsPromise,
   ])
 
   const dataDate = macroSummary.asof_date || macroLayer.data_date || tape.data_date || overview.latest_date || '--'
@@ -427,7 +462,7 @@ export default async function MacroPage({ searchParams }: { searchParams: { tab?
   const apiExposureReasons = Array.isArray(macroSummary.exposure_modifier?.reasons) ? macroSummary.exposure_modifier!.reasons! : []
   const shownExposureMod = typeof apiExposureMod === 'number' ? apiExposureMod : macroPressure.exposureUpperModifierPct
 
-  const liveMarketSeries = await readLiveMarketSeries()
+  const liveMarketSeries = await liveMarketSeriesPromise
 
   // MPS 스냅샷에서 날짜 기반 fallback 시리즈 생성 (가격 데이터 없을 때)
   const baseRows: MarketHistoryRow[] =

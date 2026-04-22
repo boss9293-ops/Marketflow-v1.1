@@ -47,16 +47,10 @@ export default function ValidationBadge() {
 
   return (
     <div className="flex items-center gap-2">
-      <span
-        title={tooltip}
-        className={`px-2 py-0.5 rounded-full text-xs border ${cls}`}
-      >
+      <span title={tooltip} className={`px-2 py-0.5 rounded-full text-xs border ${cls}`}>
         [Validation: {data.status}]
       </span>
-      <span className="text-xs text-slate-300">
-        {data.snapshot_date || '—'}
-      </span>
+      <span className="text-xs text-slate-300">{data.snapshot_date || '--'}</span>
     </div>
   )
 }
-

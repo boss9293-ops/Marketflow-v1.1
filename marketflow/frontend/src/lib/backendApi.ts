@@ -12,6 +12,10 @@ function normalizeBaseUrl(value: string): string {
 }
 
 export function resolveBackendBaseUrl(): string {
+  if (typeof window === 'undefined' && process.env.VERCEL) {
+    return 'https://marketflow-v11-production.up.railway.app'
+  }
+
   const candidates = [
     process.env.NEXT_PUBLIC_BACKEND_API,
     process.env.NEXT_PUBLIC_BACKEND_URL,
