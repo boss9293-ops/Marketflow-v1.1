@@ -766,6 +766,7 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'soxx_survival_playback.json': ('build_soxx_survival_playback.py', 600),
     'smart_money.json': ('build_smart_money.py', 300),
     'market_tape.json': ('build_market_tape.py', 300),
+    'rrg_data.json': ('rrg_calculator.py', 300),
     'market_state.json': ('build_market_state.py', 300),
     'overview.json': ('build_overview.py', 300),
     'snapshots_120d.json': ('build_snapshots_120d.py', 600),
@@ -3452,7 +3453,27 @@ def regime():
 def rrg():
 
 
-    return jsonify(load_json('rrg_data.json'))
+    data = load_json_or_none_cached('rrg_data.json')
+
+    if data:
+
+        return jsonify(data)
+
+    if _ensure_data_artifact('rrg_data.json'):
+
+        data = load_json_or_none_cached('rrg_data.json')
+
+        if data:
+
+            return jsonify(data)
+
+    return jsonify({
+
+        'error': 'rrg_data.json not generated yet.',
+
+        'rerun_hint': 'python backend/scripts/rrg_calculator.py',
+
+    }), 404
 
 
 

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface TrailPoint { ratio: number; momentum: number }
@@ -228,12 +229,6 @@ const RANGE_RS: Record<string, Record<string, number>> = {
   weekly: { '3mo': 13,  '6mo': 26,  '12mo': 52  },
 }
 
-const FLASK = (() => {
-  if (typeof window === 'undefined') return ''
-  const h = window.location.hostname
-  return h === 'localhost' || h === '127.0.0.1' ? 'http://localhost:5001' : '/api/flask'
-})()
-
 // ── Main component ────────────────────────────────────────────────────────────
 const DEFAULT_SYMS = ['TSLA', 'NVDA']
 
@@ -278,10 +273,13 @@ export default function CustomRRGChart() {
     if (!syms.length) { setData(null); return }
     setLoading(true); setError('')
     try {
-      const res = await fetch(
-        `${FLASK}/api/rrg/custom?symbols=${syms.join(',')}&benchmark=${bench}&weeks=${wk}&period=${per}`,
-        { cache: 'no-store' }
-      )
+      const params = new URLSearchParams({
+        symbols: syms.join(','),
+        benchmark: bench,
+        weeks: String(wk),
+        period: per,
+      })
+      const res = await fetch(`${clientApiUrl('/api/rrg/custom')}?${params.toString()}`, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setData(await res.json())
     } catch (e) {

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef, useMemo } from 'react'
+import { clientApiUrl } from '@/lib/backendApi'
 
 // ── 타입 ──────────────────────────────────────────────
 interface TrailPoint { ratio: number; momentum: number }
@@ -234,12 +235,11 @@ function drawRRG(
 // 52주 = 12mo, 26주 = 6mo, 13주 = 3mo
 const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 52 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'
-
-
 // ── 메인 컴포넌트 ─────────────────────────────────────
 export default function RRGChart() {
   const [data,       setData]       = useState<RRGResponse | null>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState('')
   const [visible,    setVisible]    = useState<Set<string>>(new Set())
   const [tailLength,  setTailLength]  = useState<number>(30)
   const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('12mo')
@@ -283,16 +283,37 @@ export default function RRGChart() {
   }
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/rrg`)
-      .then(r => r.json())
+    setLoading(true)
+    setError('')
+    fetch(clientApiUrl('/api/rrg'), { cache: 'no-store' })
+      .then(async (r) => {
+        if (!r.ok) {
+          let detail = ''
+          try {
+            const payload = await r.json()
+            detail = typeof payload?.error === 'string' ? `: ${payload.error}` : ''
+          } catch {
+            // ignore non-json error body
+          }
+          throw new Error(`RRG API ${r.status}${detail}`)
+        }
+        return r.json()
+      })
       .then((d: RawRRGResponse) => {
         const normalized: RRGResponse = {
           timestamp: d?.timestamp || new Date().toISOString(),
           sectors: normalizeSectors(d?.sectors),
         }
+        if (!normalized.sectors.length) {
+          throw new Error('RRG API returned no sector rows')
+        }
         setData(normalized)
       })
-      .catch(() => {})
+      .catch((err) => {
+        setData({ timestamp: new Date().toISOString(), sectors: [] })
+        setError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const displaySectors = useMemo(() => {
@@ -409,13 +430,22 @@ export default function RRGChart() {
 
         {/* 캔버스 */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {sectors.length === 0 ? (
+          {loading ? (
             <div style={{
               height: 600, display: 'flex', alignItems: 'center',
               justifyContent: 'center', color: '#6b7280',
               background: '#111113', borderRadius: 8,
             }}>
               RRG 데이터 로딩 중...
+            </div>
+          ) : error || sectors.length === 0 ? (
+            <div style={{
+              height: 600, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', color: '#fca5a5',
+              background: '#111113', borderRadius: 8, padding: '1.5rem',
+              textAlign: 'center',
+            }}>
+              RRG 데이터를 불러오지 못했습니다. {error}
             </div>
           ) : (
             <canvas
