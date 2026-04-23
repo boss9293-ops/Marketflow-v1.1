@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { SessionProvider } from 'next-auth/react'
 import Sidebar from '@/components/Sidebar'
-import WatchlistSidebar from '@/components/WatchlistSidebar'
 import { WatchlistProvider } from '@/contexts/WatchlistContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import UserPlanBadge from '@/components/subscription/UserPlanBadge'
@@ -20,8 +19,6 @@ import {
   type ContentLang,
   type UiLang,
 } from '@/lib/uiLang'
-import { pickLang } from '@/lib/useLangMode'
-import { UI_TEXT } from '@/lib/uiText'
 
 const SIDEBAR_DEFAULT = 220
 const SIDEBAR_MIN     = 120   // 최소 폭 (이 미만으로 드래그 → 접힘)
@@ -38,7 +35,6 @@ export default function ClientLayout({
   initialUiLang: UiLang
   initialContentLang: ContentLang
 }) {
-  const [watchlistOpen, setWatchlistOpen]     = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth]       = useState(SIDEBAR_DEFAULT)
   const [isDragging, setIsDragging]           = useState(false)
@@ -63,7 +59,6 @@ export default function ClientLayout({
   useEffect(() => { applyContentLangToDocument(contentLang); persistContentLang(contentLang) }, [contentLang])
 
   useEffect(() => {
-    setWatchlistOpen(false)
     setMobileSidebarOpen(false)
     setIsDragging(false)
   }, [pathname])
@@ -208,7 +203,21 @@ export default function ClientLayout({
             </main>
 
             {/* ── Top-right controls ── */}
-            <div style={{ position: 'fixed', top: APP_FRAME_INSET, right: APP_FRAME_INSET, zIndex: 70, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                position: 'fixed',
+                top: 8,
+                right: 'max(18px, calc((100vw - 1600px) / 2 + 18px))',
+                zIndex: 70,
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'flex-end',
+                justifyContent: 'flex-end',
+                gap: 4,
+                flexWrap: 'nowrap',
+                whiteSpace: 'nowrap',
+              }}
+            >
               <UserPlanBadge />
               <LanguageModeToggle
                 value={uiLang}
@@ -220,25 +229,7 @@ export default function ClientLayout({
                   router.refresh()
                 }}
               />
-              <button
-                onClick={() => setWatchlistOpen(true)}
-                style={{
-                  border: '1px solid rgba(0,217,255,0.38)',
-                  background: 'rgba(0,217,255,0.16)',
-                  color: '#67e8f9',
-                  borderRadius: 10,
-                  padding: '0.42rem 0.7rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-                title={pickLang(uiLang, UI_TEXT.common.openWatchlist.ko, UI_TEXT.common.openWatchlist.en)}
-              >
-                {pickLang(uiLang, UI_TEXT.nav.watchlist.ko, UI_TEXT.nav.watchlist.en)}
-              </button>
             </div>
-
-            <WatchlistSidebar open={watchlistOpen} onClose={() => setWatchlistOpen(false)} />
           </div>
 
         </WatchlistProvider>

@@ -16,12 +16,12 @@ export default function LanguageModeToggle({ value, onChange }: Props) {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 4,
-        borderRadius: 10,
+        gap: 0,
+        borderRadius: 4,
         border: '1px solid rgba(148,163,184,0.18)',
         background: 'rgba(255,255,255,0.03)',
-        padding: 4,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+        padding: 0,
+        boxShadow: 'none',
       }}
     >
       {([
@@ -38,15 +38,15 @@ export default function LanguageModeToggle({ value, onChange }: Props) {
               border: '1px solid transparent',
               background: active ? '#D7FF37' : 'transparent',
               color: active ? '#0B0F14' : '#D7E1F0',
-              borderRadius: 8,
-              minWidth: 48,
-              height: 32,
-              padding: '0 12px',
-              fontSize: '0.8rem',
+              borderRadius: 3,
+              minWidth: 26,
+              height: 18,
+              padding: '0 4px',
+              fontSize: '0.56rem',
               fontWeight: 800,
-              letterSpacing: '0.08em',
+              letterSpacing: '0.05em',
               cursor: 'pointer',
-              boxShadow: active ? '0 0 0 1px rgba(215,255,55,0.12), 0 0 0 3px rgba(215,255,55,0.08)' : 'none',
+              boxShadow: active ? '0 0 0 1px rgba(215,255,55,0.10)' : 'none',
             }}
             title={x.key === 'ko' ? 'Korean UI' : 'English UI'}
           >

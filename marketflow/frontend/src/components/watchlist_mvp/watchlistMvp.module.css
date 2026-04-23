@@ -1,13 +1,17 @@
 ﻿.shell {
   height: 100%;
   min-height: 0;
-  width: 100%;
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 0 clamp(16px, 1.5vw, 24px);
   display: grid;
-  grid-template-columns: clamp(280px, 18vw, 320px) minmax(0, 1fr) clamp(360px, 24vw, 400px);
+  grid-template-columns: clamp(290px, 16vw, 320px) minmax(0, 0.86fr) clamp(360px, 21vw, 410px);
+  gap: clamp(18px, 1.5vw, 24px);
   background: #05090f;
   color: #d9e3ef;
   overflow: hidden;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
   font-family: var(--font-terminal), 'IBM Plex Mono', 'Roboto Mono', monospace;
 }
 
@@ -922,26 +926,31 @@
   min-height: 0;
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 8px 12px 4px;
+  padding: 6px 10px 2px;
   display: flex;
   flex-direction: column;
 }
 
 .chartHeader {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
 }
 
 .chartPriceBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
   text-align: right;
-  padding-top: 2px;
+  padding-top: 0;
+  line-height: 1.1;
 }
 
 .chartPrice {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   color: #FFD580;
   font-weight: 700;
   font-family: var(--font-terminal), 'IBM Plex Mono', monospace;
@@ -949,15 +958,15 @@
 }
 
 .chartChangeDown {
-  margin: 3px 0 0;
-  font-size: 12px;
+  margin: 0;
+  font-size: 11px;
   color: #f97316;
   font-weight: 700;
 }
 
 .chartChangeUp {
-  margin: 3px 0 0;
-  font-size: 12px;
+  margin: 0;
+  font-size: 11px;
   color: #22c55e;
   font-weight: 700;
 }
@@ -1015,13 +1024,13 @@
 }
 
 .tvWidgetFrame {
-  margin-top: 6px;
+  margin-top: 4px;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1.12 / 1;
   min-height: 0;
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(7, 12, 19, 0.92);
   overflow: hidden;
   display: block;
@@ -1035,7 +1044,7 @@
 
 .timeframeChip,
 .timeframeChipActive {
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 11px;
   font-weight: 700;
   padding: 3px 8px;
@@ -1056,7 +1065,7 @@
 .chartBox {
   margin-top: 10px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(7, 12, 19, 0.92);
   padding: 8px;
 }
@@ -1065,7 +1074,7 @@
   position: relative;
   height: 260px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  border-radius: 0;
   background:
     linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 42px 42px,
     linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 42px 42px,
@@ -1104,7 +1113,10 @@
 }
 
 .headlineCard {
-  display: block;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: start;
   width: 100%;
   text-align: left;
   text-decoration: none;
@@ -1113,7 +1125,7 @@
   border-radius: 9px;
   background: rgba(6, 11, 17, 0.9);
   padding: 10px;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 
@@ -1125,27 +1137,32 @@
 .headlineTop {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
 }
 
 .headlineTime {
   margin: 0;
   color: #22c55e;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.35;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .headlineAction {
   font-size: 11px;
   color: #7bd7ff;
   font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.headlineText {
-  margin: 6px 0 0;
-  color: #dcf2d5;
-  font-size: 13px;
-  line-height: 1.35;
+.headlineText {  margin: 0;  color: #dcf2d5;  font-size: 13px;  line-height: 1.35;  word-wrap: break-word;  overflow-wrap: break-word;
 }
 
 .headlineSource {
@@ -1516,81 +1533,21 @@
 }
 
 .terminalTheme .breakingHeadlineCard {
-  border-left: 2px solid var(--terminal-breaking) !important;
+  border-left: 0 !important;
+  background: rgba(255, 92, 0, 0.9) !important;
+  color: #ffffff !important;
+  padding: 8px 10px !important;
+}
+
+.terminalTheme .breakingHeadlineCard .headlineTime,
+.terminalTheme .breakingHeadlineCard .headlineText {
+  color: #ffffff !important;
 }
 
 .terminalTheme .breakingHeadlineCard .headlineText {
-  color: var(--terminal-breaking) !important;
-}
-
-.terminalTheme .breakingHeadlineTime {
-  margin: 0;
-  color: var(--terminal-warning) !important;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font-terminal-mono), var(--font-terminal), "Nanum Gothic Coding", "Noto Sans KR", monospace !important;
-}
-
-.terminalTheme .dailyDateBoundary {
-  border-bottom-color: var(--terminal-divider) !important;
-}
-
-.terminalTheme .marketPanel .stack > .headlineCard:nth-child(-n+2) .headlineText,
-.terminalTheme .marketPanel .stack > .headlineCard:nth-child(-n+2) .headlineTime {
-  color: #86efac !important;
-}
-
-.terminalTheme .marketPanel .stack > .headlineCard:nth-child(n+3) .headlineText,
-.terminalTheme .marketPanel .stack > .headlineCard:nth-child(n+3) .headlineTime {
-  color: #2f6f3e !important;
-}
-
-.terminalTheme .marketPanel .breakingHeadlineCard {
-  border-left: 1px solid rgba(134, 239, 172, 0.4) !important;
-}
-
-.feedHealthRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.feedHealthBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid #2a2a2a;
-  font-family: var(--font-terminal-mono), var(--font-terminal), "Nanum Gothic Coding", "Noto Sans KR", monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.feedHealthBadgeOk {
-  border-color: #00b86b;
-  color: #7dffb6;
-  background: rgba(0, 184, 107, 0.14);
-}
-
-.feedHealthBadgeDegraded {
-  border-color: #b88a00;
-  color: #ffd36d;
-  background: rgba(184, 138, 0, 0.14);
-}
-
-.feedHealthBadgeDown {
-  border-color: #b93f3f;
-  color: #ff8f8f;
-  background: rgba(185, 63, 63, 0.16);
-}
-
-.feedHealthMeta {
-  margin: 0;
-  color: #9aa5b3;
-  font-size: 11px;
-  line-height: 1.35;
+  margin: 0 !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .feedHealthSources {
@@ -1599,5 +1556,10 @@
   font-size: 11px;
   line-height: 1.35;
 }
+
+
+
+
+
 
 

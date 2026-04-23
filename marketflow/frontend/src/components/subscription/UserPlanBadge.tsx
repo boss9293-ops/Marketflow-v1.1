@@ -21,9 +21,9 @@ export default function UserPlanBadge() {
             background:   'rgba(255,255,255,0.06)',
             border:       '1px solid rgba(255,255,255,0.12)',
             color:        '#94A3B8',
-            borderRadius: 8,
-            padding:      '5px 12px',
-            fontSize:     '0.74rem',
+            borderRadius: 4,
+            padding:      '2px 6px',
+            fontSize:     '0.6rem',
             fontWeight:   600,
             cursor:       'pointer',
           }}
@@ -42,23 +42,23 @@ export default function UserPlanBadge() {
         style={{
           display:      'flex',
           alignItems:   'center',
-          gap:          6,
+          gap:          4,
           background:   isPremium ? 'rgba(215,255,55,0.08)' : 'rgba(255,255,255,0.05)',
           border:       `1px solid ${isPremium ? 'rgba(215,255,55,0.30)' : 'rgba(255,255,255,0.10)'}`,
-          borderRadius: 8,
-          padding:      '5px 10px',
+          borderRadius: 4,
+          padding:      '2px 6px',
           cursor:       'pointer',
         }}
       >
         <span style={{
-          fontSize:     '0.65rem',
+          fontSize:     '0.54rem',
           fontWeight:   800,
           color:        isPremium ? '#D7FF37' : '#64748B',
-          letterSpacing: '0.06em',
+          letterSpacing: '0.05em',
         }}>
           {isPremium ? 'PREMIUM' : 'FREE'}
         </span>
-        <span style={{ color: '#94A3B8', fontSize: '0.70rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#94A3B8', fontSize: '0.6rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {user?.email}
         </span>
       </button>
@@ -71,8 +71,8 @@ export default function UserPlanBadge() {
             right:      0,
             background: '#0E1420',
             border:     '1px solid rgba(255,255,255,0.10)',
-            borderRadius: 10,
-            padding:    '0.5rem',
+            borderRadius: 8,
+            padding:    '0.4rem',
             minWidth:   160,
             zIndex:     100,
           }}
