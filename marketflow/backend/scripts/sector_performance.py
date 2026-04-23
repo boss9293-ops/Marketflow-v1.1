@@ -7,6 +7,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime
+from typing import List, Tuple
 
 
 SECTORS = {
@@ -33,6 +34,48 @@ BARS = {
 }
 
 
+def fetch_unique_daily_closes(conn: sqlite3.Connection, symbol: str) -> List[Tuple[str, float]]:
+    """
+    Return one close value per trading date, even if ohlcv_daily contains
+    duplicate (symbol, date) rows on legacy databases.
+    """
+    try:
+        rows = conn.execute(
+            """
+            WITH latest_per_day AS (
+                SELECT date, MAX(rowid) AS rid
+                FROM ohlcv_daily
+                WHERE symbol = ? AND close IS NOT NULL
+                GROUP BY date
+            )
+            SELECT o.date, o.close
+            FROM ohlcv_daily o
+            JOIN latest_per_day d ON o.rowid = d.rid
+            WHERE o.symbol = ?
+            ORDER BY o.date ASC
+            """,
+            (symbol, symbol),
+        ).fetchall()
+        return [(r[0], float(r[1])) for r in rows if r and r[0] and r[1] is not None]
+    except Exception:
+        # Fallback for older SQLite edge-cases: keep the last row per date in Python.
+        raw = conn.execute(
+            """
+            SELECT date, close
+            FROM ohlcv_daily
+            WHERE symbol = ? AND close IS NOT NULL
+            ORDER BY date ASC, rowid ASC
+            """,
+            (symbol,),
+        ).fetchall()
+        dedup: dict[str, float] = {}
+        for date_str, close_val in raw:
+            if not date_str or close_val is None:
+                continue
+            dedup[str(date_str)] = float(close_val)
+        return sorted(dedup.items(), key=lambda x: x[0])
+
+
 def calculate_sector_performance():
     db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'marketflow.db')
     db_path = os.path.abspath(db_path)
@@ -45,10 +88,7 @@ def calculate_sector_performance():
     conn = sqlite3.connect(db_path)
     try:
         for symbol, name in SECTORS.items():
-            rows = conn.execute(
-                "SELECT date, close FROM ohlcv_daily WHERE symbol=? AND close IS NOT NULL ORDER BY date ASC",
-                (symbol,)
-            ).fetchall()
+            rows = fetch_unique_daily_closes(conn, symbol)
 
             if not rows:
                 print(f"Skip {symbol}: no data in DB")

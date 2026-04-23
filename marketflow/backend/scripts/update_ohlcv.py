@@ -313,6 +313,64 @@ def validate_required_tables(conn: sqlite3.Connection) -> None:
         )
 
 
+def ensure_ohlcv_conflict_target(conn: sqlite3.Connection) -> None:
+    """
+    Ensure ohlcv_daily supports idempotent upserts on (symbol, date).
+
+    Some legacy DBs may have an ohlcv_daily table without a composite PK/UNIQUE
+    constraint, which allows duplicate symbol+date rows and breaks 1D return
+    calculations. This migration removes duplicates (keeping the latest rowid)
+    and enforces UNIQUE(symbol, date).
+    """
+    cols_info = conn.execute("PRAGMA table_info(ohlcv_daily)").fetchall()
+    if not cols_info:
+        raise RuntimeError("ohlcv_daily table metadata is unavailable")
+
+    pk_cols = [row[1] for row in sorted((r for r in cols_info if int(r[5] or 0) > 0), key=lambda r: int(r[5]))]
+    if pk_cols == ["symbol", "date"]:
+        return
+
+    for idx in conn.execute("PRAGMA index_list(ohlcv_daily)").fetchall():
+        is_unique = int(idx[2] or 0) == 1
+        if not is_unique:
+            continue
+        idx_name = idx[1]
+        idx_cols = [row[2] for row in conn.execute(f"PRAGMA index_info('{idx_name}')").fetchall()]
+        if idx_cols == ["symbol", "date"]:
+            return
+
+    dup_groups = conn.execute(
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT symbol, date
+            FROM ohlcv_daily
+            GROUP BY symbol, date
+            HAVING COUNT(*) > 1
+        ) t
+        """
+    ).fetchone()[0]
+
+    if dup_groups:
+        print(f"[MIGRATE] ohlcv_daily duplicate groups: {dup_groups} (deduplicating)")
+        conn.execute(
+            """
+            DELETE FROM ohlcv_daily
+            WHERE rowid NOT IN (
+                SELECT MAX(rowid)
+                FROM ohlcv_daily
+                GROUP BY symbol, date
+            )
+            """
+        )
+        conn.commit()
+        print("[MIGRATE] ohlcv_daily deduplication complete")
+
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_ohlcv_symbol_date ON ohlcv_daily(symbol, date)")
+    conn.commit()
+    print("[MIGRATE] ohlcv_daily now enforces UNIQUE(symbol, date)")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit",   type=int,   default=None,  help="limit symbols for test run")
@@ -338,6 +396,7 @@ def main() -> int:
 
     try:
         validate_required_tables(conn)
+        ensure_ohlcv_conflict_target(conn)
         if args.symbols:
             symbols = [s.upper() for s in args.symbols if s and s.strip()]
             seed_symbols(conn, symbols)
