@@ -22,6 +22,10 @@ KEYWORDS = [
     "fed", "powell", "rate", "yield", "treasury", "cpi", "ppi", "jobs", "payroll",
     "liquidity", "qt", "qe", "balance sheet", "rrp", "repo", "credit spread",
     "vix", "volatility", "bitcoin", "btc", "gold", "real yield", "tips", "m2",
+    "미국 증시", "미국 주식", "뉴욕증시", "나스닥", "s&p500", "월가", "연준",
+    "미국 금리", "미국 국채", "국채", "달러", "환율", "엔비디아", "테슬라",
+    "애플", "마이크로소프트", "반도체", "빅테크", "실적", "가이던스", "변동성",
+    "cpi", "ppi", "고용", "파월", "금리", "프리마켓", "애프터마켓",
 ]
 PREFERRED_PUBLISHER_BONUS = {
     "Reuters": 2.4,
@@ -35,6 +39,20 @@ PREFERRED_PUBLISHER_BONUS = {
     "CNBC": 1.2,
     "Nasdaq": 1.1,
     "Benzinga": 0.8,
+    "연합뉴스": 2.0,
+    "연합뉴스TV": 1.8,
+    "연합인포맥스": 1.9,
+    "한국경제": 1.5,
+    "매일경제": 1.4,
+    "서울경제": 1.4,
+    "이데일리": 1.3,
+    "머니투데이": 1.2,
+    "아시아경제": 1.1,
+    "파이낸셜뉴스": 1.1,
+    "조선비즈": 1.0,
+    "뉴스1": 1.0,
+    "인포스탁": 0.9,
+    "Naver Search": 0.7,
 }
 BLOCKED_SOURCE_PATTERNS = [
     re.compile(r"tipranks", re.IGNORECASE),
@@ -52,12 +70,20 @@ BLOCKED_SOURCE_PATTERNS = [
     re.compile(r"sponsored", re.IGNORECASE),
     re.compile(r"partner content", re.IGNORECASE),
     re.compile(r"paid content", re.IGNORECASE),
+    re.compile(r"보도자료", re.IGNORECASE),
+    re.compile(r"협찬", re.IGNORECASE),
+    re.compile(r"스폰서", re.IGNORECASE),
+    re.compile(r"유료광고", re.IGNORECASE),
 ]
 PROMO_TEXT_PATTERNS = [
     re.compile(r"press release", re.IGNORECASE),
     re.compile(r"sponsored", re.IGNORECASE),
     re.compile(r"partner content", re.IGNORECASE),
     re.compile(r"paid content", re.IGNORECASE),
+    re.compile(r"보도자료", re.IGNORECASE),
+    re.compile(r"협찬", re.IGNORECASE),
+    re.compile(r"스폰서", re.IGNORECASE),
+    re.compile(r"유료광고", re.IGNORECASE),
 ]
 ALLOW_PAID_NEWS = os.environ.get("NEWS_ALLOW_PAID_SOURCES", "false").strip().lower() in {"1", "true", "yes", "y"}
 NEWS_LOOKBACK_DAYS = max(1, min(7, int(os.environ.get("NEWS_LOOKBACK_DAYS", "3") or 3)))

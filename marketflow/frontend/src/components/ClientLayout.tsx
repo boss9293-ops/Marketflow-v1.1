@@ -27,6 +27,7 @@ const SIDEBAR_DEFAULT = 220
 const SIDEBAR_MIN     = 120   // 최소 폭 (이 미만으로 드래그 → 접힘)
 const SIDEBAR_MAX     = 400
 const SIDEBAR_SNAP    = 40    // 이 이하 → width 0 (완전 접힘)
+const APP_FRAME_INSET  = 18
 
 export default function ClientLayout({
   children,
@@ -113,6 +114,8 @@ export default function ClientLayout({
             style={{
               background: 'var(--bg-main)',
               color: 'var(--text-primary)',
+              padding: APP_FRAME_INSET,
+              boxSizing: 'border-box',
               userSelect: isDragging ? 'none' : undefined,
             }}
           >
@@ -173,7 +176,7 @@ export default function ClientLayout({
             {/* ── Main content ── */}
             <main
               className="flex-1 overflow-y-auto"
-              style={{ minWidth: 0, width: '100%' }}
+              style={{ minWidth: 0, minHeight: 0, width: '100%' }}
             >
               {/* Mobile hamburger */}
               <button
@@ -182,13 +185,20 @@ export default function ClientLayout({
                 onClick={() => setMobileSidebarOpen(true)}
                 className="md:hidden"
                 style={{
-                  position: 'fixed', top: 12, left: 12, zIndex: 70,
+                  position: 'fixed',
+                  top: APP_FRAME_INSET,
+                  left: APP_FRAME_INSET,
+                  zIndex: 70,
                   border: '1px solid rgba(255,255,255,0.12)',
                   background: 'rgba(255,255,255,0.06)',
                   color: 'var(--text-primary)',
-                  borderRadius: 10, width: 40, height: 40,
-                  cursor: 'pointer', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 10,
+                  width: 40,
+                  height: 40,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   fontSize: '1rem',
                 }}
               >
@@ -198,7 +208,7 @@ export default function ClientLayout({
             </main>
 
             {/* ── Top-right controls ── */}
-            <div style={{ position: 'fixed', top: 12, right: 14, zIndex: 70, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'fixed', top: APP_FRAME_INSET, right: APP_FRAME_INSET, zIndex: 70, display: 'flex', alignItems: 'center', gap: 8 }}>
               <UserPlanBadge />
               <LanguageModeToggle
                 value={uiLang}

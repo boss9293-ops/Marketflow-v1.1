@@ -119,12 +119,26 @@ const fetchWithRetry = async (
 }
 
 const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+const GOOGLE_KR_LOCALE = { hl: 'ko-KR', gl: 'KR', ceid: 'KR:ko' }
+const GOOGLE_KR_QUERIES = [
+  '미국 증시',
+  '미국 주식',
+  '뉴욕증시',
+  '나스닥',
+  'S&P500',
+  '월가',
+  '연준',
+  '미국 금리',
+  '엔비디아',
+  '테슬라',
+]
 
 const normalizeHeadline = (value: string): string =>
   value
+    .normalize('NFKC')
     .toLowerCase()
     .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -151,6 +165,104 @@ const recencyScore = (publishedAt?: string): number => {
 const scoreBriefItem = (item: BriefItem): number => {
   const text = `${item.headline || ''} ${item.summary || ''}`
   return scoreNewsText(text) * 2 + recencyScore(item.publishedAtET || item.dateET) + scoreNewsSource(item.source)
+}
+
+const decodeHtml = (raw: string): string =>
+  raw
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim()
+
+const stripHtml = (raw: string): string => raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
+const readTag = (xmlBlock: string, tag: string): string => {
+  const match = xmlBlock.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))
+  if (!match?.[1]) return ''
+  return match[1].replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, '').trim()
+}
+
+type GoogleNewsRssItem = {
+  title: string
+  link: string
+  pubDateRaw: string
+  source: string
+  description: string
+}
+
+const parseGoogleNewsRss = (xml: string): GoogleNewsRssItem[] => {
+  const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/gi) ?? []
+  return itemBlocks
+    .map((itemXml) => {
+      const rawTitle = decodeHtml(readTag(itemXml, 'title'))
+      const source = decodeHtml(readTag(itemXml, 'source')) || 'Google News'
+      const title = source && rawTitle.endsWith(` - ${source}`) ? rawTitle.slice(0, -(source.length + 3)).trim() : rawTitle
+      const link = decodeHtml(readTag(itemXml, 'link'))
+      const pubDateRaw = decodeHtml(readTag(itemXml, 'pubDate'))
+      const description = stripHtml(decodeHtml(readTag(itemXml, 'description')))
+      return { title, link, pubDateRaw, source, description }
+    })
+    .filter((item) => item.title && item.link && item.pubDateRaw)
+}
+
+const mapGoogleNewsItem = (symbol: string, item: GoogleNewsRssItem, idx: number): BriefItem | null => {
+  const published = new Date(item.pubDateRaw)
+  if (Number.isNaN(published.valueOf())) return null
+  const headline = String(item.title || '').trim()
+  const source = String(item.source || 'Google News KR').trim()
+  const url = String(item.link || '').trim()
+  if (!headline || !source || !url) return null
+  if (!isFreeNewsSource(source) || hasPromoSignals(headline) || hasPromoSignals(item.description)) return null
+  return {
+    id: `news-gk-${symbol}-${idx}-${Math.abs(published.getTime())}`,
+    ticker: symbol,
+    symbol,
+    checkpointET: toETTime(published),
+    headline,
+    source,
+    summary: item.description || `${headline}.`,
+    url,
+    dateET: toETDate(published),
+    publishedAtET: published.toISOString(),
+  }
+}
+
+async function fetchGoogleKoreanNews(symbol: string): Promise<BriefItem[]> {
+  const queries = [
+    `${symbol} 미국 증시`,
+    `${symbol} 주가`,
+    `${symbol} 실적`,
+    ...GOOGLE_KR_QUERIES.slice(0, 2).map((query) => `${symbol} ${query}`),
+  ]
+
+  const output: BriefItem[] = []
+  const results = await Promise.allSettled(
+    queries.map(async (query) => {
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${GOOGLE_KR_LOCALE.hl}&gl=${GOOGLE_KR_LOCALE.gl}&ceid=${GOOGLE_KR_LOCALE.ceid}`
+      const res = await fetchWithRetry(rssUrl, {
+        cache: 'no-store',
+        headers: { 'User-Agent': CHROME_UA, Accept: '*/*' },
+      }, 4500)
+      if (!res) return []
+      const xml = await res.text()
+      return parseGoogleNewsRss(xml)
+    }),
+  )
+
+  for (const result of results) {
+    try {
+      const parsed = result.status === 'fulfilled' ? result.value : []
+      for (const [idx, item] of parsed.slice(0, 8).entries()) {
+        const mapped = mapGoogleNewsItem(symbol, item, idx)
+        if (mapped) output.push(mapped)
+      }
+    } catch {
+      // ignore individual query failures
+    }
+  }
+  return output
 }
 
 const mapFinnhubItem = (symbol: string, item: FinnhubNewsItem, idx: number): BriefItem | null => {
@@ -375,6 +487,7 @@ export async function GET(request: Request) {
     fetchAlphaVantageNews(symbol),
   ])
 
-  const mapped = dedupeAndRank([...finnhubItems, ...yahooItems, ...avItems], 5)
+  const googleKrItems = await fetchGoogleKoreanNews(symbol)
+  const mapped = dedupeAndRank([...finnhubItems, ...yahooItems, ...avItems, ...googleKrItems], 5)
   return NextResponse.json({ briefs: mapped })
 }

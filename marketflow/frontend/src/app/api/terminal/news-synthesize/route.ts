@@ -8,6 +8,7 @@ import {
 
 import fs from 'fs'
 import pathModule from 'path'
+import { createHash } from 'crypto'
 
 
 export const runtime = 'nodejs'
@@ -20,11 +21,14 @@ type NewsInputItem = {
   timeET: string
   headline: string
   summary: string
+  source?: string
+  url?: string
 }
 
 type SynthesizeRequest = {
   symbol: string
   companyName?: string
+  marketContext?: string
   dateET?: string
   price?: number | null
   changePct?: number | null
@@ -51,7 +55,7 @@ const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 const OPENAI_API = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL = 'gpt-4o-mini'
-const SYNTH_CACHE_VERSION = `v3_${TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION}_price_bound`
+const SYNTH_CACHE_VERSION = `v7_${TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION}_context_bound`
 
 const containsAny = (value: string, keywords: string[]): boolean =>
   keywords.some((keyword) => value.includes(keyword))
@@ -341,10 +345,10 @@ function isMarketOpen(dateStr: string): boolean {
   return dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(dateStr)
 }
 
-function getLast5TradingDays(fromDateET: string): Set<string> {
+function getLastTradingDays(fromDateET: string, count = 4): Set<string> {
   const result: string[] = []
   const d = new Date(fromDateET + 'T12:00:00Z')
-  while (result.length < 5) {
+  while (result.length < count) {
     const ds = d.toISOString().slice(0, 10)
     if (isMarketOpen(ds)) result.push(ds)
     d.setUTCDate(d.getUTCDate() - 1)
@@ -353,7 +357,7 @@ function getLast5TradingDays(fromDateET: string): Set<string> {
 }
 
 function pruneToTradingDays<T>(cache: Record<string, T>, todayET: string): Record<string, T> {
-  const keep = getLast5TradingDays(todayET)
+  const keep = getLastTradingDays(todayET, 4)
   const pruned: Record<string, T> = {}
   for (const [k, v] of Object.entries(cache)) {
     const dateKey = k.split(':')[1] ?? ''
@@ -400,11 +404,45 @@ function saveDeeplFileCache(cache: Record<string, string>): void {
 const cachePriceKey = (price?: number | null): string =>
   price != null && Number.isFinite(price) ? price.toFixed(2) : 'na'
 
-async function translateToKoViaDeepl(enText: string, symbol: string, dateET: string, priceKey: string): Promise<string | null> {
+const cacheChangeKey = (changePct?: number | null): string =>
+  changePct != null && Number.isFinite(changePct) ? changePct.toFixed(2) : 'na'
+
+const cacheTextKey = (value?: string | null): string =>
+  (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+
+const buildBatchSignature = (items: NewsInputItem[]): string =>
+  createHash('sha1')
+    .update(
+      items
+        .map((item) =>
+          [
+            item.id,
+            item.dateET ?? '',
+            item.publishedAtET ?? '',
+            item.timeET ?? '',
+            item.headline ?? '',
+            item.summary ?? '',
+          ].join('|'),
+        )
+        .join('\n'),
+    )
+    .digest('hex')
+    .slice(0, 12)
+
+async function translateToKoViaDeepl(
+  enText: string,
+  symbol: string,
+  dateET: string,
+  priceKey: string,
+  changeKey: string,
+  companyKey: string,
+  marketContextKey: string,
+  batchSignature: string,
+): Promise<string | null> {
   const DEEPL_KEY = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
   if (!DEEPL_KEY) return null
 
-  const cacheKey = `${symbol}:${dateET}:${SYNTH_CACHE_VERSION}:${priceKey}`
+  const cacheKey = `${symbol}:${dateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
   let fileCache = pruneToTradingDays(loadDeeplFileCache(), dateET)
   if (fileCache[cacheKey]) {
     console.log(`[deepl] cache hit: ${cacheKey}`)
@@ -475,6 +513,7 @@ async function synthesizeBatch(
   batch: NewsInputItem[],
   lang: 'ko' | 'en',
   companyName?: string,
+  marketContext?: string,
   price?: number | null,
   changePct?: number | null,
   dateET?: string,
@@ -482,6 +521,10 @@ async function synthesizeBatch(
   const selected = selectRelevantItems(batch, symbol, companyName)
   if (selected.length === 0) return { items: [] }
   const priceKey = cachePriceKey(price)
+  const changeKey = cacheChangeKey(changePct)
+  const companyKey = cacheTextKey(companyName)
+  const marketContextKey = cacheTextKey(marketContext)
+  const batchSignature = buildBatchSignature(selected)
 
   // Build price-lead first sentence
   const direction = (changePct ?? 0) > 0 ? 'up' : (changePct ?? 0) < 0 ? 'down' : 'unchanged'
@@ -498,7 +541,7 @@ async function synthesizeBatch(
 
   // Check in-memory cache
   const effectiveDateET = dateET || getCurrentEtDate()
-  const cacheKey = getSynthCacheKey(symbol, effectiveDateET, lang, priceKey)
+  const cacheKey = `${getSynthCacheKey(symbol, effectiveDateET, lang, priceKey)}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
   const cached = synthCache.get(cacheKey)
   if (cached && Date.now() - cached.cachedAt < SYNTH_CACHE_TTL_MS) {
     return { items: cached.result, providerUsed: cached.providerUsed }
@@ -506,7 +549,7 @@ async function synthesizeBatch(
   cleanSynthCache(effectiveDateET)
 
   // EN file cache check — zero token cost on hit
-  const enCacheKey = `${symbol}:${effectiveDateET}:${SYNTH_CACHE_VERSION}:${priceKey}`
+  const enCacheKey = `${symbol}:${effectiveDateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
   let enFileCache = loadSynthEnCache()
   const cachedEN = enFileCache[enCacheKey]
   let enText: string
@@ -521,7 +564,14 @@ async function synthesizeBatch(
   } else {
     // LLM call — always English (one call serves both EN display and DeepL-KO)
     const systemPrompt = buildBriefSystemPromptEN()
-    const userPrompt = buildBriefUserPromptEN(symbol, leadSentenceEN, selected, effectiveDateET)
+    const userPrompt = buildBriefUserPromptEN(
+      symbol,
+      leadSentenceEN,
+      selected,
+      effectiveDateET,
+      companyName || undefined,
+      marketContext || undefined,
+    )
     const providerResult = await runTerminalProviderSequence(
       TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER,
       systemPrompt,
@@ -557,7 +607,16 @@ async function synthesizeBatch(
   }
 
   // KO: DeepL translation (file-cached per 5 trading days) — zero token cost
-  const koText = await translateToKoViaDeepl(enText, symbol, effectiveDateET, priceKey) ?? leadSentence
+  const koText = await translateToKoViaDeepl(
+    enText,
+    symbol,
+    effectiveDateET,
+    priceKey,
+    changeKey,
+    companyKey,
+    marketContextKey,
+    batchSignature,
+  ) ?? leadSentence
   const result = [{ id: selected[0].id, text: koText, signal }]
   synthCache.set(cacheKey, { result, providerUsed, cachedAt: Date.now() })
   return { items: result, providerUsed }
@@ -574,26 +633,10 @@ export async function POST(req: Request) {
   const symbol = typeof body.symbol === 'string' ? body.symbol.trim().toUpperCase() : ''
   const items = Array.isArray(body.items) ? body.items : []
   const lang = body.lang === 'en' ? 'en' : 'ko'
+  const marketContext = typeof body.marketContext === 'string' ? body.marketContext.trim() : ''
   const dateET = typeof body.dateET === 'string' ? body.dateET.trim() : ''
   const price = typeof body.price === 'number' && Number.isFinite(body.price) ? body.price : null
   const changePct = typeof body.changePct === 'number' && Number.isFinite(body.changePct) ? body.changePct : null
-
-  // Non-trading day guard (weekends + US market holidays)
-  if (dateET && !isMarketOpen(dateET)) {
-    return NextResponse.json({
-      results: [],
-      digest: null,
-      digestSignal: null,
-      meta: {
-        inputItems: 0,
-        selectedItems: 0,
-        digestAvailable: false,
-        skipped: true,
-        prompt_version: TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION,
-        provider_order: TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER,
-      },
-    })
-  }
 
   if (!symbol) {
     return NextResponse.json({ error: 'Missing symbol.' }, { status: 400 })
@@ -601,6 +644,9 @@ export async function POST(req: Request) {
   if (!items.length) {
     return NextResponse.json({ error: 'Missing items.' }, { status: 400 })
   }
+
+  const effectiveDateET = dateET || getCurrentEtDate()
+  const resolvedDateET = Array.from(getLastTradingDays(effectiveDateET, 1))[0] ?? effectiveDateET
 
   const batch = items
     .slice(0, MAX_ITEMS_PER_BATCH)
@@ -611,6 +657,8 @@ export async function POST(req: Request) {
       timeET: String(item.timeET || (index % 2 === 0 ? '09:30' : '16:30')),
       headline: String(item.headline || '').trim(),
       summary: String(item.summary || '').trim(),
+      source: String(item.source || '').trim(),
+      url: String(item.url || '').trim(),
     }))
   const companyName = typeof body.companyName === 'string' ? body.companyName.trim() : ''
 
@@ -620,9 +668,10 @@ export async function POST(req: Request) {
       batch,
       lang,
       companyName || undefined,
+      marketContext || undefined,
       price,
       changePct,
-      dateET || undefined,
+      resolvedDateET,
     )
     const results = synthesis.items
     return NextResponse.json({

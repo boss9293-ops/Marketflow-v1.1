@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
@@ -110,6 +111,52 @@ def _published_at_from_value(value: Any) -> str:
         return dt.astimezone(timezone.utc).isoformat()
     except Exception:
         return _now_iso()
+
+
+DEFAULT_GOOGLE_US_MARKET_QUERIES = [
+    "stock market",
+    "U.S. stocks",
+    "S&P 500",
+    "Nasdaq",
+    "Dow Jones",
+    "Federal Reserve",
+    "Treasury yields",
+    "inflation",
+    "earnings",
+    "oil prices",
+    "gold prices",
+    "bitcoin",
+    "semiconductors",
+    "technology stocks",
+    "bank stocks",
+]
+
+DEFAULT_GOOGLE_KR_MARKET_QUERIES = [
+    "미국 증시",
+    "미국 주식",
+    "뉴욕증시",
+    "나스닥",
+    "S&P500",
+    "월가",
+    "연준",
+    "미국 금리",
+    "미국 국채",
+    "엔비디아",
+    "테슬라",
+    "애플",
+    "빅테크",
+    "반도체",
+    "실적",
+    "가이던스",
+]
+
+
+def _decode_html(value: Any) -> str:
+    return html.unescape(_safe_text(value))
+
+
+def _strip_html(raw: str) -> str:
+    return re.sub(r"<[^>]*>", " ", _safe_text(raw)).replace("\n", " ").replace("\r", " ").strip()
 
 
 class YahooFinanceProvider(NewsProvider):
@@ -555,7 +602,26 @@ class YahooNewsProvider(YahooFinanceProvider):
 
 
 class GoogleNewsRSSProvider(NewsProvider):
-    name = "google_news"
+    def __init__(
+        self,
+        *,
+        name: str = "google_news",
+        hl: str = "en-US",
+        gl: str = "US",
+        ceid: str = "US:en",
+        queries: Optional[List[str]] = None,
+    ) -> None:
+        self.name = name
+        self.hl = hl
+        self.gl = gl
+        self.ceid = ceid
+        if queries is not None:
+            self.queries = queries
+        elif gl.upper() == "KR":
+            self.queries = DEFAULT_GOOGLE_KR_MARKET_QUERIES
+        else:
+            self.queries = DEFAULT_GOOGLE_US_MARKET_QUERIES
+
     _endpoint = "https://news.google.com/rss/search"
 
     def _fetch_for_query(self, query: str, limit: int, window_days: int) -> List[Article]:
@@ -568,9 +634,9 @@ class GoogleNewsRSSProvider(NewsProvider):
                 self._endpoint,
                 params={
                     "q": rss_query,
-                    "hl": "en-US",
-                    "gl": "US",
-                    "ceid": "US:en",
+                    "hl": self.hl,
+                    "gl": self.gl,
+                    "ceid": self.ceid,
                 },
                 headers={"User-Agent": "Mozilla/5.0"},
                 timeout=12,
@@ -621,24 +687,7 @@ class GoogleNewsRSSProvider(NewsProvider):
         date_to: Optional[str],
         limit: int,
     ) -> List[Article]:
-        base_queries = [
-            "stock market",
-            "U.S. stocks",
-            "S&P 500",
-            "Nasdaq",
-            "Dow Jones",
-            "Federal Reserve",
-            "Treasury yields",
-            "inflation",
-            "earnings",
-            "oil prices",
-            "gold prices",
-            "bitcoin",
-            "semiconductors",
-            "technology stocks",
-            "bank stocks",
-        ]
-        queries = base_queries[:]
+        queries = list(self.queries)
         for t in tickers:
             q = _safe_text(t)
             if q and q not in queries:
@@ -665,6 +714,173 @@ class GoogleNewsRSSProvider(NewsProvider):
                 if key not in dedup:
                     dedup[key] = art
         return list(dedup.values())
+
+
+class YonhapRSSProvider(NewsProvider):
+    name = "yonhap_rss"
+    _feeds = [
+        "https://www.yna.co.kr/rss/news.xml",
+        "https://www.yna.co.kr/rss/economy.xml",
+        "https://www.yna.co.kr/rss/market.xml",
+        "https://www.yna.co.kr/rss/industry.xml",
+        "https://www.yna.co.kr/rss/international.xml",
+    ]
+
+    def _fetch_feed(self, feed_url: str, limit: int) -> List[Article]:
+        try:
+            res = requests.get(feed_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+            res.raise_for_status()
+            root = ET.fromstring(res.text)
+        except Exception:
+            return []
+
+        out: List[Article] = []
+        for idx, item in enumerate(root.findall(".//item")[: max(1, min(20, int(limit)))]):
+            title = _safe_text(item.findtext("title"))
+            link = _safe_text(item.findtext("link"))
+            if not title or not link:
+                continue
+            pub_text = _safe_text(item.findtext("pubDate"))
+            try:
+                published_dt = parsedate_to_datetime(pub_text) if pub_text else None
+                if published_dt is None:
+                    raise ValueError
+                if published_dt.tzinfo is None:
+                    published_dt = published_dt.replace(tzinfo=timezone.utc)
+                published = published_dt.astimezone(timezone.utc).isoformat()
+            except Exception:
+                published = _now_iso()
+            source_el = item.find("source")
+            publisher = _safe_text(source_el.text if source_el is not None else None) or "연합뉴스"
+            out.append(
+                Article(
+                    id=_safe_text(link or title or f"yonhap-{idx}"),
+                    title=title,
+                    publisher=publisher,
+                    published_at=published,
+                    url=link,
+                    summary=_safe_text(item.findtext("description")) or title,
+                    source="yonhap_rss",
+                )
+            )
+        return out
+
+    def fetch_top_news(
+        self,
+        *,
+        region: str,
+        tickers: List[str],
+        topics: List[str],
+        date_from: Optional[str],
+        date_to: Optional[str],
+        limit: int,
+    ) -> List[Article]:
+        del region, tickers, topics, date_from, date_to
+        per_feed = max(3, min(10, limit))
+        out: List[Article] = []
+        for feed_url in self._feeds:
+            out.extend(self._fetch_feed(feed_url, per_feed))
+        return _merge_articles(out)
+
+
+class NaverNewsSearchProvider(NewsProvider):
+    name = "naver_news"
+    _endpoint = "https://openapi.naver.com/v1/search/news.json"
+    _base_queries = list(DEFAULT_GOOGLE_KR_MARKET_QUERIES)
+
+    def _get_key(self) -> tuple[str, str]:
+        return (
+            os.environ.get("NAVER_CLIENT_ID", "").strip(),
+            os.environ.get("NAVER_CLIENT_SECRET", "").strip(),
+        )
+
+    def _map_item(self, query: str, item: Dict[str, Any], idx: int) -> Optional[Article]:
+        if not isinstance(item, dict):
+            return None
+        title = _strip_html(_decode_html(item.get("title")))
+        url = _safe_text(item.get("originallink") or item.get("link"))
+        if not title or not url:
+            return None
+        summary = _strip_html(_decode_html(item.get("description"))) or title
+        published_at = _published_at_from_value(item.get("pubDate"))
+        return Article(
+            id=_safe_text(url or title or f"naver-{idx}"),
+            title=title,
+            publisher="Naver Search",
+            published_at=published_at,
+            url=url,
+            summary=summary,
+            tickers=[query] if query else [],
+            topics=[],
+            source="naver_news",
+        )
+
+    def fetch_top_news(
+        self,
+        *,
+        region: str,
+        tickers: List[str],
+        topics: List[str],
+        date_from: Optional[str],
+        date_to: Optional[str],
+        limit: int,
+    ) -> List[Article]:
+        del region, date_from, date_to
+        client_id, client_secret = self._get_key()
+        if not client_id or not client_secret:
+            return []
+
+        queries: List[str] = []
+        seen: set[str] = set()
+
+        def _append(value: str) -> None:
+            q = _safe_text(value)
+            if not q or q in seen:
+                return
+            seen.add(q)
+            queries.append(q)
+
+        for q in self._base_queries:
+            _append(q)
+        for symbol in tickers:
+            _append(symbol)
+        for topic in topics:
+            _append(topic)
+
+        per_query = max(3, min(10, limit))
+        pool: List[Article] = []
+        headers = {
+            "X-Naver-Client-Id": client_id,
+            "X-Naver-Client-Secret": client_secret,
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+        }
+
+        for query in queries:
+            try:
+                res = requests.get(
+                    self._endpoint,
+                    params={
+                        "query": query,
+                        "display": str(per_query),
+                        "start": "1",
+                        "sort": "date",
+                    },
+                    headers=headers,
+                    timeout=12,
+                )
+                res.raise_for_status()
+                payload = res.json()
+            except Exception:
+                continue
+
+            items = payload.get("items", []) if isinstance(payload, dict) else []
+            for idx, item in enumerate(items[:per_query]):
+                mapped = self._map_item(query, item, idx)
+                if mapped:
+                    pool.append(mapped)
+
+        return _merge_articles(pool)
 
 
 class ReutersRSSProvider(NewsProvider):
@@ -737,7 +953,16 @@ class CompositeNewsProvider(NewsProvider):
             YahooFinanceProvider(),
             FinnhubNewsProvider(),
             AlphaVantageNewsProvider(),
+            YonhapRSSProvider(),
             GoogleNewsRSSProvider(),
+            GoogleNewsRSSProvider(
+                name="google_news_kr",
+                hl="ko-KR",
+                gl="KR",
+                ceid="KR:ko",
+                queries=DEFAULT_GOOGLE_KR_MARKET_QUERIES,
+            ),
+            NaverNewsSearchProvider(),
             ReutersRSSProvider(),
         ]
 

@@ -1,4 +1,4 @@
-export const TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION = 'v1.1'
+export const TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION = 'v1.3'
 export const TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER = ['anthropic', 'openai'] as const
 
 export type TerminalNewsPromptItem = {
@@ -8,15 +8,21 @@ export type TerminalNewsPromptItem = {
   timeET: string
   headline: string
   summary: string
+  source?: string
+  url?: string
 }
 
 export const buildBriefSystemPromptEN = (): string =>
   [
-    'You are an institutional financial terminal editor. Write a catalyst-driven, source-cited English summary with zero fluff.',
+    'You are an institutional financial terminal editor. Write a catalyst-driven English summary with zero fluff.',
     'The first sentence is provided - copy it exactly as the opening, then continue in English.',
     'Focus on company-specific catalysts and directly relevant policy or macro factors.',
+    'Explain the causal chain first, then the market reaction, then the immediate implication.',
     'Do not write technical-analysis language, chart talk, or broad index comparisons.',
-    'Write 2-3 dense explanation-first paragraphs. Name sources when given.',
+    'Write 2-3 dense explanation-first paragraphs.',
+    'If several articles point to the same catalyst, merge them into one explanation instead of repeating each article.',
+    'Do not mention source names, outlet names, URLs, or citations in the summary body.',
+    'Write the summary as a clean terminal note without attribution phrases.',
     'Return JSON: {"text":"<summary>","signal":"bull|bear|neutral"}',
     '"bull" if catalysts are net positive, "bear" if net negative, "neutral" if mixed.',
   ].join('\n')
@@ -26,7 +32,14 @@ export const buildBriefUserPromptEN = (
   leadSentence: string,
   items: TerminalNewsPromptItem[],
   dateET: string,
+  companyName?: string,
+  marketContext?: string,
 ): string => {
+  const contextSection = [
+    companyName?.trim() ? `Company: ${companyName.trim()}` : '',
+    marketContext?.trim() ? `Market context: ${marketContext.trim()}` : '',
+  ].filter((line) => line.length > 0)
+
   const itemLines = items
     .slice(0, 15)
     .map((it) => {
@@ -39,6 +52,8 @@ export const buildBriefUserPromptEN = (
     `Symbol: ${symbol}`,
     `Date: ${dateET}`,
     '',
+    ...contextSection,
+    ...(contextSection.length ? [''] : []),
     'News items:',
     itemLines,
     '',

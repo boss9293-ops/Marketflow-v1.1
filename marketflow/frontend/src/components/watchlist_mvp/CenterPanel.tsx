@@ -153,6 +153,8 @@ const NEWS_CATALYST_KEYWORDS = [
   'antitrust',
 ]
 
+const TICKER_NEWS_DISPLAY_DAYS = 4
+
 const NEWS_NOISE_KEYWORDS = [
   'sneaker',
   'fashion',
@@ -332,7 +334,11 @@ const formatPublishedEtLabel = (
         timeZoneName: 'short',
       }).format(parsed)
     }
-    return raw
+    const etMatch = raw.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?\s*ET$/)
+    if (etMatch) {
+      return `${etMatch[1]} ${etMatch[2]} ET`
+    }
+    return raw.replace('T', ' ')
   }
   const date = fallbackDateET?.trim() || ''
   const time = fallbackTimeET?.trim() || ''
@@ -441,21 +447,24 @@ export default function CenterPanel({
   const currentEtMinutes = getCurrentEtMinutes()
   const groupedTimeline = useMemo(() => {
     const grouped = new Map<string, TickerNewsItem[]>()
-    const sameDayItems = timeline.filter((item) => item.dateET === dateET)
-    const baseItems = sameDayItems.length ? sameDayItems : timeline
+    const recentDateKeys = Array.from(new Set(timeline.map((item) => item.dateET)))
+      .sort((a, b) => b.localeCompare(a))
+      .slice(0, TICKER_NEWS_DISPLAY_DAYS)
+    const recentDateSet = new Set(recentDateKeys)
+    const recentItems = timeline.filter((item) => recentDateSet.has(item.dateET))
     const visibleItems =
       dateET === currentEtDate
         ? (() => {
-            const pastItems = baseItems.filter((item) => {
+            const pastItems = recentItems.filter((item) => {
               const itemMinutes = parseClockMinutes(item.timeET)
               if (itemMinutes == null) return true
               return itemMinutes <= currentEtMinutes
             })
-            // If we are pre-open and nothing has elapsed yet, surface the day's items
+            // If we are pre-open and nothing has elapsed yet, surface the recent window
             // instead of showing a blank panel.
-            return pastItems.length ? pastItems : baseItems
+            return pastItems.length ? pastItems : recentItems
           })()
-        : baseItems
+        : recentItems
 
     visibleItems
       .forEach((item) => {
@@ -526,6 +535,8 @@ export default function CenterPanel({
             timeET: item.timeET,
             headline: item.headline ?? '',
             summary: item.summary ?? '',
+            source: item.source ?? '',
+            url: item.url ?? '',
           }))
           const res = await fetch('/api/terminal/news-synthesize', {
             method: 'POST',
@@ -561,8 +572,9 @@ export default function CenterPanel({
         }))
       } catch { /* ignore */ } finally {
         if (digestGenerationRef.current === requestGeneration) setIsSynthesizingEN(false)
-      }
-    }
+  }
+}
+
     void runAll()
   }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol])
 
@@ -593,6 +605,8 @@ export default function CenterPanel({
             timeET: item.timeET,
             headline: item.headline ?? '',
             summary: item.summary ?? '',
+            source: item.source ?? '',
+            url: item.url ?? '',
           }))
           const res = await fetch('/api/terminal/news-synthesize', {
             method: 'POST',
@@ -795,7 +809,7 @@ export default function CenterPanel({
                               borderBottom: '1px solid rgba(148,163,184,0.06)',
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
                               {timeLabel && (
                                 <p style={{
                                   margin: 0,
@@ -939,7 +953,6 @@ export default function CenterPanel({
               <div className={styles.detailBody}>
                 <p className={styles.detailHeadline}>{detail.headline}</p>
                 <div className={styles.detailMetaGrid}>
-                  <p><strong>Source:</strong> {formatMetadataValue(detail.source)}</p>
                   <p><strong>Published (ET):</strong> {formatMetadataValue(detail.publishedAtET)}</p>
                   <p><strong>Symbol:</strong> {formatMetadataValue(detail.symbol)}</p>
                   <p><strong>Relevance:</strong> {formatMetadataValue(detail.relevanceScore)}</p>
@@ -947,20 +960,6 @@ export default function CenterPanel({
                 </div>
                 <p className={styles.detailSummary}>{detail.summary}</p>
                 <div className={styles.detailActions}>
-                  {detail.url ? (
-                    <a
-                      href={detail.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={styles.detailLinkButton}
-                    >
-                      Open Article
-                    </a>
-                  ) : (
-                    <button type="button" className={styles.detailButtonDisabled} disabled>
-                      Open Article
-                    </button>
-                  )}
                   <button
                     type="button"
                     className={styles.detailExportButton}

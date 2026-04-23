@@ -1,11 +1,11 @@
 ﻿'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
+import styles from './DailyBriefingV3.module.css'
 import { pickLang as pickUiLang, useContentLang, useUiLang } from '@/lib/useLangMode'
 import { applyContentLangToDocument, persistContentLang } from '@/lib/uiLang'
 
-// ?? Types ????????????????????????????????????????????????????????????????????
 export type BriefingV3Section = {
   id: string
   title: string
@@ -70,89 +70,12 @@ type Props = {
   initialContentLang?: Lang
 }
 
-// ?? Helpers ???????????????????????????????????????????????????????????????????
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-      timeZone: 'America/New_York',
-    })
-  } catch { return iso }
+type BadgeTone = {
+  text: string
+  color: string
+  border: string
+  bg: string
 }
-
-function formatTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleTimeString('en-US', {
-      hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York', hour12: false,
-    }) + ' ET'
-  } catch { return iso }
-}
-
-function formatSlotLabel(slot: string | undefined, uiLang: Lang): string | null {
-  if (!slot) return null
-  const normalized = slot.trim().toLowerCase()
-  if (!normalized) return null
-  if (normalized === 'preopen') return pickUiLang(uiLang, '장전', 'Pre-open')
-  if (normalized === 'morning' || normalized === 'open') return pickUiLang(uiLang, '장시작후', 'Open')
-  if (normalized === 'close') return pickUiLang(uiLang, '장마감후', 'Close')
-  if (normalized === 'manual') return pickUiLang(uiLang, '수동', 'Manual')
-  return slot
-}
-
-function formatDateKey(iso: string): string {
-  try {
-    const dtf = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/New_York',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-    const parts = dtf.formatToParts(new Date(iso))
-    const year = parts.find((part) => part.type === 'year')?.value
-    const month = parts.find((part) => part.type === 'month')?.value
-    const day = parts.find((part) => part.type === 'day')?.value
-    if (year && month && day) return `${year}-${month}-${day}`
-  } catch {
-    // fall through to the raw date fragment below
-  }
-  return String(iso || '').slice(0, 10)
-}
-
-function pick(en: string, ko: string | undefined, lang: Lang): string {
-  if (lang === 'ko') return (ko && ko.trim()) ? ko : en
-  // lang === 'en': use en if non-empty; do NOT fall back to ko (prevents showing KO in EN mode)
-  return (en && en.trim()) ? en : ''
-}
-
-function formatFreshnessBadge(freshness: DailyBriefingV3Freshness | undefined, uiLang: Lang): { text: string; color: string } | null {
-  if (!freshness || freshness.status === 'fresh' || freshness.status === 'unknown') return null
-  const lag = typeof freshness.lag_days === 'number' ? `${freshness.lag_days}d` : '--'
-  if (freshness.status === 'stale') {
-    return {
-      text: pickUiLang(uiLang, `소스 지연 ${lag}`, `Source stale ${lag}`),
-      color: '#ef4444',
-    }
-  }
-  return {
-    text: pickUiLang(uiLang, `소스 지연 ${lag}`, `Source lagging ${lag}`),
-    color: '#f59e0b',
-  }
-}
-
-function formatPromptBadge(prompt: DailyBriefingV3PromptMeta | undefined, uiLang: Lang): { text: string; color: string } | null {
-  if (!prompt || !prompt.version) return null
-  const source = prompt.source === 'registry'
-    ? pickUiLang(uiLang, '프롬프트 registry', 'Prompt registry')
-    : pickUiLang(uiLang, '프롬프트 fallback', 'Prompt fallback')
-  return {
-    text: `${source} ${prompt.version}`,
-    color: prompt.fallback_used ? '#f59e0b' : '#7dd3fc',
-  }
-}
-
-const MONO_FONT = 'var(--font-terminal-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
-const TYPE_SCALE = 0.8
-const rem = (value: number) => `${Number((value * TYPE_SCALE).toFixed(3))}rem`
 
 const BRIEF_UI_TEXT = {
   dailyBriefing: { ko: '데일리 브리핑', en: 'DAILY BRIEFING' },
@@ -169,75 +92,173 @@ const BRIEF_UI_TEXT = {
   noImplication: { ko: '해석 문장이 없습니다.', en: 'No implication text.' },
   riskCheck: { ko: '리스크 체크', en: 'RISK CHECK' },
   oneLine: { ko: '오늘의 한줄 요약', en: 'TODAY ONE-LINER' },
+  slotLabel: { ko: '슬롯', en: 'SLOT' },
+  asOfLabel: { ko: '기준일', en: 'AS OF' },
+  modelLabel: { ko: '모델', en: 'MODEL' },
 } as const
 
-function SignalBadge({ signal, uiLang }: { signal: BriefingV3Section['signal']; uiLang: Lang }) {
-  const map = {
-    bull:    { label: { ko: '강세', en: 'BULL' }, bg: 'rgba(34,197,94,0.12)',   text: '#22c55e' },
-    caution: { label: { ko: '주의', en: 'CAUTION' }, bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b' },
-    bear:    { label: { ko: '약세', en: 'BEAR' }, bg: 'rgba(239,68,68,0.12)',   text: '#ef4444' },
-    neutral: { label: { ko: '중립', en: 'NEUTRAL' }, bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' },
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'America/New_York',
+    })
+  } catch {
+    return iso
   }
-  const { label, bg, text } = map[signal] ?? map.neutral
-  return (
-    <span style={{
-      background: bg, color: text, border: `1px solid ${text}33`,
-      borderRadius: 4, padding: '4px 10px', fontSize: rem(0.77),
-      fontFamily: MONO_FONT,
-      fontWeight: 700, letterSpacing: '0.12em',
-    }}>
-      {pickUiLang(uiLang, label.ko, label.en)}
-    </span>
-  )
 }
 
-function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
-  const items: { l: Lang; flag: string; label: string }[] = [
-    { l: 'en', flag: '🇺🇸', label: 'EN' },
-    { l: 'ko', flag: '🇰🇷', label: 'KR' },
+function formatTime(iso: string): string {
+  try {
+    return (
+      new Date(iso).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/New_York',
+        hour12: false,
+      }) + ' ET'
+    )
+  } catch {
+    return iso
+  }
+}
+
+function formatDateKey(iso: string): string {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const parts = dtf.formatToParts(new Date(iso))
+    const year = parts.find((part) => part.type === 'year')?.value
+    const month = parts.find((part) => part.type === 'month')?.value
+    const day = parts.find((part) => part.type === 'day')?.value
+    if (year && month && day) return `${year}-${month}-${day}`
+  } catch {
+    // fall through
+  }
+  return String(iso || '').slice(0, 10)
+}
+
+function formatSlotLabel(slot: string | undefined, uiLang: Lang): string | null {
+  if (!slot) return null
+  const normalized = slot.trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'preopen') return pickUiLang(uiLang, '장전', 'Pre-open')
+  if (normalized === 'morning' || normalized === 'open') return pickUiLang(uiLang, '장시작후', 'Open')
+  if (normalized === 'close') return pickUiLang(uiLang, '장마감후', 'Close')
+  if (normalized === 'manual') return pickUiLang(uiLang, '수동', 'Manual')
+  return slot
+}
+
+function pick(en: string, ko: string | undefined, lang: Lang): string {
+  if (lang === 'ko') return ko && ko.trim() ? ko : en
+  return en && en.trim() ? en : ''
+}
+
+function formatFreshnessBadge(freshness: DailyBriefingV3Freshness | undefined, uiLang: Lang): BadgeTone | null {
+  if (!freshness || freshness.status === 'fresh' || freshness.status === 'unknown') return null
+  const lag = typeof freshness.lag_days === 'number' ? `${freshness.lag_days}d` : '--'
+  if (freshness.status === 'stale') {
+    return {
+      text: pickUiLang(uiLang, `소스 지연 ${lag}`, `Source stale ${lag}`),
+      color: '#fecaca',
+      border: '#7f1d1d',
+      bg: 'rgba(127,29,29,0.3)',
+    }
+  }
+  return {
+    text: pickUiLang(uiLang, `소스 지연 ${lag}`, `Source lagging ${lag}`),
+    color: '#fde68a',
+    border: '#92400e',
+    bg: 'rgba(146,64,14,0.26)',
+  }
+}
+
+function formatPromptBadge(prompt: DailyBriefingV3PromptMeta | undefined, uiLang: Lang): BadgeTone | null {
+  if (!prompt || !prompt.version) return null
+  const source = prompt.source === 'registry' ? 'Prompt registry' : 'Prompt fallback'
+  if (prompt.fallback_used) {
+    return {
+      text: `${source} ${prompt.version}`,
+      color: '#fde68a',
+      border: '#92400e',
+      bg: 'rgba(146,64,14,0.26)',
+    }
+  }
+  return {
+    text: `${source} ${prompt.version}`,
+    color: '#7dd3fc',
+    border: '#075985',
+    bg: 'rgba(7,89,133,0.25)',
+  }
+}
+
+function signalTone(signal: BriefingV3Section['signal'], uiLang: Lang): BadgeTone {
+  const map: Record<BriefingV3Section['signal'], BadgeTone> = {
+    bull: {
+      text: pickUiLang(uiLang, '강세', 'BULL'),
+      color: '#86efac',
+      border: '#166534',
+      bg: 'rgba(22,101,52,0.25)',
+    },
+    caution: {
+      text: pickUiLang(uiLang, '주의', 'CAUTION'),
+      color: '#fde68a',
+      border: '#92400e',
+      bg: 'rgba(146,64,14,0.25)',
+    },
+    bear: {
+      text: pickUiLang(uiLang, '약세', 'BEAR'),
+      color: '#fca5a5',
+      border: '#7f1d1d',
+      bg: 'rgba(127,29,29,0.25)',
+    },
+    neutral: {
+      text: pickUiLang(uiLang, '중립', 'NEUTRAL'),
+      color: '#cbd5e1',
+      border: '#334155',
+      bg: 'rgba(15,23,42,0.65)',
+    },
+  }
+  return map[signal] || map.neutral
+}
+
+function formatNumber(value: number | null | undefined): string {
+  const safe = typeof value === 'number' && Number.isFinite(value) ? value : 0
+  return safe.toLocaleString('en-US')
+}
+
+function toneStyle(tone: BadgeTone): CSSProperties {
+  return {
+    color: tone.color,
+    borderColor: tone.border,
+    background: tone.bg,
+  }
+}
+
+function LangToggle({ lang, onChange }: { lang: Lang; onChange: (next: Lang) => void }) {
+  const items: { code: Lang; label: string }[] = [
+    { code: 'en', label: 'EN' },
+    { code: 'ko', label: 'KR' },
   ]
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center',
-      background: 'rgba(8,12,22,0.85)',
-      border: '1px solid rgba(215,255,63,0.22)',
-      borderRadius: 7,
-      overflow: 'hidden',
-      fontFamily: MONO_FONT,
-      boxShadow: '0 0 8px rgba(215,255,63,0.06)',
-    }}>
-      {items.map(({ l, flag, label }, idx) => {
-        const active = lang === l
+    <div className={styles.langToggle}>
+      {items.map((item) => {
+        const active = lang === item.code
         return (
           <button
-            key={l}
-            onClick={() => onChange(l)}
-            style={{
-              background: active ? 'rgba(215,255,63,0.13)' : 'transparent',
-              color: active ? '#d7ff3f' : '#94a3b8',
-              border: 'none',
-              borderRight: idx === 0 ? '1px solid rgba(215,255,63,0.14)' : 'none',
-              padding: '5px 13px',
-              fontSize: rem(0.75),
-              fontFamily: MONO_FONT,
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 5,
-              transition: 'background 0.12s, color 0.12s',
-              minWidth: 54, justifyContent: 'center',
-              outline: 'none',
-            }}
+            key={item.code}
+            type="button"
+            className={`${styles.langButton} ${active ? styles.langButtonActive : ''}`}
+            onClick={() => onChange(item.code)}
           >
-            <span style={{ fontSize: '1em', lineHeight: 1 }}>{flag}</span>
-            <span>{label}</span>
-            {active && (
-              <span style={{
-                width: 4, height: 4, borderRadius: '50%',
-                background: '#d7ff3f', flexShrink: 0,
-                boxShadow: '0 0 4px #d7ff3f',
-              }} />
-            )}
+            {item.label}
           </button>
         )
       })}
@@ -245,307 +266,224 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
   )
 }
 
-function SectionCard({
-  section,
-  index,
-  contentLang,
-  uiLang,
-}: {
-  section: BriefingV3Section
-  index: number
-  contentLang: Lang
-  uiLang: Lang
-}) {
-  const structural  = pick(section.structural,  section.structural_ko,  contentLang)
-  const implication = pick(section.implication, section.implication_ko, contentLang)
-  const bodyFontSize = rem(contentLang === 'ko' ? 0.97 : 1.06)
-  const bodyLineHeight = contentLang === 'ko' ? 1.68 : 1.74
-
-  return (
-    <div style={{
-      background: 'linear-gradient(180deg, rgba(10,13,20,0.96) 0%, rgba(7,9,15,0.98) 100%)',
-      border: '1px solid rgba(148,163,184,0.08)',
-      borderLeft: `3px solid ${section.color}`,
-      borderRadius: '0 8px 8px 0',
-      padding: '18px 20px',
-      display: 'flex', flexDirection: 'column', gap: 14,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{
-          fontFamily: MONO_FONT,
-          fontSize: rem(0.81), color: section.color, fontWeight: 700,
-          letterSpacing: '0.06em', opacity: 0.85,
-        }}>
-          {String(index + 1).padStart(2, '0')}
-        </span>
-        <span style={{
-          fontSize: rem(1.03), fontWeight: 700, color: '#e2e8f0',
-          letterSpacing: '0.1em', textTransform: 'uppercase',
-        }}>
-          {section.title}
-        </span>
-        <div style={{ marginLeft: 'auto' }}>
-          <SignalBadge signal={section.signal} uiLang={uiLang} />
-        </div>
-      </div>
-
-      <div>
-        <div style={{
-          fontSize: rem(0.83),
-          fontFamily: MONO_FONT,
-          color: '#94a3b8', letterSpacing: '0.14em', textTransform: 'uppercase',
-          marginBottom: 6, fontWeight: 600, fontStyle: 'italic',
-        }}>
-          {pickUiLang(uiLang, BRIEF_UI_TEXT.structural.ko, BRIEF_UI_TEXT.structural.en)}
-        </div>
-        <p style={{ margin: 0, color: '#cbd5e1', fontSize: bodyFontSize, lineHeight: bodyLineHeight }}>
-          {structural || <span style={{ color: '#475569' }}>{pickUiLang(uiLang, BRIEF_UI_TEXT.noStructural.ko, BRIEF_UI_TEXT.noStructural.en)}</span>}
-        </p>
-      </div>
-
-      <div>
-        <div style={{
-          fontSize: rem(0.83),
-          fontFamily: MONO_FONT,
-          color: section.color, letterSpacing: '0.14em', textTransform: 'uppercase',
-          marginBottom: 6, fontWeight: 600, fontStyle: 'italic',
-        }}>
-          {pickUiLang(uiLang, BRIEF_UI_TEXT.implication.ko, BRIEF_UI_TEXT.implication.en)}
-        </div>
-        <p style={{ margin: 0, color: '#94a3b8', fontSize: bodyFontSize, lineHeight: bodyLineHeight }}>
-          {implication || <span style={{ color: '#475569' }}>{pickUiLang(uiLang, BRIEF_UI_TEXT.noImplication.ko, BRIEF_UI_TEXT.noImplication.en)}</span>}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-// ?? Main ?????????????????????????????????????????????????????????????????????
 export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Props) {
   const uiLang = useUiLang()
   const contentLang = useContentLang(initialContentLang)
   const [generating, setGenerating] = useState(false)
-  const [genStatus,  setGenStatus]  = useState<string | null>(null)
-  const [lang,       setLang]       = useState<Lang>(contentLang)
+  const [genStatus, setGenStatus] = useState<string | null>(null)
+  const [lang, setLang] = useState<Lang>(contentLang)
   const router = useRouter()
 
   useEffect(() => {
     setLang(contentLang)
   }, [contentLang])
 
-  const handleGenerate = useCallback(async (force: boolean, genLang?: Lang) => {
-    setGenerating(true); setGenStatus(null)
-    try {
-      const res  = await fetch('/api/daily-briefing-v3', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force, lang: genLang ?? 'ko' }),
-      })
-      const json = await res.json()
-      if (json.ok) {
-        const newDate = json?.data?.generated_at ? formatDateKey(String(json.data.generated_at)) : (json?.data?.data_date ? String(json.data.data_date) : null)
-        setGenStatus(
-          newDate
-            ? pickUiLang(uiLang, `업데이트 ${json.elapsed}초 · ${newDate}`, `Updated in ${json.elapsed}s · ${newDate}`)
-            : pickUiLang(uiLang, `업데이트 ${json.elapsed}초`, `Updated in ${json.elapsed}s`)
-        )
-        router.refresh()
-      } else {
-        setGenStatus(pickUiLang(uiLang, `오류: ${json.error}`, `Error: ${json.error}`))
+  const handleGenerate = useCallback(
+    async (force: boolean, genLang?: Lang) => {
+      setGenerating(true)
+      setGenStatus(null)
+      try {
+        const res = await fetch('/api/daily-briefing-v3', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force, lang: genLang ?? 'ko' }),
+        })
+        const json = await res.json()
+        if (json.ok) {
+          const newDate = json?.data?.generated_at
+            ? formatDateKey(String(json.data.generated_at))
+            : json?.data?.data_date
+            ? String(json.data.data_date)
+            : null
+          setGenStatus(
+            newDate
+              ? pickUiLang(uiLang, `업데이트 ${json.elapsed}초 · ${newDate}`, `Updated in ${json.elapsed}s · ${newDate}`)
+              : pickUiLang(uiLang, `업데이트 ${json.elapsed}초`, `Updated in ${json.elapsed}s`)
+          )
+          router.refresh()
+        } else {
+          setGenStatus(pickUiLang(uiLang, `오류: ${json.error}`, `Error: ${json.error}`))
+        }
+      } catch (err) {
+        setGenStatus(pickUiLang(uiLang, `실패: ${String(err)}`, `Failed: ${String(err)}`))
+      } finally {
+        setGenerating(false)
       }
-    } catch (err) {
-      setGenStatus(pickUiLang(uiLang, `실패: ${String(err)}`, `Failed: ${String(err)}`))
-    } finally {
-      setGenerating(false)
-    }
-  }, [router, uiLang])
+    },
+    [router, uiLang]
+  )
 
-  const onContentLangChange = useCallback((next: Lang) => {
-    setLang(next)
-    persistContentLang(next)
-    applyContentLangToDocument(next)
-    // If switching to EN and no English content exists yet, auto-generate EN
-    if (next === 'en' && data && !data.hook && !generating) {
-      handleGenerate(false, 'en')
-    }
-  }, [data, generating, handleGenerate])
+  const onContentLangChange = useCallback(
+    (next: Lang) => {
+      setLang(next)
+      persistContentLang(next)
+      applyContentLangToDocument(next)
+      if (next === 'en' && data && !data.hook && !generating) {
+        handleGenerate(false, 'en')
+      }
+    },
+    [data, generating, handleGenerate]
+  )
 
   if (!data) {
     return (
-      <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 20, padding: '40px 24px' }}>
-        <p style={{ color: '#64748b', fontSize: rem(0.88) }}>{pickUiLang(uiLang, BRIEF_UI_TEXT.noBriefing.ko, BRIEF_UI_TEXT.noBriefing.en)}</p>
-        <button onClick={() => handleGenerate(true)} disabled={generating} style={{
-          background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)',
-          color: '#60a5fa', borderRadius: 6, padding: '8px 20px', fontSize: rem(0.78),
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', cursor: 'pointer',
-        }}>
-          {generating
-            ? pickUiLang(uiLang, BRIEF_UI_TEXT.generating.ko, BRIEF_UI_TEXT.generating.en)
-            : pickUiLang(uiLang, BRIEF_UI_TEXT.generateBriefing.ko, BRIEF_UI_TEXT.generateBriefing.en)}
-        </button>
-        {genStatus && <p style={{ color: '#94a3b8', fontSize: rem(0.78) }}>{genStatus}</p>}
-      </div>
+      <section className={styles.shell}>
+        <div className={styles.emptyPanel}>
+          <p className={styles.emptyText}>{pickUiLang(uiLang, BRIEF_UI_TEXT.noBriefing.ko, BRIEF_UI_TEXT.noBriefing.en)}</p>
+          <button
+            type="button"
+            className={`${styles.actionButton} ${styles.primaryAction}`}
+            onClick={() => handleGenerate(true)}
+            disabled={generating}
+          >
+            {generating
+              ? pickUiLang(uiLang, BRIEF_UI_TEXT.generating.ko, BRIEF_UI_TEXT.generating.en)
+              : pickUiLang(uiLang, BRIEF_UI_TEXT.generateBriefing.ko, BRIEF_UI_TEXT.generateBriefing.en)}
+          </button>
+          {genStatus && <p className={styles.statusText}>{genStatus}</p>}
+        </div>
+      </section>
     )
   }
 
   const rc = data.risk_check
   const summaryLine = pick(data.one_line, data.one_line_ko, lang).trim()
   const hookLine = pick(data.hook, data.hook_ko, lang).trim()
-  const heroLabel = pickUiLang(uiLang, BRIEF_UI_TEXT.marketHook.ko, BRIEF_UI_TEXT.marketHook.en)
   const heroLine = hookLine || summaryLine
   const generatedDateKey = formatDateKey(data.generated_at)
   const marketDateKey = String(data.data_date || '').trim()
-  const titleDateKey = generatedDateKey || marketDateKey
-  const showAsOfDate = marketDateKey && marketDateKey !== titleDateKey
+  const titleDateKey = generatedDateKey || marketDateKey || '--'
   const slotLabel = formatSlotLabel(data.slot, uiLang)
   const freshnessBadge = formatFreshnessBadge(data.freshness, uiLang)
   const promptBadge = formatPromptBadge(data.prompt, uiLang)
+  const sectionList = Array.isArray(data.sections) ? data.sections : []
+  const riskTone: BadgeTone = rc.triggered
+    ? { text: 'triggered', color: '#fecaca', border: rc.color || '#7f1d1d', bg: 'rgba(127,29,29,0.25)' }
+    : { text: 'ok', color: '#86efac', border: '#166534', bg: 'rgba(22,101,52,0.24)' }
 
   return (
-    <div style={{ maxWidth: 1120, margin: '0 auto', padding: '28px 24px 48px',
-      display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <section className={styles.shell}>
+      <div className={styles.backGlowA} />
+      <div className={styles.backGlowB} />
 
-      {/* ?? Header ??????????????????????????????????????????????????????????? */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        gap: 10,
-      }}>
-        <div>
-          <div style={{
-            fontFamily: MONO_FONT,
-            fontSize: rem(1.58), color: '#00b8ff', fontWeight: 800,
-            letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6,
-          }}>
-            <span style={{ color: '#00b8ff' }}>{pickUiLang(uiLang, BRIEF_UI_TEXT.dailyBriefing.ko, BRIEF_UI_TEXT.dailyBriefing.en)}</span>
-            <span style={{ color: '#d7ff3f' }}> | {titleDateKey}</span>
-          </div>
-          <div style={{
-            fontFamily: MONO_FONT,
-            fontSize: rem(1.04), color: '#94a3b8',
-          }}>
-            {pickUiLang(uiLang, BRIEF_UI_TEXT.generatedLabel.ko, BRIEF_UI_TEXT.generatedLabel.en)} {formatDate(data.generated_at)} | {formatTime(data.generated_at)} |{' '}
-            {slotLabel && <><span style={{ color: '#64748b' }}>{slotLabel}</span> | </>}
-            {showAsOfDate && <><span style={{ color: '#64748b' }}>{pickUiLang(uiLang, `기준 ${marketDateKey}`, `as of ${marketDateKey}`)}</span> | </>}
-            {freshnessBadge && <><span style={{ color: freshnessBadge.color }}>{freshnessBadge.text}</span> | </>}
-            {promptBadge && <><span style={{ color: promptBadge.color }}>{promptBadge.text}</span> | </>}
-            <span style={{ color: '#cbd5e1' }}>{data.model}</span>
-          </div>
+      <header className={`${styles.panel} ${styles.headerPanel}`}>
+        <div className={styles.headerTitleGroup}>
+          <p className={styles.kicker}>
+            {pickUiLang(uiLang, BRIEF_UI_TEXT.dailyBriefing.ko, BRIEF_UI_TEXT.dailyBriefing.en)} · {titleDateKey}
+          </p>
+          <h1 className={styles.headline}>Terminal Market Pulse</h1>
+          <p className={styles.subhead}>Macro risk, structure, and action lane in one glance.</p>
+          <p className={styles.generatedMeta}>
+            {pickUiLang(uiLang, BRIEF_UI_TEXT.generatedLabel.ko, BRIEF_UI_TEXT.generatedLabel.en)} {formatDate(data.generated_at)} · {formatTime(data.generated_at)}
+          </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className={styles.headerActions}>
           <LangToggle lang={lang} onChange={onContentLangChange} />
-          {genStatus && <span style={{ fontSize: rem(0.88), color: '#64748b' }}>{genStatus}</span>}
-          <button onClick={() => handleGenerate(false, lang)} disabled={generating} style={{
-            background: 'transparent', border: '1px solid rgba(148,163,184,0.15)',
-            color: '#94a3b8', borderRadius: 5, padding: '7px 14px', fontSize: rem(0.8),
-            fontFamily: MONO_FONT,
-            cursor: generating ? 'not-allowed' : 'pointer', letterSpacing: '0.08em',
-          }}>
+          <button
+            type="button"
+            className={styles.actionButton}
+            onClick={() => handleGenerate(false, lang)}
+            disabled={generating}
+          >
             {generating
               ? pickUiLang(uiLang, BRIEF_UI_TEXT.generating.ko, BRIEF_UI_TEXT.generating.en)
               : pickUiLang(uiLang, BRIEF_UI_TEXT.refresh.ko, BRIEF_UI_TEXT.refresh.en)}
           </button>
-          <button onClick={() => handleGenerate(true, lang)} disabled={generating} style={{
-            background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)',
-            color: '#3b82f6', borderRadius: 5, padding: '7px 14px', fontSize: rem(0.8),
-            fontFamily: MONO_FONT,
-            cursor: generating ? 'not-allowed' : 'pointer', letterSpacing: '0.08em',
-          }}>
+          <button
+            type="button"
+            className={`${styles.actionButton} ${styles.primaryAction}`}
+            onClick={() => handleGenerate(true, lang)}
+            disabled={generating}
+          >
             {pickUiLang(uiLang, BRIEF_UI_TEXT.forceRegen.ko, BRIEF_UI_TEXT.forceRegen.en)}
           </button>
+          {genStatus && <span className={styles.statusText}>{genStatus}</span>}
         </div>
+      </header>
+
+      <div className={`${styles.panel} ${styles.heroPanel}`}>
+        <div className={styles.heroLabel}>{pickUiLang(uiLang, BRIEF_UI_TEXT.marketHook.ko, BRIEF_UI_TEXT.marketHook.en)}</div>
+        <p className={styles.heroText}>{heroLine}</p>
       </div>
 
-      {/* ?? Hook ????????????????????????????????????????????????????????????? */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(10,15,30,0.95) 100%)',
-        border: '1px solid rgba(148,163,184,0.1)', borderRadius: 10, padding: '22px 24px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-          background: 'linear-gradient(90deg, transparent 0%, rgba(148,163,184,0.2) 50%, transparent 100%)',
-        }} />
-        <div style={{
-          fontFamily: MONO_FONT,
-          fontSize: rem(0.83), color: '#94a3b8', letterSpacing: '0.16em',
-          textTransform: 'uppercase', marginBottom: 12,
-        }}>
-          {heroLabel}
-        </div>
-        <p style={{ margin: 0, fontSize: rem(1.33), lineHeight: 1.62, color: '#e2e8f0', fontWeight: 600 }}>
-          {heroLine}
-        </p>
-      </div>
-
-      {/* ?? Sections ????????????????????????????????????????????????????????? */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(480px, 1fr))', gap: 12 }}>
-        {data.sections.map((sec, i) => (
-          <SectionCard key={sec.id} section={sec} index={i} contentLang={lang} uiLang={uiLang} />
-        ))}
-      </div>
-
-      {/* ?? Risk Check ??????????????????????????????????????????????????????? */}
-      <div style={{
-        background: rc.triggered
-          ? `linear-gradient(135deg, ${rc.color}0d 0%, ${rc.color}06 100%)`
-          : 'rgba(10,13,20,0.7)',
-        border: `1px solid ${rc.triggered ? rc.color + '40' : 'rgba(148,163,184,0.08)'}`,
-        borderRadius: 8, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start',
-      }}>
-        <div style={{
-          flexShrink: 0, width: 36, height: 36, borderRadius: '50%',
-          background: rc.triggered ? rc.color + '1a' : 'rgba(34,197,94,0.1)',
-          border: `1.5px solid ${rc.triggered ? rc.color + '60' : '#22c55e40'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: MONO_FONT,
-          fontSize: rem(0.81), fontWeight: 700,
-          color: rc.triggered ? rc.color : '#4ade80',
-        }}>
-          {rc.triggered ? `L${rc.level}` : 'OK'}
-        </div>
-        <div style={{ flex: 1 }}>
-        <div style={{
-          fontFamily: MONO_FONT,
-          fontSize: rem(0.74), color: rc.triggered ? rc.color : '#4ade80',
-          letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6,
-        }}>
-            {pickUiLang(uiLang, BRIEF_UI_TEXT.riskCheck.ko, BRIEF_UI_TEXT.riskCheck.en)} | MSS {rc.mss}
-          </div>
-          <p style={{ margin: 0, color: '#94a3b8', fontSize: rem(0.95), lineHeight: 1.62 }}>
-            {rc.message}
-          </p>
-        </div>
-      </div>
-
-      {/* ?? One Line ????????????????????????????????????????????????????????? */}
-      <div style={{ borderTop: '1px solid rgba(148,163,184,0.06)', paddingTop: 20, textAlign: 'center' }}>
-        <div style={{
-          fontFamily: MONO_FONT,
-          fontSize: rem(0.7), color: '#64748b', letterSpacing: '0.18em',
-          textTransform: 'uppercase', marginBottom: 10,
-        }}>
-          {pick(BRIEF_UI_TEXT.oneLine.en, BRIEF_UI_TEXT.oneLine.ko, lang)}
-        </div>
-        <p style={{ margin: '0 auto', maxWidth: 640, color: '#64748b',
-          fontSize: rem(0.97), lineHeight: 1.62, fontStyle: 'italic' }}>
-          {pick(data.one_line, data.one_line_ko, lang)}
-        </p>
-      </div>
-
-      {/* ?? Footer ??????????????????????????????????????????????????????????? */}
-      <div style={{ borderTop: '1px solid rgba(148,163,184,0.04)', paddingTop: 12,
-        display: 'flex', justifyContent: 'flex-end' }}>
-        <span style={{
-          fontFamily: MONO_FONT,
-          fontSize: rem(0.66), color: '#475569', letterSpacing: '0.08em',
-        }}>
-          {data.tokens.input + data.tokens.output} tokens | ${data.tokens.cost_usd.toFixed(5)}
+      <div className={styles.metaRow}>
+        {marketDateKey && (
+          <span className={styles.metaChip}>
+            {pickUiLang(uiLang, BRIEF_UI_TEXT.asOfLabel.ko, BRIEF_UI_TEXT.asOfLabel.en)} {marketDateKey}
+          </span>
+        )}
+        {slotLabel && (
+          <span className={styles.metaChip}>
+            {pickUiLang(uiLang, BRIEF_UI_TEXT.slotLabel.ko, BRIEF_UI_TEXT.slotLabel.en)} {slotLabel}
+          </span>
+        )}
+        {freshnessBadge && (
+          <span className={styles.metaChip} style={toneStyle(freshnessBadge)}>
+            {freshnessBadge.text}
+          </span>
+        )}
+        {promptBadge && (
+          <span className={styles.metaChip} style={toneStyle(promptBadge)}>
+            {promptBadge.text}
+          </span>
+        )}
+        <span className={styles.metaChip}>
+          {pickUiLang(uiLang, BRIEF_UI_TEXT.modelLabel.ko, BRIEF_UI_TEXT.modelLabel.en)} {data.model}
         </span>
       </div>
-    </div>
+
+      <div className={styles.sectionGrid}>
+        {sectionList.map((section, index) => {
+          const structural = pick(section.structural, section.structural_ko, lang)
+          const implication = pick(section.implication, section.implication_ko, lang)
+          const signal = signalTone(section.signal, uiLang)
+          return (
+            <article key={section.id} className={styles.sectionCard} style={{ borderColor: `${section.color}66` }}>
+              <div className={styles.sectionHeader}>
+                <p className={styles.sectionIdTitle} style={{ color: section.color }}>
+                  {String(index + 1).padStart(2, '0')} · {section.title}
+                </p>
+                <span className={styles.signalBadge} style={toneStyle(signal)}>
+                  {signal.text}
+                </span>
+              </div>
+
+              <div className={styles.sectionBlock}>
+                <div className={styles.sectionLabel}>{pickUiLang(uiLang, BRIEF_UI_TEXT.structural.ko, BRIEF_UI_TEXT.structural.en)}</div>
+                <p className={styles.sectionText}>
+                  {structural || pickUiLang(uiLang, BRIEF_UI_TEXT.noStructural.ko, BRIEF_UI_TEXT.noStructural.en)}
+                </p>
+              </div>
+
+              <div className={styles.sectionBlock}>
+                <div className={styles.sectionLabel} style={{ color: section.color }}>
+                  {pickUiLang(uiLang, BRIEF_UI_TEXT.implication.ko, BRIEF_UI_TEXT.implication.en)}
+                </div>
+                <p className={`${styles.sectionText} ${styles.implicationText}`}>
+                  {implication || pickUiLang(uiLang, BRIEF_UI_TEXT.noImplication.ko, BRIEF_UI_TEXT.noImplication.en)}
+                </p>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
+      <div className={`${styles.panel} ${styles.riskPanel}`} style={{ borderColor: riskTone.border, background: riskTone.bg }}>
+        <div className={styles.riskTitle} style={{ color: riskTone.color }}>
+          {pickUiLang(uiLang, BRIEF_UI_TEXT.riskCheck.ko, BRIEF_UI_TEXT.riskCheck.en)} · {rc.triggered ? `L${rc.level}` : 'OK'} · MSS {rc.mss}
+        </div>
+        <p className={styles.riskText}>{rc.message}</p>
+      </div>
+
+      <div className={`${styles.panel} ${styles.oneLinePanel}`}>
+        <div className={styles.oneLineLabel}>{pickUiLang(uiLang, BRIEF_UI_TEXT.oneLine.ko, BRIEF_UI_TEXT.oneLine.en)}</div>
+        <p className={styles.oneLineText}>{pick(data.one_line, data.one_line_ko, lang)}</p>
+      </div>
+
+      <footer className={styles.footerMeta}>
+        {formatNumber(data.tokens?.input) + formatNumber(data.tokens?.output)} tokens · ${Number(data.tokens?.cost_usd || 0).toFixed(5)}
+      </footer>
+    </section>
   )
 }
-

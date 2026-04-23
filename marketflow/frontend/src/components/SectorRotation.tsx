@@ -2,7 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useState } from 'react'
 import { clientApiUrl } from '@/lib/backendApi'
-import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 
 interface SectorRow {
   symbol: string
@@ -23,22 +23,84 @@ interface SectorPerformanceResponse {
 
 type PerfKey = 'change_1d' | 'change_1w' | 'change_1m' | 'change_3m' | 'change_6m' | 'change_1y'
 
+type ChartRow = SectorRow & {
+  barValue: number
+  signedValue: number
+}
+
 function sortByKey(data: SectorRow[], key: PerfKey) {
   return [...data].sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0))
 }
 
 function chartPanelStyle(): CSSProperties {
   return {
-    background: '#1a1a1a',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'linear-gradient(180deg, rgba(31, 35, 46, 0.98) 0%, rgba(24, 28, 37, 0.98) 100%)',
+    borderRadius: 16,
+    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.16)',
     padding: '1rem 1rem 1.1rem',
+    width: '80%',
+    margin: '0 auto',
+    boxSizing: 'border-box',
   }
 }
 
-function formatPct(value?: number) {
-  if (value === undefined || value === null || Number.isNaN(value)) return '--'
-  return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`
+function formatAxisPct(value: number) {
+  if (!Number.isFinite(value)) return '--'
+  const rounded = Number(value.toFixed(1))
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`
+}
+
+function getTickStep(maxValue: number) {
+  if (maxValue <= 3) return 0.5
+  if (maxValue <= 6) return 1
+  if (maxValue <= 12) return 2
+  if (maxValue <= 25) return 5
+  return 10
+}
+
+function buildAxisTicks(maxValue: number) {
+  const step = getTickStep(maxValue)
+  const axisMax = Math.max(step, Math.ceil(maxValue / step) * step)
+  const tickCount = Math.round(axisMax / step)
+  const ticks = Array.from({ length: tickCount + 1 }, (_, index) => Number((index * step).toFixed(2)))
+  return { axisMax, ticks }
+}
+
+function SignedValueLabel({ x, y, width, height, value }: any) {
+  const signedValue = typeof value === 'number' ? value : null
+
+  if (
+    typeof x !== 'number'
+    || typeof y !== 'number'
+    || typeof width !== 'number'
+    || typeof height !== 'number'
+    || typeof signedValue !== 'number'
+  ) {
+    return null
+  }
+
+  const labelX = x + width + 6
+
+  return (
+    <text
+      x={labelX}
+      y={y + height / 2}
+      fill="#ffffff"
+      fontSize={12}
+      fontWeight={700}
+      dominantBaseline="middle"
+      textAnchor="start"
+      style={{
+        paintOrder: 'stroke',
+        stroke: 'rgba(17, 24, 39, 0.88)',
+        strokeWidth: 3,
+      }}
+    >
+      <tspan>{`${signedValue > 0 ? '+' : ''}${signedValue.toFixed(2)}`}</tspan>
+      <tspan dx={1} fontSize={11}>%</tspan>
+    </text>
+  )
 }
 
 function PerformanceChart({
@@ -50,45 +112,76 @@ function PerformanceChart({
   data: SectorRow[]
   dataKey: PerfKey
 }) {
+  const positiveGradientId = `sector-positive-${dataKey}`
+  const negativeGradientId = `sector-negative-${dataKey}`
+
+  const chartData = useMemo<ChartRow[]>(() => {
+    return data.map((entry) => {
+      const signedValue = entry[dataKey] ?? 0
+      return {
+        ...entry,
+        barValue: Math.abs(signedValue),
+        signedValue,
+      }
+    })
+  }, [data, dataKey])
+
+  const { ticks } = useMemo(() => buildAxisTicks(
+    chartData.reduce((max, entry) => Math.max(max, entry.barValue), 0),
+  ), [chartData])
+
   return (
     <div style={chartPanelStyle()}>
-      <h2 style={{ textAlign: 'center', color: '#d1d5db', fontWeight: 800, letterSpacing: '0.08em', fontSize: '1rem', marginBottom: '0.85rem' }}>
+      <h2 style={{ textAlign: 'left', color: '#d1d5db', fontWeight: 800, letterSpacing: '0.08em', fontSize: '1rem', marginBottom: '0.85rem' }}>
         {title}
       </h2>
 
       <div style={{ width: '100%', height: 400 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={data}
+            data={chartData}
             layout="vertical"
-            margin={{ left: 18, right: 44, top: 10, bottom: 10 }}
+            margin={{ top: 10, right: 56, left: 10, bottom: 10 }}
+            barCategoryGap="24%"
           >
+            <defs>
+              <linearGradient id={positiveGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#4ade80" stopOpacity={1} />
+                <stop offset="100%" stopColor="#22c55e" stopOpacity={0.82} />
+              </linearGradient>
+              <linearGradient id={negativeGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f87171" stopOpacity={1} />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.82} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="rgba(148, 163, 184, 0.12)" strokeDasharray="4 4" horizontal={false} />
             <XAxis
               type="number"
-              stroke="#666"
-              tick={{ fill: '#999', fontSize: 12 }}
-              tickFormatter={(value) => `${value}%`}
+              domain={[0, 'dataMax + 0.3']}
+              ticks={ticks}
+              tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 600 }}
+              tickFormatter={formatAxisPct}
+              axisLine={false}
+              tickLine={false}
+              allowDecimals
             />
             <YAxis
               type="category"
               dataKey="name"
-              stroke="#666"
-              tick={{ fill: '#d1d5db', fontSize: 12 }}
-              width={142}
+              width={170}
+              tick={{ fill: '#cbd5e1', fontSize: 13, fontWeight: 600 }}
+              axisLine={false}
+              tickLine={false}
+              tickMargin={12}
             />
-            <Bar dataKey={dataKey} radius={[0, 4, 4, 0]}>
-              {data.map((entry, index) => (
+            <Bar dataKey="barValue" radius={6} minPointSize={3}>
+              {chartData.map((entry, index) => (
                 <Cell
                   key={`${entry.symbol}-${index}`}
-                  fill={entry[dataKey] >= 0 ? '#22c55e' : '#ef4444'}
+                  fill={entry.signedValue >= 0 ? `url(#${positiveGradientId})` : `url(#${negativeGradientId})`}
                 />
               ))}
-              <LabelList
-                dataKey={dataKey}
-                position="right"
-                formatter={(value: number) => formatPct(value)}
-                style={{ fill: '#ffffff', fontSize: 12, fontWeight: 700 }}
-              />
+              <LabelList dataKey="signedValue" content={SignedValueLabel} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

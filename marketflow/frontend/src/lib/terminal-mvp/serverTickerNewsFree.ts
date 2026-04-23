@@ -17,6 +17,7 @@ const TICKER_NEWS_RETRY_DELAY_MS = 150
 const TICKER_NEWS_HTTP_TIMEOUT_MS = 2200
 const TICKER_NEWS_CRUMB_TIMEOUT_MS = 1500
 const TICKER_NEWS_HISTORY_PATH = resolveNewsHistoryPath('ticker-news-history-v2-1630.json')
+const TICKER_NEWS_HISTORY_TRADING_DAYS = 4
 const MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 const MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
 
@@ -34,10 +35,10 @@ function isMarketOpenDay(dateStr: string): boolean {
   return dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS_NEWS.has(dateStr)
 }
 
-function getLast5TradingDaysSet(fromDateET: string): Set<string> {
+function getLastTradingDaysSet(fromDateET: string, count = TICKER_NEWS_HISTORY_TRADING_DAYS): Set<string> {
   const result: string[] = []
   const d = new Date(fromDateET + 'T12:00:00Z')
-  while (result.length < 5) {
+  while (result.length < count) {
     const ds = d.toISOString().slice(0, 10)
     if (isMarketOpenDay(ds)) result.push(ds)
     d.setUTCDate(d.getUTCDate() - 1)
@@ -343,6 +344,24 @@ const parseGoogleNewsRss = (xml: string): YahooRssItem[] => {
     .filter((item) => item.title && item.link && item.pubDateRaw)
 }
 
+const GOOGLE_KR_LOCALE = { hl: 'ko-KR', gl: 'KR', ceid: 'KR:ko' }
+const GOOGLE_KR_QUERIES = ['미국 증시', '주가', '실적']
+
+const fetchGoogleNewsItems = async (
+  query: string,
+  locale: { hl: string; gl: string; ceid: string },
+): Promise<YahooRssItem[]> => {
+  try {
+    const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${locale.hl}&gl=${locale.gl}&ceid=${locale.ceid}`
+    const res = await fetchWithRetry(rssUrl, { next: { revalidate: 3600 } }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    if (!res) return []
+    const xml = await res.text()
+    return parseGoogleNewsRss(xml)
+  } catch {
+    return []
+  }
+}
+
 const mapYahooFinanceItems = (symbol: string, items: YahooFinanceNewsItem[]): YahooRssItem[] => {
   return items
     .map((item) => {
@@ -474,12 +493,19 @@ const fetchYahooFreeNews = async (symbol: string): Promise<{ timeline: TickerNew
 }
 
 const fetchGoogleFreeNews = async (symbol: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
-  const query = `${symbol} stock`
-  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`
-  const res = await fetchWithRetry(rssUrl, { next: { revalidate: 3600 } }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
-  if (!res) throw new Error('Google News RSS request failed after retries')
-  const xml = await res.text()
-  return buildPayloadFromYahoo(symbol, parseGoogleNewsRss(xml))
+  const usQuery = `${symbol} stock`
+  const krQueries = GOOGLE_KR_QUERIES.map((query) => `${symbol} ${query}`)
+  const [usItems, krResults] = await Promise.all([
+    fetchGoogleNewsItems(usQuery, { hl: 'en-US', gl: 'US', ceid: 'US:en' }),
+    Promise.all(krQueries.map((query) => fetchGoogleNewsItems(query, GOOGLE_KR_LOCALE))),
+  ])
+
+  const krItems = krResults.flat()
+  const combined = [...usItems, ...krItems]
+  if (!combined.length) {
+    throw new Error('Google News RSS request failed after retries')
+  }
+  return buildPayloadFromYahoo(symbol, combined)
 }
 
 const clonePayload = (payload: BuiltTickerNewsPayload): BuiltTickerNewsPayload => ({
@@ -489,9 +515,9 @@ const clonePayload = (payload: BuiltTickerNewsPayload): BuiltTickerNewsPayload =
 
 export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateString): Promise<BuiltTickerNewsPayload> {
   await loadTickerHistoryFromDisk()
-  void dateET
+  const anchorDateET = dateET || toDateET(new Date())
 
-  const cacheKey = `v3-session:${symbol}:${dateET}:${getNewsCheckpointKey()}`
+  const cacheKey = `v4-session:${symbol}:${anchorDateET}:${getNewsCheckpointKey()}`
   const now = Date.now()
   const cached = tickerNewsCache.get(cacheKey)
   if (cached && cached.expiresAt > now) return clonePayload(cached.payload)
@@ -541,8 +567,8 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
   freshTimeline.forEach((item) => symbolHistory.timelineById.set(item.id, item))
   freshDetails.forEach((item) => symbolHistory.detailsById.set(item.id, item))
 
-  // Keep last 5 trading days of news (prune older items from disk history)
-  const tradingDaySet = getLast5TradingDaysSet(toDateET(new Date()))
+  // Keep last 4 trading days of news ending on the requested ET session date.
+  const tradingDaySet = getLastTradingDaysSet(anchorDateET)
   let mergedTimeline = sortNewsItems(
     Array.from(symbolHistory.timelineById.values()).filter(item => tradingDaySet.has(item.dateET))
   )

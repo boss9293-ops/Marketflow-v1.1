@@ -18,6 +18,18 @@ const SOURCE_RETRY_DELAY_MS = 250
 const MIN_FEED_SCORE = 2.5
 const YAHOO_MARKET_SYMBOLS = ['^GSPC', '^IXIC', '^DJI']
 const HISTORY_CACHE_PATH = resolveNewsHistoryPath('market-headlines-history.json')
+const GOOGLE_KR_LOCALE = { hl: 'ko-KR', gl: 'KR', ceid: 'KR:ko' }
+const GOOGLE_KR_QUERIES = [
+  '미국 증시',
+  '뉴욕증시',
+  '나스닥',
+  'S&P500',
+  '월가',
+  '연준',
+  '미국 금리',
+  '엔비디아',
+  '테슬라',
+]
 
 type FeedHeadline = {
   id: string
@@ -69,7 +81,7 @@ type YahooFinanceNewsItem = {
   canonicalUrl?: { url?: string }
 }
 
-type SourceHealthName = 'finnhub' | 'yahoo_finance'
+type SourceHealthName = 'finnhub' | 'yahoo_finance' | 'google_news_kr'
 
 type SourceHealth = {
   name: SourceHealthName
@@ -88,9 +100,10 @@ type HeadlinesHealth = {
 
 const normalizeHeadline = (value: string): string =>
   value
+    .normalize('NFKC')
     .toLowerCase()
     .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -130,6 +143,21 @@ const parseYahooRss = (xml: string): YahooRssItem[] => {
       const link = decodeHtml(readTag(itemXml, 'link'))
       const pubDateRaw = decodeHtml(readTag(itemXml, 'pubDate'))
       const source = decodeHtml(readTag(itemXml, 'source')) || 'Yahoo Finance'
+      const description = stripHtml(decodeHtml(readTag(itemXml, 'description')))
+      return { title, link, pubDateRaw, source, description }
+    })
+    .filter((item) => item.title && item.link && item.pubDateRaw)
+}
+
+const parseGoogleNewsRss = (xml: string): YahooRssItem[] => {
+  const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/gi) ?? []
+  return itemBlocks
+    .map((itemXml) => {
+      const rawTitle = decodeHtml(readTag(itemXml, 'title'))
+      const source = decodeHtml(readTag(itemXml, 'source')) || 'Google News'
+      const title = source && rawTitle.endsWith(` - ${source}`) ? rawTitle.slice(0, -(source.length + 3)).trim() : rawTitle
+      const link = decodeHtml(readTag(itemXml, 'link'))
+      const pubDateRaw = decodeHtml(readTag(itemXml, 'pubDate'))
       const description = stripHtml(decodeHtml(readTag(itemXml, 'description')))
       return { title, link, pubDateRaw, source, description }
     })
@@ -392,6 +420,26 @@ const mapYahooFinanceItem = (symbol: string, item: YahooFinanceNewsItem, idx: nu
   }
 }
 
+const mapGoogleNewsItem = (query: string, item: YahooRssItem, idx: number): FeedHeadline | null => {
+  const published = new Date(item.pubDateRaw)
+  if (Number.isNaN(published.valueOf())) return null
+  const title = item.title.trim()
+  const source = item.source.trim()
+  const link = item.link.trim()
+  if (!title || !source || !link) return null
+  if (!isFreeNewsSource(source) || hasPromoSignals(title) || hasPromoSignals(item.description)) return null
+  return {
+    id: `mh-gk-${createHash('sha1').update(`${query}|${link}|${item.pubDateRaw}|${title}`).digest('hex').slice(0, 16)}`,
+    dateET: formatDateET(published),
+    publishedAtET: published.toISOString(),
+    timeET: formatTimeET(published),
+    headline: title,
+    source,
+    summary: item.description || '',
+    url: link,
+  }
+}
+
 const readHistoryCache = async (): Promise<FeedHeadline[]> => {
   try {
     const raw = await fs.readFile(HISTORY_CACHE_PATH, 'utf8')
@@ -577,6 +625,41 @@ const fetchYahooMarketHeadlines = async (): Promise<{ items: FeedHeadline[]; hea
   }
 }
 
+const fetchGoogleKoreanHeadlines = async (): Promise<{ items: FeedHeadline[]; health: SourceHealth }> => {
+  const queries = GOOGLE_KR_QUERIES.slice(0, 6)
+  const results = await Promise.allSettled(
+    queries.map(async (query) => {
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${GOOGLE_KR_LOCALE.hl}&gl=${GOOGLE_KR_LOCALE.gl}&ceid=${GOOGLE_KR_LOCALE.ceid}`
+      const res = await fetchWithRetry(rssUrl, { next: { revalidate: 3600 } }, 3500)
+      if (!res.response) return [] as YahooRssItem[]
+      const xml = await res.response.text()
+      return parseGoogleNewsRss(xml)
+    }),
+  )
+
+  const items: FeedHeadline[] = []
+  for (const [queryIdx, result] of results.entries()) {
+    const parsed = result.status === 'fulfilled' ? result.value : []
+    for (const [idx, item] of parsed.slice(0, 8).entries()) {
+      const mapped = mapGoogleNewsItem(`${queryIdx}`, item, idx)
+      if (mapped) items.push(mapped)
+    }
+  }
+
+  const failedCount = results.filter((result) => result.status === 'rejected').length
+  const hadRetry = false
+  return {
+    items,
+    health: {
+      name: 'google_news_kr',
+      status: failedCount === results.length ? 'down' : failedCount > 0 || hadRetry ? 'degraded' : 'ok',
+      items: items.length,
+      attempts: results.length,
+      error: failedCount > 0 ? `${failedCount}/${results.length} queries failed` : undefined,
+    },
+  }
+}
+
 export async function GET() {
   const key = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || ''
   const history = await readHistoryCache()
@@ -585,11 +668,12 @@ export async function GET() {
     fetchFinnhubHeadlines(key),
     fetchYahooMarketHeadlines(),
   ])
+  const googleKrResult = await fetchGoogleKoreanHeadlines()
 
-  const liveFeed = dedupeAndDiversify([...finnhubResult.items, ...yahooResult.items])
+  const liveFeed = dedupeAndDiversify([...finnhubResult.items, ...yahooResult.items, ...googleKrResult.items])
   const mergedHistory = dedupeHeadlines([...liveFeed, ...history], MAX_HISTORY_ITEMS)
   const health = buildHeadlinesHealth(
-    [finnhubResult.health, yahooResult.health],
+    [finnhubResult.health, yahooResult.health, googleKrResult.health],
     liveFeed.length,
     mergedHistory.length,
   )
