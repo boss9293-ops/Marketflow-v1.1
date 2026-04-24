@@ -5,6 +5,7 @@ import SoxxAnchor             from '@/components/semiconductor/SoxxAnchor'
 import SoxlTactical           from '@/components/semiconductor/SoxlTactical'
 import SemiconductorRiskPanel from '@/components/semiconductor/SemiconductorRiskPanel'
 import ActionLayer            from '@/components/semiconductor/ActionLayer'
+import SoxlScoreChart        from '@/components/semiconductor/SoxlScoreChart'
 
 async function getdata(): Promise<SemiconductorOutput | null> {
   try {
@@ -78,6 +79,9 @@ export default async function SoxxSoxlPage() {
 
         {/* B-2: SOXX Anchor */}
         <SoxxAnchor soxx={translation.soxx} signals={signals} />
+
+        {/* B-2a: SOXL Score trend */}
+        <SoxlScoreChart currentScore={translation.soxl.suitability} currentStage={stage.stage} />
 
         {/* B-3: SOXL Tactical */}
         <SoxlTactical soxl={translation.soxl} />
