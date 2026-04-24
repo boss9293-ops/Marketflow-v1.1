@@ -30,6 +30,12 @@ const crashItems = [
   { href: '/risk-v1', label: UI_TEXT.nav.standardRisk, dot: '#6366f1' },
 ]
 
+// Zone SC: Semiconductor Cycle
+const scItems = [
+  { href: '/semiconductor', label: { ko: '반도체 사이클', en: 'Semiconductor Cycle' }, dot: '#00D9FF' },
+  { href: '/soxx-soxl',    label: { ko: 'SOXX / SOXL', en: 'SOXX / SOXL' }, dot: '#6366f1' },
+]
+
 // ?? Zone LV: ?덈쾭由ъ? 湲몃뱾?닿린 ???????????????????????????????????????????????
 const lvItems = [
   { href: '/vr-survival', label: UI_TEXT.nav.vrSurvival, dot: '#a78bfa' },
@@ -283,6 +289,7 @@ export default function Sidebar({
   const pathname = usePathname() ?? ''
   const [osOpen, setOsOpen] = useState(true)
   const [crashOpen, setCrashOpen] = useState(true)
+  const [scOpen, setScOpen]     = useState(true)
   const [lvOpen, setLvOpen] = useState(true)
   const [vrTestOpen, setVrTestOpen] = useState(true)
   const [reOpen, setReOpen] = useState(true)
@@ -437,6 +444,28 @@ export default function Sidebar({
         />
       </div>
       {crashOpen && <NavLinks items={crashItems} pathname={pathname} vrStyle compact={compact} onNavigate={overlay ? onClose : undefined} />}
+
+      {/* Zone SC: Semiconductor Cycle */}
+      <div
+        style={{
+          marginTop: '0.72rem',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          paddingTop: '0.58rem',
+          paddingLeft: compact ? '0.4rem' : '0.5rem',
+          paddingRight: compact ? '0.4rem' : '0.5rem',
+        }}
+      >
+        <ZoneHeader
+          icon={<span style={{ fontSize: '0.82rem', color: '#00D9FF' }}>SC</span>}
+          label={compact ? 'SC' : '반도체 사이클'}
+          badge="NEW"
+          badgeColor="#00D9FF"
+          onClick={() => setScOpen((p) => !p)}
+          isOpen={scOpen}
+          compact={compact}
+        />
+      </div>
+      {scOpen && <NavLinks items={scItems} pathname={pathname} compact={compact} onNavigate={overlay ? onClose : undefined} />}
 
       <div
         style={{
