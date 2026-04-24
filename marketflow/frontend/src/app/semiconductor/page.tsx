@@ -7,6 +7,7 @@ import EducationLayer      from '@/components/semiconductor/EducationLayer'
 import SoxxAnchor          from '@/components/semiconductor/SoxxAnchor'
 import SoxlTactical        from '@/components/semiconductor/SoxlTactical'
 import ActionLayer         from '@/components/semiconductor/ActionLayer'
+import BucketPerfChart    from '@/components/semiconductor/BucketPerfChart'
 
 async function getdata(): Promise<SemiconductorOutput | null> {
   try {
@@ -78,15 +79,8 @@ export default async function SemiconductorPage() {
           summary={summary}
         />
 
-        {/* A-2: Chart placeholder */}
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8,
-                      padding: '14px 18px', marginBottom: 16, minHeight: 140,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ textAlign: 'center', color: '#475569' }}>
-            <div style={{ fontSize: 13, marginBottom: 4 }}>REBASED COMPARISON CHART</div>
-            <div style={{ fontSize: 11 }}>SOXX · QQQ · Historical overlay — chart integration pending</div>
-          </div>
-        </div>
+        {/* A-2: Sector Radar */}
+        <BucketPerfChart signals={signals} />
 
         {/* A-3: Leaders / Breadth */}
         <LeadersBreadthPanel signals={signals} />
