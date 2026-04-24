@@ -8,6 +8,7 @@ import SoxxAnchor          from '@/components/semiconductor/SoxxAnchor'
 import SoxlTactical        from '@/components/semiconductor/SoxlTactical'
 import ActionLayer         from '@/components/semiconductor/ActionLayer'
 import BucketPerfChart    from '@/components/semiconductor/BucketPerfChart'
+import BucketRSChart      from '@/components/semiconductor/BucketRSChart'
 
 async function getdata(): Promise<SemiconductorOutput | null> {
   try {
@@ -79,13 +80,16 @@ export default async function SemiconductorPage() {
           summary={summary}
         />
 
-        {/* A-2: Sector Radar */}
+        {/* A-2: Sector Radar — snapshot bar charts */}
         <BucketPerfChart signals={signals} />
 
-        {/* A-3: Leaders / Breadth */}
+        {/* A-3: Bucket RS — rebased 100 time series */}
+        <BucketRSChart currentPerf={signals.sub_bucket_perf} stage={stage.stage} />
+
+        {/* A-4: Leaders / Breadth */}
         <LeadersBreadthPanel signals={signals} />
 
-        {/* A-4: Core Drivers (includes soxx_vs_qqq decoupling signal) */}
+        {/* A-5: Core Drivers */}
         <CoreDriverPanel signals={signals} />
 
         {/* A-5: Education */}
