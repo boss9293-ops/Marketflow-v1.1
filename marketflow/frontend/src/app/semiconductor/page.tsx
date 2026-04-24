@@ -10,7 +10,7 @@ import ActionLayer         from '@/components/semiconductor/ActionLayer'
 
 async function getdata(): Promise<SemiconductorOutput | null> {
   try {
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3010'
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3010')
     const res  = await fetch(`${base}/api/semiconductor`, { cache: 'no-store' })
     if (!res.ok) return null
     return res.json()
