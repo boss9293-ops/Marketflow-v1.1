@@ -4,10 +4,11 @@
 import path from 'path'
 import fs   from 'fs'
 import { NextResponse } from 'next/server'
-import type { MarketDataInput, SemiconductorOutput } from '@/lib/semiconductor/types'
+import type { MarketDataInput, SemiconductorOutput, SignalInputs, StageOutput, SoxlOutput } from '@/lib/semiconductor/types'
 import { computeSignals }  from '@/lib/semiconductor/signals'
 import { determineStage }  from '@/lib/semiconductor/stageEngine'
 import { translate }       from '@/lib/semiconductor/translationEngine'
+import { getTursoClient }  from '@/lib/tursoClient'
 
 const CACHE_PATH = path.join(process.cwd(), '..', 'backend', 'output', 'cache', 'semiconductor_market_data.json')
 
@@ -39,6 +40,45 @@ function loadMarketData(): MarketDataInput {
   return MOCK_MARKET_DATA
 }
 
+async function persistTodaySnapshot(signals: SignalInputs, stage: StageOutput, soxl: SoxlOutput) {
+  const today   = new Date().toISOString().slice(0, 10)
+  const savedAt = new Date().toISOString()
+  const payload = JSON.stringify({
+    date:                today,
+    cycle_score:         stage.stage_score,
+    stage:               stage.stage,
+    confidence:          stage.confidence,
+    compute_rel:         signals.sub_bucket_perf.compute,
+    memory_rel:          signals.sub_bucket_perf.memory,
+    foundry_rel:         signals.sub_bucket_perf.foundry,
+    equipment_rel:       signals.sub_bucket_perf.equipment,
+    soxl_score:          soxl.suitability,
+    soxl_window:         soxl.window,
+    breadth_score:       signals.breadth_score,
+    concentration_score: signals.concentration_score,
+    soxx_vs_qqq_60d:     signals.soxx_vs_qqq_60d,
+    saved_at:            savedAt,
+  })
+  try {
+    const db = getTursoClient()
+    if (!db) return
+    await db.execute({
+      sql: `CREATE TABLE IF NOT EXISTS semiconductor_history (
+              date     TEXT PRIMARY KEY,
+              payload  TEXT NOT NULL,
+              saved_at TEXT
+            )`,
+      args: [],
+    })
+    await db.execute({
+      sql:  'INSERT OR REPLACE INTO semiconductor_history (date, payload, saved_at) VALUES (?, ?, ?)',
+      args: [today, payload, savedAt],
+    })
+  } catch (e) {
+    console.warn('[SC History] save failed:', e)
+  }
+}
+
 export async function GET() {
   try {
     const marketData  = loadMarketData()
@@ -46,6 +86,9 @@ export async function GET() {
     const signals     = computeSignals(marketData)
     const stage       = determineStage(signals, as_of)
     const translation = translate(signals, stage)
+
+    // fire-and-forget — does not block response
+    void persistTodaySnapshot(signals, stage, translation.soxl)
 
     const output: SemiconductorOutput = { market_data: marketData, signals, stage, translation, as_of }
     return NextResponse.json(output)
