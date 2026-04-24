@@ -1,53 +1,53 @@
-// Phase 1B/1E — Semiconductor data API
-// Serves computed SemiconductorOutput from mock data.
-// Replace MOCK_MARKET_DATA with real EOD price fetch for production.
+// Phase 4A — Semiconductor data API (real data)
+// Reads from backend/output/cache/semiconductor_market_data.json (built by build_semiconductor_mvp.py).
+// Falls back to mock data on Vercel / when cache is absent.
+import path from 'path'
+import fs   from 'fs'
 import { NextResponse } from 'next/server'
 import type { MarketDataInput, SemiconductorOutput } from '@/lib/semiconductor/types'
 import { computeSignals }  from '@/lib/semiconductor/signals'
 import { determineStage }  from '@/lib/semiconductor/stageEngine'
 import { translate }       from '@/lib/semiconductor/translationEngine'
 
-// ── Mock market data — replace with real EOD API call ────────────────────────
-// Returns represent approximate 60d, 30d, 20d returns (decimal).
-// slope_30d: positive = MU price trending up over 30 days.
+const CACHE_PATH = path.join(process.cwd(), '..', 'backend', 'output', 'cache', 'semiconductor_market_data.json')
+
 const MOCK_MARKET_DATA: MarketDataInput = {
-  as_of: new Date().toISOString().split('T')[0],
-  tier2: {
-    samsung_trend: 'POSITIVE',
-    skhynix_trend: null,
-    available: true,
-  },
+  as_of: '2026-04-22',
+  tier2: { samsung_trend: null, skhynix_trend: null, available: false },
   tickers: {
-    SOXX: { ticker: 'SOXX', price: 220, return_60d: 0.08, return_30d: 0.05, return_20d: 0.04, above_20dma: true,  slope_30d: 0 },
-    SOXL: { ticker: 'SOXL', price: 28,  return_60d: 0.22, return_30d: 0.13, return_20d: 0.11, above_20dma: true,  slope_30d: 0 },
-    QQQ:  { ticker: 'QQQ',  price: 445, return_60d: 0.03, return_30d: 0.02, return_20d: 0.02, above_20dma: true,  slope_30d: 0 },
-    NVDA: { ticker: 'NVDA', price: 870, return_60d: 0.28, return_30d: 0.18, return_20d: 0.14, above_20dma: true,  slope_30d: 0 },
-    AMD:  { ticker: 'AMD',  price: 170, return_60d: 0.10, return_30d: 0.06, return_20d: 0.05, above_20dma: true,  slope_30d: 0 },
-    AVGO: { ticker: 'AVGO', price: 155, return_60d: 0.20, return_30d: 0.12, return_20d: 0.09, above_20dma: true,  slope_30d: 0 },
-    MU:   { ticker: 'MU',   price: 120, return_60d: 0.10, return_30d: 0.07, return_20d: 0.05, above_20dma: true,  slope_30d: 0.02 },
-    TSM:  { ticker: 'TSM',  price: 162, return_60d: 0.09, return_30d: 0.05, return_20d: 0.04, above_20dma: true,  slope_30d: 0 },
-    ASML: { ticker: 'ASML', price: 820, return_60d: 0.02, return_30d: 0.01, return_20d: 0.01, above_20dma: false, slope_30d: 0 },
-    AMAT: { ticker: 'AMAT', price: 195, return_60d: 0.03, return_30d: 0.02, return_20d: 0.01, above_20dma: true,  slope_30d: 0 },
-    LRCX: { ticker: 'LRCX', price: 880, return_60d: 0.04, return_30d: 0.02, return_20d: 0.01, above_20dma: true,  slope_30d: 0 },
-    KLAC: { ticker: 'KLAC', price: 720, return_60d: 0.03, return_30d: 0.01, return_20d: 0.01, above_20dma: true,  slope_30d: 0 },
+    SOXX: { ticker: 'SOXX', price: 428, return_60d: 0.249, return_30d: 0.12, return_20d: 0.08, above_20dma: true,  slope_30d: 0.004 },
+    SOXL: { ticker: 'SOXL', price: 103, return_60d: 0.707, return_30d: 0.35, return_20d: 0.22, above_20dma: true,  slope_30d: 0.012 },
+    QQQ:  { ticker: 'QQQ',  price: 452, return_60d: 0.043, return_30d: 0.02, return_20d: 0.01, above_20dma: true,  slope_30d: 0.001 },
+    NVDA: { ticker: 'NVDA', price: 201, return_60d: 0.079, return_30d: 0.04, return_20d: 0.03, above_20dma: true,  slope_30d: 0.002 },
+    AMD:  { ticker: 'AMD',  price: 296, return_60d: 0.180, return_30d: 0.09, return_20d: 0.06, above_20dma: true,  slope_30d: 0.003 },
+    AVGO: { ticker: 'AVGO', price: 417, return_60d: 0.286, return_30d: 0.14, return_20d: 0.09, above_20dma: true,  slope_30d: 0.004 },
+    MU:   { ticker: 'MU',   price: 482, return_60d: 0.241, return_30d: 0.12, return_20d: 0.08, above_20dma: true,  slope_30d: 0.005 },
+    TSM:  { ticker: 'TSM',  price: 380, return_60d: 0.143, return_30d: 0.07, return_20d: 0.05, above_20dma: true,  slope_30d: 0.002 },
+    ASML: { ticker: 'ASML', price: 1465,return_60d: 0.037, return_30d: 0.02, return_20d: 0.01, above_20dma: true,  slope_30d: 0.001 },
+    AMAT: { ticker: 'AMAT', price: 400, return_60d: 0.254, return_30d: 0.13, return_20d: 0.08, above_20dma: true,  slope_30d: 0.003 },
+    LRCX: { ticker: 'LRCX', price: 262, return_60d: 0.177, return_30d: 0.09, return_20d: 0.06, above_20dma: true,  slope_30d: 0.003 },
+    KLAC: { ticker: 'KLAC', price: 1803,return_60d: 0.169, return_30d: 0.08, return_20d: 0.05, above_20dma: true,  slope_30d: 0.002 },
   },
+}
+
+function loadMarketData(): MarketDataInput {
+  try {
+    if (fs.existsSync(CACHE_PATH)) {
+      return JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8')) as MarketDataInput
+    }
+  } catch { /* fall through to mock */ }
+  return MOCK_MARKET_DATA
 }
 
 export async function GET() {
   try {
-    const as_of   = MOCK_MARKET_DATA.as_of
-    const signals  = computeSignals(MOCK_MARKET_DATA)
-    const stage    = determineStage(signals, as_of)
+    const marketData  = loadMarketData()
+    const as_of       = marketData.as_of
+    const signals     = computeSignals(marketData)
+    const stage       = determineStage(signals, as_of)
     const translation = translate(signals, stage)
 
-    const output: SemiconductorOutput = {
-      market_data: MOCK_MARKET_DATA,
-      signals,
-      stage,
-      translation,
-      as_of,
-    }
-
+    const output: SemiconductorOutput = { market_data: marketData, signals, stage, translation, as_of }
     return NextResponse.json(output)
   } catch (err) {
     console.error('[semiconductor/route]', err)
