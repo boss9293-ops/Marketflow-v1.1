@@ -9,6 +9,7 @@ import SoxlTactical        from '@/components/semiconductor/SoxlTactical'
 import ActionLayer         from '@/components/semiconductor/ActionLayer'
 import BucketPerfChart    from '@/components/semiconductor/BucketPerfChart'
 import BucketRSChart      from '@/components/semiconductor/BucketRSChart'
+import CyclePlayback      from '@/components/semiconductor/CyclePlayback'
 
 async function getdata(): Promise<SemiconductorOutput | null> {
   try {
@@ -92,7 +93,10 @@ export default async function SemiconductorPage() {
         {/* A-5: Core Drivers */}
         <CoreDriverPanel signals={signals} />
 
-        {/* A-5: Education */}
+        {/* A-5: Historical Cycle Playback */}
+        <CyclePlayback currentStage={stage.stage} />
+
+        {/* A-6: Education */}
         <EducationLayer
           beginner={translation.education_beginner}
           advanced={translation.education_advanced}
