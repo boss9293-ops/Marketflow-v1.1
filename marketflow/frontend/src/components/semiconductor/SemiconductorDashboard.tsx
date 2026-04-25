@@ -267,10 +267,130 @@ export default function SemiconductorDashboard({ data }: Props) {
                   </div>
                 )}
 
-                {/* L1-L5: Simulated timeline chart (data coming soon) */}
+                {/* L1-L5: Signal cards + simulated timeline */}
                 {['L1', 'L2', 'L3', 'L4', 'L5'].includes(selectedLayer) && (
-                  <div>
-                    <div className="h-[380px]">
+                  <div className="space-y-4">
+
+                    {/* ── L1: Supply / Demand ── */}
+                    {selectedLayer === 'L1' && (
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: 'Demand', value: signals.demand,
+                            color: signals.demand === 'STRONG' ? '#22c55e' : signals.demand === 'WEAK' ? '#ef4444' : '#94a3b8' },
+                          { label: 'Supply', value: signals.supply,
+                            color: signals.supply === 'STRONG' ? '#22c55e' : signals.supply === 'WEAK' ? '#ef4444' : '#94a3b8' },
+                          { label: 'Capex Signal', value: signals.capex_signal,
+                            color: signals.capex_signal === 'STRONG' || signals.capex_signal === 'EXPANDING' ? '#22c55e'
+                                 : signals.capex_signal === 'CONTRACTING' ? '#ef4444' : '#94a3b8' },
+                        ].map(c => (
+                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
+                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
+                          </div>
+                        ))}
+                        <div className="col-span-3 text-[10px] text-slate-600 mt-1">
+                          Capex Score: <span className="text-amber-500 font-bold">{signals.capex_score}</span> / 100
+                          &nbsp;·&nbsp; Breadth Score: <span className="text-blue-400 font-bold">{signals.breadth_score}</span> / 100
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── L2: ASP / Spot / Memory ── */}
+                    {selectedLayer === 'L2' && (
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: 'Price State', value: signals.price,
+                            color: signals.price === 'RISING' ? '#22c55e' : signals.price === 'DECLINING' ? '#ef4444' : '#94a3b8' },
+                          { label: 'Memory Strength', value: signals.memory_strength,
+                            color: signals.memory_strength === 'STRONG' ? '#22c55e'
+                                 : signals.memory_strength === 'RECOVERING' ? '#38bdf8'
+                                 : signals.memory_strength === 'WEAK' ? '#ef4444' : '#94a3b8' },
+                          { label: 'Memory Score', value: `${signals.memory_score} / 100`,
+                            color: signals.memory_score >= 60 ? '#22c55e' : signals.memory_score >= 40 ? '#eab308' : '#ef4444' },
+                        ].map(c => (
+                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
+                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* ── L3: Margin proxies ── */}
+                    {selectedLayer === 'L3' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { label: 'Momentum', value: signals.momentum,
+                            color: signals.momentum === 'ACCELERATING' ? '#22c55e'
+                                 : signals.momentum === 'DECELERATING' ? '#ef4444' : '#94a3b8' },
+                          { label: 'Momentum Score', value: `${signals.momentum_score} / 100`,
+                            color: signals.momentum_score >= 60 ? '#22c55e' : signals.momentum_score >= 40 ? '#eab308' : '#ef4444' },
+                          { label: 'Capex Score (Margin Proxy)', value: `${signals.capex_score} / 100`,
+                            color: signals.capex_score >= 60 ? '#22c55e' : signals.capex_score >= 40 ? '#eab308' : '#ef4444' },
+                          { label: 'Memory Score (Margin Proxy)', value: `${signals.memory_score} / 100`,
+                            color: signals.memory_score >= 60 ? '#22c55e' : signals.memory_score >= 40 ? '#eab308' : '#ef4444' },
+                        ].map(c => (
+                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
+                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
+                          </div>
+                        ))}
+                        <div className="col-span-2 text-[10px] text-slate-600 italic">* 실제 Gross/Op Margin 데이터 미연동 — 신호 기반 프록시 표시</div>
+                      </div>
+                    )}
+
+                    {/* ── L4: Inventory / Constraint ── */}
+                    {selectedLayer === 'L4' && (
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: 'Constraint Warning', value: signals.constraint_warning,
+                            color: signals.constraint_warning === 'LOW' ? '#22c55e'
+                                 : signals.constraint_warning === 'HIGH' ? '#ef4444'
+                                 : signals.constraint_warning === 'ELEVATED' ? '#f97316' : '#eab308' },
+                          { label: 'Constraint Score', value: `${signals.constraint_score} / 100`,
+                            color: signals.constraint_score <= 33 ? '#22c55e' : signals.constraint_score >= 67 ? '#ef4444' : '#eab308' },
+                          { label: 'Inv. Alert 1', value: translation.inv1_status,
+                            color: translation.inv1_status === 'TRIGGERED' ? '#ef4444' : '#22c55e' },
+                        ].map(c => (
+                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
+                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
+                          </div>
+                        ))}
+                        {translation.inv1_status === 'TRIGGERED' && (
+                          <div className="col-span-3 p-2 bg-red-500/5 border border-red-500/20 rounded-lg text-[11px] text-red-400 font-bold flex items-center gap-2">
+                            ⚠ INV-1 발동: NVDA-MU gap &gt; 15% — 메모리 수요 이탈 신호
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── L5: Valuation / Concentration ── */}
+                    {selectedLayer === 'L5' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { label: 'Concentration', value: signals.concentration,
+                            color: signals.concentration === 'HIGH' ? '#ef4444'
+                                 : signals.concentration === 'ELEVATED' ? '#f97316'
+                                 : signals.concentration === 'MODERATE' ? '#eab308' : '#22c55e' },
+                          { label: 'Concentration Score', value: `${signals.concentration_score} / 100`,
+                            color: signals.concentration_score >= 60 ? '#ef4444' : signals.concentration_score >= 40 ? '#eab308' : '#22c55e' },
+                          { label: 'SOXX vs QQQ 60d', value: `${signals.soxx_vs_qqq_60d > 0 ? '+' : ''}${(signals.soxx_vs_qqq_60d * 100).toFixed(1)}%`,
+                            color: signals.soxx_vs_qqq_60d >= 0.05 ? '#22c55e' : signals.soxx_vs_qqq_60d <= -0.05 ? '#ef4444' : '#94a3b8' },
+                          { label: 'Breadth Score', value: `${signals.breadth_score} / 100`,
+                            color: signals.breadth_score >= 60 ? '#22c55e' : signals.breadth_score >= 40 ? '#eab308' : '#ef4444' },
+                        ].map(c => (
+                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
+                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
+                          </div>
+                        ))}
+                        <div className="col-span-2 text-[10px] text-slate-600 italic">* P/B·Forward P/E 실제 데이터 미연동 — 분산/집중도 기반 프록시 표시</div>
+                      </div>
+                    )}
+
+                    {/* Simulated timeline chart (common to L1-L5) */}
+                    <div className="h-[320px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={DAILY_DATA}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -287,13 +407,11 @@ export default function SemiconductorDashboard({ data }: Props) {
                             label={{ position: 'right', value: 'L3 Bottom', fill: '#f59e0b', fontSize: 9 }} />
                           <ReferenceLine y={engineScore} stroke="#fff" strokeWidth={0.8} strokeDasharray="4 4"
                             label={{ position: 'left', value: `NOW ${engineScore}`, fill: '#fff', fontSize: 10, fontWeight: 900 }} />
-
                           {selectedLayer === 'L1' && <Bar dataKey="supply"    fill="#6366f1" opacity={0.4} barSize={14} name="Supply Index" />}
                           {selectedLayer === 'L2' && <Line type="monotone" dataKey="price"     stroke="#ec4899" strokeWidth={2} dot={false} name="ASP/Spot" />}
                           {selectedLayer === 'L3' && <Line type="monotone" dataKey="margin"    stroke="#10b981" strokeWidth={2} dot={false} name="Margin %" />}
                           {selectedLayer === 'L4' && <Line type="monotone" dataKey="inventory" stroke="#f59e0b" strokeWidth={2} dot={false} strokeDasharray="5 3" name="Inventory Wks" />}
                           {selectedLayer === 'L5' && <Line type="monotone" dataKey="score"     stroke="#a78bfa" strokeWidth={2} dot={false} name="Valuation Score" />}
-
                           <defs>
                             <linearGradient id="gradScore" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.15}/>
@@ -305,9 +423,6 @@ export default function SemiconductorDashboard({ data }: Props) {
                         </ComposedChart>
                       </ResponsiveContainer>
                     </div>
-                    <p className="mt-3 text-[10px] text-slate-600 italic">
-                      * {selectedLayer} 실제 데이터 연동 예정. 현재 시뮬레이션 표시.
-                    </p>
                   </div>
                 )}
               </div>
