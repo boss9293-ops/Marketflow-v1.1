@@ -7,6 +7,7 @@ import EducationLayer      from '@/components/semiconductor/EducationLayer'
 import SoxxAnchor          from '@/components/semiconductor/SoxxAnchor'
 import SoxlTactical        from '@/components/semiconductor/SoxlTactical'
 import ActionLayer         from '@/components/semiconductor/ActionLayer'
+import CycleScoreChart    from '@/components/semiconductor/CycleScoreChart'
 import BucketPerfChart    from '@/components/semiconductor/BucketPerfChart'
 import BucketRSChart      from '@/components/semiconductor/BucketRSChart'
 import CyclePlayback      from '@/components/semiconductor/CyclePlayback'
@@ -79,6 +80,14 @@ export default async function SemiconductorPage() {
           breadth={signals.breadth_state}
           momentum={signals.momentum}
           summary={summary}
+        />
+
+        {/* A-1b: Cycle Score — panel 1 */}
+        <CycleScoreChart
+          currentScore={stage.stage_score}
+          currentStage={stage.stage}
+          conflictMode={stage.conflict_mode}
+          conflictType={stage.conflict_type ?? null}
         />
 
         {/* A-2: Sector Radar — snapshot bar charts */}

@@ -27,6 +27,7 @@ export type BreadthState   = 'VERY BROAD' | 'BROAD' | 'MODERATE' | 'NARROW'
 export type MomentumState  = 'ACCELERATING' | 'NEUTRAL' | 'DECELERATING'
 export type ConcentrationState = 'DISTRIBUTED' | 'MODERATE' | 'ELEVATED' | 'HIGH'
 export type ConstraintWarning  = 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH'
+export type ConflictType       = 'P1_OVERRIDE' | 'AI_DISTORTION' | null
 export type DemandState    = 'STRONG' | 'NEUTRAL' | 'WEAK'
 export type SupplyState    = 'STRONG' | 'NEUTRAL' | 'WEAK'
 export type PriceState     = 'RISING' | 'NEUTRAL' | 'DECLINING'
@@ -97,6 +98,7 @@ export interface StageOutput {
   stage:         CycleStage
   confidence:    Confidence
   conflict_mode: boolean
+  conflict_type: ConflictType
   conflict_note: string | null
   stage_score:   number
   as_of:         string
