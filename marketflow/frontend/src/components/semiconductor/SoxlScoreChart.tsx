@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import {
   ComposedChart, Line, Area, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -52,7 +53,8 @@ function SoxlTooltip({ active, payload, label }: { active?: boolean; payload?: {
 }
 
 export default function SoxlScoreChart({ currentScore }: Props) {
-  const data        = generateHistory(currentScore, 60)
+  const [data, setData] = useState<SoxlPoint[]>([])
+  useEffect(() => { setData(generateHistory(currentScore, 60)) }, [currentScore])
   const currentZone = toZone(currentScore)
   const zoneColor   = currentZone === 'ENTER' ? '#22c55e' : currentZone === 'CAUTION' ? '#eab308' : '#ef4444'
 

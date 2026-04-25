@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ComposedChart, Line, ReferenceLine, ReferenceArea,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -87,7 +87,12 @@ function CycleTooltip({ active, payload, label }: { active?: boolean; payload?: 
 export default function CycleScoreChart({ currentScore, currentStage, conflictMode, conflictType }: Props) {
   const [range, setRange] = useState<'3m' | '6m' | '1y'>('6m')
   const days = { '3m': 90, '6m': 180, '1y': 365 }[range]
-  const data        = generateHistory(currentScore, currentStage, days)
+  const [data, setData] = useState<ScorePoint[]>([])
+
+  useEffect(() => {
+    setData(generateHistory(currentScore, currentStage, days))
+  }, [currentScore, currentStage, days])
+
   const stageRanges = extractStageRanges(data)
   const currentColor = STAGE_COLOR[currentStage] ?? '#94a3b8'
 

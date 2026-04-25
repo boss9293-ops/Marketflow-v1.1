@@ -14,11 +14,22 @@ export interface CycleEvent {
   chartData: Array<{ day: number; soxx: number; soxl: number; stage: string }>
 }
 
+// Seeded LCG — deterministic, same output on server and client
+function makePrng(seed: number) {
+  let s = seed >>> 0
+  return () => {
+    s = Math.imul(1664525, s) + 1013904223 >>> 0
+    return s / 0x100000000
+  }
+}
+
 function generateEventChart(
   maxReturn: number,
   days: number,
   stageSequence: string[],
+  seed = 42,
 ): CycleEvent['chartData'] {
+  const rng = makePrng(seed)
   const points: CycleEvent['chartData'] = []
   const cap = Math.min(days, 360)
   const stageLen = Math.floor(cap / stageSequence.length)
@@ -26,7 +37,7 @@ function generateEventChart(
   for (let i = 0; i <= cap; i++) {
     const stageIdx = Math.min(Math.floor(i / stageLen), stageSequence.length - 1)
     const t = i / cap
-    const noise = (Math.random() - 0.5) * 2
+    const noise = (rng() - 0.5) * 2
 
     let soxxVal: number
     if (maxReturn < 0) {
@@ -65,7 +76,7 @@ export const CYCLE_EVENTS: CycleEvent[] = [
     analog_score: 35,
     analog_reason:
       '유사: 고점 집중도 HIGH, P1 선행 약화. 차이: 당시는 실수요 기반 없었으나 현재 AI 수요는 실재.',
-    chartData: generateEventChart(-82, 940, ['PEAK', 'RESET', 'RESET', 'BUILD', 'EXPAND']),
+    chartData: generateEventChart(-82, 940, ['PEAK', 'RESET', 'RESET', 'BUILD', 'EXPAND'], 1001),
   },
   {
     id: '2008-gfc',
@@ -82,7 +93,7 @@ export const CYCLE_EVENTS: CycleEvent[] = [
     analog_score: 42,
     analog_reason:
       '유사: PEAK 구간 외부충격 취약. P1 Equipment이 먼저 꺾임. 차이: 금융시스템 위기 vs 현재는 무역/관세 충격.',
-    chartData: generateEventChart(-60, 180, ['PEAK', 'RESET', 'BUILD', 'EXPAND']),
+    chartData: generateEventChart(-60, 180, ['PEAK', 'RESET', 'BUILD', 'EXPAND'], 1002),
   },
   {
     id: '2016-memory-super',
@@ -99,7 +110,7 @@ export const CYCLE_EVENTS: CycleEvent[] = [
     analog_score: 78,
     analog_reason:
       '유사도 높음: 집중도 HIGH, P1 선행 약화, PEAK Confidence LOW. 핵심 차이: 당시 메모리 주도 vs 현재 AI compute 주도.',
-    chartData: generateEventChart(-42, 970, ['BUILD', 'EXPAND', 'PEAK', 'PEAK', 'RESET', 'BUILD']),
+    chartData: generateEventChart(-42, 970, ['BUILD', 'EXPAND', 'PEAK', 'PEAK', 'RESET', 'BUILD'], 1003),
   },
   {
     id: '2020-shortage',
@@ -116,7 +127,7 @@ export const CYCLE_EVENTS: CycleEvent[] = [
     analog_score: 71,
     analog_reason:
       '유사: P1 선행 약화 패턴 동일. Breadth 붕괴 선행. 차이: 현재 AI 수요가 완충 역할 중.',
-    chartData: generateEventChart(-50, 880, ['BUILD', 'EXPAND', 'PEAK', 'PEAK', 'RESET', 'BUILD', 'EXPAND']),
+    chartData: generateEventChart(-50, 880, ['BUILD', 'EXPAND', 'PEAK', 'PEAK', 'RESET', 'BUILD', 'EXPAND'], 1004),
   },
   {
     id: '2023-recovery',
@@ -132,7 +143,7 @@ export const CYCLE_EVENTS: CycleEvent[] = [
       '과잉 재고 소진. AI 가속기 수요 부상. 메모리 가격 반등. P2 Memory 선행 회복. Breadth 점진적 확산.',
     analog_score: 55,
     analog_reason: '현재의 직전 국면. P2 Memory 강세 유산이 현재 신호에 남아있음.',
-    chartData: generateEventChart(80, 540, ['BOTTOM', 'BUILD', 'EXPAND', 'PEAK']),
+    chartData: generateEventChart(80, 540, ['BOTTOM', 'BUILD', 'EXPAND', 'PEAK'], 1005),
   },
   {
     id: '2024-ai-wave',
@@ -148,6 +159,6 @@ export const CYCLE_EVENTS: CycleEvent[] = [
       'AI 가속기(NVDA) + HBM(MU) 중심 수요 급증. Equipment P1은 후행. Breadth NARROW. Concentration HIGH. Conflict Mode ON.',
     analog_score: 100,
     analog_reason: '현재 진행 중. 2018 메모리 사이클 PEAK 후반부와 가장 유사.',
-    chartData: generateEventChart(-15, 300, ['BUILD', 'EXPAND', 'PEAK', 'PEAK']),
+    chartData: generateEventChart(-15, 300, ['BUILD', 'EXPAND', 'PEAK', 'PEAK'], 1006),
   },
 ]

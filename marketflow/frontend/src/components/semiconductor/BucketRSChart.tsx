@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ComposedChart, Line, ReferenceLine, ReferenceArea,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -89,7 +89,11 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export default function BucketRSChart({ currentPerf, stage }: Props) {
   const [range, setRange] = useState<'30d' | '60d' | '90d'>('30d')
   const days = { '30d': 30, '60d': 60, '90d': 90 }[range]
-  const data = generateRebasedHistory(currentPerf, days)
+  const [data, setData] = useState<BucketPoint[]>([])
+
+  useEffect(() => {
+    setData(generateRebasedHistory(currentPerf, days))
+  }, [currentPerf, days])
 
   const zScores = {
     compute:   calcZScore(data.map(d => d.compute)),
