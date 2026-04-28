@@ -10,29 +10,52 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 MARKETFLOW_DIR = BACKEND_DIR.parent
 
-for path in (MARKETFLOW_DIR, BACKEND_DIR):
+# BACKEND_DIR (/app on Railway) must be first so `services.xxx` resolves correctly
+for path in (BACKEND_DIR, MARKETFLOW_DIR):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
 
-from backend.services.market_data_service import (  # noqa: E402
-    build_core_cache_payload,
-    collect_core_prices,
-    ensure_dir,
-    make_session,
-    now_iso,
-    open_db,
-    OUTPUT_CACHE_DIR,
-    read_back_core_rows,
-    TURSO_SOURCE_NAME,
-    upsert_core_price_records,
-)
-from backend.services.movers_service import (  # noqa: E402
-    build_movers_cache_payload,
-    collect_movers,
-    read_back_mover_rows,
-    upsert_mover_records,
-)
+try:
+    # Local dev: marketflow is a package under the repo root
+    from backend.services.market_data_service import (  # noqa: E402
+        build_core_cache_payload,
+        collect_core_prices,
+        ensure_dir,
+        make_session,
+        now_iso,
+        open_db,
+        OUTPUT_CACHE_DIR,
+        read_back_core_rows,
+        TURSO_SOURCE_NAME,
+        upsert_core_price_records,
+    )
+    from backend.services.movers_service import (  # noqa: E402
+        build_movers_cache_payload,
+        collect_movers,
+        read_back_mover_rows,
+        upsert_mover_records,
+    )
+except ModuleNotFoundError:
+    # Railway: /app IS the backend dir; services.xxx resolves directly
+    from services.market_data_service import (  # type: ignore[no-redef]  # noqa: E402
+        build_core_cache_payload,
+        collect_core_prices,
+        ensure_dir,
+        make_session,
+        now_iso,
+        open_db,
+        OUTPUT_CACHE_DIR,
+        read_back_core_rows,
+        TURSO_SOURCE_NAME,
+        upsert_core_price_records,
+    )
+    from services.movers_service import (  # type: ignore[no-redef]  # noqa: E402
+        build_movers_cache_payload,
+        collect_movers,
+        read_back_mover_rows,
+        upsert_mover_records,
+    )
 
 
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
