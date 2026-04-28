@@ -23,6 +23,24 @@ TV_SCAN_COLUMNS = ["name", "close", "change", "volume", "exchange", "type", "des
 ALLOWED_ASSET_CLASSES = {"index", "macro", "etf", "stock"}
 TV_SOURCE_NAME = "tradingview"
 YF_SOURCE_NAME = "yahoo"
+TURSO_SOURCE_NAME = "turso_market_daily"
+
+# Turso market_daily column → internal symbol mapping
+# market_daily cols: spy, qqq, iwm, vix, us10y, us2y, dxy, oil, gold
+_TURSO_SYMBOL_COL: Dict[str, str] = {
+    "SPX":  "spy",    # SPX proxy via SPY
+    "IXIC": "qqq",    # IXIC proxy via QQQ
+    "NDX":  "qqq",    # NDX proxy via QQQ
+    "RUT":  "iwm",    # RUT proxy via IWM
+    "VIX":  "vix",
+    "US10Y": "us10y",
+    "DXY":  "dxy",
+    "WTI":  "oil",
+    "GOLD": "gold",
+    "SPY":  "spy",
+    "QQQ":  "qqq",
+    "IWM":  "iwm",
+}
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT_DIR / "backend"
@@ -504,6 +522,113 @@ def fetch_yahoo_quote(spec: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def fetch_turso_market_daily_price(spec: Dict[str, Any]) -> Dict[str, Any]:
+    """Turso의 market_daily 테이블에서 최신 2개 행을 읽어 가격/변화율을 계산.
+    TradingView/Yahoo 모두 차단된 Railway 환경의 최후 fallback.
+    """
+    import json as _json
+    import os as _os
+    import urllib.error as _urlerr
+    import urllib.request as _urlreq
+
+    symbol = spec["symbol"]
+    col = _TURSO_SYMBOL_COL.get(symbol)
+    if not col:
+        return {
+            "source": TURSO_SOURCE_NAME, "raw_symbol": symbol, "ok": False,
+            "blocked": False, "block_reasons": [], "status_code": None,
+            "response_length": None, "response_snippet": None, "parsed": None,
+            "error": f"No Turso market_daily mapping for {symbol}",
+        }
+
+    def _env(*names: str) -> str:
+        for n in names:
+            v = _os.environ.get(n, "").strip()
+            if v:
+                return v
+        return ""
+
+    turso_url = _env("TURSO_DATABASE_URL", "LIBSQL_URL", "TURSO_URL")
+    token = _env("TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN", "TURSO_TOKEN")
+    default_turso = "https://marketos-boss9293.aws-us-east-1.turso.io"
+    http_url = (turso_url or default_turso).replace("libsql://", "https://").rstrip("/")
+    pipe_url = f"{http_url}/v2/pipeline"
+
+    if not token:
+        return {
+            "source": TURSO_SOURCE_NAME, "raw_symbol": symbol, "ok": False,
+            "blocked": False, "block_reasons": [], "status_code": None,
+            "response_length": None, "response_snippet": None, "parsed": None,
+            "error": "TURSO_AUTH_TOKEN not set",
+        }
+
+    try:
+        sql = (
+            f"SELECT date, {col} FROM market_daily"
+            f" WHERE {col} IS NOT NULL ORDER BY date DESC LIMIT 2"
+        )
+        body = _json.dumps({
+            "requests": [
+                {"type": "execute", "stmt": {"sql": sql}},
+                {"type": "close"},
+            ]
+        }).encode()
+        req = _urlreq.Request(
+            pipe_url, data=body,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with _urlreq.urlopen(req, timeout=15) as resp:
+            result = _json.loads(resp.read())
+
+        rows = result["results"][0]["response"]["result"]["rows"]
+        if not rows:
+            raise ValueError("No rows returned from Turso market_daily")
+
+        def _val(row_idx: int) -> Optional[float]:
+            try:
+                v = rows[row_idx][1]["value"]
+                return float(v) if v is not None else None
+            except (IndexError, TypeError, ValueError):
+                return None
+
+        price = _val(0)
+        prev = _val(1) if len(rows) >= 2 else None
+        change_pct: Optional[float] = None
+        if price is not None and prev is not None and prev > 0:
+            change_pct = round(((price / prev) - 1.0) * 100.0, 4)
+
+        ok = price is not None and price > 0
+        return {
+            "source": TURSO_SOURCE_NAME,
+            "raw_symbol": f"turso:{col}",
+            "ok": ok,
+            "blocked": False,
+            "block_reasons": [],
+            "status_code": 200,
+            "response_length": None,
+            "response_snippet": None,
+            "parsed": {
+                "name": spec["name"],
+                "price": round_value(price, spec.get("price_precision", 2)),
+                "change_pct": round_value(change_pct, 4),
+                "volume": None,
+                "exchange": "turso",
+                "instrument_type": spec.get("asset_class"),
+                "description": spec["name"],
+                "currency": "USD",
+            },
+            "error": None if ok else f"Turso returned price={price}",
+        }
+    except Exception as exc:
+        return {
+            "source": TURSO_SOURCE_NAME, "raw_symbol": symbol, "ok": False,
+            "blocked": False, "block_reasons": [], "status_code": None,
+            "response_length": None, "response_snippet": None, "parsed": None,
+            "error": f"{exc.__class__.__name__}: {exc}",
+        }
+
+
 def build_core_record(spec: Dict[str, Any], attempt: Dict[str, Any], *, as_of: str) -> Dict[str, Any]:
     parsed = attempt.get("parsed") or {}
     precision = int(spec.get("price_precision") or 2)
@@ -595,10 +720,26 @@ def fetch_core_price(
         if yahoo_attempt.get("ok"):
             selected_attempt = yahoo_attempt
 
+    # Turso market_daily fallback: only when TV and Yahoo both fail
+    # and the symbol has a mapping in _TURSO_SYMBOL_COL
+    if selected_attempt is None and spec["symbol"] in _TURSO_SYMBOL_COL:
+        turso_attempt = fetch_turso_market_daily_price(spec)
+        attempts.append(turso_attempt)
+        if turso_attempt.get("ok"):
+            selected_attempt = turso_attempt
+            print(
+                f"[market_data][TURSO-FALLBACK] {spec['symbol']} → "
+                f"col={_TURSO_SYMBOL_COL[spec['symbol']]} "
+                f"price={turso_attempt.get('parsed', {}).get('price')}",
+                flush=True,
+            )
+
+
     if selected_attempt is None and attempts:
         selected_attempt = attempts[-1]
 
     if selected_attempt is None:
+
         selected_attempt = {
             "source": "unavailable",
             "raw_symbol": spec["symbol"],
@@ -663,6 +804,7 @@ def summarize_records(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         "by_source": dict(sorted(by_source.items())),
         "tradingview_success_count": source_counts.get(TV_SOURCE_NAME, 0),
         "yahoo_fallback_count": source_counts.get(YF_SOURCE_NAME, 0),
+        "turso_fallback_count": source_counts.get(TURSO_SOURCE_NAME, 0),
         "source_fail_count": source_counts.get("unavailable", 0),
     }
 
@@ -695,6 +837,7 @@ def collect_core_prices(
         "fetch_summary": {
             "tradingview_success_count": summary.get("tradingview_success_count", 0),
             "yahoo_fallback_count": summary.get("yahoo_fallback_count", 0),
+            "turso_fallback_count": summary.get("turso_fallback_count", 0),
             "source_fail_count": summary.get("source_fail_count", 0),
         },
     }

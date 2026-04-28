@@ -24,6 +24,7 @@ from backend.services.market_data_service import (  # noqa: E402
     open_db,
     OUTPUT_CACHE_DIR,
     read_back_core_rows,
+    TURSO_SOURCE_NAME,
     upsert_core_price_records,
 )
 from backend.services.movers_service import (  # noqa: E402
@@ -97,6 +98,9 @@ def run_market_data_update() -> Dict[str, Any]:
         "fetch": {
             "tradingview_success_count": core_result["fetch_summary"].get("tradingview_success_count", 0),
             "yahoo_fallback_count": core_result["fetch_summary"].get("yahoo_fallback_count", 0),
+            "turso_fallback_count": sum(
+                1 for r in core_result.get("records", []) if r.get("source") == TURSO_SOURCE_NAME
+            ),
             "source_fail_count": core_result["fetch_summary"].get("source_fail_count", 0),
             "movers_fetched": len(movers_result.get("records", [])),
             "sample_core_raw": core_result["raw_records"][:2],
@@ -151,6 +155,7 @@ def main() -> int:
     print("2. Fetch Result")
     print(f"- tradingview success count: {report['fetch']['tradingview_success_count']}")
     print(f"- yahoo fallback count: {report['fetch']['yahoo_fallback_count']}")
+    print(f"- turso fallback count: {report['fetch'].get('turso_fallback_count', 0)}")
     print(f"- movers fetched: {report['fetch']['movers_fetched']}")
     print(f"- sample core raw: {json.dumps(report['fetch']['sample_core_raw'][:1], ensure_ascii=False)}")
     print(f"- sample mover raw: {json.dumps(report['fetch']['sample_mover_raw'][:1], ensure_ascii=False)}")
