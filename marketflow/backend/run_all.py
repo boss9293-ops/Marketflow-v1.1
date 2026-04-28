@@ -50,6 +50,7 @@ SCRIPT_TIMEOUTS["build_daily_briefing_v3.py"] = 120
 SCRIPT_TIMEOUTS["build_account_ticker_briefs.py"] = 900
 SCRIPT_TIMEOUTS["build_vr_pattern_dashboard.py"] = 180
 SCRIPT_TIMEOUTS["build_data_manifest.py"] = 60
+SCRIPT_TIMEOUTS["run_market_data_update.py"] = 300
 ET_ZONE = ZoneInfo("America/New_York")
 MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
@@ -72,6 +73,7 @@ SCRIPTS = [
     ("sync_etf_catalog.py", "Sync ETF Catalog + Universe"),
     ("update_ohlcv.py", "Update OHLCV Daily"),
     ("update_market_daily.py", "Update Market Daily (QQQ/SPY/VIX/rates/FX/commodities)"),
+    ("run_market_data_update.py", "Refresh Core Price Snapshot"),
     ("collect_macro_cache.py", "Collect Macro Cache (SQLite)"),
     ("sector_performance.py", "Sector Performance"),
     ("rrg_calculator.py", "Build RRG Sector Rotation Data"),

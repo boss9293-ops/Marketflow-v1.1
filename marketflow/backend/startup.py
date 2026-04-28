@@ -393,6 +393,7 @@ BUILDS = [
     # Data updates first -- refresh ohlcv before market_daily reads from it
     ("update_ohlcv.py",          "cache/update_ohlcv_stamp.json"),
     ("update_market_daily.py",   "cache/update_market_daily_stamp.json"),
+    ("run_market_data_update.py", "cache/core_price_snapshot_latest.json"),
     ("build_daily_snapshot.py",  "cache/daily_snapshot_stamp.json"),
     ("update_snapshot_trends.py", "cache/update_snapshot_trends_stamp.json"),
     ("update_snapshot_alerts.py", "cache/update_snapshot_alerts_stamp.json"),
@@ -436,6 +437,7 @@ EXTRA_ARGS = {
 DAILY_BUILDS = {
     "update_market_daily.py",
     "update_ohlcv.py",
+    "run_market_data_update.py",
     "build_daily_snapshot.py",
     "update_snapshot_trends.py",
     "update_snapshot_alerts.py",
