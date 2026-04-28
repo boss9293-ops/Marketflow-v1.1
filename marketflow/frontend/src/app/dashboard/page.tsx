@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers'
 
 import styles from '@/app/dashboard/dashboardTerminal.module.css'
+import DataPlaceholder from '@/components/DataPlaceholder'
 import type { DailyBriefingV3Data, BriefingV3Section } from '@/components/briefing/DailyBriefingV3'
 import { renderEngineText, selectLocalizedText, type LocalizedText } from '@/lib/i18n/contentContract'
 import { readCacheJson } from '@/lib/readCacheJson'
@@ -15,7 +16,10 @@ type CorePriceSnapshotItem = {
   asset_class?: string | null
   name?: string | null
   price?: number | null
+  last?: number | null
   change_pct?: number | null
+  chg_pct?: number | null
+  changePercent?: number | null
 }
 
 type CorePriceSnapshotCache = {
@@ -339,6 +343,15 @@ const formatPct1 = (value: number | null): string => {
   return `${signed}%`
 }
 
+const toNumeric = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
 const toneClass = (value: number | null): string => {
   if (value == null || Number.isNaN(value)) return styles.chgFlat
   if (value > 0) return styles.chgUp
@@ -557,8 +570,8 @@ const buildLadderRow = (
   return {
     symbol,
     label,
-    last: typeof found?.price === 'number' ? found.price : null,
-    chgPct: typeof found?.change_pct === 'number' ? found.change_pct : null,
+    last: toNumeric(found?.price ?? found?.last),
+    chgPct: toNumeric(found?.change_pct ?? found?.chg_pct ?? found?.changePercent),
   }
 }
 
@@ -654,24 +667,24 @@ export default async function DashboardPage() {
   )
 
   const indexRows: LadderRow[] = [
-    buildLadderRow(coreRecordMap, 'SPX', 'S&P 500'),
-    buildLadderRow(coreRecordMap, 'NDX', 'NASDAQ 100'),
-    buildLadderRow(coreRecordMap, 'RUT', 'Russell 2000'),
-    buildLadderRow(coreRecordMap, 'VIX', 'Volatility'),
+    buildLadderRow(coreRecordMap, 'SPX', 'S&P 500', ['SPY']),
+    buildLadderRow(coreRecordMap, 'NDX', 'NASDAQ 100', ['QQQ', 'IXIC']),
+    buildLadderRow(coreRecordMap, 'RUT', 'Russell 2000', ['IWM']),
+    buildLadderRow(coreRecordMap, 'VIX', 'Volatility', ['^VIX', 'VIX3M']),
   ]
 
   const ratesFxRows: LadderRow[] = [
-    buildLadderRow(coreRecordMap, 'US10Y', '10Y Treasury'),
-    buildLadderRow(coreRecordMap, 'DXY', 'Dollar Index'),
+    buildLadderRow(coreRecordMap, 'US10Y', '10Y Treasury', ['DGS10', 'TNX']),
+    buildLadderRow(coreRecordMap, 'DXY', 'Dollar Index', ['USD_BROAD', 'UUP']),
   ]
 
   const commodityRows: LadderRow[] = [
-    buildLadderRow(coreRecordMap, 'GOLD', 'Gold'),
-    buildLadderRow(coreRecordMap, 'WTI', 'WTI Crude Oil'),
+    buildLadderRow(coreRecordMap, 'GOLD', 'Gold', ['GLD', 'XAUUSD']),
+    buildLadderRow(coreRecordMap, 'WTI', 'WTI Crude Oil', ['CL1', 'USO']),
   ]
-  const visibleIndexRows = indexRows.filter((row) => row.last != null || row.chgPct != null)
-  const visibleRatesFxRows = ratesFxRows.filter((row) => row.last != null || row.chgPct != null)
-  const visibleCommodityRows = commodityRows.filter((row) => row.last != null || row.chgPct != null)
+  const hasIndexData = indexRows.some((row) => row.last != null || row.chgPct != null)
+  const hasRatesFxData = ratesFxRows.some((row) => row.last != null || row.chgPct != null)
+  const hasCommodityData = commodityRows.some((row) => row.last != null || row.chgPct != null)
 
   const queueRows = [
     engineText(contentLang, DASHBOARD_ENGINE.queueCore, { exposureBand, regime: regimeLabel }),
@@ -1044,8 +1057,8 @@ export default async function DashboardPage() {
           <section className={styles.railSection}>
             <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railIndices)}</p>
             <table className={styles.ladder}>
-                <tbody>
-                {visibleIndexRows.map((row) => (
+              <tbody>
+                {indexRows.map((row) => (
                   <tr key={`idx-${row.symbol}`}>
                     <td className={styles.sym}>{row.symbol}</td>
                     <td className={toneClass(row.chgPct)}>{formatPct(row.chgPct)}</td>
@@ -1054,28 +1067,46 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            {!hasIndexData && (
+              <div style={{ marginTop: 8 }}>
+                <DataPlaceholder
+                  reason="Index tape unavailable"
+                  cacheFile="cache/core_price_snapshot_latest.json"
+                  script="python backend/scripts/run_market_data_update.py"
+                />
+              </div>
+            )}
           </section>
 
           <section className={styles.railSection}>
-              <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railRatesFx)}</p>
-              <table className={styles.ladder}>
-                <tbody>
-                {visibleRatesFxRows.map((row) => (
+            <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railRatesFx)}</p>
+            <table className={styles.ladder}>
+              <tbody>
+                {ratesFxRows.map((row) => (
                   <tr key={`rates-${row.symbol}`}>
                     <td className={styles.sym}>{row.symbol}</td>
                     <td className={toneClass(row.chgPct)}>{formatPct(row.chgPct)}</td>
                     <td className={styles.last}>{formatNumber(row.last)}</td>
                   </tr>
                 ))}
-                </tbody>
-              </table>
+              </tbody>
+            </table>
+            {!hasRatesFxData && (
+              <div style={{ marginTop: 8 }}>
+                <DataPlaceholder
+                  reason="Rates / FX data unavailable"
+                  cacheFile="cache/core_price_snapshot_latest.json"
+                  script="python backend/scripts/run_market_data_update.py"
+                />
+              </div>
+            )}
           </section>
 
           <section className={styles.railSection}>
             <p className={styles.railHeader}>{uiText(uiLang, DASHBOARD_UI.railCommoditiesAlt)}</p>
             <table className={styles.ladder}>
               <tbody>
-                {visibleCommodityRows.map((row) => (
+                {commodityRows.map((row) => (
                   <tr key={`cmd-${row.symbol}`}>
                     <td className={styles.sym}>{row.symbol}</td>
                     <td className={toneClass(row.chgPct)}>{formatPct(row.chgPct)}</td>
@@ -1084,6 +1115,15 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            {!hasCommodityData && (
+              <div style={{ marginTop: 8 }}>
+                <DataPlaceholder
+                  reason="Commodity / alt-asset data unavailable"
+                  cacheFile="cache/core_price_snapshot_latest.json"
+                  script="python backend/scripts/run_market_data_update.py"
+                />
+              </div>
+            )}
           </section>
 
           <section className={styles.railSection}>

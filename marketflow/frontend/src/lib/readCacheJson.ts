@@ -215,10 +215,6 @@ async function readArtifactJson<T>(filename: string): Promise<T | null> {
     return remote
   }
 
-  if (process.env.VERCEL) {
-    return null
-  }
-
   return readJsonFromLocalCandidates<T>(filename)
 }
 
