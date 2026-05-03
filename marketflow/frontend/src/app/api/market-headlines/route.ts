@@ -81,7 +81,7 @@ type YahooFinanceNewsItem = {
   canonicalUrl?: { url?: string }
 }
 
-type SourceHealthName = 'finnhub' | 'yahoo_finance' | 'google_news_kr'
+type SourceHealthName = 'finnhub' | 'yahoo_finance' | 'google_news_kr' | 'reuters' | 'apnews'
 
 type SourceHealth = {
   name: SourceHealthName
@@ -660,20 +660,109 @@ const fetchGoogleKoreanHeadlines = async (): Promise<{ items: FeedHeadline[]; he
   }
 }
 
+const parseRssFeedWithSource = (xml: string, defaultSource: string): YahooRssItem[] => {
+  const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/gi) ?? []
+  return itemBlocks
+    .map((itemXml) => {
+      const rawTitle = decodeHtml(readTag(itemXml, 'title'))
+      const source = decodeHtml(readTag(itemXml, 'source')) || defaultSource
+      const title = rawTitle.endsWith(` - ${source}`) ? rawTitle.slice(0, -(source.length + 3)).trim() : rawTitle
+      const link = decodeHtml(readTag(itemXml, 'link'))
+      const pubDateRaw = decodeHtml(readTag(itemXml, 'pubDate'))
+      const description = stripHtml(decodeHtml(readTag(itemXml, 'description')))
+      return { title, link, pubDateRaw, source, description }
+    })
+    .filter((item) => item.title && item.link && item.pubDateRaw)
+}
+
+const mapRssItem = (prefix: string, item: YahooRssItem, idx: number): FeedHeadline | null => {
+  const published = new Date(item.pubDateRaw)
+  if (Number.isNaN(published.valueOf())) return null
+  const title = item.title.trim()
+  const source = item.source.trim()
+  const link = item.link.trim()
+  if (!title || !source || !link) return null
+  if (!isFreeNewsSource(source) || hasPromoSignals(title)) return null
+  return {
+    id: `mh-${prefix}-${createHash('sha1').update(`${link}|${item.pubDateRaw}`).digest('hex').slice(0, 16)}`,
+    dateET: formatDateET(published),
+    publishedAtET: published.toISOString(),
+    timeET: formatTimeET(published),
+    headline: title,
+    source,
+    summary: item.description || '',
+    url: link,
+  }
+}
+
+const REUTERS_RSS_FEEDS = [
+  'https://feeds.reuters.com/reuters/businessNews',
+  'https://feeds.reuters.com/reuters/technologyNews',
+  'https://feeds.reuters.com/reuters/topNews',
+]
+
+const AP_RSS_FEEDS = [
+  'https://feeds.apnews.com/apnews/business',
+  'https://feeds.apnews.com/apnews/finance',
+  'https://feeds.apnews.com/apnews/technology',
+]
+
+const fetchRssSource = async (
+  urls: string[],
+  defaultSource: string,
+  prefix: SourceHealthName,
+): Promise<{ items: FeedHeadline[]; health: SourceHealth }> => {
+  const results = await Promise.allSettled(
+    urls.map(async (rssUrl) => {
+      const res = await fetchWithRetry(rssUrl, { cache: 'no-store' }, 5000)
+      if (!res.response) return [] as YahooRssItem[]
+      const xml = await res.response.text()
+      return parseRssFeedWithSource(xml, defaultSource)
+    }),
+  )
+  const items: FeedHeadline[] = []
+  for (const [i, result] of results.entries()) {
+    const parsed = result.status === 'fulfilled' ? result.value : []
+    for (const [idx, item] of parsed.slice(0, 10).entries()) {
+      const mapped = mapRssItem(`${prefix}-${i}`, item, idx)
+      if (mapped) items.push(mapped)
+    }
+  }
+  const failedCount = results.filter((r) => r.status === 'rejected').length
+  return {
+    items,
+    health: {
+      name: prefix,
+      status: failedCount === results.length ? 'down' : failedCount > 0 ? 'degraded' : 'ok',
+      items: items.length,
+      attempts: results.length,
+      error: failedCount > 0 ? `${failedCount}/${results.length} feeds failed` : undefined,
+    },
+  }
+}
+
 export async function GET() {
   const key = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || ''
   const history = await readHistoryCache()
 
-  const [finnhubResult, yahooResult] = await Promise.all([
+  const [finnhubResult, yahooResult, reutersResult, apResult] = await Promise.all([
     fetchFinnhubHeadlines(key),
     fetchYahooMarketHeadlines(),
+    fetchRssSource(REUTERS_RSS_FEEDS, 'Reuters', 'reuters'),
+    fetchRssSource(AP_RSS_FEEDS, 'AP News', 'apnews'),
   ])
   const googleKrResult = await fetchGoogleKoreanHeadlines()
 
-  const liveFeed = dedupeAndDiversify([...finnhubResult.items, ...yahooResult.items, ...googleKrResult.items])
+  const liveFeed = dedupeAndDiversify([
+    ...finnhubResult.items,
+    ...yahooResult.items,
+    ...reutersResult.items,
+    ...apResult.items,
+    ...googleKrResult.items,
+  ])
   const mergedHistory = dedupeHeadlines([...liveFeed, ...history], MAX_HISTORY_ITEMS)
   const health = buildHeadlinesHealth(
-    [finnhubResult.health, yahooResult.health, googleKrResult.health],
+    [finnhubResult.health, yahooResult.health, reutersResult.health, apResult.health, googleKrResult.health],
     liveFeed.length,
     mergedHistory.length,
   )

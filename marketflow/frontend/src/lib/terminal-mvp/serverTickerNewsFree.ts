@@ -135,6 +135,132 @@ const TICKER_COMPANY_NAMES: Record<string, string> = {
   SPOT: 'Spotify',
 }
 
+// ─── FMP ticker news ─────────────────────────────────────────────────────────
+async function fetchFMPTickerNews(symbol: string): Promise<YahooRssItem[]> {
+  const key = process.env.FMP_API_KEY?.trim()
+  if (!key) return []
+  try {
+    const url = `https://financialmodelingprep.com/api/v3/stock_news?tickers=${encodeURIComponent(symbol)}&limit=50&apikey=${key}`
+    const res = await fetchWithRetry(url, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    if (!res || !res.ok) return []
+    const json = await res.json() as Array<{ publishedDate?: string; publisher?: string; site?: string; title?: string; url?: string; text?: string }>
+    return (Array.isArray(json) ? json : [])
+      .map(item => ({
+        title: String(item.title || '').trim(),
+        link: String(item.url || '').trim(),
+        pubDateRaw: item.publishedDate ? new Date(item.publishedDate + 'Z').toUTCString() : new Date().toUTCString(),
+        source: String(item.publisher || item.site || 'FMP').trim(),
+        description: String(item.text || '').slice(0, 500).trim(),
+      }))
+      .filter(item => item.title && item.link)
+  } catch { return [] }
+}
+
+// ─── Finnhub ticker news ──────────────────────────────────────────────────────
+async function fetchFinnhubTickerNews(symbol: string, anchorDateET: string): Promise<YahooRssItem[]> {
+  const key = process.env.FINNHUB_API_KEY?.trim()
+  if (!key) return []
+  try {
+    const toDate = anchorDateET
+    const fromDate = new Date(anchorDateET + 'T00:00:00Z')
+    fromDate.setUTCDate(fromDate.getUTCDate() - 7)
+    const from = fromDate.toISOString().slice(0, 10)
+    const url = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${toDate}&token=${key}`
+    const res = await fetchWithRetry(url, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    if (!res || !res.ok) return []
+    const json = await res.json() as Array<{ datetime?: number; headline?: string; url?: string; source?: string; summary?: string }>
+    return (Array.isArray(json) ? json : [])
+      .map(item => ({
+        title: String(item.headline || '').trim(),
+        link: String(item.url || '').trim(),
+        pubDateRaw: item.datetime ? new Date(item.datetime * 1000).toUTCString() : new Date().toUTCString(),
+        source: String(item.source || 'Finnhub').trim(),
+        description: String(item.summary || '').slice(0, 500).trim(),
+      }))
+      .filter(item => item.title && item.link)
+  } catch { return [] }
+}
+
+// ─── Polygon ticker news ──────────────────────────────────────────────────────
+async function fetchPolygonTickerNews(symbol: string): Promise<YahooRssItem[]> {
+  const key = process.env.POLYGON_KEY?.trim()
+  if (!key) return []
+  try {
+    const url = `https://api.polygon.io/v2/reference/news?ticker=${encodeURIComponent(symbol)}&limit=50&order=desc&sort=published_utc&apiKey=${key}`
+    const res = await fetchWithRetry(url, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    if (!res || !res.ok) return []
+    const json = await res.json() as { results?: Array<{ title?: string; article_url?: string; published_utc?: string; publisher?: { name?: string }; description?: string }> }
+    return (json?.results ?? [])
+      .map(item => ({
+        title: String(item.title || '').trim(),
+        link: String(item.article_url || '').trim(),
+        pubDateRaw: item.published_utc ? new Date(item.published_utc).toUTCString() : new Date().toUTCString(),
+        source: String(item.publisher?.name || 'Polygon').trim(),
+        description: String(item.description || '').slice(0, 500).trim(),
+      }))
+      .filter(item => item.title && item.link)
+  } catch { return [] }
+}
+
+// ─── Alpha Vantage ticker news ────────────────────────────────────────────────
+async function fetchAlphaVantageTickerNews(symbol: string): Promise<YahooRssItem[]> {
+  const key = process.env.ALPHA_VANTAGE_KEY?.trim()
+  if (!key) return []
+  try {
+    const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${encodeURIComponent(symbol)}&limit=50&sort=LATEST&apikey=${key}`
+    const res = await fetchWithRetry(url, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    if (!res || !res.ok) return []
+    const json = await res.json() as { feed?: Array<{ title?: string; url?: string; time_published?: string; source?: string; summary?: string }> }
+    return (json?.feed ?? [])
+      .map(item => {
+        const raw = item.time_published ?? ''
+        // format: "20260501T123000"
+        const pubDateRaw = raw.length >= 15
+          ? new Date(`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}T${raw.slice(9,11)}:${raw.slice(11,13)}:${raw.slice(13,15)}Z`).toUTCString()
+          : new Date().toUTCString()
+        return {
+          title: String(item.title || '').trim(),
+          link: String(item.url || '').trim(),
+          pubDateRaw,
+          source: String(item.source || 'Alpha Vantage').trim(),
+          description: String(item.summary || '').slice(0, 500).trim(),
+        }
+      })
+      .filter(item => item.title && item.link)
+  } catch { return [] }
+}
+
+// ─── Multi-source parallel fetch ─────────────────────────────────────────────
+async function fetchAllTickerNewsSources(symbol: string, anchorDateET: string): Promise<YahooRssItem[]> {
+  const [fmp, finnhub, polygon, av, yahooApi] = await Promise.allSettled([
+    fetchFMPTickerNews(symbol),
+    fetchFinnhubTickerNews(symbol, anchorDateET),
+    fetchPolygonTickerNews(symbol),
+    fetchAlphaVantageTickerNews(symbol),
+    fetchYahooFinanceNews(symbol),
+  ])
+  const merged: YahooRssItem[] = [
+    ...(fmp.status === 'fulfilled' ? fmp.value : []),
+    ...(finnhub.status === 'fulfilled' ? finnhub.value : []),
+    ...(polygon.status === 'fulfilled' ? polygon.value : []),
+    ...(av.status === 'fulfilled' ? av.value : []),
+    ...(yahooApi.status === 'fulfilled' ? yahooApi.value : []),
+  ]
+  if (merged.length) return merged
+
+  // Yahoo RSS fallback
+  try {
+    const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`
+    const res = await fetchWithRetry(rssUrl, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    if (res) {
+      const items = parseYahooRss(await res.text())
+      if (items.length) return items
+    }
+  } catch { /* ignore */ }
+
+  return []
+}
+
 const tickerNewsCache = new Map<string, { expiresAt: number; payload: BuiltTickerNewsPayload }>()
 const tickerNewsHistory = new Map<string, { timelineById: Map<string, TickerNewsItem>; detailsById: Map<string, NewsDetail> }>()
 let tickerHistoryLoaded = false
@@ -624,10 +750,15 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
   let freshDetails: NewsDetail[] = []
 
   try {
-    const built = await fetchYahooFreeNews(symbol)
-    freshTimeline = built.timeline
-    freshDetails = built.details
-    if (!freshTimeline.length || !freshDetails.length) {
+    const allItems = await fetchAllTickerNewsSources(symbol, anchorDateET)
+    if (allItems.length) {
+      const built = buildPayloadFromYahoo(symbol, allItems)
+      if (built.timeline.length || built.details.length) {
+        freshTimeline = built.timeline
+        freshDetails = built.details
+      }
+    }
+    if (!freshTimeline.length) {
       const fallback = await fetchGoogleFreeNews(symbol)
       if (fallback.timeline.length || fallback.details.length) {
         freshTimeline = fallback.timeline
@@ -647,7 +778,6 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
           details: sortNewsItems(Array.from(stale.detailsById.values())),
         })
       }
-      // Hard-fail creates empty center panel in production. Return empty payload safely.
       console.warn('[terminal-ticker-news] all providers failed', {
         symbol,
         error: error instanceof Error ? error.message : String(error),
