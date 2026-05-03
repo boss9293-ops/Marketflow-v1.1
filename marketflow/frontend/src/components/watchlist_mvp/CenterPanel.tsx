@@ -58,6 +58,7 @@ type CenterPanelProps = {
   todayClose: number | null
   todayCloseSymbol: string | null
   todayVolume: number | null
+  ohlcvByDate?: Map<string, { close: number; changePct: number | null }>
 }
 
 const formatMetadataValue = (value?: string | number | null): string =>
@@ -422,6 +423,7 @@ export default function CenterPanel({
   todayClose,
   todayCloseSymbol,
   todayVolume,
+  ohlcvByDate,
 }: CenterPanelProps) {
   const dateLabel = useMemo(() => formatTerminalDateLabel(dateET), [dateET])
   const marketLead = useMemo(
@@ -537,8 +539,9 @@ export default function CenterPanel({
           const groupPending = group.items.filter(item => !synthENRequested.current.has(item.id))
           if (!groupPending.length) return
           groupPending.forEach(item => synthENRequested.current.add(item.id))
-          const digestPrice = todayClose
-          const digestChangePct = parseLooseNumber(selectedItem?.changePercent) ?? null
+          const groupOhlcv = ohlcvByDate?.get(group.dateKey)
+          const digestPrice = groupOhlcv?.close ?? parseLooseNumber(selectedItem?.lastPrice) ?? todayClose
+          const digestChangePct = groupOhlcv?.changePct ?? parseLooseNumber(selectedItem?.changePercent) ?? null
           const payload = groupPending.map(item => ({
             id: item.id,
             dateET: item.dateET,
@@ -622,8 +625,9 @@ export default function CenterPanel({
           const groupPending = group.items.filter(item => !synthKORequested.current.has(item.id))
           if (!groupPending.length) return
           groupPending.forEach(item => synthKORequested.current.add(item.id))
-          const digestPrice = todayClose
-          const digestChangePct = parseLooseNumber(selectedItem?.changePercent) ?? null
+          const groupOhlcv = ohlcvByDate?.get(group.dateKey)
+          const digestPrice = groupOhlcv?.close ?? parseLooseNumber(selectedItem?.lastPrice) ?? todayClose
+          const digestChangePct = groupOhlcv?.changePct ?? parseLooseNumber(selectedItem?.changePercent) ?? null
           const payload = groupPending.map(item => ({
             id: item.id,
             dateET: item.dateET,

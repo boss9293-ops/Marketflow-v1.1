@@ -350,6 +350,7 @@ export default function AppShell() {
   const [todayClose, setTodayClose] = useState<number | null>(null)
   const [todayCloseSymbol, setTodayCloseSymbol] = useState<string | null>(null)
   const [todayVolume, setTodayVolume] = useState<number | null>(null)
+  const [ohlcvByDate, setOhlcvByDate] = useState<Map<string, { close: number; changePct: number | null }>>(new Map())
 
   const [marketHeadlines, setMarketHeadlines] = useState<MarketHeadlineView[]>([])
   const [marketHeadlinesHealth, setMarketHeadlinesHealth] = useState<MarketHeadlinesHealth | null>(null)
@@ -644,6 +645,15 @@ export default function AppShell() {
         setTodayClose(todayBar?.c ?? null)
         setTodayCloseSymbol(requestSymbol)
         setTodayVolume(todayBar?.v ?? null)
+        const byDate = new Map<string, { close: number; changePct: number | null }>()
+        bars.forEach((bar, i) => {
+          const prevClose = i > 0 ? bars[i - 1].c : null
+          const changePct = prevClose != null && prevClose !== 0
+            ? ((bar.c - prevClose) / prevClose) * 100
+            : null
+          byDate.set(bar.d, { close: bar.c, changePct })
+        })
+        setOhlcvByDate(byDate)
       }
       if (
         briefsResult.status === 'fulfilled' &&
@@ -863,6 +873,7 @@ export default function AppShell() {
         todayClose={todayClose}
         todayCloseSymbol={todayCloseSymbol}
         todayVolume={todayVolume}
+        ohlcvByDate={ohlcvByDate}
         timeline={tickerNews}
         timelineStatus={timelineStatus}
         timelineError={timelineError}
