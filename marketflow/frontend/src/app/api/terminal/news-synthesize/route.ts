@@ -372,14 +372,23 @@ function pruneToTradingDays<T>(cache: Record<string, T>, todayET: string): Recor
   return pruned
 }
 
+const IS_SERVERLESS = !!(
+  process.env.VERCEL ||
+  process.env.RAILWAY_ENVIRONMENT_NAME ||
+  process.env.RAILWAY_SERVICE_NAME ||
+  process.env.RAILWAY_PROJECT_ID
+)
+const SYNTH_CACHE_DIR = IS_SERVERLESS
+  ? '/tmp/marketflow-cache'
+  : pathModule.join(process.cwd(), '.cache')
+
 // -- KO synthesis file cache (prevents repeated LLM calls after server restart) --
-const SYNTH_KO_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'synth-ko-cache.json')
+const SYNTH_KO_CACHE_FILE = pathModule.join(SYNTH_CACHE_DIR, 'synth-ko-cache.json')
 type SynthKoEntry = { text: string; signal: string; provider_used?: TerminalNewsProviderName }
 
 function loadSynthKoCache(): Record<string, SynthKoEntry> {
   try {
-    const dir = pathModule.dirname(SYNTH_KO_CACHE_FILE)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(SYNTH_CACHE_DIR)) fs.mkdirSync(SYNTH_CACHE_DIR, { recursive: true })
     if (!fs.existsSync(SYNTH_KO_CACHE_FILE)) return {}
     return JSON.parse(fs.readFileSync(SYNTH_KO_CACHE_FILE, 'utf-8')) as Record<string, SynthKoEntry>
   } catch { return {} }
@@ -391,12 +400,11 @@ function saveSynthKoCache(cache: Record<string, SynthKoEntry>): void {
 }
 
 // -- EN translation file cache (DeepL KO -> EN, 5-trading-day file cache) --
-const SYNTH_EN_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'deepl-ko-en-cache.json')
+const SYNTH_EN_CACHE_FILE = pathModule.join(SYNTH_CACHE_DIR, 'deepl-ko-en-cache.json')
 
 function loadSynthEnCache(): Record<string, string> {
   try {
-    const dir = pathModule.dirname(SYNTH_EN_CACHE_FILE)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(SYNTH_CACHE_DIR)) fs.mkdirSync(SYNTH_CACHE_DIR, { recursive: true })
     if (!fs.existsSync(SYNTH_EN_CACHE_FILE)) return {}
     return JSON.parse(fs.readFileSync(SYNTH_EN_CACHE_FILE, 'utf-8')) as Record<string, string>
   } catch { return {} }
