@@ -45,11 +45,22 @@ function normalizeHistoryFilename(filename: string): string {
   return rel
 }
 
+function isServerlessEnv(): boolean {
+  return !!(
+    process.env.VERCEL ||
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+    process.env.RAILWAY_SERVICE_NAME ||
+    process.env.RAILWAY_PROJECT_ID
+  )
+}
+
 function canonicalHistoryRoot(): string {
+  if (isServerlessEnv()) return '/tmp/marketflow-cache'
   return path.resolve(findWorkspaceRoot(), 'backend', 'output', 'cache')
 }
 
 function legacyHistoryRoot(): string {
+  if (isServerlessEnv()) return '/tmp/marketflow-cache'
   return path.resolve(findWorkspaceRoot(), 'frontend', '.cache')
 }
 
