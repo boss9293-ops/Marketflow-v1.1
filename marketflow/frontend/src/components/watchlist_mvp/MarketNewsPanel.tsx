@@ -33,17 +33,18 @@ const formatPublishedEtLabel = (publishedAtET: string, fallbackTimeET?: string):
   if (raw) {
     const parsed = new Date(raw)
     if (!Number.isNaN(parsed.valueOf())) {
-      return new Intl.DateTimeFormat('en-US', {
+      const parts = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/New_York',
         weekday: 'short',
         month: 'short',
         day: 'numeric',
         year: 'numeric',
-        hour: 'numeric',
+        hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZoneName: 'short',
-      }).format(parsed)
+      }).formatToParts(parsed)
+      const get = (type: string) => parts.find(p => p.type === type)?.value ?? ''
+      return `${get('weekday')}, ${get('month')} ${get('day')}, ${get('year')}, ${get('hour')}:${get('minute')} ET`
     }
     return raw
   }
