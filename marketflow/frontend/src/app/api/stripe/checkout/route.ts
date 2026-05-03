@@ -9,8 +9,8 @@ export async function POST() {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const id = (session.user as any).id
-  const dbUser = getUserById(id)
+  const id = (session.user as { id?: string }).id
+  const dbUser = await getUserById(id ?? '')
   if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   if (dbUser.plan === 'PREMIUM') {
@@ -21,12 +21,11 @@ export async function POST() {
     const stripe = getStripe()
     const origin = process.env.NEXTAUTH_URL ?? 'http://localhost:3010'
 
-    // Create or reuse Stripe customer
     let customerId = dbUser.stripe_customer_id
     if (!customerId) {
       const customer = await stripe.customers.create({ email: dbUser.email, metadata: { userId: dbUser.id } })
       customerId = customer.id
-      updateStripeInfo(dbUser.id, customerId)
+      await updateStripeInfo(dbUser.id, customerId)
     }
 
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -39,8 +38,8 @@ export async function POST() {
     })
 
     return NextResponse.json({ url: checkoutSession.url })
-  } catch (err: any) {
-    console.error('Stripe checkout error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

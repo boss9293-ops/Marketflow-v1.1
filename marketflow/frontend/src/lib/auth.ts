@@ -1,6 +1,3 @@
-// =============================================================================
-// auth.ts — NextAuth v4 configuration
-// =============================================================================
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
@@ -10,7 +7,7 @@ import { getUserByEmail, createUser, getUserById } from '@/lib/db/userDb'
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   pages: {
-    signIn: '/',   // we use modal; redirect back to home if forced
+    signIn: '/',
   },
   providers: [
     CredentialsProvider({
@@ -18,7 +15,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email:    { label: 'Email',    type: 'email' },
         password: { label: 'Password', type: 'password' },
-        mode:     { label: 'Mode',     type: 'text' },  // 'login' | 'signup'
+        mode:     { label: 'Mode',     type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
@@ -26,16 +23,14 @@ export const authOptions: NextAuthOptions = {
         const { password, mode } = credentials
 
         if (mode === 'signup') {
-          // Check if email already exists
-          const existing = getUserByEmail(email)
+          const existing = await getUserByEmail(email)
           if (existing) throw new Error('EMAIL_EXISTS')
           const hash = await bcrypt.hash(password, 10)
           const id = randomUUID()
-          const user = createUser(id, email, hash)
+          const user = await createUser(id, email, hash)
           return { id: user.id, email: user.email, plan: user.plan }
         } else {
-          // Login
-          const user = getUserByEmail(email)
+          const user = await getUserByEmail(email)
           if (!user) throw new Error('USER_NOT_FOUND')
           const valid = await bcrypt.compare(password, user.password_hash)
           if (!valid) throw new Error('WRONG_PASSWORD')
@@ -48,23 +43,21 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id   = user.id
-        token.plan = (user as any).plan ?? 'FREE'
+        token.plan = ((user as { plan?: string }).plan ?? 'FREE') as 'FREE' | 'PREMIUM'
       }
-      // On session update (e.g. after Stripe webhook → refresh)
       if (trigger === 'update' && session?.plan) {
         token.plan = session.plan
       }
-      // Always re-fetch plan from DB to stay fresh
       if (token.id) {
-        const dbUser = getUserById(token.id as string)
+        const dbUser = await getUserById(token.id as string)
         if (dbUser) token.plan = dbUser.plan
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id   = token.id
-        ;(session.user as any).plan = token.plan ?? 'FREE'
+        (session.user as { id?: string; plan?: string }).id   = token.id as string
+        ;(session.user as { id?: string; plan?: string }).plan = (token.plan as string) ?? 'FREE'
       }
       return session
     },

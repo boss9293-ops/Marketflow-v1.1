@@ -1,6 +1,7 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 
 import CenterPanel from '@/components/watchlist_mvp/CenterPanel'
 import LeftPanel from '@/components/watchlist_mvp/LeftPanel'
@@ -332,12 +333,58 @@ type SymbolSnapshotCacheEntry = {
 }
 
 export default function AppShell() {
+  const { data: session, status: sessionStatus } = useSession()
   const service = useMemo(() => createDashboardService({ mode: 'hybrid' }), [])
   const [selectedDateET, setSelectedDateET] = useState<ETDateString>(() => getLatestTradingDateET(new Date()))
   const [watchlists, setWatchlists] = useState<Watchlist[]>([])
   const [selectedWatchlistId, setSelectedWatchlistId] = useState<string | null>(null)
   const [watchlistItems, setWatchlistItems] = useState<WatchlistItem[]>([])
   const [selectedSymbol, setSelectedSymbol] = useState<string>('')
+
+  const isLoggedIn = sessionStatus === 'authenticated' && !!session?.user
+
+  const loadWatchlistFromApi = useCallback(async () => {
+    if (!isLoggedIn) return
+    try {
+      const res = await fetch('/api/watchlist')
+      if (!res.ok) return
+      const data = await res.json() as {
+        watchlistId: string | null
+        watchlists?: Watchlist[]
+        items: WatchlistItem[]
+      }
+      if (data.watchlists?.length) {
+        setWatchlists(data.watchlists)
+        setSelectedWatchlistId(data.watchlists[0].id)
+      }
+      if (data.items.length) {
+        setWatchlistItems(data.items)
+        setSelectedSymbol((cur) => {
+          if (cur && data.items.some((i) => i.symbol === cur)) return cur
+          return data.items[0]?.symbol ?? ''
+        })
+        setInitStatus('ready')
+      } else {
+        setInitStatus('empty')
+      }
+    } catch { /* ignore */ }
+  }, [isLoggedIn])
+
+  const handleAddTicker = useCallback(async (symbol: string, companyName: string) => {
+    if (!isLoggedIn) return
+    const res = await fetch('/api/watchlist/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, companyName }),
+    })
+    if (res.ok) await loadWatchlistFromApi()
+  }, [isLoggedIn, loadWatchlistFromApi])
+
+  const handleRemoveTicker = useCallback(async (symbol: string) => {
+    if (!isLoggedIn) return
+    const res = await fetch(`/api/watchlist/items?symbol=${encodeURIComponent(symbol)}`, { method: 'DELETE' })
+    if (res.ok) await loadWatchlistFromApi()
+  }, [isLoggedIn, loadWatchlistFromApi])
 
   const [tickerBriefs, setTickerBriefs] = useState<TickerBrief[]>([])
   const [tickerNews, setTickerNews] = useState<TickerNewsItem[]>([])
@@ -402,9 +449,14 @@ export default function AppShell() {
         const snapshot = await service.getDashboardSnapshot(selectedDateET)
         if (cancelled) return
 
-        setWatchlists(snapshot.watchlists)
-        setSelectedWatchlistId(snapshot.selectedWatchlistId)
-        setWatchlistItems(snapshot.watchlistItems)
+        if (isLoggedIn) {
+          // Real per-user watchlist from DB
+          await loadWatchlistFromApi()
+        } else {
+          setWatchlists(snapshot.watchlists)
+          setSelectedWatchlistId(snapshot.selectedWatchlistId)
+          setWatchlistItems(snapshot.watchlistItems)
+        }
         setMarketHeadlines(
           limitHeadlinesToRecentDates(
             normalizeHeadlines(snapshot.marketHeadlines),
@@ -855,6 +907,9 @@ export default function AppShell() {
         isLoading={initStatus === 'loading'}
         errorMessage={initStatus === 'error' ? initError : null}
         isEmpty={initStatus === 'empty'}
+        isLoggedIn={isLoggedIn}
+        onAddTicker={handleAddTicker}
+        onRemoveTicker={handleRemoveTicker}
       />
       <CenterPanel
         selectedSymbol={selectedSymbol}

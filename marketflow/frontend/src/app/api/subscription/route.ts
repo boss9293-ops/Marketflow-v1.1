@@ -8,7 +8,7 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ plan: 'FREE' })
   }
-  const id = (session.user as any).id
-  const dbUser = getUserById(id)
+  const id = (session.user as { id?: string }).id
+  const dbUser = await getUserById(id ?? '')
   return NextResponse.json({ plan: dbUser?.plan ?? 'FREE' })
 }

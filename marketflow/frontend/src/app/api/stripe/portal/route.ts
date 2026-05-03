@@ -8,8 +8,8 @@ export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const id = (session.user as any).id
-  const dbUser = getUserById(id)
+  const id = (session.user as { id?: string }).id
+  const dbUser = await getUserById(id ?? '')
   if (!dbUser?.stripe_customer_id) {
     return NextResponse.json({ error: 'No subscription found' }, { status: 400 })
   }

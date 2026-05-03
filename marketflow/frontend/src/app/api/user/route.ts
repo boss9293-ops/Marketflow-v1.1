@@ -8,8 +8,8 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ user: null }, { status: 200 })
   }
-  const id = (session.user as any).id
-  const dbUser = getUserById(id)
+  const id = (session.user as { id?: string }).id
+  const dbUser = await getUserById(id ?? '')
   if (!dbUser) return NextResponse.json({ user: null }, { status: 200 })
   return NextResponse.json({
     user: {

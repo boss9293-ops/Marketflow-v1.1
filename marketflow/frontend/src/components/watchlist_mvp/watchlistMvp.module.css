@@ -261,6 +261,34 @@
   line-height: 1.35;
 }
 
+.watchItemWrapper {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.watchItemWrapper .watchItemRow {
+  border-top: none;
+  flex: 1;
+}
+
+.removeTickerButton {
+  flex-shrink: 0;
+  width: 28px;
+  border: none;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.removeTickerButton:hover { background: rgba(239, 68, 68, 0.25); }
+.removeTickerButton:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .watchItemRow {
   width: 100%;
   border: none;
