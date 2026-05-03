@@ -45,6 +45,95 @@ function getLastTradingDaysSet(fromDateET: string, count = TICKER_NEWS_HISTORY_T
   }
   return new Set(result)
 }
+const TICKER_COMPANY_NAMES: Record<string, string> = {
+  INTC: 'Intel',
+  AMD: 'AMD',
+  QCOM: 'Qualcomm',
+  TXN: 'Texas Instruments',
+  AVGO: 'Broadcom',
+  MU: 'Micron',
+  AMAT: 'Applied Materials',
+  KLAC: 'KLA',
+  LRCX: 'Lam Research',
+  MRVL: 'Marvell',
+  ON: 'Onsemi',
+  SWKS: 'Skyworks',
+  MCHP: 'Microchip Technology',
+  MPWR: 'Monolithic Power',
+  GFS: 'GlobalFoundries',
+  WOLF: 'Wolfspeed',
+  QRVO: 'Qorvo',
+  WDC: 'Western Digital',
+  STX: 'Seagate',
+  NTAP: 'NetApp',
+  HPQ: 'HP',
+  HPE: 'Hewlett Packard Enterprise',
+  DELL: 'Dell',
+  IBM: 'IBM',
+  ORCL: 'Oracle',
+  CRM: 'Salesforce',
+  ADBE: 'Adobe',
+  INTU: 'Intuit',
+  CSCO: 'Cisco',
+  ANET: 'Arista Networks',
+  PANW: 'Palo Alto Networks',
+  CRWD: 'CrowdStrike',
+  ZS: 'Zscaler',
+  FTNT: 'Fortinet',
+  NET: 'Cloudflare',
+  DDOG: 'Datadog',
+  SNOW: 'Snowflake',
+  PLTR: 'Palantir',
+  UBER: 'Uber',
+  LYFT: 'Lyft',
+  COIN: 'Coinbase',
+  HOOD: 'Robinhood',
+  SQ: 'Block',
+  PYPL: 'PayPal',
+  V: 'Visa',
+  MA: 'Mastercard',
+  AXP: 'American Express',
+  GS: 'Goldman Sachs',
+  MS: 'Morgan Stanley',
+  JPM: 'JPMorgan',
+  BAC: 'Bank of America',
+  WFC: 'Wells Fargo',
+  C: 'Citigroup',
+  BRK: 'Berkshire Hathaway',
+  LLY: 'Eli Lilly',
+  PFE: 'Pfizer',
+  MRK: 'Merck',
+  JNJ: 'Johnson Johnson',
+  ABBV: 'AbbVie',
+  BMY: 'Bristol Myers Squibb',
+  GILD: 'Gilead',
+  AMGN: 'Amgen',
+  BIIB: 'Biogen',
+  REGN: 'Regeneron',
+  XOM: 'ExxonMobil',
+  CVX: 'Chevron',
+  COP: 'ConocoPhillips',
+  BA: 'Boeing',
+  RTX: 'Raytheon',
+  LMT: 'Lockheed Martin',
+  NOC: 'Northrop Grumman',
+  GE: 'GE Aerospace',
+  CAT: 'Caterpillar',
+  DE: 'Deere',
+  MMM: '3M',
+  HON: 'Honeywell',
+  UNH: 'UnitedHealth',
+  CVS: 'CVS Health',
+  WMT: 'Walmart',
+  TGT: 'Target',
+  COST: 'Costco',
+  HD: 'Home Depot',
+  LOW: "Lowe's",
+  DIS: 'Disney',
+  NFLX: 'Netflix',
+  SPOT: 'Spotify',
+}
+
 const tickerNewsCache = new Map<string, { expiresAt: number; payload: BuiltTickerNewsPayload }>()
 const tickerNewsHistory = new Map<string, { timelineById: Map<string, TickerNewsItem>; detailsById: Map<string, NewsDetail> }>()
 let tickerHistoryLoaded = false
@@ -493,12 +582,19 @@ const fetchYahooFreeNews = async (symbol: string): Promise<{ timeline: TickerNew
 }
 
 const fetchGoogleFreeNews = async (symbol: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
-  const usQuery = `${symbol} stock`
-  const krQueries = GOOGLE_KR_QUERIES.map((query) => `${symbol} ${query}`)
-  const [usItems, krResults] = await Promise.all([
-    fetchGoogleNewsItems(usQuery, { hl: 'en-US', gl: 'US', ceid: 'US:en' }),
+  const companyName = TICKER_COMPANY_NAMES[symbol.toUpperCase()]
+  const primaryQuery = companyName ? `${companyName} stock` : `${symbol} stock`
+  const symbolQuery = companyName ? `${symbol} stock` : null
+  const krTerm = companyName ?? symbol
+  const krQueries = GOOGLE_KR_QUERIES.map((query) => `${krTerm} ${query}`)
+  const usQueryList = symbolQuery
+    ? [primaryQuery, symbolQuery]
+    : [primaryQuery]
+  const [usResults, krResults] = await Promise.all([
+    Promise.all(usQueryList.map((q) => fetchGoogleNewsItems(q, { hl: 'en-US', gl: 'US', ceid: 'US:en' }))),
     Promise.all(krQueries.map((query) => fetchGoogleNewsItems(query, GOOGLE_KR_LOCALE))),
   ])
+  const usItems = usResults.flat()
 
   const krItems = krResults.flat()
   const combined = [...usItems, ...krItems]
