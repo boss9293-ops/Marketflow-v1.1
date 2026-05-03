@@ -168,3 +168,167 @@ export interface SemiconductorOutput {
   translation: TranslationOutput
   as_of:       string
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v2: Signal Normalization & Confidence Layer
+// Based on SEMICONDUCTOR_SIGNAL_NORMALIZATION_AND_CONFIDENCE_SPEC.md
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Macro inputs not available in MarketDataInput (VIX, yield, DXY, RSI, MACD)
+export interface MacroSnapshot {
+  vix_level:            number   // e.g. 15.2
+  vix_change_5d_pct:    number   // e.g. -0.05 = -5%
+  yield_10y_change_30d: number   // basis points, e.g. +30
+  dxy_trend_30d_pct:    number   // e.g. -0.02 = -2%
+  soxx_rsi_14:          number   // 0~100
+  soxx_macd_hist:       number   // positive = bullish
+  soxx_vs_200ma_pct:    number   // % above 200MA, e.g. +0.12 = +12%
+}
+
+export const DEFAULT_MACRO: MacroSnapshot = {
+  vix_level:            15.2,
+  vix_change_5d_pct:    -0.02,
+  yield_10y_change_30d: 10,
+  dxy_trend_30d_pct:    -0.01,
+  soxx_rsi_14:          62,
+  soxx_macd_hist:       0.8,
+  soxx_vs_200ma_pct:    0.12,
+}
+
+// Cycle stages (v2 — replaces BUILD/EXPAND/PEAK/RESET/BOTTOM)
+export type CycleState =
+  | 'Trough'
+  | 'Recovery'
+  | 'Expansion'
+  | 'Late Expansion'
+  | 'Peak Risk'
+  | 'Contraction'
+
+// Conflict types (v2)
+export type ConflictTypeV2 =
+  | 'NO_CONFLICT'
+  | 'AI_DISTORTION'
+  | 'BREADTH_DIVERGENCE'
+  | 'MOMENTUM_DIVERGENCE'
+  | 'SECTOR_ROTATION'
+  | 'MACRO_OVERRIDE'
+  | 'VALUATION_STRETCH'
+  | 'AI_INFRA_SUSTAINABILITY_RISK'
+  | 'MULTIPLE_CONFLICTS'
+
+export type MetricDirection  = 'positive' | 'negative' | 'risk' | 'context'
+export type ConfidenceImpact = 'raises'   | 'lowers'   | 'neutral'
+export type DataQuality      = 'high'     | 'medium'   | 'low'
+export type ConfidenceLabelV2 = 'Low' | 'Medium' | 'High'
+export type SuitabilityLabel  =
+  | 'Highly Favorable'
+  | 'Favorable'
+  | 'Neutral / Monitor'
+  | 'Unfavorable'
+  | 'High Risk Setup'
+
+// Single metric — 3-layer structure
+export interface NormalizedMetric {
+  id:                string
+  name:              string
+  raw_value:         number | string
+  normalized_value:  number            // 0~100, display-safe
+  signal_value:      number            // -100~+100, engine calculation units
+  direction:         MetricDirection
+  confidence_impact: ConfidenceImpact
+  data_quality:      DataQuality
+  explanation_short: string
+}
+
+// Domain-level aggregation
+export type DomainKey =
+  | 'price_trend' | 'leadership' | 'breadth'
+  | 'momentum'    | 'macro'      | 'fundamentals' | 'ai_infra'
+
+export interface DomainScore {
+  name:          string
+  key:           DomainKey
+  weight:        number     // 0~1
+  signal:        number     // -100~+100
+  display:       number     // 0~100 = (signal+100)/2
+  metrics_count: number
+}
+
+export type DomainScores = Record<DomainKey, DomainScore>
+
+// Engine output (Layer 5)
+export interface EngineOutputV2 {
+  engine_score:    number           // 0~100
+  internal_signal: number           // -100~+100
+  state:           CycleState
+  primary_driver:  string
+  primary_risk:    string
+  conflict_type:   ConflictTypeV2
+  confidence:      ConfidenceLabelV2
+}
+
+// Confidence output (Layer 6 — 4 components)
+export interface ConfidenceComponents {
+  agreement:        number   // 0~100
+  data_quality:     number   // 0~100
+  signal_stability: number   // 0~100
+  conflict_penalty: number   // 0~100 (lower = more penalty)
+}
+
+export interface ConfidenceOutputV2 {
+  confidence_score: number
+  confidence_label: ConfidenceLabelV2
+  components:       ConfidenceComponents
+}
+
+// Explanation output (Layer 7)
+export interface ExplanationOutputV2 {
+  headline:               string
+  summary:                string
+  current_state:          CycleState
+  confidence_label:       ConfidenceLabelV2
+  main_driver:            string
+  main_risk:              string
+  what_changed:           string[]
+  evidence:               string[]
+  conflicts:              string[]
+  subscriber_explanation: string
+}
+
+// Phase G — Core bucket series types
+export type BucketSeriesPoint = {
+  date:               string
+  soxx:               number
+  aiCompute?:         number
+  memory?:            number
+  foundryPackaging?:  number
+  equipment?:         number
+}
+
+export type RelativeSpreadPoint = {
+  date:               string
+  aiCompute?:         number
+  memory?:            number
+  foundryPackaging?:  number
+  equipment?:         number
+}
+
+export type CapitalFlowStage = 'Confirmed' | 'Partial' | 'Mixed' | 'Lagging' | 'Weak' | 'Narrow' | 'Unavailable'
+
+export type CapitalFlowTimeline = {
+  aiCompute:          { stage: CapitalFlowStage; spread: number | null }
+  memory:             { stage: CapitalFlowStage; spread: number | null }
+  foundryPackaging:   { stage: CapitalFlowStage; spread: number | null }
+  equipment:          { stage: CapitalFlowStage; spread: number | null }
+  broadParticipation: { stage: CapitalFlowStage }
+}
+
+// Full v2 engine output
+export interface SemiconductorEngineV2Output {
+  metrics:       NormalizedMetric[]
+  domain_scores: DomainScores
+  engine:        EngineOutputV2
+  confidence:    ConfidenceOutputV2
+  explanation:   ExplanationOutputV2
+  as_of:         string
+}

@@ -110,6 +110,22 @@ type Current90dCache = {
   } | null
 }
 
+type MarketHeadlineHistoryItem = {
+  id?: string | null
+  dateET?: string | null
+  publishedAtET?: string | null
+  timeET?: string | null
+  headline?: string | null
+  source?: string | null
+  summary?: string | null
+  url?: string | null
+}
+
+type MarketHeadlineHistoryCache = {
+  updatedAt?: string | null
+  headlines?: MarketHeadlineHistoryItem[] | null
+}
+
 type LadderRow = {
   symbol: string
   label: string
@@ -142,6 +158,7 @@ const DASHBOARD_UI = {
   railRatesFx: { ko: '금리 & 환율', en: 'Rates & FX' },
   railCommoditiesAlt: { ko: '원자재 & 대체자산', en: 'Commodities & Alt' },
   railHeadlineTape: { ko: '헤드라인 테이프', en: 'Headline Tape' },
+  sourceMarketHeadlinesCache: { ko: 'Source: Market headlines cache', en: 'Source: Market headlines cache' },
   sourceDailyBriefingCache: { ko: 'Source: Daily briefing cache', en: 'Source: Daily briefing cache' },
   gateEstimated: { ko: 'est', en: 'est' },
   flowShiftDetected: { ko: 'shift detected', en: 'shift detected' },
@@ -376,6 +393,35 @@ const toTeaser = (value: string, max = 260): string => {
   return `${cleaned.slice(0, max).trimEnd()}...`
 }
 
+const formatTapePublishedLabel = (
+  publishedAtET: string | null | undefined,
+  fallbackDateET?: string | null,
+  fallbackTimeET?: string | null,
+): string => {
+  const raw = String(publishedAtET || '').trim()
+  if (raw) {
+    const parsed = new Date(raw)
+    if (!Number.isNaN(parsed.valueOf())) {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: false,
+      }).format(parsed)
+    }
+  }
+
+  const date = String(fallbackDateET || '').trim()
+  const time = String(fallbackTimeET || '').trim()
+  if (date && time) return `${date} ${time}`
+  if (date) return date
+  if (time) return time
+  return '--'
+}
+
 const REGIME_LABELS: Record<string, { ko: string; en: string }> = {
   TRANSITION: { ko: 'TRANSITION', en: 'TRANSITION' },
   BULL: { ko: 'BULL', en: 'BULL' },
@@ -579,13 +625,14 @@ export default async function DashboardPage() {
   const uiLang = normalizeUiLang(cookies().get(UI_LANG_COOKIE)?.value)
   const contentLang: UiLang = normalizeContentLang(cookies().get(CONTENT_LANG_COOKIE)?.value)
 
-  const [coreSnapshot, dailyBriefing, snapshots, riskV1, vrPattern, current90d] = await Promise.all([
+  const [coreSnapshot, dailyBriefing, snapshots, riskV1, vrPattern, current90d, marketHeadlineHistory] = await Promise.all([
     readCacheJson<CorePriceSnapshotCache>('cache/core_price_snapshot_latest.json', {}),
     readCacheJson<DailyBriefing>('daily_briefing_v3.json', {}),
     readCacheJson<SnapshotsCache>('snapshots_120d.json', { snapshots: [] }),
     readCacheJson<RiskV1Cache>('risk_v1.json', {}),
     readCacheJson<VrPatternDashboard>('vr_pattern_dashboard.json', {}),
     readCacheJson<Current90dCache>('current_90d.json', {}),
+    readCacheJson<MarketHeadlineHistoryCache>('cache/market-headlines-history.json', {}),
   ])
 
   const coreRecords = Array.isArray(coreSnapshot.records) ? coreSnapshot.records : []
@@ -665,6 +712,64 @@ export default async function DashboardPage() {
     stanceWhy || engineText(contentLang, DASHBOARD_ENGINE.fallbackWhy),
     140,
   )
+  const bulletLines = briefingSections
+    .map((section) => {
+      const body = sectionBody(section)
+      if (!body) return ''
+      return `${section.title ? `${section.title}: ` : ''}${body}`.trim()
+    })
+    .filter((value): value is string => Boolean(value))
+  const marketHeadlineRows = Array.isArray(marketHeadlineHistory.headlines) ? marketHeadlineHistory.headlines : []
+  const sortedMarketHeadlineRows = [...marketHeadlineRows]
+    .filter((row) => Boolean(row?.dateET && row?.headline))
+    .sort((a, b) => {
+      const byPublishedAt = String(b?.publishedAtET || '').localeCompare(String(a?.publishedAtET || ''))
+      if (byPublishedAt !== 0) return byPublishedAt
+      return String(b?.dateET || '').localeCompare(String(a?.dateET || ''))
+    })
+  const tapeHeadlines = (() => {
+    const recentDates = new Set<string>()
+    const items: Array<{ time: string; text: string; source: string }> = []
+
+    for (const row of sortedMarketHeadlineRows) {
+      const dateET = String(row?.dateET || '').trim()
+      const headlineText = String(row?.headline || '').trim()
+      if (!dateET || !headlineText || recentDates.has(dateET)) {
+        continue
+      }
+
+      recentDates.add(dateET)
+      items.push({
+        time: formatTapePublishedLabel(row?.publishedAtET, dateET, row?.timeET),
+        text: toTeaser(headlineText, 120),
+        source: String(row?.source || '').trim()
+          ? `Source: ${String(row?.source || '').trim()}`
+          : uiText(contentLang, DASHBOARD_UI.sourceMarketHeadlinesCache),
+      })
+
+      if (items.length >= 5) {
+        break
+      }
+    }
+
+    if (items.length) {
+      return items
+    }
+
+    const fallbackLines = briefingSections
+      .map((section) => {
+        const body = sectionBody(section)
+        if (!body) return ''
+        return `${section.title ? `${section.title}: ` : ''}${body}`.trim()
+      })
+      .filter((value): value is string => Boolean(value))
+
+    return (fallbackLines.length ? fallbackLines : [headline, teaser, whyMatters]).slice(0, 3).map((text, idx) => ({
+      time: ['16:30 ET', '12:30 ET', '09:30 ET'][idx] || '--:-- ET',
+      text: toTeaser(text, 120),
+      source: uiText(contentLang, DASHBOARD_UI.sourceDailyBriefingCache),
+    }))
+  })()
 
   const indexRows: LadderRow[] = [
     buildLadderRow(coreRecordMap, 'SPX', 'S&P 500', ['SPY']),
@@ -857,19 +962,6 @@ export default async function DashboardPage() {
         rebound: formatPct1(reboundFromBottomPct),
         direction: directionText,
       })
-
-  const bulletLines = briefingSections
-    .map((section) => {
-      const body = sectionBody(section)
-      if (!body) return ''
-      return `${section.title ? `${section.title}: ` : ''}${body}`.trim()
-    })
-    .filter((v): v is string => Boolean(v))
-  const tapeTimes = ['16:30 ET', '12:30 ET', '09:30 ET']
-  const tapeHeadlines = (bulletLines.length ? bulletLines : [headline, teaser, whyMatters]).slice(0, 3).map((text, idx) => ({
-    time: tapeTimes[idx] || '--:-- ET',
-    text: toTeaser(text, 120),
-  }))
 
   const asOf =
     (typeof coreSnapshot.as_of === 'string' ? coreSnapshot.as_of.slice(0, 10) : '') ||
@@ -1133,7 +1225,7 @@ export default async function DashboardPage() {
                 <article className={styles.tapeItem} key={`tape-${idx}`}>
                   <p className={styles.tapeTime}>{item.time}</p>
                   <p className={styles.tapeHeadline}>{item.text}</p>
-                  <p className={styles.tapeSource}>{uiText(contentLang, DASHBOARD_UI.sourceDailyBriefingCache)}</p>
+                  <p className={styles.tapeSource}>{item.source}</p>
                 </article>
               ))}
             </div>

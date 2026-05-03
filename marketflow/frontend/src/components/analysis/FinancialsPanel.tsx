@@ -242,7 +242,7 @@ function RevenueTrendChart({ rows }: { rows: IncomeRow[] }) {
             <g key={i}>
               <rect x={cx-barW-2} y={PT+cH-revH} width={barW} height={revH}
                 fill={C_REV} opacity={hoverIndex === i ? 0.98 : 0.80} rx={0}
-                stroke={hoverIndex === i ? 'rgba(255,255,255,0.35)' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
+                stroke={hoverIndex === i ? '#737880' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
               {revH > 16 && (
                 <text x={cx-barW/2-2} y={PT+cH-revH-5} textAnchor="middle" fill={C_REV} fontSize={8} fontWeight={700}>
                   {fmtB(row.revenue,0)}
@@ -250,7 +250,7 @@ function RevenueTrendChart({ rows }: { rows: IncomeRow[] }) {
               )}
               <rect x={cx+2} y={PT+cH-netH} width={barW} height={netH}
                 fill={C_NET} opacity={hoverIndex === i ? 1 : 0.90} rx={0}
-                stroke={hoverIndex === i ? 'rgba(255,255,255,0.35)' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
+                stroke={hoverIndex === i ? '#737880' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
               {netH > 16 && (
                 <text x={cx+barW/2+2} y={PT+cH-netH-5} textAnchor="middle" fill={C_NET} fontSize={8} fontWeight={700}>
                   {fmtB(row.netIncome,0)}
@@ -274,7 +274,7 @@ function RevenueTrendChart({ rows }: { rows: IncomeRow[] }) {
               const y = marginY(r.netMargin)
               return (
                 <g key={i}>
-                  <circle cx={x} cy={y} r={hoverIndex === i ? 5.5 : 4} fill={C_MARGIN} stroke={hoverIndex === i ? 'rgba(255,255,255,0.35)' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
+                  <circle cx={x} cy={y} r={hoverIndex === i ? 5.5 : 4} fill={C_MARGIN} stroke={hoverIndex === i ? '#737880' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
                   <text x={x} y={y-9} textAnchor="middle" fill={C_MARGIN} fontSize={10} fontWeight={700}>
                     {fmtPct(r.netMargin,0)}
                   </text>
@@ -431,7 +431,7 @@ function PERatioChart({ rows }: { rows: RatioRow[] }) {
           <>
             <polyline points={pePts} fill="none" stroke={C_PE} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
             {rows.map((r, i) => r.pe != null ? (
-              <circle key={i} cx={PL+i*gapW} cy={peY(r.pe)} r={hoverIndex === i ? 5.5 : 4} fill={C_PE} stroke={hoverIndex === i ? 'rgba(255,255,255,0.35)' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
+              <circle key={i} cx={PL+i*gapW} cy={peY(r.pe)} r={hoverIndex === i ? 5.5 : 4} fill={C_PE} stroke={hoverIndex === i ? '#737880' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
             ) : null)}
           </>
         )}
@@ -440,7 +440,7 @@ function PERatioChart({ rows }: { rows: RatioRow[] }) {
           <>
             <polyline points={psPts} fill="none" stroke={C_PS} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6,3"/>
             {rows.map((r, i) => r.ps != null ? (
-              <circle key={i} cx={PL+i*gapW} cy={psY(r.ps)} r={hoverIndex === i ? 5.5 : 4} fill={C_PS} stroke={hoverIndex === i ? 'rgba(255,255,255,0.35)' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
+              <circle key={i} cx={PL+i*gapW} cy={psY(r.ps)} r={hoverIndex === i ? 5.5 : 4} fill={C_PS} stroke={hoverIndex === i ? '#737880' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>
             ) : null)}
           </>
         )}
@@ -605,7 +605,7 @@ function EpsChart({ rows, estimates }: { rows: IncomeRow[]; estimates: EpsEstima
               ) : (
                 <rect x={cx-barW/2} y={barY} width={barW} height={barH}
                   fill={color} opacity={hoverIndex === i ? 0.98 : 0.85} rx={0}
-                  stroke={hoverIndex === i ? 'rgba(255,255,255,0.32)' : 'none'}
+                  stroke={hoverIndex === i ? '#737880' : 'none'}
                   strokeWidth={hoverIndex === i ? 1 : 0}/>
               )}
               <text x={cx} y={barY-5} textAnchor="middle"
@@ -739,7 +739,7 @@ function MarginHistoryChart({ rows }: { rows: IncomeRow[] }) {
       {lines.map(({key,color,pts}) => (
         <g key={key}>
           <polyline points={pts.map(p=>`${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
-          {pts.map((p,i) => <circle key={i} cx={p.x} cy={p.y} r={hoverIndex === i ? 5.5 : 4} fill={color} stroke={hoverIndex === i ? 'rgba(255,255,255,0.35)' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>)}
+          {pts.map((p,i) => <circle key={i} cx={p.x} cy={p.y} r={hoverIndex === i ? 5.5 : 4} fill={color} stroke={hoverIndex === i ? '#737880' : 'none'} strokeWidth={hoverIndex === i ? 1 : 0}/>)}
         </g>
       ))}
       {endLabels.map(e => (

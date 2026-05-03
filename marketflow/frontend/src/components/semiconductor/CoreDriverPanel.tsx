@@ -2,6 +2,7 @@
 // A-4: Core Driver Panel — 4 drivers + 3 confirmations
 import type { SignalInputs } from '@/lib/semiconductor/types'
 
+
 const STATE_COLORS: Record<string, string> = {
   STRONG: '#22c55e', RECOVERING: '#38bdf8', NEUTRAL: '#94a3b8',
   WEAK: '#ef4444', RISING: '#22c55e', DECLINING: '#ef4444',
@@ -22,13 +23,16 @@ function Row({ label, state, evidence, pBadge, warn }:
         {state}
       </span>
       <span style={{ fontSize: 12, color: '#94a3b8', flex: 1 }}>{evidence}</span>
-      {pBadge && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 700 }}>{pBadge}</span>}
+      {pBadge && <span style={{ fontSize: 11, color: '#6366f1', fontWeight: 700 }}>{pBadge}</span>}
       {warn && <span style={{ fontSize: 11, color: '#ef4444' }}>⚠</span>}
     </div>
   )
 }
 
 interface Props { signals: SignalInputs }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function CoreDriverPanel({ signals }: Props) {
   const {

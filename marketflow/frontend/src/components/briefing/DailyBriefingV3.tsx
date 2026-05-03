@@ -61,12 +61,19 @@ export type DailyBriefingV3Data = {
   risk_check: BriefingV3RiskCheck
   one_line: string
   one_line_ko?: string
+  // V6 commentary fields
+  commentary_type?: string
+  core_question?: string
+  human_commentary?: string[]
+  market_tension?: string
+  next_checkpoints?: string[]
 }
 
 type Lang = 'en' | 'ko'
 
 type Props = {
   data: DailyBriefingV3Data | null
+  dataV6?: DailyBriefingV3Data | null
   initialContentLang?: Lang
 }
 
@@ -266,12 +273,13 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (next: Lang) => 
   )
 }
 
-export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Props) {
+export default function DailyBriefingV3({ data, dataV6, initialContentLang = 'en' }: Props) {
   const uiLang = useUiLang()
   const contentLang = useContentLang(initialContentLang)
   const [generating, setGenerating] = useState(false)
   const [genStatus, setGenStatus] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>(contentLang)
+  const [compareTab, setCompareTab] = useState<'v3' | 'v6'>('v6')
   const router = useRouter()
 
   useEffect(() => {
@@ -346,17 +354,20 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
     )
   }
 
-  const rc = data.risk_check
-  const summaryLine = pick(data.one_line, data.one_line_ko, lang).trim()
-  const hookLine = pick(data.hook, data.hook_ko, lang).trim()
+  const hasV6 = Boolean(dataV6)
+  const activeData = hasV6 && compareTab === 'v6' ? dataV6! : data
+
+  const rc = activeData.risk_check
+  const summaryLine = pick(activeData.one_line, activeData.one_line_ko, lang).trim()
+  const hookLine = pick(activeData.hook, activeData.hook_ko, lang).trim()
   const heroLine = hookLine || summaryLine
-  const generatedDateKey = formatDateKey(data.generated_at)
-  const marketDateKey = String(data.data_date || '').trim()
+  const generatedDateKey = formatDateKey(activeData.generated_at)
+  const marketDateKey = String(activeData.data_date || '').trim()
   const titleDateKey = generatedDateKey || marketDateKey || '--'
-  const slotLabel = formatSlotLabel(data.slot, uiLang)
-  const freshnessBadge = formatFreshnessBadge(data.freshness, uiLang)
-  const promptBadge = formatPromptBadge(data.prompt, uiLang)
-  const sectionList = Array.isArray(data.sections) ? data.sections : []
+  const slotLabel = formatSlotLabel(activeData.slot, uiLang)
+  const freshnessBadge = formatFreshnessBadge(activeData.freshness, uiLang)
+  const promptBadge = formatPromptBadge(activeData.prompt, uiLang)
+  const sectionList = Array.isArray(activeData.sections) ? activeData.sections : []
   const riskTone: BadgeTone = rc.triggered
     ? { text: 'triggered', color: '#fecaca', border: rc.color || '#7f1d1d', bg: 'rgba(127,29,29,0.25)' }
     : { text: 'ok', color: '#86efac', border: '#166534', bg: 'rgba(22,101,52,0.24)' }
@@ -379,6 +390,29 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
         </div>
 
         <div className={styles.headerActions}>
+          {hasV6 && (
+            <div style={{ display: 'flex', gap: '0.3rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem' }}>
+              {(['v3', 'v6'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setCompareTab(t)}
+                  style={{
+                    border: 'none',
+                    background: compareTab === t ? 'rgba(245,158,11,0.2)' : 'transparent',
+                    color: compareTab === t ? '#f3b43f' : '#737880',
+                    borderRadius: 6,
+                    padding: '0.22rem 0.6rem',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    cursor: 'pointer',
+                    transition: 'all 120ms ease',
+                  }}
+                >{t.toUpperCase()}</button>
+              ))}
+            </div>
+          )}
           <LangToggle lang={lang} onChange={onContentLangChange} />
           <button
             type="button"
@@ -429,9 +463,49 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
           </span>
         )}
         <span className={styles.metaChip}>
-          {pickUiLang(uiLang, BRIEF_UI_TEXT.modelLabel.ko, BRIEF_UI_TEXT.modelLabel.en)} {data.model}
+          {pickUiLang(uiLang, BRIEF_UI_TEXT.modelLabel.ko, BRIEF_UI_TEXT.modelLabel.en)} {activeData.model}
         </span>
       </div>
+
+      {compareTab === 'v6' && activeData.core_question && (
+        <div className={`${styles.panel}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {activeData.commentary_type && (
+            <span style={{ alignSelf: 'flex-start', color: '#8b9098', fontSize: '0.66rem', letterSpacing: '0.10em', fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, padding: '0.15rem 0.45rem' }}>
+              {activeData.commentary_type}
+            </span>
+          )}
+          <div>
+            <div style={{ color: '#737880', fontSize: '0.66rem', letterSpacing: '0.10em', fontWeight: 700, marginBottom: '0.3rem' }}>CORE QUESTION</div>
+            <p style={{ color: '#f0f3f9', fontSize: '1.04rem', fontWeight: 600, lineHeight: 1.55, margin: 0 }}>{activeData.core_question}</p>
+          </div>
+          {activeData.human_commentary && activeData.human_commentary.length > 0 && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+              {activeData.human_commentary.filter((p) => p.trim()).slice(0, 3).map((para, i) => (
+                <p key={i} style={{ color: '#acb3c2', fontSize: '0.91rem', lineHeight: 1.7, margin: 0 }}>{para}</p>
+              ))}
+            </div>
+          )}
+          {activeData.market_tension && (
+            <div style={{ borderLeft: '2px solid rgba(245,158,11,0.45)', paddingLeft: '0.72rem' }}>
+              <div style={{ color: '#737880', fontSize: '0.66rem', letterSpacing: '0.10em', fontWeight: 700, marginBottom: '0.2rem' }}>TENSION</div>
+              <p style={{ color: '#c9cdd4', fontSize: '0.88rem', lineHeight: 1.55, margin: 0 }}>{activeData.market_tension}</p>
+            </div>
+          )}
+          {activeData.next_checkpoints && activeData.next_checkpoints.length > 0 && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.65rem' }}>
+              <div style={{ color: '#737880', fontSize: '0.66rem', letterSpacing: '0.10em', fontWeight: 700, marginBottom: '0.4rem' }}>CHECKPOINTS</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
+                {activeData.next_checkpoints.map((cp, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.42rem', alignItems: 'flex-start' }}>
+                    <span style={{ color: '#f59e0b', fontSize: '0.74rem', marginTop: '0.18rem', flexShrink: 0 }}>→</span>
+                    <span style={{ color: '#8b9098', fontSize: '0.86rem', lineHeight: 1.5 }}>{cp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.sectionGrid}>
         {sectionList.map((section, index) => {
@@ -478,11 +552,11 @@ export default function DailyBriefingV3({ data, initialContentLang = 'en' }: Pro
 
       <div className={`${styles.panel} ${styles.oneLinePanel}`}>
         <div className={styles.oneLineLabel}>{pickUiLang(uiLang, BRIEF_UI_TEXT.oneLine.ko, BRIEF_UI_TEXT.oneLine.en)}</div>
-        <p className={styles.oneLineText}>{pick(data.one_line, data.one_line_ko, lang)}</p>
+        <p className={styles.oneLineText}>{pick(activeData.one_line, activeData.one_line_ko, lang)}</p>
       </div>
 
       <footer className={styles.footerMeta}>
-        {formatNumber(data.tokens?.input) + formatNumber(data.tokens?.output)} tokens · ${Number(data.tokens?.cost_usd || 0).toFixed(5)}
+        {formatNumber(activeData.tokens?.input) + formatNumber(activeData.tokens?.output)} tokens · ${Number(activeData.tokens?.cost_usd || 0).toFixed(5)}
       </footer>
     </section>
   )

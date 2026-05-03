@@ -1,14 +1,12 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import {
-  AreaChart, Area, ComposedChart, Bar, LineChart, Line,
+  AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, ReferenceArea,
 } from 'recharts'
 import {
-  Activity, Globe, Zap, ShieldAlert, TrendingUp, Box, DollarSign,
-  ChevronRight, AlertTriangle, History, Target, Layers,
-  Clock,
+  Zap, AlertTriangle, History, Target, Clock,
 } from 'lucide-react'
 import type { SemiconductorOutput } from '@/lib/semiconductor/types'
 
@@ -26,54 +24,25 @@ import CoreDriverPanel    from '@/components/semiconductor/CoreDriverPanel'
 import EducationLayer     from '@/components/semiconductor/EducationLayer'
 import CycleHeader        from '@/components/semiconductor/CycleHeader'
 
-// ── Layer definitions ─────────────────────────────────────────────────────
-const LAYER_DEFS = [
-  { id: 'L0', name: 'Cycle Overview',     icon: <Globe size={16}/>,      desc: 'Stage, Confidence, Conflict Detection',  color: '#6366f1' },
-  { id: 'L1', name: 'Supply/Demand',      icon: <Activity size={16}/>,   desc: 'Capex Cycle, S-D Ratio (방향 결정)',       color: '#8b5cf6' },
-  { id: 'L2', name: 'ASP / Spot',         icon: <DollarSign size={16}/>, desc: 'DRAM/NAND ASP, 현물가 (실시간 신호)',       color: '#ec4899' },
-  { id: 'L3', name: 'Margin',             icon: <TrendingUp size={16}/>, desc: 'Gross/Op Margin (사이클 위치 판단)',        color: '#f43f5e' },
-  { id: 'L4', name: 'Inventory',          icon: <Box size={16}/>,        desc: 'Weeks of Inventory (지속성 및 압축도)',     color: '#f59e0b' },
-  { id: 'L5', name: 'Valuation',          icon: <Layers size={16}/>,     desc: 'P/B, Forward P/E (기대 및 왜곡 반영)',      color: '#10b981' },
-  { id: 'L6', name: 'AI Infrastructure', icon: <Zap size={16}/>,        desc: 'Compute, Memory, Foundry 버킷 분석',       color: '#3b82f6' },
-  { id: 'L7', name: 'Conflict/Risk',      icon: <ShieldAlert size={16}/>,desc: 'Decoupling, 지정학적 갈등 감지',           color: '#ef4444' },
-]
 
-// ── Simulated timeline data (deterministic — no Math.random) ──────────────
+
+// ?? Simulated timeline data (deterministic ??no Math.random) ??????????????
 const SUPER_CYCLE = [
   { year: '2000', rev: 500 }, { year: '2002', rev: 450 },
   { year: '2008', rev: 480 }, { year: '2016', rev: 950 },
   { year: '2020', rev: 1250 }, { year: '2024', rev: 1750 }, { year: '2026', rev: 2350 },
 ]
 
-function buildDailyData() {
-  return Array.from({ length: 90 }, (_, i) => {
-    const score = Math.min(100, 40 + Math.sin(i * 0.1) * 20 + i * 0.2)
-    return {
-      date: `D-${90 - i}`,
-      score,
-      supply: 110 - i * 0.3,
-      compute: 100 + i * 0.8,
-      memory:  100 + i * 0.6,
-      foundry: 100 + i * 0.4,
-      equipment: 100 + i * 0.3,
-      soxx: 100 + i * 0.5,
-      margin: 15 + i * 0.2,
-      inventory: 120 - i * 0.4,
-      price: 80 + i * 0.5 + Math.sin(i * 0.2) * 5,
-    }
-  })
-}
-
-const DAILY_DATA = buildDailyData()
-
-// ── Props ─────────────────────────────────────────────────────────────────
+// ?? Props ?????????????????????????????????????????????????????????????????
 interface Props { data: SemiconductorOutput }
 
-// ── Main component ────────────────────────────────────────────────────────
+// ?? Main component ????????????????????????????????????????????????????????
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
+
 export default function SemiconductorDashboard({ data }: Props) {
   const { stage, signals, translation } = data
-  const [activeTab, setActiveTab]       = useState<'Master' | 'Engine' | 'Strategy'>('Engine')
-  const [selectedLayer, setSelectedLayer] = useState('L0')
+  const [activeTab, setActiveTab] = useState<'Master' | 'Engine' | 'Strategy'>('Engine')
 
   const engineScore    = stage.stage_score
   const strategyScore  = translation.soxl.suitability
@@ -85,29 +54,29 @@ export default function SemiconductorDashboard({ data }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-6 font-mono">
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-6 font-mono" style={{ fontFamily: DATA_FONT }}>
 
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-900 pb-6">
+      {/* ?? Header ???????????????????????????????????????????????????? */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-[18px] border-b border-slate-900 pb-6">
         <div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-[14px] flex-wrap">
             <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 tracking-tighter">
               SEMICONDUCTOR UNIFIED ENGINE
             </h1>
             {isDistortion && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-600 text-white animate-pulse">
+              <span className="px-2 py-0.5 rounded text-[11px] font-black bg-purple-600 text-white animate-pulse">
                 AI_DISTORTION
               </span>
             )}
             {stage.conflict_type === 'P1_OVERRIDE' && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-orange-600 text-white">
+              <span className="px-2 py-0.5 rounded text-[11px] font-black bg-orange-600 text-white">
                 P1_OVERRIDE
               </span>
             )}
           </div>
-          <p className="text-slate-500 text-[11px] mt-1 font-bold uppercase tracking-widest flex items-center gap-2">
+          <p className="text-slate-500 text-[11px] mt-1 font-bold uppercase tracking-widest flex items-center gap-[10px]" style={{ fontFamily: UI_FONT }}>
             <Clock size={12}/>
-            {stage.stage} STAGE · {stage.confidence} · {data.as_of}
+            {stage.stage} STAGE 쨌 {stage.confidence} 쨌 {data.as_of}
           </p>
         </div>
 
@@ -115,11 +84,11 @@ export default function SemiconductorDashboard({ data }: Props) {
         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
           {([
             { id: 'Master',   label: 'Master',         icon: <History size={13}/> },
-            { id: 'Engine',   label: 'Engine (L0-L7)', icon: <Zap size={13}/> },
+            { id: 'Engine',   label: 'Engine',          icon: <Zap size={13}/> },
             { id: 'Strategy', label: 'Strategy',        icon: <Target size={13}/> },
           ] as const).map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-[10px] px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === t.id
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-slate-500 hover:text-slate-300'
@@ -131,64 +100,18 @@ export default function SemiconductorDashboard({ data }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div>
 
-        {/* ── Left sidebar — L0-L7 ────────────────────────────────── */}
-        <div className="lg:col-span-3 space-y-2">
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2 mb-3">
-            Architecture Layers
-          </p>
+        {/* ?? Main viewport ?????????????????????????????????????????? */}
+        <div>
 
-          {LAYER_DEFS.map(layer => {
-            const active = selectedLayer === layer.id && activeTab === 'Engine'
-            return (
-              <div key={layer.id}
-                onClick={() => { setSelectedLayer(layer.id); setActiveTab('Engine') }}
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
-                  active
-                    ? 'bg-blue-600/10 border-blue-500/40 text-blue-400'
-                    : 'bg-slate-900/40 border-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
-                }`}>
-                <span className={active ? 'text-blue-400' : 'text-slate-600'}>{layer.icon}</span>
-                <div className="flex-1 overflow-hidden">
-                  <div className="text-[10px] font-black opacity-40 leading-none">{layer.id}</div>
-                  <div className="text-sm font-bold truncate">{layer.name}</div>
-                </div>
-                <ChevronRight size={11} className={active ? 'opacity-100' : 'opacity-0'} />
-              </div>
-            )
-          })}
-
-          {/* Cycle Stats card */}
-          <div className="mt-4 p-4 bg-slate-900/40 border border-slate-800 rounded-2xl">
-            <p className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-tighter">Cycle Stats</p>
-            <div className="space-y-2 text-[11px]">
-              {[
-                { label: 'Stage',      value: stage.stage,            color: 'text-blue-400' },
-                { label: 'Score',      value: `${engineScore} / 100`, color: 'text-emerald-400' },
-                { label: 'Confidence', value: stage.confidence,       color: 'text-amber-400' },
-                { label: 'SOXL',       value: `${strategyScore} / 100`, color: strategyScore >= 60 ? 'text-emerald-400' : strategyScore >= 40 ? 'text-amber-400' : 'text-red-400' },
-                { label: 'Tier 2',     value: signals.tier2_available ? 'Available' : 'Tier 1 only', color: 'text-slate-500' },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="flex justify-between items-center border-b border-slate-800/50 pb-1">
-                  <span className="text-slate-600">{label}</span>
-                  <span className={`font-bold ${color}`}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Main viewport ────────────────────────────────────────── */}
-        <div className="lg:col-span-9">
-
-          {/* TAB: Master — Super Cycle History */}
+          {/* TAB: Master ??Super Cycle History */}
           {activeTab === 'Master' && (
             <div className="space-y-6">
               <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-                <h3 className="text-xs font-black text-slate-100 flex items-center gap-2 uppercase tracking-tight mb-6">
+                <h3 className="text-xs font-black text-slate-100 flex items-center gap-[10px] uppercase tracking-tight mb-6">
                   <History size={14} className="text-emerald-400"/>
-                  Memory Super Cycles (2000–2026)
+                  Memory Super Cycles (2000??026)
                 </h3>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -198,7 +121,7 @@ export default function SemiconductorDashboard({ data }: Props) {
                       <YAxis stroke="#475569" fontSize={10} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={TOOLTIP_STYLE} />
                       <ReferenceArea x1="2020" x2="2026" fill="#3b82f6" fillOpacity={0.05}
-                        label={{ position: 'top', value: '4th Cycle (AI)', fill: '#3b82f6', fontSize: 10 }} />
+                        label={{ position: 'top', value: '4th Cycle (AI)', fill: '#3b82f6', fontSize: 11 }} />
                       <defs>
                         <linearGradient id="gradMaster" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.2}/>
@@ -211,7 +134,7 @@ export default function SemiconductorDashboard({ data }: Props) {
                   </ResponsiveContainer>
                 </div>
                 <p className="mt-4 text-[11px] text-slate-500 italic leading-relaxed border-l-2 border-slate-700 pl-3">
-                  역사적으로 주가는 펀더멘털보다 1~2분기 선행합니다. 현재 4차 슈퍼사이클은 AI 인프라 확장에 힘입어 과거 고점을 상회하는 매출 경로를 보여주고 있습니다.
+                  ??궗?곸쑝濡?二쇨?????붾찘?몃낫??1~2遺꾧린 ?좏뻾?⑸땲?? ?꾩옱 4李??덊띁?ъ씠?댁? AI ?명봽???뺤옣???섏엯??怨쇨굅 怨좎젏???곹쉶?섎뒗 留ㅼ텧 寃쎈줈瑜?蹂댁뿬二쇨퀬 ?덉뒿?덈떎.
                 </p>
               </div>
 
@@ -220,230 +143,53 @@ export default function SemiconductorDashboard({ data }: Props) {
             </div>
           )}
 
-          {/* TAB: Engine — L0-L7 layer view */}
+          {/* TAB: Engine */}
           {activeTab === 'Engine' && (
             <div className="space-y-6">
-              {/* Layer header */}
               <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-                <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-                  <div>
-                    <h3 className="text-xs font-black text-slate-100 uppercase tracking-tight flex items-center gap-2">
-                      {LAYER_DEFS.find(l => l.id === selectedLayer)?.icon}
-                      {selectedLayer}: {LAYER_DEFS.find(l => l.id === selectedLayer)?.name}
-                    </h3>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {LAYER_DEFS.find(l => l.id === selectedLayer)?.desc}
-                    </p>
-                  </div>
-                  <span className="px-3 py-1 bg-blue-600/10 border border-blue-500/20 rounded-full text-[10px] font-black text-blue-400">
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-[14px]">
+                  <h3 className="text-xs font-black text-slate-100 uppercase tracking-tight flex items-center gap-[10px]">
+                    <Zap size={14} className="text-blue-400"/>
+                    Cycle Engine
+                  </h3>
+                  <span className="px-3 py-1 bg-blue-600/10 border border-blue-500/20 rounded-full text-[11px] font-black text-blue-400">
                     ENGINE SCORE: {engineScore}
                   </span>
                 </div>
 
-                {/* L0: Cycle Overview → CycleHeader + CycleScoreChart */}
-                {selectedLayer === 'L0' && (
-                  <div className="space-y-4">
-                    <CycleHeader stage={stage} breadth={signals.breadth_state}
-                                 momentum={signals.momentum} summary={summary} />
-                    <CycleScoreChart currentScore={engineScore} currentStage={stage.stage}
-                                     conflictMode={stage.conflict_mode}
-                                     conflictType={stage.conflict_type ?? null} />
-                  </div>
-                )}
-
-                {/* L6: AI Infrastructure → Bucket charts */}
-                {selectedLayer === 'L6' && (
-                  <div className="space-y-4">
-                    <BucketPerfChart signals={signals} />
-                    <BucketRSChart currentPerf={signals.sub_bucket_perf} stage={stage.stage} />
-                  </div>
-                )}
-
-                {/* L7: Conflict/Risk → LeadersBreadth + CoreDriver */}
-                {selectedLayer === 'L7' && (
-                  <div className="space-y-4">
-                    <LeadersBreadthPanel signals={signals} />
-                    <CoreDriverPanel signals={signals} />
-                  </div>
-                )}
-
-                {/* L1-L5: Signal cards + simulated timeline */}
-                {['L1', 'L2', 'L3', 'L4', 'L5'].includes(selectedLayer) && (
-                  <div className="space-y-4">
-
-                    {/* ── L1: Supply / Demand ── */}
-                    {selectedLayer === 'L1' && (
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { label: 'Demand', value: signals.demand,
-                            color: signals.demand === 'STRONG' ? '#22c55e' : signals.demand === 'WEAK' ? '#ef4444' : '#94a3b8' },
-                          { label: 'Supply', value: signals.supply,
-                            color: signals.supply === 'STRONG' ? '#22c55e' : signals.supply === 'WEAK' ? '#ef4444' : '#94a3b8' },
-                          { label: 'Capex Signal', value: signals.capex_signal,
-                            color: signals.capex_signal === 'STRONG' || signals.capex_signal === 'EXPANDING' ? '#22c55e'
-                                 : signals.capex_signal === 'CONTRACTING' ? '#ef4444' : '#94a3b8' },
-                        ].map(c => (
-                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
-                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
-                          </div>
-                        ))}
-                        <div className="col-span-3 text-[10px] text-slate-600 mt-1">
-                          Capex Score: <span className="text-amber-500 font-bold">{signals.capex_score}</span> / 100
-                          &nbsp;·&nbsp; Breadth Score: <span className="text-blue-400 font-bold">{signals.breadth_score}</span> / 100
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ── L2: ASP / Spot / Memory ── */}
-                    {selectedLayer === 'L2' && (
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { label: 'Price State', value: signals.price,
-                            color: signals.price === 'RISING' ? '#22c55e' : signals.price === 'DECLINING' ? '#ef4444' : '#94a3b8' },
-                          { label: 'Memory Strength', value: signals.memory_strength,
-                            color: signals.memory_strength === 'STRONG' ? '#22c55e'
-                                 : signals.memory_strength === 'RECOVERING' ? '#38bdf8'
-                                 : signals.memory_strength === 'WEAK' ? '#ef4444' : '#94a3b8' },
-                          { label: 'Memory Score', value: `${signals.memory_score} / 100`,
-                            color: signals.memory_score >= 60 ? '#22c55e' : signals.memory_score >= 40 ? '#eab308' : '#ef4444' },
-                        ].map(c => (
-                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
-                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* ── L3: Margin proxies ── */}
-                    {selectedLayer === 'L3' && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { label: 'Momentum', value: signals.momentum,
-                            color: signals.momentum === 'ACCELERATING' ? '#22c55e'
-                                 : signals.momentum === 'DECELERATING' ? '#ef4444' : '#94a3b8' },
-                          { label: 'Momentum Score', value: `${signals.momentum_score} / 100`,
-                            color: signals.momentum_score >= 60 ? '#22c55e' : signals.momentum_score >= 40 ? '#eab308' : '#ef4444' },
-                          { label: 'Capex Score (Margin Proxy)', value: `${signals.capex_score} / 100`,
-                            color: signals.capex_score >= 60 ? '#22c55e' : signals.capex_score >= 40 ? '#eab308' : '#ef4444' },
-                          { label: 'Memory Score (Margin Proxy)', value: `${signals.memory_score} / 100`,
-                            color: signals.memory_score >= 60 ? '#22c55e' : signals.memory_score >= 40 ? '#eab308' : '#ef4444' },
-                        ].map(c => (
-                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
-                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
-                          </div>
-                        ))}
-                        <div className="col-span-2 text-[10px] text-slate-600 italic">* 실제 Gross/Op Margin 데이터 미연동 — 신호 기반 프록시 표시</div>
-                      </div>
-                    )}
-
-                    {/* ── L4: Inventory / Constraint ── */}
-                    {selectedLayer === 'L4' && (
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { label: 'Constraint Warning', value: signals.constraint_warning,
-                            color: signals.constraint_warning === 'LOW' ? '#22c55e'
-                                 : signals.constraint_warning === 'HIGH' ? '#ef4444'
-                                 : signals.constraint_warning === 'ELEVATED' ? '#f97316' : '#eab308' },
-                          { label: 'Constraint Score', value: `${signals.constraint_score} / 100`,
-                            color: signals.constraint_score <= 33 ? '#22c55e' : signals.constraint_score >= 67 ? '#ef4444' : '#eab308' },
-                          { label: 'Inv. Alert 1', value: translation.inv1_status,
-                            color: translation.inv1_status === 'TRIGGERED' ? '#ef4444' : '#22c55e' },
-                        ].map(c => (
-                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
-                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
-                          </div>
-                        ))}
-                        {translation.inv1_status === 'TRIGGERED' && (
-                          <div className="col-span-3 p-2 bg-red-500/5 border border-red-500/20 rounded-lg text-[11px] text-red-400 font-bold flex items-center gap-2">
-                            ⚠ INV-1 발동: NVDA-MU gap &gt; 15% — 메모리 수요 이탈 신호
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* ── L5: Valuation / Concentration ── */}
-                    {selectedLayer === 'L5' && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { label: 'Concentration', value: signals.concentration,
-                            color: signals.concentration === 'HIGH' ? '#ef4444'
-                                 : signals.concentration === 'ELEVATED' ? '#f97316'
-                                 : signals.concentration === 'MODERATE' ? '#eab308' : '#22c55e' },
-                          { label: 'Concentration Score', value: `${signals.concentration_score} / 100`,
-                            color: signals.concentration_score >= 60 ? '#ef4444' : signals.concentration_score >= 40 ? '#eab308' : '#22c55e' },
-                          { label: 'SOXX vs QQQ 60d', value: `${signals.soxx_vs_qqq_60d > 0 ? '+' : ''}${(signals.soxx_vs_qqq_60d * 100).toFixed(1)}%`,
-                            color: signals.soxx_vs_qqq_60d >= 0.05 ? '#22c55e' : signals.soxx_vs_qqq_60d <= -0.05 ? '#ef4444' : '#94a3b8' },
-                          { label: 'Breadth Score', value: `${signals.breadth_score} / 100`,
-                            color: signals.breadth_score >= 60 ? '#22c55e' : signals.breadth_score >= 40 ? '#eab308' : '#ef4444' },
-                        ].map(c => (
-                          <div key={c.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-                            <div className="text-[10px] text-slate-500 mb-1">{c.label}</div>
-                            <div className="text-sm font-black" style={{ color: c.color }}>{c.value}</div>
-                          </div>
-                        ))}
-                        <div className="col-span-2 text-[10px] text-slate-600 italic">* P/B·Forward P/E 실제 데이터 미연동 — 분산/집중도 기반 프록시 표시</div>
-                      </div>
-                    )}
-
-                    {/* Simulated timeline chart (common to L1-L5) */}
-                    <div className="h-[320px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={DAILY_DATA}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                          <XAxis dataKey="date" stroke="#475569" fontSize={10} interval={14} tickLine={false} />
-                          <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                          <Tooltip contentStyle={TOOLTIP_STYLE} />
-                          <ReferenceLine y={85} stroke="#ef4444" strokeDasharray="3 3"
-                            label={{ position: 'right', value: 'L0 Peak',   fill: '#ef4444', fontSize: 9 }} />
-                          <ReferenceLine y={65} stroke="#3b82f6" strokeDasharray="3 3"
-                            label={{ position: 'right', value: 'L1 Expand', fill: '#3b82f6', fontSize: 9 }} />
-                          <ReferenceLine y={45} stroke="#10b981" strokeDasharray="3 3"
-                            label={{ position: 'right', value: 'L2 Build',  fill: '#10b981', fontSize: 9 }} />
-                          <ReferenceLine y={25} stroke="#f59e0b" strokeDasharray="3 3"
-                            label={{ position: 'right', value: 'L3 Bottom', fill: '#f59e0b', fontSize: 9 }} />
-                          <ReferenceLine y={engineScore} stroke="#fff" strokeWidth={0.8} strokeDasharray="4 4"
-                            label={{ position: 'left', value: `NOW ${engineScore}`, fill: '#fff', fontSize: 10, fontWeight: 900 }} />
-                          {selectedLayer === 'L1' && <Bar dataKey="supply"    fill="#6366f1" opacity={0.4} barSize={14} name="Supply Index" />}
-                          {selectedLayer === 'L2' && <Line type="monotone" dataKey="price"     stroke="#ec4899" strokeWidth={2} dot={false} name="ASP/Spot" />}
-                          {selectedLayer === 'L3' && <Line type="monotone" dataKey="margin"    stroke="#10b981" strokeWidth={2} dot={false} name="Margin %" />}
-                          {selectedLayer === 'L4' && <Line type="monotone" dataKey="inventory" stroke="#f59e0b" strokeWidth={2} dot={false} strokeDasharray="5 3" name="Inventory Wks" />}
-                          {selectedLayer === 'L5' && <Line type="monotone" dataKey="score"     stroke="#a78bfa" strokeWidth={2} dot={false} name="Valuation Score" />}
-                          <defs>
-                            <linearGradient id="gradScore" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.15}/>
-                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={1.5}
-                                fill="url(#gradScore)" name="Engine Score" />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
+                <div className="space-y-4">
+                  <CycleHeader stage={stage} breadth={signals.breadth_state}
+                               momentum={signals.momentum} summary={summary} />
+                  <CycleScoreChart currentScore={engineScore} currentStage={stage.stage}
+                                   conflictMode={stage.conflict_mode}
+                                   conflictType={stage.conflict_type ?? null} />
+                </div>
               </div>
 
-              {/* Always-on education layer below */}
+              <LeadersBreadthPanel signals={signals} />
+              <CoreDriverPanel signals={signals} />
+
+              <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <BucketPerfChart signals={signals} />
+                <BucketRSChart currentPerf={signals.sub_bucket_perf} stage={stage.stage} />
+              </div>
+
               <EducationLayer beginner={translation.education_beginner}
                               advanced={translation.education_advanced} />
             </div>
           )}
 
-          {/* TAB: Strategy — SOXL Tactical */}
+          {/* TAB: Strategy ??SOXL Tactical */}
           {activeTab === 'Strategy' && (
             <div className="space-y-6">
               <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-                <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+                <div className="flex justify-between items-center mb-6 flex-wrap gap-[14px]">
                   <div>
-                    <h3 className="text-xs font-black text-slate-100 uppercase tracking-tight flex items-center gap-2">
+                    <h3 className="text-xs font-black text-slate-100 uppercase tracking-tight flex items-center gap-[10px]">
                       <Target size={14} className="text-orange-400"/>
                       SOXX / SOXL Tactical Strategy
                     </h3>
-                    <p className="text-[10px] text-slate-500 mt-1">AVOID 구간(0–40) 검출 및 분할 매수-매도 전략</p>
+                    <p className="text-[11px] text-slate-500 mt-1">AVOID 援ш컙(0??0) 寃異?諛?遺꾪븷 留ㅼ닔-留ㅻ룄 ?꾨왂</p>
                   </div>
                   <span className={`px-4 py-1 rounded-full text-[11px] font-black border ${
                     strategyScore <= 40
@@ -452,7 +198,7 @@ export default function SemiconductorDashboard({ data }: Props) {
                       ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                       : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                   }`}>
-                    {strategyScore <= 40 ? 'AVOID' : strategyScore <= 60 ? 'CAUTION' : 'ENTER'} · {strategyScore}/100
+                    {strategyScore <= 40 ? 'AVOID' : strategyScore <= 60 ? 'CAUTION' : 'ENTER'} 쨌 {strategyScore}/100
                   </span>
                 </div>
 
@@ -470,10 +216,10 @@ export default function SemiconductorDashboard({ data }: Props) {
               <ActionLayer translation={translation} />
 
               {strategyScore <= 40 && (
-                <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl flex items-start gap-3">
+                <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl flex items-start gap-[14px]">
                   <AlertTriangle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-red-400 font-bold">
-                    ALERT: 현재 타점 {strategyScore}점으로 AVOID 구간(0–40) 내에 위치. 공격적 매수는 지양하십시오.
+                    ALERT: ?꾩옱 ???{strategyScore}?먯쑝濡?AVOID 援ш컙(0??0) ?댁뿉 ?꾩튂. 怨듦꺽??留ㅼ닔??吏?묓븯??떆??
                   </p>
                 </div>
               )}
@@ -484,10 +230,9 @@ export default function SemiconductorDashboard({ data }: Props) {
       </div>
 
       <div className="mt-8 pt-4 border-t border-slate-900 flex justify-between items-center text-[11px] text-slate-700">
-        <span>Updated: {data.as_of} · Tier 2: {signals.tier2_available ? 'Available (delayed)' : 'Tier 1 only'}</span>
+        <span>Updated: {data.as_of} 쨌 Tier 2: {signals.tier2_available ? 'Available (delayed)' : 'Tier 1 only'}</span>
         <a href="/soxx-soxl" className="text-blue-600 hover:text-blue-400 transition-colors">
-          Screen B standalone →
-        </a>
+          Screen B standalone ??        </a>
       </div>
     </div>
   )

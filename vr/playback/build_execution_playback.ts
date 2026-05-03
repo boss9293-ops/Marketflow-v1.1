@@ -1,4 +1,4 @@
-import type { EventReplayCycle } from '../types/event_replay_cycle'
+﻿import type { EventReplayCycle } from '../types/event_replay_cycle'
 import {
   computeMode,
   computeMacroState,
@@ -70,9 +70,9 @@ export type ExecutionPlaybackBuildOptions = {
   enableMacroGating?: boolean  // v1.5: enable CRISIS/macro policy layer (default: true)
 }
 
-// ── VR V4: P/V → 상승률 테이블 ──────────────────────────────────────────────
-// 출처: vrGValueStrategy.ts (동일 테이블)
-// [P/V, 평가금<V 상승률, 평가금>V 상승률]  보간 없음 — floor 사용
+// ?? VR V4: P/V ???곸듅瑜??뚯씠釉???????????????????????????????????????????????
+// 異쒖쿂: vrGValueStrategy.ts (?숈씪 ?뚯씠釉?
+// [P/V, ?됯?湲?V ?곸듅瑜? ?됯?湲?V ?곸듅瑜?  蹂닿컙 ?놁쓬 ??floor ?ъ슜
 const PV_RATE_TABLE: ReadonlyArray<readonly [number, number, number]> = [
   [0.00, 1.000, 1.001],
   [0.01, 1.001, 1.005],
@@ -108,6 +108,22 @@ function lookupPvRate(pv: number, evalBelowV: boolean): number {
     else break
   }
   return evalBelowV ? row[1] : row[2]
+}
+
+const VREF_EXTRA_RISE = 0.005
+
+function computeNextVref(
+  currentVref: number,
+  poolCash: number,
+  evalAtReset: number,
+  gValue: number,
+) {
+  if (currentVref <= 0) return evalAtReset
+
+  const poolRatio = poolCash > 0 ? poolCash / currentVref : 0
+  const baseRise = poolRatio / gValue
+  const extraRise = evalAtReset >= currentVref ? VREF_EXTRA_RISE : 0
+  return currentVref * (1 + baseRise + extraRise)
 }
 
 
@@ -798,7 +814,7 @@ function buildMarketStructurePlayback(event: ExecutionPlaybackSource): MarketStr
       end_date: event.end,
     },
     // Breach detection uses DB QQQ vs QQQ MA200 (source of truth), not locally-computed TQQQ MA200.
-    // qqq_n and ma200_n are on the same normalized scale — breach = qqq_n < ma200_n.
+    // qqq_n and ma200_n are on the same normalized scale ??breach = qqq_n < ma200_n.
     breach_points: rows
       .map((row, i) => ({ row, point: event.chart_data[i] }))
       .filter(({ row, point }) =>
@@ -1050,8 +1066,8 @@ function buildVariant(
   let buyReferenceShares = initialState.initial_share_count
   let cycleBasePortfolio = initialCapital
   let cycleBaseEvaluation = initialState.initial_share_count * basePrice
-  let cycleVref = cycleBaseEvaluation  // VR V4: P/V 테이블 기반 Vref
-  const G_VALUE = 10                   // VR V4: G=10 보수성 배수
+  let cycleVref = cycleBaseEvaluation  // VR V4: P/V ?뚯씠釉?湲곕컲 Vref
+  const G_VALUE = 10                   // VR V4: G=10 蹂댁닔??諛곗닔
   let cycleBasePrice = basePrice
   let activeCyclePoolUsedPct = 0
   let activeCycleBlockedBuyCount = 0
@@ -1089,7 +1105,7 @@ function buildVariant(
       defenseTriggered = false
       nextBuyLevelNo = 1
       if (cycle) {
-        // Only update base values when entering a valid cycle — not in the post-event period
+        // Only update base values when entering a valid cycle ??not in the post-event period
         // (where findCycle returns null). Without this guard, post-event points reset
         // cycleBaseEvaluation daily as TQQQ recovers, making vref/vmin/vmax shoot back up
         // to old high values, creating the "previous data comes back" visual tangling.
@@ -1097,20 +1113,10 @@ function buildVariant(
         cycleBaseEvaluation = shares * assetPrice
         cycleBasePrice = assetPrice
         buyReferenceShares = shares
-        // VR V4: P/V 테이블로 Vref 갱신 + ratchet
-        // ratchet: 평가금이 Vref를 초과하면 밴드도 따라 올라감
-        // (Cycle View는 cycleBaseEvaluation으로 집계하므로 동일 결과)
-        const _pvRatio = cycleVref > 0 ? poolCash / (G_VALUE * cycleVref) : 0
-        const _evalBelowV = cycleBaseEvaluation < cycleVref
-        const _rate = lookupPvRate(_pvRatio, _evalBelowV)
-        // VR V4 ratchet:
-        //   crash (eval<Vref):    snap down to cycle-start eval (밴드가 평가금 추적)
-        //   normal/recovery:      ratchet up via P/V rate
-        cycleVref = cycleVref <= 0
-          ? cycleBaseEvaluation
-          : _evalBelowV
-            ? cycleBaseEvaluation
-            : Math.max(cycleVref * _rate, cycleBaseEvaluation)
+        // VR V4: P/V ?뚯씠釉붾줈 Vref 媛깆떊 + ratchet
+        // ratchet: ?됯?湲덉씠 Vref瑜?珥덇낵?섎㈃ 諛대뱶???곕씪 ?щ씪媛?
+        // (Cycle View??cycleBaseEvaluation?쇰줈 吏묎퀎?섎?濡??숈씪 寃곌낵)
+        cycleVref = computeNextVref(cycleVref, poolCash, cycleBaseEvaluation, G_VALUE)
       }
     }
     else {
@@ -1129,8 +1135,8 @@ function buildVariant(
     let triggerSource: 'evaluation_vmax_gate' | 'representative_sell_ladder' | 'defense_reduction' | 'buy_vmin_recovery' | 'cycle_cap_block' | null = null
     let ladderLevelHit: number | null = null
     const preTradeEvaluationValue = Number((shares * assetPrice).toFixed(2))
-    const preTradeVminEval = Number((cycleVref * 0.85).toFixed(2))  // VR V4: cycleVref 기준
-    const preTradeVmaxEval = Number((cycleVref * 1.15).toFixed(2))  // VR V4: cycleVref 기준
+    const preTradeVminEval = Number((cycleVref * 0.85).toFixed(2))  // VR V4: cycleVref 湲곗?
+    const preTradeVmaxEval = Number((cycleVref * 1.15).toFixed(2))  // VR V4: cycleVref 湲곗?
     const sellGateOpen = preTradeEvaluationValue >= preTradeVmaxEval
 
     // Dynamic buy logic:
@@ -1155,7 +1161,7 @@ function buildVariant(
     // Execute buys: loop to handle multiple level triggers if price drops far in one day
     let buyAttempts = 0
     while (buysAllowed && poolCash > 0 && shares > 0 && buyAttempts < 10) {
-      const vminNow = cycleVref * 0.85  // VR V4: cycleVref 기준
+      const vminNow = cycleVref * 0.85  // VR V4: cycleVref 湲곗?
       const isFirstLevel = nextBuyLevelNo === 1
       const evalValue = shares * assetPrice
       const buyBasePriceNow = buyReferenceShares > 0 ? vminNow / buyReferenceShares : 0
@@ -1340,7 +1346,7 @@ function buildVariant(
     const portfolioValue = Number((evaluationValue + poolCash).toFixed(2))
     const evaluationNormalized = normalizeValue(evaluationValue, cycleBaseEvaluation || 1)
     const portfolioNormalized = normalizeValue(portfolioValue, initialCapital)
-    const vrefEval = Number(cycleVref.toFixed(2))  // VR V4: cycleVref 기준
+    const vrefEval = Number(cycleVref.toFixed(2))  // VR V4: cycleVref 湲곗?
     const vminEval = Number((cycleVref * 0.85).toFixed(2))
     const vmaxEval = Number((cycleVref * 1.15).toFixed(2))
     const vrefLine = normalizeValue(cycleBasePortfolio, initialCapital)
@@ -1565,12 +1571,12 @@ function buildVariant(
 
 
 // =============================================================================
-// VR Original V2 — FROZEN BENCHMARK ENGINE. DO NOT MODIFY.
+// VR Original V2 ??FROZEN BENCHMARK ENGINE. DO NOT MODIFY.
 // engine_id = "vr_original_v2"
 //
 // Rules (strict):
-//   BUY:    price <= Vmin (L1 eval breach only — no ladder, no delay, no guard)
-//   DEPLOY: 50% of pool_remaining per buy (remaining 기준, NOT initial_pool * 20%)
+//   BUY:    price <= Vmin (L1 eval breach only ??no ladder, no delay, no guard)
+//   DEPLOY: 50% of pool_remaining per buy (remaining 湲곗?, NOT initial_pool * 20%)
 //   SELL:   disabled (same as current original baseline)
 //   RESET:  cycle-based reset (same as original)
 //
@@ -1700,7 +1706,7 @@ function buildVariantVrOriginalV2(
     const stateBefore = previousState
     const cycle = findCycle(event.cycle_framework.cycles, point.date)
 
-    // Cycle reset — same logic as original
+    // Cycle reset ??same logic as original
     if (cycle?.cycle_no !== currentCycleNo) {
       currentCycleNo = cycle?.cycle_no ?? null
       dayInCycle = 1
@@ -1728,13 +1734,13 @@ function buildVariantVrOriginalV2(
 
     // -----------------------------------------------------------------------
     // BUY RULE (STRICT): price <= Vmin only
-    // DEPLOY:            50% of pool_remaining (remaining 기준)
+    // DEPLOY:            50% of pool_remaining (remaining 湲곗?)
     // NO state machine, NO guard, NO delay, NO energy
     // -----------------------------------------------------------------------
     const vminNow = cycleBaseEvaluation * 0.85
     const evalValue = shares * assetPrice
 
-    // BUY: eval breach → price <= Vmin
+    // BUY: eval breach ??price <= Vmin
     const buySignal = poolCash > 0 && evalValue <= vminNow
 
     if (buySignal) {
@@ -1784,7 +1790,7 @@ function buildVariantVrOriginalV2(
       }
     }
 
-    // SELL: disabled — same as current Original baseline
+    // SELL: disabled ??same as current Original baseline
     // const sellSignal = false
 
     const evaluationValue = Number((shares * assetPrice).toFixed(2))
@@ -2011,7 +2017,7 @@ function buildVariantVrOriginalV2(
   }
 }
 
-// vFinal Crash Engine — DD5/DD10 crash detection, MA250 armed sell, ATH-based Vmin ladder, MA200 mop-up
+// vFinal Crash Engine ??DD5/DD10 crash detection, MA250 armed sell, ATH-based Vmin ladder, MA200 mop-up
 function buildVariantExplainableVRV1(
   event: ExecutionPlaybackSource,
   capOption: { key: CyclePoolCapOption; pct: number | null; label: string },
@@ -2136,7 +2142,7 @@ function buildVariantExplainableVRV1(
   let explainableStateDays = 0
   let explainableDelayCounter = 0
   let explainablePartialEntryStage = 0
-  let snapbackPreentryFired = false    // v1.3: PREENTRY 1회 제한용 per-state-entry 플래그
+  let snapbackPreentryFired = false    // v1.3: PREENTRY 1???쒗븳??per-state-entry ?뚮옒洹?
   let crashLowPrice = tqqqPrices[0] ?? basePrice
   let crashLowIndex = 0
   let stateZoneStart = event.chart_data[0]?.date ?? event.start
@@ -2272,7 +2278,7 @@ function buildVariantExplainableVRV1(
       } else if (nextState === 'NORMAL') {
         explainableDelayCounter = 0
         explainablePartialEntryStage = 0
-        snapbackPreentryFired = false   // NORMAL 복개 시만 reset (새 에피소드 비슷한 환경)
+        snapbackPreentryFired = false   // NORMAL 蹂듦컻 ?쒕쭔 reset (???먰뵾?뚮뱶 鍮꾩듂???섍꼍)
         crashLowPrice = assetPrice
         crashLowIndex = i
       }
@@ -2437,7 +2443,7 @@ function buildVariantExplainableVRV1(
     const vminBreach = isFirstLevel ? preTradeEvaluationValue <= vminEvaluation : nextLevelPrice != null && assetPrice <= nextLevelPrice
 
     // =========================================================================
-    // v1.5 MACRO POLICY LAYER — NORMAL / CRISIS mode + macro_state
+    // v1.5 MACRO POLICY LAYER ??NORMAL / CRISIS mode + macro_state
     // =========================================================================
     const v15Mode: VRMode = computeMode(assetPrice, ma200)
     const v15ModeDays = prevMode === v15Mode ? prevModeDays + 1 : 1
@@ -2460,26 +2466,26 @@ function buildVariantExplainableVRV1(
       ma200Slope: v15Ma200Slope,
     })
 
-    // CRISIS gate 변수 — NORMAL mode에서는 모두 비활성
-    let v15HeadwindL1Block = false    // HEADWIND: L1 buy 차단
-    let v15SnapbackCap = 1.0          // HEADWIND: snapback factor cap (default 1.0 = 무제한)
-    let v15PreentryBlocked = false    // HEADWIND: preentry 차단
+    // CRISIS gate 蹂????NORMAL mode?먯꽌??紐⑤몢 鍮꾪솢??
+    let v15HeadwindL1Block = false    // HEADWIND: L1 buy 李⑤떒
+    let v15SnapbackCap = 1.0          // HEADWIND: snapback factor cap (default 1.0 = 臾댁젣??
+    let v15PreentryBlocked = false    // HEADWIND: preentry 李⑤떒
     let v15MacroGateApplied = false
 
     if (v15Mode === 'CRISIS') {
       if (v15MacroState === 'POLICY_HEADWIND') {
-        v15HeadwindL1Block = true     // L1 차단 (L2/L3만)
-        v15SnapbackCap = 0.6          // snapback factor 최대 0.6
-        v15PreentryBlocked = true     // preentry 차단
+        v15HeadwindL1Block = true     // L1 李⑤떒 (L2/L3留?
+        v15SnapbackCap = 0.6          // snapback factor 理쒕? 0.6
+        v15PreentryBlocked = true     // preentry 李⑤떒
         v15MacroGateApplied = true
       } else if (v15MacroState === 'PIVOT_WATCH') {
-        // L1/L2 허용, snapback 정상, preentry 허용 → gate 없음
+        // L1/L2 ?덉슜, snapback ?뺤긽, preentry ?덉슜 ??gate ?놁쓬
         v15MacroGateApplied = false
       } else if (v15MacroState === 'POLICY_TAILWIND') {
-        // 모든 캡 제거, 공격적 축적 허용 → gate 없음
+        // 紐⑤뱺 罹??쒓굅, 怨듦꺽??異뺤쟻 ?덉슜 ??gate ?놁쓬
         v15MacroGateApplied = false
       }
-      // NEUTRAL: v1.3 그대로
+      // NEUTRAL: v1.3 洹몃?濡?
     }
     // v1.3 baseline: disable macro gating
     if (!enableMacroGating) {
@@ -2491,16 +2497,16 @@ function buildVariantExplainableVRV1(
 
     // =========================================================================
     // v1.2 SELECTIVE POOL PRESERVATION
-    // EARLY BLOCK: NORMAL/WARNING + energy_score != LOW → buy 차단
-    // SNAPBACK TRIGGER: rebound_from_low >= 0.10 → early block 강제 해제
+    // EARLY BLOCK: NORMAL/WARNING + energy_score != LOW ??buy 李⑤떒
+    // SNAPBACK TRIGGER: rebound_from_low >= 0.10 ??early block 媛뺤젣 ?댁젣
     // =========================================================================
-    const snapbackTriggered = reboundFromLow >= 0.07  // snapback override (임계값 낮춤: 0.10→0.07)
+    const snapbackTriggered = reboundFromLow >= 0.07  // snapback override (?꾧퀎媛???땄: 0.10??.07)
     const earlyBlocked =
       (explainableState === 'NORMAL' || explainableState === 'WARNING') &&
-      (energyScore as string) === 'HIGH' &&   // HIGH일 때만 차단 (MED는 허용)
-      !snapbackTriggered             // snapback이면 차단 해제
+      (energyScore as string) === 'HIGH' &&   // HIGH???뚮쭔 李⑤떒 (MED???덉슜)
+      !snapbackTriggered             // snapback?대㈃ 李⑤떒 ?댁젣
 
-    // v1.5: HEADWIND L1 추가 차단
+    // v1.5: HEADWIND L1 異붽? 李⑤떒
     const headwindL1BlockActive = v15HeadwindL1Block && nextBuyLevelNo === 1
 
     const normalWarningBuySignal =
@@ -2508,17 +2514,17 @@ function buildVariantExplainableVRV1(
       (explainableState === 'NORMAL' || explainableState === 'WARNING') &&
       poolCash > 0 &&
       vminBreach &&
-      !earlyBlocked &&               // early block 적용
+      !earlyBlocked &&               // early block ?곸슜
       !headwindL1BlockActive         // v1.5 HEADWIND L1 block
 
     if (normalWarningBuySignal) {
       buySignal = true
       // -----------------------------------------------------------------------
-      // v1.2 position_size_factor (v1.1과 동일 우선순위)
-      // 1. STRONG_RECOVERY → 1.0
-      // 2. SNAPBACK         → 0.8
-      // 3. BASE             → 0.5
-      // 4. DEFENSIVE        → 0.25
+      // v1.2 position_size_factor (v1.1怨??숈씪 ?곗꽑?쒖쐞)
+      // 1. STRONG_RECOVERY ??1.0
+      // 2. SNAPBACK         ??0.8
+      // 3. BASE             ??0.5
+      // 4. DEFENSIVE        ??0.25
       // -----------------------------------------------------------------------
       let positionSizeFactor = 0.5 // BASE
       let sizeSuffix = ''
@@ -2527,14 +2533,14 @@ function buildVariantExplainableVRV1(
         positionSizeFactor = 1.0
         sizeSuffix = '_STRONG_RECOVERY'
       } else if (snapbackTriggered) {
-        // SNAPBACK: factor 계산 후 v1.5 HEADWIND cap 적용
-        positionSizeFactor = Math.min(1.0, v15SnapbackCap)  // v1.5: HEADWIND 구간엔 0.6 cap
+        // SNAPBACK: factor 怨꾩궛 ??v1.5 HEADWIND cap ?곸슜
+        positionSizeFactor = Math.min(1.0, v15SnapbackCap)  // v1.5: HEADWIND 援ш컙??0.6 cap
         sizeSuffix = v15SnapbackCap < 1.0 ? '_SNAPBACK_HEADWIND_CAP' : '_SNAPBACK'
       } else if ((energyScore as string) === 'HIGH' || (retestRisk as string) === 'HIGH') {
         positionSizeFactor = 0.25
         sizeSuffix = '_DEFENSIVE'
       }
-      // WARNING 상태: 최대 BASE(0.5) 캡
+      // WARNING ?곹깭: 理쒕? BASE(0.5) 罹?
       if (explainableState === 'WARNING' && positionSizeFactor > 0.5) {
         positionSizeFactor = 0.5
         sizeSuffix = sizeSuffix ? `${sizeSuffix}_WARNING_CAP` : ''
@@ -2578,8 +2584,8 @@ function buildVariantExplainableVRV1(
     // =========================================================================
     // v1.3 SNAPBACK_PREENTRY micro trigger
     // condition: BOTTOM_WATCH or RE_ENTRY + rebound >= 0.04 + dd3 > 0 + energy != HIGH
-    // 목적: 0.07 본 trigger 전 선제 소량 진입 (타이밍 앞당김)
-    // safety: energy HIGH → 금지 / retest_risk HIGH → factor 최대 0.5
+    // 紐⑹쟻: 0.07 蹂?trigger ???좎젣 ?뚮웾 吏꾩엯 (??대컢 ?욌떦源)
+    // safety: energy HIGH ??湲덉? / retest_risk HIGH ??factor 理쒕? 0.5
     // =========================================================================
     } else if (
       (explainableState === 'BOTTOM_WATCH' || explainableState === 'RE_ENTRY') &&
@@ -2588,13 +2594,13 @@ function buildVariantExplainableVRV1(
       (energyScore as string) !== 'HIGH' &&
       poolCash > 0 &&
       !tradeExecuted &&
-      !snapbackPreentryFired &&         // state 진입 이후 1회만 실행
-      !v15PreentryBlocked               // v1.5: HEADWIND 구간 preentry 차단
+      !snapbackPreentryFired &&         // state 吏꾩엯 ?댄썑 1?뚮쭔 ?ㅽ뻾
+      !v15PreentryBlocked               // v1.5: HEADWIND 援ш컙 preentry 李⑤떒
     ) {
       buySignal = true
       let preFactor = 0.5  // base preentry factor
       let preSuffix = '_SNAPBACK_PREENTRY'
-      // retest_risk HIGH이면 factor 최대 0.5 캡
+      // retest_risk HIGH?대㈃ factor 理쒕? 0.5 罹?
       if ((retestRisk as string) === 'HIGH') {
         preFactor = Math.min(preFactor, 0.5)
         preSuffix = '_SNAPBACK_PREENTRY_RETESTCAP'
@@ -2603,7 +2609,7 @@ function buildVariantExplainableVRV1(
       const preReason = `Explainable VR snapback pre-entry${preSuffix} [factor=${preFactor}]`
       const preStage = preFactor >= 0.5 ? 2 : 1
       executeExplainableBuy(preDesiredSpend, preReason, 'SNAPBACK_ENTRY' as ExplainableVRReasonCode, 4)
-      snapbackPreentryFired = true      // 이 state-entry에서 더 이상 발화 금지
+      snapbackPreentryFired = true      // ??state-entry?먯꽌 ???댁긽 諛쒗솕 湲덉?
       if (explainablePartialEntryStage < preStage) {
         explainablePartialEntryStage = preStage
       }
@@ -2987,7 +2993,7 @@ function buildVariantVFinal(
   let vfState: VFState = 'NORMAL'
   let armedDays = 0
   let crashCooldown = 0
-  // Re-entry flags — reset on each crash episode
+  // Re-entry flags ??reset on each crash episode
   let vmin1Done = false  // price <= ATH * 0.60
   let vmin2Done = false  // price <= ATH * 0.50
   let vmin3Done = false  // price <= ATH * 0.40
@@ -3118,15 +3124,8 @@ function buildVariantVFinal(
         // Portfolio value at cycle start = V-band reference
         cycleBasePortfolio = Number((shares * assetPrice + poolCash).toFixed(2))
         cycleBaseEvaluation = Number((shares * assetPrice).toFixed(2))
-        // VR V4 ratchet: crash → snap to eval, recovery → P/V rate
-        const _pvRatio = cycleVref > 0 ? poolCash / (G_VALUE * cycleVref) : 0
-        const _evalBelowV = cycleBaseEvaluation < cycleVref
-        const _rate = lookupPvRate(_pvRatio, _evalBelowV)
-        cycleVref = cycleVref <= 0
-          ? cycleBaseEvaluation
-          : _evalBelowV
-            ? cycleBaseEvaluation
-            : Math.max(cycleVref * _rate, cycleBaseEvaluation)
+        // VR V4 ratchet: crash ??snap to eval, recovery ??P/V rate
+        cycleVref = computeNextVref(cycleVref, poolCash, cycleBaseEvaluation, G_VALUE)
       }
     } else {
       dayInCycle += 1
@@ -3593,7 +3592,7 @@ function buildVariantVFinal(
       return false
     }
 
-    // ── NORMAL: crash detection ──
+    // ?? NORMAL: crash detection ??
     if (vfState === 'NORMAL' && crashCooldown === 0) {
       const ma200Gate = ma200 != null && assetPrice <= ma200 * 1.05
       const crashTrigger = dd5 <= -0.10 && dd10 <= -0.18 && ma200Gate
@@ -3605,7 +3604,7 @@ function buildVariantVFinal(
         }
         const ma250Retest = ma250 != null && assetPrice >= ma250 * 0.995
         if (ma250Retest) {
-          // Immediate sell — price at or above MA250
+          // Immediate sell ??price at or above MA250
           if (shares > 0) {
             const sharesToSell = shares
             const evalAtSell = Number((sharesToSell * assetPrice).toFixed(2))
@@ -3616,7 +3615,7 @@ function buildVariantVFinal(
             vfState = 'EXIT_DONE'
             postExitCooldown = 5
             ma200Done = false
-            tradeReason = 'vFinal crash exit — MA250 retest immediate'
+            tradeReason = 'vFinal crash exit ??MA250 retest immediate'
             stateAfterTrade = 'sell_executed'
             tradeExecuted = true
             tradeType = 'sell'
@@ -3630,7 +3629,7 @@ function buildVariantVFinal(
               normalized_value: normalizeValue(assetPrice, basePrice),
               cycle_no: currentCycleNo ?? 0,
               title: 'Crash Exit',
-              reason: 'vFinal: DD5/DD10 crash + MA250 retest — 100% sell',
+              reason: 'vFinal: DD5/DD10 crash + MA250 retest ??100% sell',
               marker_type: 'sell',
               trigger_source: 'representative_sell_ladder',
               ladder_level_hit: 1,
@@ -3652,7 +3651,7 @@ function buildVariantVFinal(
             ma200Done = false
           }
         } else {
-          // ARMED — wait for MA250 retest
+          // ARMED ??wait for MA250 retest
           vfState = 'ARMED'
           armedDays = 0
           dbg_armedEnterCount += 1
@@ -3671,20 +3670,20 @@ function buildVariantVFinal(
       }
     }
 
-    // ── ARMED: short-validity crash sell signal (15 trading days) ──
+    // ?? ARMED: short-validity crash sell signal (15 trading days) ??
     // Sell only on weak-rebound MA250 retest while crash signal is still active.
     // Cancel (no sell) if crash eases (recovery confirmation) or signal times out.
     else if (vfState === 'ARMED') {
       armedDays += 1
       dbg_armedDaysAccum += 1
 
-      // Recovery confirmation → both dd5 AND dd10 must recover (AND, not OR)
+      // Recovery confirmation ??both dd5 AND dd10 must recover (AND, not OR)
       const crashRecovered = dd5 > -0.05 && dd10 > -0.10
-      // Timeout → stale signal → expire silently, no forced sell (15d)
+      // Timeout ??stale signal ??expire silently, no forced sell (15d)
       const signalExpired = armedDays >= 15
 
       if (crashRecovered || signalExpired) {
-        // Signal expired — return to NORMAL without any trade
+        // Signal expired ??return to NORMAL without any trade
         if (crashRecovered) dbg_cancelByRecovery += 1
         else dbg_cancelByTimeout += 1
         dbg_armedExitCount += 1
@@ -3709,7 +3708,7 @@ function buildVariantVFinal(
             poolCash = Number((poolCash + cashAdded).toFixed(2))
             shares = 0
             avgCost = 0
-            tradeReason = 'vFinal armed sell — MA250 retest (weak rebound)'
+            tradeReason = 'vFinal armed sell ??MA250 retest (weak rebound)'
             stateAfterTrade = 'sell_executed'
             tradeExecuted = true
             tradeType = 'sell'
@@ -3748,9 +3747,9 @@ function buildVariantVFinal(
       }
     }
 
-    // ── EXIT_DONE: Vmin ATH ladder then MA200 mop-up ──
+    // ?? EXIT_DONE: Vmin ATH ladder then MA200 mop-up ??
     else if (vfState === 'EXIT_DONE' && postExitCooldown === 0) {
-      // Layer 1 — three Vmin tranches at ATH fractions
+      // Layer 1 ??three Vmin tranches at ATH fractions
       const vminLevels = [
         { done: vmin1Done, fraction: 0.60, label: 'Vmin -40% ATH', levelNo: 1 },
         { done: vmin2Done, fraction: 0.50, label: 'Vmin -50% ATH', levelNo: 2 },
@@ -3758,7 +3757,7 @@ function buildVariantVFinal(
       ]
       handleGuardedVminLevels(vminLevels)
 
-      // Layer 3 — MA200 mop-up (buy all remaining cash when price recovers above MA200)
+      // Layer 3 ??MA200 mop-up (buy all remaining cash when price recovers above MA200)
       if (!ma200Done && ma200 != null && assetPrice >= ma200 && poolCash >= 1) {
         const spend = poolCash
         const newShares = Math.floor(spend / assetPrice)
@@ -3776,7 +3775,7 @@ function buildVariantVFinal(
           structuralState = 'NONE'
           stressStartDate = null
           resetGuardState()
-          tradeReason = 'vFinal MA200 mop-up — full re-entry'
+          tradeReason = 'vFinal MA200 mop-up ??full re-entry'
           stateAfterTrade = 'buy_executed'
           tradeExecuted = true
           tradeType = 'buy'
@@ -3791,7 +3790,7 @@ function buildVariantVFinal(
             normalized_value: normalizeValue(assetPrice, basePrice),
             cycle_no: currentCycleNo ?? 0,
             title: 'MA200 Re-entry',
-            reason: 'vFinal: price crosses MA200 — buy all remaining cash',
+            reason: 'vFinal: price crosses MA200 ??buy all remaining cash',
             marker_type: 'buy',
             trigger_source: 'buy_vmin_recovery',
             ladder_level_hit: 4,
@@ -3815,7 +3814,7 @@ function buildVariantVFinal(
 
     // Track B: Structural state update (WO60-B hybrid macro+internal+persistence+AI scoring)
     {
-      // ── Macro flags (from MSS score + QQQ trend signals) ──
+      // ?? Macro flags (from MSS score + QQQ trend signals) ??
       const mssScore = typeof point.score === 'number' ? point.score : 100
       const mssLevel = typeof point.level === 'number' ? point.level : 0
       const qqqN   = typeof point.qqq_n   === 'number' ? point.qqq_n   : 100
@@ -3831,7 +3830,7 @@ function buildVariantVFinal(
         Number(liquidityTightening) + Number(creditStress) +
         Number(financialConditionsTight) + Number(growthScare) + Number(policyPressure)
 
-      // ── Internal flags ──
+      // ?? Internal flags ??
       const breadthWeak        = ma200N > 0 && qqqN < ma200N
       const reboundFailure     = crashEpisodeDays > 30
       const trendBroken        = ma200N > 0 && qqqN < ma200N * 0.97
@@ -3841,7 +3840,7 @@ function buildVariantVFinal(
         Number(breadthWeak) + Number(reboundFailure) +
         Number(trendBroken) + Number(volPersistent) + Number(leverageWeakness)
 
-      // ── Persistence score ──
+      // ?? Persistence score ??
       // Note: persistenceScore >= 3 requires ep > 20d (gates premature escalation)
       //       persistenceScore >= 4 requires ep > 40d (gates CRASH entry)
       const persistenceScore =
@@ -3851,7 +3850,7 @@ function buildVariantVFinal(
         Number(crashEpisodeDays > 60) +
         Number(dd10 < -0.08)
 
-      // ── AI assessment (rule-based simulation — no live API call in playback loop) ──
+      // ?? AI assessment (rule-based simulation ??no live API call in playback loop) ??
       const totalScore = macroScore + internalScore + persistenceScore
       const aiAssessment: string =
         totalScore >= 12 || (macroScore >= 4 && internalScore >= 4) ? 'structural_crash_candidate' :
@@ -3863,7 +3862,7 @@ function buildVariantVFinal(
       const severeDamage = dd10 < -0.30 || athDD < -0.30
       const prevStructural = structuralState
 
-      // ── Upgrade transitions (episode-driven; elif prevents same-day multi-level jumps) ──
+      // ?? Upgrade transitions (episode-driven; elif prevents same-day multi-level jumps) ??
       if (crashEpisodeStartDate !== null) {
         crashEpisodeDays += 1
 
@@ -3904,7 +3903,7 @@ function buildVariantVFinal(
         }
       }
 
-      // ── Downgrade logic: sustained improvement window (15 days) ──
+      // ?? Downgrade logic: sustained improvement window (15 days) ??
       const structuralImproving =
         macroScore <= 1 &&
         internalScore <= 2 &&
@@ -3922,7 +3921,7 @@ function buildVariantVFinal(
         sustainedImprovementDays = 0
       }
 
-      // ── Log state transitions ──
+      // ?? Log state transitions ??
       if (structuralState !== prevStructural) {
         dbg_structuralTransitions.push({
           date: point.date,
@@ -3944,7 +3943,7 @@ function buildVariantVFinal(
     const poolUsedPct = initialCapital > 0
       ? Number(((cumulativePoolSpent / initialCapital) * 100).toFixed(2))
       : 0
-    // V-band: cycleVref 기반 (VR V4, buildVariant와 동일 로직)
+    // V-band: cycleVref 湲곕컲 (VR V4, buildVariant? ?숈씪 濡쒖쭅)
     const vrefEval = Number(cycleVref.toFixed(2))
     const vminEval = Number((cycleVref * 0.85).toFixed(2))
     const vmaxEval = Number((cycleVref * 1.15).toFixed(2))
@@ -4057,7 +4056,7 @@ function buildVariantVFinal(
     previousState = stateAfterTrade
   })
 
-  // ── vFinal ARMED debug log ──
+  // ?? vFinal ARMED debug log ??
   const avgArmedDays = dbg_armedExitCount > 0
     ? Number((dbg_armedDaysAccum / dbg_armedExitCount).toFixed(1))
     : dbg_armedDaysAccum
@@ -4277,12 +4276,12 @@ export function buildComparisonView(
     {
       label: 'Buy Logic',
       original_value: 'Mechanical cycle-grid deployment',
-      scenario_value: 'vFinal: ATH-based Vmin ladder (−40/−50/−60%) + MA200 full re-entry',
+      scenario_value: 'vFinal: ATH-based Vmin ladder (??0/??0/??0%) + MA200 full re-entry',
     },
     {
       label: 'Sell Logic',
       original_value: 'Representative sell ladder (not active in current test)',
-      scenario_value: 'vFinal: 100% sell at MA250 on crash trigger (DD5≤−10% AND DD10≤−18%)',
+      scenario_value: 'vFinal: 100% sell at MA250 on crash trigger (DD5?ㅲ닋10% AND DD10?ㅲ닋18%)',
     },
     {
       label: 'Crash Response',
@@ -4292,7 +4291,7 @@ export function buildComparisonView(
     {
       label: 'Re-entry Logic',
       original_value: 'Cycle-grid re-enters incrementally',
-      scenario_value: 'vFinal: 20% each at ATH×0.60/0.50/0.40, then remaining cash at MA200 cross',
+      scenario_value: 'vFinal: 20% each at ATH횞0.60/0.50/0.40, then remaining cash at MA200 cross',
     },
     {
       label: 'Pool Usage',
@@ -4426,10 +4425,10 @@ export function buildComparisonView(
       headline:
         scenarioSummary.sell_count > 0
           ? 'Scenario VR (vFinal) executed a crash exit and staged re-entry via ATH-based Vmin ladder.'
-          : 'Scenario VR (vFinal) held position — no crash trigger fired during this replay.',
+          : 'Scenario VR (vFinal) held position ??no crash trigger fired during this replay.',
       subline:
         scenarioSummary.sell_count > 0
-          ? 'vFinal exits 100% at MA250 on DD5/DD10 crash signal, then re-enters at ATH×0.60/0.50/0.40 and MA200 recovery.'
+          ? 'vFinal exits 100% at MA250 on DD5/DD10 crash signal, then re-enters at ATH횞0.60/0.50/0.40 and MA200 recovery.'
           : 'Original VR (Playback) uses mechanical cycle-grid deployment; vFinal waits for crash trigger before deploying crash-survival logic.',
     },
   }
@@ -4449,3 +4448,4 @@ export function runExecutionPlaybackExamples(
     point_count: playback?.variants['50']?.points.length ?? 0,
   }
 }
+

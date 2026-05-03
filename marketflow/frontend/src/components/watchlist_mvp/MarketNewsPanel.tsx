@@ -60,7 +60,8 @@ const getHeadlineEpoch = (item: MarketNewsPanelProps['headlines'][number]): numb
 const sortHeadlines = (rows: MarketNewsPanelProps['headlines']) =>
   [...rows].sort((a, b) => getHeadlineEpoch(b) - getHeadlineEpoch(a))
 
-const MAX_HEADLINES_PER_DAY = 5
+const MAX_DAYS_TO_KEEP = 5
+const MAX_HEADLINES_PER_DAY = 3
 
 const statusLabelMap: Record<NonNullable<MarketNewsPanelProps['health']>['status'], string> = {
   ok: 'LIVE',
@@ -83,16 +84,19 @@ export default function MarketNewsPanel({
   health,
 }: MarketNewsPanelProps) {
   const feed = sortHeadlines(headlines)
-  const latestDate = feed[0]?.dateET ?? null
-  const visibleFeed = latestDate
-    ? feed.filter((item) => item.dateET === latestDate).slice(0, MAX_HEADLINES_PER_DAY)
-    : feed.slice(0, MAX_HEADLINES_PER_DAY)
-  const dateLabel = latestDate ? formatEtDateLabel(latestDate) : 'Latest ET day'
+  const recentDateKeys = Array.from(new Set(feed.map((item) => item.dateET))).slice(0, MAX_DAYS_TO_KEEP)
+  const groupedFeed = recentDateKeys
+    .map((dateET) => ({
+      dateET,
+      dateLabel: formatEtDateLabel(dateET),
+      items: feed.filter((item) => item.dateET === dateET).slice(0, MAX_HEADLINES_PER_DAY),
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <article className={styles.marketPanel}>
       <p className={styles.panelLabel}>Daily Headlines</p>
-      <p className={styles.panelSubtle}>One ET day for now | each card shows the publish timestamp</p>
+      <p className={styles.panelSubtle}>Last 5 ET days | each card shows the publish timestamp</p>
       {!isLoading && (
         <div className={styles.feedHealthRow}>
           <span className={`${styles.feedHealthBadge} ${getStatusClassName(health?.status)}`}>
@@ -123,30 +127,37 @@ export default function MarketNewsPanel({
 
       {!isLoading && !errorMessage && !headlines.length && (
         <div className={styles.panelStateBox}>
-          No headlines available for the current ET day yet.
+          No headlines available for the recent ET days yet.
         </div>
       )}
 
-      {!isLoading && !errorMessage && !!visibleFeed.length && (
+      {!isLoading && !errorMessage && !!groupedFeed.length && (
         <div className={styles.stack}>
-          <p className={styles.timelineDateHeader}>{dateLabel}</p>
-          {visibleFeed.map((item, index) => (
-            <a
-              key={item.id}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${styles.headlineCard} ${index === 0 ? styles.breakingHeadlineCard : ''}`}
-            >
-              <div className={styles.headlineTop}>
-                <p className={index === 0 ? styles.breakingHeadlineTime : styles.headlineTime}>
-                  Published ET: {formatPublishedEtLabel(item.publishedAtET, item.timeET)}
-                </p>
-                <span className={styles.headlineAction}>Open {'>'}</span>
-              </div>
-              <p className={styles.headlineText}>{item.headline}</p>
-              <p className={styles.headlineSource}>Source: {item.source}</p>
-            </a>
+          {groupedFeed.map((group, groupIndex) => (
+            <section key={group.dateET} className={styles.timelineDateGroup}>
+              <p className={styles.timelineDateHeader}>{group.dateLabel}</p>
+              {group.items.map((item, index) => {
+                const isLeadItem = groupIndex === 0 && index === 0
+                return (
+                  <a
+                    key={item.id}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${styles.headlineCard} ${isLeadItem ? styles.breakingHeadlineCard : ''}`}
+                  >
+                    <div className={styles.headlineTop}>
+                      <p className={styles.headlineTime}>
+                        Published ET: {formatPublishedEtLabel(item.publishedAtET, item.timeET)}
+                      </p>
+                      <span className={styles.headlineAction}>Open {'>'}</span>
+                    </div>
+                    <p className={styles.headlineText}>{item.headline}</p>
+                    <p className={styles.headlineSource}>Source: {item.source}</p>
+                  </a>
+                )
+              })}
+            </section>
           ))}
         </div>
       )}

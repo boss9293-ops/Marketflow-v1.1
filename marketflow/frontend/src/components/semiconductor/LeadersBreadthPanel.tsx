@@ -2,6 +2,7 @@
 // A-3: Leaders / Breadth Panel — sub-bucket performance vs SOXX
 import type { SignalInputs } from '@/lib/semiconductor/types'
 
+
 function Bar({ pct }: { pct: number }) {
   const w   = Math.min(100, Math.abs(pct) * 2)
   const pos = pct >= 0
@@ -45,6 +46,9 @@ function stateLabel(pct: number): string {
 
 interface Props { signals: SignalInputs }
 
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
+
 export default function LeadersBreadthPanel({ signals }: Props) {
   const { sub_bucket_perf, equipment_state, constraint_warning,
           nvda_mu_gap, nvda_tsm_gap, breadth_score, concentration_score } = signals
@@ -78,7 +82,7 @@ export default function LeadersBreadthPanel({ signals }: Props) {
           <div style={{ width: 180, fontSize: 11, color: '#64748b' }}>{r.tickers}</div>
           <Badge label={stateLabel(r.pct)} warning={r.warn} />
           <Bar pct={r.pct} />
-          {r.p && <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 700 }}>{r.p}</span>}
+          {r.p && <span style={{ fontSize: 11, color: '#6366f1', fontWeight: 700 }}>{r.p}</span>}
           {r.warn && <span style={{ fontSize: 11, color: '#ef4444' }}>⚠ P1</span>}
         </div>
       ))}

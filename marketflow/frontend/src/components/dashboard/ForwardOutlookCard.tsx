@@ -42,10 +42,10 @@ export default function ForwardOutlookCard({ payload, reliability, isPremium = f
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700 }}>BIAS</span>
+            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.10em' }}>BIAS</span>
             <span style={{ borderRadius: 5, background: bias.bg, border: '1px solid ' + bias.border, color: bias.color, fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px' }}>{bias.label}</span>
-            <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '0.65rem' }}>·</span>
-            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700 }}>CONFIDENCE</span>
+            <span style={{ color: '#555a62', fontSize: '0.65rem' }}>·</span>
+            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.10em' }}>CONFIDENCE</span>
             <span style={{ borderRadius: 5, background: conf.bg, border: '1px solid ' + conf.color + '30', color: conf.color, fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px' }}>
               {outlook.confidence === 'HIGH' ? 'High' : outlook.confidence === 'MEDIUM' ? 'Medium' : 'Low'}
             </span>

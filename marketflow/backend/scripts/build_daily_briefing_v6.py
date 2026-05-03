@@ -1,0 +1,2308 @@
+﻿"""
+build_daily_briefing_v6.py
+Daily Briefing Narrative Engine V3
+
+Structure:
+  Hook              rule-based: market tone + dominant catalyst
+  market_flow       broad market pulse, phase, participation
+  event_drivers     headlines, earnings, scheduled events
+  sector_structure  leaders/laggards, rotation, breadth
+  macro_commodities rates, DXY, VIX, gold, oil, BTC
+  stock_moves       movers and watchlist names
+  economic_data     actual vs expected releases
+  technical_regime  MSS level, zone, components, risk overlay
+  Risk Check        explicit risk overlay only
+  One Line          rule-based compression from sections
+
+Output: backend/output/cache/daily_briefing_v6.json
+Run:    python3 marketflow/backend/scripts/build_daily_briefing_v6.py
+"""
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPT_DIR.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import json
+
+# ── DeepL KO→EN translation (file-cached, 5 trading days) ──────────────────
+import hashlib, urllib.request
+
+_US_HOLIDAYS = {
+    '2025-01-01','2025-01-20','2025-02-17','2025-04-18','2025-05-26',
+    '2025-06-19','2025-07-04','2025-09-01','2025-11-27','2025-12-25',
+    '2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25',
+    '2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+}
+
+def _is_trading_day(d: str) -> bool:
+    import datetime
+    dt = datetime.date.fromisoformat(d)
+    return dt.weekday() < 5 and d not in _US_HOLIDAYS
+
+def _last5_trading_days(from_date: str) -> set:
+    import datetime
+    days, d = [], datetime.date.fromisoformat(from_date)
+    while len(days) < 5:
+        if _is_trading_day(d.isoformat()): days.append(d.isoformat())
+        d -= datetime.timedelta(days=1)
+    return set(days)
+
+def _deepl_cache_path() -> str:
+    import pathlib
+    base = pathlib.Path(__file__).resolve().parent.parent / 'output' / 'cache'
+    base.mkdir(parents=True, exist_ok=True)
+    return str(base / 'deepl-briefing-en-cache.json')
+
+def _load_deepl_cache() -> dict:
+    p = _deepl_cache_path()
+    try:
+        with open(p, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_deepl_cache(cache: dict) -> None:
+    try:
+        with open(_deepl_cache_path(), 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'[deepl-cache] write error: {e}')
+
+def _prune_deepl_cache(cache: dict, today: str) -> dict:
+    keep = _last5_trading_days(today)
+    return {k: v for k, v in cache.items() if k.split(':')[0] in keep}
+
+def deepl_translate_batch(texts: list, deepl_key: str, date_key: str) -> list:
+    """Translate list of KO texts to EN via DeepL. Returns translated list (same order)."""
+    if not deepl_key or not texts:
+        return texts
+
+    cache = _prune_deepl_cache(_load_deepl_cache(), date_key)
+    results = []
+    to_translate = []  # (original_index, text, cache_key)
+
+    for i, text in enumerate(texts):
+        if not text or not text.strip():
+            results.append(text)
+            continue
+        ck = f'{date_key}:{hashlib.md5(text.encode()).hexdigest()[:12]}'
+        if ck in cache:
+            results.append(cache[ck])
+        else:
+            results.append(None)  # placeholder
+            to_translate.append((i, text, ck))
+
+    if not to_translate:
+        print(f'[deepl] all {len(texts)} texts from cache')
+        return results
+
+    batch_texts = [t for _, t, _ in to_translate]
+    try:
+        payload = json.dumps({'text': batch_texts, 'source_lang': 'KO', 'target_lang': 'EN'}).encode('utf-8')
+        req = urllib.request.Request(
+            'https://api-free.deepl.com/v2/translate',
+            data=payload,
+            headers={'Authorization': f'DeepL-Auth-Key {deepl_key}', 'Content-Type': 'application/json'},
+            method='POST'
+        )
+        import socket; socket.setdefaulttimeout(10)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+        translations = [t['text'] for t in data.get('translations', [])]
+        if len(translations) != len(batch_texts):
+            print(f'[deepl] response count mismatch: expected {len(batch_texts)} got {len(translations)}')
+            return results  # return partial cache hits
+
+        for (orig_i, orig_text, ck), translated in zip(to_translate, translations):
+            results[orig_i] = translated
+            cache[ck] = translated
+        _save_deepl_cache(cache)
+        print(f'[deepl] translated {len(translations)} texts, cached')
+    except Exception as e:
+        print(f'[deepl] error: {e} — keeping Korean for EN fields')
+        for orig_i, orig_text, _ in to_translate:
+            if results[orig_i] is None:
+                results[orig_i] = orig_text  # fallback to KO
+
+    return results
+
+
+def fill_en_fields_via_deepl(output: dict, deepl_key: str, date_key: str) -> dict:
+    """Translate all _ko fields to fill English fields using DeepL."""
+    if not deepl_key:
+        print('[deepl] DEEPL_API_KEY not set — English fields will be empty')
+        return output
+
+    # Collect texts to translate
+    texts = []
+    texts.append(output.get('hook_ko') or '')        # 0
+    texts.append(output.get('one_line_ko') or '')    # 1
+    for sec in output.get('sections', []):
+        texts.append(sec.get('structural_ko') or '')
+        texts.append(sec.get('implication_ko') or '')
+
+    translated = deepl_translate_batch(texts, deepl_key, date_key)
+
+    # Fill back
+    output['hook'] = translated[0] if translated[0] else output.get('hook', '')
+    output['one_line'] = translated[1] if translated[1] else output.get('one_line', '')
+    idx = 2
+    for sec in output.get('sections', []):
+        sec['structural'] = translated[idx] if translated[idx] else sec.get('structural', '')
+        sec['implication'] = translated[idx+1] if translated[idx+1] else sec.get('implication', '')
+        idx += 2
+
+    return output
+# ────────────────────────────────────────────────────────────────────────────
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from zoneinfo import ZoneInfo
+
+MARKETFLOW_ROOT = Path(__file__).resolve().parents[2]
+if str(MARKETFLOW_ROOT) not in sys.path:
+    sys.path.insert(0, str(MARKETFLOW_ROOT))
+
+SCRIPT_DIR  = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPT_DIR.parent
+CACHE_DIR   = BACKEND_DIR / "output" / "cache"
+OUTPUT_DIR  = BACKEND_DIR / "output"
+
+try:
+    from backend.services.prompt_manager import PromptManager
+    from backend.utils.prompt_loader import load_prompt_text
+except Exception:
+    PromptManager = None  # type: ignore[assignment]
+    try:
+        from utils.prompt_loader import load_prompt_text  # type: ignore
+    except Exception:
+        load_prompt_text = None  # type: ignore[assignment]
+try:
+    from backend.services.release_config import RELEASE_VERSION
+except Exception:
+    RELEASE_VERSION = "v1.1"
+try:
+    from backend.news import build_context_news_cache
+    from backend.news.news_paths import (
+        DAILY_BRIEFING_V3_PATH,
+        MARKET_HEADLINES_HISTORY_PATH,
+    )
+except Exception:
+    try:
+        from news.context_news import build_context_news_cache
+        from news.news_paths import (  # type: ignore
+            DAILY_BRIEFING_V3_PATH,
+            MARKET_HEADLINES_HISTORY_PATH,
+        )
+    except Exception:
+        build_context_news_cache = None  # type: ignore[assignment]
+
+if "DAILY_BRIEFING_V3_PATH" not in globals():
+    DAILY_BRIEFING_V3_PATH = BACKEND_DIR / "output" / "cache" / "daily_briefing_v3.json"  # type: ignore[assignment]
+if "MARKET_HEADLINES_HISTORY_PATH" not in globals():
+    MARKET_HEADLINES_HISTORY_PATH = BACKEND_DIR / "output" / "cache" / "market-headlines-history.json"  # type: ignore[assignment]
+
+OUT_PATH    = BACKEND_DIR / "output" / "cache" / "daily_briefing_v6.json"
+FRONTEND_HEADLINE_CACHE_PATH = MARKET_HEADLINES_HISTORY_PATH
+DAILY_BRIEFING_EN_SYSTEM_PROMPT_SOURCE = "engine_narrative/daily_briefing_v6_en_system.md"
+DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE = "engine_narrative/daily_briefing_v6_en_user.md"
+
+# ?? Model & pricing ??????????????????????????????????????????????????????????
+MODEL_ID   = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip() or "claude-sonnet-4-6"
+PRICE_IN   = 3.00  / 1_000_000   # per token
+PRICE_OUT  = 15.00 / 1_000_000
+
+SIGNAL_COLOR = {
+    "bull":    "#22c55e",
+    "caution": "#f59e0b",
+    "bear":    "#ef4444",
+    "neutral": "#64748b",
+}
+
+SECTION_META = [
+    ("market_flow",       "The Battleground"),
+    ("event_drivers",     "Live Triggers & Transmission"),
+    ("sector_structure",  "Money Velocity & Rotation"),
+    ("macro_commodities", "Macro Tremors"),
+    ("stock_moves",       "The Hotzones"),
+    ("economic_data",     "Next 24H Radar"),
+    ("technical_regime",  "System DEFCON"),
+]
+
+MAJOR_NEWS_SOURCES = {"Reuters", "Bloomberg", "Financial Times", "WSJ", "CNBC", "Yahoo Finance"}
+GEO_KEYWORDS = ("iran", "hormuz", "strait", "middle east", "strike", "attack", "war")
+POLICY_KEYWORDS = ("trump", "tariff", "speech", "address", "fed", "powell")
+TESLA_KEYWORDS = ("tesla", "tsla", "deliveries", "cybertruck")
+ET_ZONE = ZoneInfo("America/New_York")
+MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
+MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
+
+
+def _parse_date_key(value: Any) -> datetime | None:
+    text = str(value or "").strip()[:10]
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+
+def build_freshness_meta(
+    data_date: Any,
+    overview_latest_date: Any = None,
+    market_state_generated_at: Any = None,
+) -> dict[str, Any]:
+    current_et_date = datetime.now(timezone.utc).astimezone(ET_ZONE).date()
+    source_dt = _parse_date_key(data_date) or _parse_date_key(overview_latest_date)
+    lag_days = (current_et_date - source_dt.date()).days if source_dt else None
+
+    if lag_days is None:
+        status = "unknown"
+    elif lag_days <= 0:
+        status = "fresh"
+    elif lag_days <= 3:
+        status = "lagging"
+    else:
+        status = "stale"
+
+    warning = ""
+    if status in {"lagging", "stale"} and source_dt is not None:
+        warning = (
+            f"Source data_date {source_dt.date().isoformat()} is {lag_days} ET day(s) behind "
+            f"current ET date {current_et_date.isoformat()}."
+        )
+
+    return {
+        "status": status,
+        "lag_days": lag_days,
+        "current_et_date": current_et_date.isoformat(),
+        "source_data_date": source_dt.date().isoformat() if source_dt else str(data_date or "")[:10],
+        "overview_latest_date": str(overview_latest_date or "")[:10],
+        "market_state_generated_at": str(market_state_generated_at or ""),
+        "warning": warning,
+    }
+
+
+# ?? Data loaders ??????????????????????????????????????????????????????????????
+def load(fname: str, search_dirs: list[Path] | None = None) -> Any:
+    dirs = search_dirs or [CACHE_DIR, OUTPUT_DIR]
+    for d in dirs:
+        p = d / fname
+        if p.exists():
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+    return {}
+
+
+def load_frontend_headline_cache() -> list[dict[str, Any]]:
+    if not FRONTEND_HEADLINE_CACHE_PATH.exists():
+        return []
+    try:
+        with open(FRONTEND_HEADLINE_CACHE_PATH, encoding="utf-8") as f:
+            payload = json.load(f)
+        rows = payload.get("headlines", []) if isinstance(payload, dict) else []
+        if rows:
+            return [r for r in rows if isinstance(r, dict)]
+    except Exception:
+        return []
+    return []
+
+
+def _shorten(text: str, limit: int = 180) -> str:
+    text = re.sub(r"\s+", " ", (text or "")).strip()
+    return text if len(text) <= limit else (text[: limit - 1].rstrip() + "…")
+
+
+def build_headline_focus(front_headlines: list[dict[str, Any]]) -> tuple[str, str, str, list[dict[str, Any]]]:
+    """
+    Returns:
+      headline_tape: prioritized headline lines for prompt context
+      mandatory_drivers: must-mention narrative drivers
+      hook_driver: one-line primary catalyst for the hook
+      top_rows: prioritized rows used for event extraction
+    """
+    if not front_headlines:
+        return "No live headline tape available.", "None.", "", []
+
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for idx, row in enumerate(front_headlines[:120]):
+        headline = str(row.get("headline") or "").strip()
+        source = str(row.get("source") or "").strip()
+        summary = str(row.get("summary") or "").strip()
+        if not headline:
+            continue
+        text = f"{headline} {summary}".lower()
+        score = 0
+        if any(k in text for k in GEO_KEYWORDS):
+            score += 6
+        if any(k in text for k in POLICY_KEYWORDS):
+            score += 4
+        if any(k in text for k in TESLA_KEYWORDS):
+            score += 5
+        if source in MAJOR_NEWS_SOURCES:
+            score += 2
+        if idx < 25:
+            score += 1
+        scored.append((score, idx, row))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    top_rows = [row for _, _, row in scored[:10]]
+
+    tape_lines: list[str] = []
+    seen = set()
+    for row in top_rows:
+        headline = _shorten(str(row.get("headline") or ""))
+        source = str(row.get("source") or "Unknown")
+        time_et = str(row.get("timeET") or "").strip()
+        key = headline.lower()
+        if not headline or key in seen:
+            continue
+        seen.add(key)
+        tape_lines.append(f"{time_et or '--:-- ET'} | {source} | {headline}")
+        if len(tape_lines) >= 6:
+            break
+    if not tape_lines:
+        tape_lines = ["No usable headline records in cache."]
+
+    lower_tape = " ".join(tape_lines).lower()
+    mandatory: list[str] = []
+    if any(k in lower_tape for k in ("trump", "iran", "hormuz", "strait")):
+        mandatory.append(
+            "Geopolitical driver: Trump/Iran/Hormuz headlines must be explained with a transmission chain (oil risk premium -> rates/volatility -> equity reaction)."
+        )
+    if any(k in lower_tape for k in ("tesla", "tsla", "deliveries")):
+        mandatory.append(
+            "Stock-specific driver: TSLA delivery/news impact must be explicitly discussed (not just listed as % move)."
+        )
+    if not mandatory:
+        mandatory.append("Use one dominant catalyst from the headline tape and explain causal transmission to price action.")
+
+    hook_driver = ""
+    for row in top_rows:
+        h = str(row.get("headline") or "")
+        if any(k in h.lower() for k in ("trump", "iran", "hormuz", "tesla", "tsla", "deliver")):
+            hook_driver = _shorten(h, 140)
+            break
+    if not hook_driver and top_rows:
+        hook_driver = _shorten(str(top_rows[0].get("headline") or ""), 140)
+
+    return "\n".join(tape_lines), "\n".join(f"- {m}" for m in mandatory), hook_driver, top_rows
+
+
+EVENT_SOURCE_CREDIBILITY: dict[str, float] = {
+    "Reuters": 0.98,
+    "Bloomberg": 0.97,
+    "Financial Times": 0.95,
+    "WSJ": 0.95,
+    "CNBC": 0.88,
+    "Yahoo Finance": 0.82,
+    "MarketWatch": 0.80,
+    "Associated Press": 0.78,
+}
+
+EVENT_RULES: list[tuple[str, tuple[str, ...], str]] = [
+    ("analyst_action", ("price target", "target", "upgrade", "downgrade", "rating", "analyst"), "valuation / expectations"),
+    ("earnings", ("earnings", "guidance", "revenue", "margin", "eps", "sales"), "earnings / margin"),
+    ("delivery", ("delivery", "deliveries", "shipment", "shipments", "production", "orders"), "demand / supply"),
+    ("macro_event", ("cpi", "ppi", "fed", "powell", "rates", "yield", "inflation", "dollar", "treasury"), "macro / rates"),
+    ("geopolitical", ("iran", "hormuz", "tariff", "trump", "war", "attack", "strike", "ceasefire"), "geo / policy"),
+    ("product_cycle", ("launch", "release", "product", "model", "chip", "platform", "software", "ai", "gpu", "data center", "blackwell", "cuda"), "product cycle"),
+    ("risk", ("probe", "lawsuit", "recall", "investigation", "ban", "regulation", "fraud"), "risk / legal"),
+    ("technical_setup", ("breakout", "support", "resistance", "record high", "record low", "range"), "technical setup"),
+    ("sector_rotation", ("semiconductor", "energy", "oil", "gold", "utilities", "software", "health care", "bank"), "sector rotation"),
+]
+
+POSITIVE_HINTS = (
+    "beat", "beats", "raise", "raised", "upgrade", "higher", "increase", "increased",
+    "surge", "rally", "gain", "gains", "support", "approval", "launch", "deal",
+    "contract", "record", "strong", "improve", "improved", "expansion", "buy",
+    "outperform", "breakout", "recover", "recovery", "bull", "upside",
+)
+NEGATIVE_HINTS = (
+    "miss", "cuts", "cut", "lower", "downgrade", "weak", "decline", "slump", "pressure",
+    "probe", "investigation", "risk", "concern", "tariff", "ban", "lawsuit", "recall",
+    "delay", "shortfall", "selloff", "drop", "fall", "negative", "downside",
+)
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, value))
+
+
+def _norm(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip().lower()
+
+
+def _has_any(value: str, keywords: tuple[str, ...] | list[str]) -> bool:
+    lower = _norm(value)
+    return any(keyword in lower for keyword in keywords)
+
+
+def _event_direction(text: str) -> str:
+    lower = _norm(text)
+    pos = sum(1 for keyword in POSITIVE_HINTS if keyword in lower)
+    neg = sum(1 for keyword in NEGATIVE_HINTS if keyword in lower)
+    if pos > neg + 1:
+        return "positive"
+    if neg > pos + 1:
+        return "negative"
+    return "neutral"
+
+
+def _classify_event_type(text: str) -> tuple[str, str, str]:
+    lower = _norm(text)
+    for event_type, keywords, impact_hint in EVENT_RULES:
+        if any(keyword in lower for keyword in keywords):
+            direction = _event_direction(lower)
+            if event_type == "risk":
+                direction = "negative"
+            return event_type, impact_hint, direction
+    return "market_update", "broad market read-through", _event_direction(lower)
+
+
+def _event_source_weight(source: str) -> float:
+    return EVENT_SOURCE_CREDIBILITY.get((source or "").strip(), 0.72)
+
+
+def _event_direct_weight(event_type: str, text: str) -> float:
+    if event_type in {"analyst_action", "earnings", "delivery", "macro_event", "geopolitical", "risk", "technical_setup"}:
+        return 1.0
+    if event_type in {"product_cycle", "sector_rotation"}:
+        return 0.78
+    if _has_any(text, ("symbol", "ticker", "price target", "guidance", "earnings", "cpi", "fed")):
+        return 0.85
+    return 0.55
+
+
+def _event_magnitude_weight(text: str, event_type: str) -> float:
+    lower = _norm(text)
+    score = 0.55
+    if re.search(r"[$€£¥]\s*\d|\d", lower):
+        score += 0.2
+    if event_type in {"analyst_action", "earnings", "macro_event", "geopolitical", "risk"}:
+        score += 0.15
+    if _has_any(lower, ("record", "target", "beat", "miss", "guidance", "delivery", "cpi", "fed", "tariff")):
+        score += 0.1
+    return _clamp(score, 0.2, 1.0)
+
+
+def _score_event_card(card: dict[str, Any], rank: int, total: int) -> float:
+    recency = 1.0 - (_clamp(rank / max(1, total - 1), 0.0, 1.0) * 0.35)
+    score = (
+        _event_direct_weight(str(card.get("event_type", "")), str(card.get("summary", ""))) * 0.4
+        + recency * 0.2
+        + _event_source_weight(str(card.get("source", ""))) * 0.2
+        + _event_magnitude_weight(str(card.get("summary", "")), str(card.get("event_type", ""))) * 0.2
+    )
+    return round(_clamp(score, 0.05, 0.99), 3)
+
+
+def _make_event_card(
+    *,
+    event_type: str,
+    summary: str,
+    source: str,
+    direction: str = "neutral",
+    impact_hint: str = "",
+    symbol: str = "",
+    time_et: str = "",
+    rank: int = 0,
+    total: int = 1,
+    raw_text: str = "",
+) -> dict[str, Any]:
+    text = raw_text or f"{summary} {impact_hint}"
+    card = {
+        "event_type": event_type,
+        "summary": _shorten(summary, 220),
+        "direction": direction if direction in {"positive", "negative", "neutral"} else "neutral",
+        "impact_hint": impact_hint,
+        "confidence": 0.0,
+        "score": 0.0,
+        "source": source or "Unknown",
+        "timeET": time_et or "",
+        "symbol": symbol or "",
+    }
+    card["score"] = _score_event_card(card | {"summary": text}, rank, total)
+    card["confidence"] = round(_clamp(card["score"] + 0.05, 0.1, 0.99), 2)
+    return card
+
+
+def build_event_cards(
+    *,
+    headline_rows: list[dict[str, Any]],
+    themes: list[Any],
+    articles: list[Any],
+    earnings: list[Any],
+    econ_events: list[dict[str, Any]],
+    movers: list[dict[str, Any]],
+    watchlist_moves: list[dict[str, Any]],
+    sector_leaders: list[dict[str, Any]],
+    sector_laggards: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    cards: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add_card(card: dict[str, Any]) -> None:
+        key = _norm(f"{card.get('event_type', '')} {card.get('summary', '')}")
+        if not key or key in seen:
+            return
+        seen.add(key)
+        cards.append(card)
+
+    headline_total = max(1, len(headline_rows))
+    for idx, row in enumerate(headline_rows[:8]):
+        headline = _shorten(str(row.get("headline") or ""), 180)
+        summary = _shorten(str(row.get("summary") or ""), 240)
+        source = str(row.get("source") or "Unknown")
+        time_et = str(row.get("timeET") or "").strip()
+        if not headline:
+            continue
+        text = f"{headline} {summary}".strip()
+        event_type, impact_hint, direction = _classify_event_type(text)
+        add_card(
+            _make_event_card(
+                event_type=event_type,
+                summary=f"{headline}. {summary}" if summary else headline,
+                source=source,
+                direction=direction,
+                impact_hint=impact_hint,
+                time_et=time_et,
+                rank=idx,
+                total=headline_total,
+                raw_text=text,
+            )
+        )
+
+    for idx, theme in enumerate((themes or [])[:4]):
+        theme_text = _shorten(str(theme).strip(), 180)
+        if not theme_text:
+            continue
+        event_type, impact_hint, direction = _classify_event_type(theme_text)
+        add_card(
+            _make_event_card(
+                event_type="news_theme" if event_type == "market_update" else event_type,
+                summary=theme_text,
+                source="Context News",
+                direction=direction,
+                impact_hint=impact_hint or "market theme",
+                rank=idx,
+                total=max(1, len(themes or [])),
+                raw_text=theme_text,
+            )
+        )
+
+    for idx, article in enumerate((articles or [])[:6]):
+        title = _shorten(str(article.get("title") or article.get("headline") or "").strip(), 180)
+        if not title:
+            continue
+        summary = _shorten(str(article.get("summary") or article.get("description") or "").strip(), 220)
+        source = str(article.get("source") or "Context News")
+        text = f"{title} {summary}".strip()
+        event_type, impact_hint, direction = _classify_event_type(text)
+        add_card(
+            _make_event_card(
+                event_type=event_type,
+                summary=f"{title}. {summary}" if summary else title,
+                source=source,
+                direction=direction,
+                impact_hint=impact_hint,
+                time_et=str(article.get("timeET") or "").strip(),
+                rank=idx,
+                total=max(1, len(articles or [])),
+                raw_text=text,
+            )
+        )
+
+    for idx, e in enumerate((earnings or [])[:6]):
+        sym = str(e.get("symbol", "?")).strip().upper()
+        name = str(e.get("company", e.get("name", "?"))).strip()
+        date = str(e.get("date", "?")).strip()
+        timing = str(e.get("timing", "")).strip()
+        eps = str(e.get("eps_actual", e.get("eps", "")) or "").strip()
+        est = str(e.get("eps_estimate", "") or "").strip()
+        revenue = str(e.get("revenue_actual", e.get("revenue", "")) or "").strip()
+        summary = f"{sym} ({name}) {date} {timing}".strip()
+        impact_hint = "earnings / calendar"
+        if eps or est or revenue:
+            impact_hint = "earnings / guidance"
+        add_card(
+            _make_event_card(
+                event_type="earnings_calendar",
+                summary=summary,
+                source="Earnings Calendar",
+                direction="neutral",
+                impact_hint=impact_hint,
+                symbol=sym,
+                rank=idx,
+                total=max(1, len(earnings or [])),
+                raw_text=f"{summary} {eps} {est} {revenue}",
+            )
+        )
+
+    for idx, ev in enumerate((econ_events or [])[:8]):
+        name = str(ev.get("event", "")).strip()
+        if not name:
+            continue
+        actual = str(ev.get("actual", "-")).strip()
+        forecast = str(ev.get("forecast", "-")).strip()
+        date = str(ev.get("date", "?")).strip()
+        time = str(ev.get("time", "?")).strip()
+        summary = f"{date} {time} {name} actual={actual} forecast={forecast}".strip()
+        event_type, impact_hint, direction = _classify_event_type(summary)
+        lower_name = _norm(name)
+        if any(token in lower_name for token in ("cpi", "ppi", "fed", "powell", "yield", "inflation", "dollar", "treasury")):
+            event_type = "macro_event"
+        if any(token in lower_name for token in ("iran", "hormuz", "tariff", "trump", "war", "strike", "ceasefire")):
+            event_type = "geopolitical"
+        add_card(
+            _make_event_card(
+                event_type=event_type,
+                summary=summary,
+                source="Economic Calendar",
+                direction=direction,
+                impact_hint=impact_hint,
+                time_et=time,
+                rank=idx,
+                total=max(1, len(econ_events or [])),
+                raw_text=summary,
+            )
+        )
+
+    for idx, row in enumerate((watchlist_moves or [])[:6]):
+        sym = str(row.get("symbol", "")).strip().upper()
+        if not sym:
+            continue
+        chg = row.get("chg_pct", None)
+        badge = str(row.get("badge", "")).strip()
+        reason = str(row.get("badge_reason", "")).strip()
+        direction = "neutral"
+        try:
+            if chg is not None and float(chg) > 0:
+                direction = "positive"
+            elif chg is not None and float(chg) < 0:
+                direction = "negative"
+        except Exception:
+            pass
+        summary = f"{sym} {badge} {reason}".strip()
+        add_card(
+            _make_event_card(
+                event_type="watchlist_move",
+                summary=summary,
+                source="Watchlist",
+                direction=direction,
+                impact_hint="positioning / watchlist flow",
+                symbol=sym,
+                rank=idx,
+                total=max(1, len(watchlist_moves or [])),
+                raw_text=summary,
+            )
+        )
+
+    for idx, item in enumerate((movers or [])[:6]):
+        sym = str(item.get("symbol", "")).strip().upper()
+        name = str(item.get("name", "")).strip()
+        if not sym:
+            continue
+        try:
+            chg = float(item.get("change_pct", 0) or 0)
+        except Exception:
+            chg = 0.0
+        direction = "positive" if chg > 0 else "negative" if chg < 0 else "neutral"
+        rvol = item.get("relative_volume_10d_calc") or 0
+        summary = f"{sym} {name} moved {chg:+.2f}% on rvol {float(rvol):.1f}x".strip()
+        add_card(
+            _make_event_card(
+                event_type="market_mover",
+                summary=summary,
+                source=str(item.get("exchange") or "Market Movers"),
+                direction=direction,
+                impact_hint="single-name flow",
+                symbol=sym,
+                rank=idx,
+                total=max(1, len(movers or [])),
+                raw_text=summary,
+            )
+        )
+
+    if sector_leaders:
+        lead_text = ", ".join(
+            f"{s.get('symbol','?')} {s.get('name','')[:12]} {float(s.get('change_1d', 0) or 0):+.1f}%"
+            for s in sector_leaders[:3]
+        )
+        add_card(
+            _make_event_card(
+                event_type="sector_rotation",
+                summary=f"Leaders: {lead_text}",
+                source="Sector Performance",
+                direction="positive",
+                impact_hint="sector leadership",
+                rank=0,
+                total=max(1, len(sector_leaders)),
+                raw_text=lead_text,
+            )
+        )
+    if sector_laggards:
+        lag_text = ", ".join(
+            f"{s.get('symbol','?')} {s.get('name','')[:12]} {float(s.get('change_1d', 0) or 0):+.1f}%"
+            for s in sector_laggards[:3]
+        )
+        add_card(
+            _make_event_card(
+                event_type="sector_rotation",
+                summary=f"Laggards: {lag_text}",
+                source="Sector Performance",
+                direction="negative",
+                impact_hint="sector laggards",
+                rank=1,
+                total=max(1, len(sector_laggards)),
+                raw_text=lag_text,
+            )
+        )
+
+    cards.sort(key=lambda card: (-float(card.get("score", 0) or 0), str(card.get("summary", ""))))
+    return cards[:12]
+
+
+def build_narrative_plan(
+    cards: list[dict[str, Any]],
+    ms: dict,
+    rv1: dict,
+    re_data: dict,
+) -> dict[str, Any]:
+    phase = str((ms.get("phase", {}) or {}).get("value", "") or "").strip()
+    gate = str((ms.get("gate", {}) or {}).get("value", "") or "").strip()
+    risk = str((ms.get("risk", {}) or {}).get("value", "") or "").strip()
+    trend = ms.get("trend", {}) or {}
+    pct = trend.get("pct_from_sma200")
+    qqq_close = trend.get("qqq_close")
+    qqq_sma200 = trend.get("qqq_sma200")
+    vol_pct = (rv1.get("current", {}) or {}).get("vol_pct")
+    shock = (re_data.get("shock_probability", {}) or {})
+    dtrig = (re_data.get("defensive_trigger", {}) or {})
+
+    price_parts: list[str] = []
+    if phase:
+        price_parts.append(f"market posture: {phase}")
+    if gate:
+        price_parts.append(f"gate score: {gate}/100")
+    if pct is not None:
+        price_parts.append(f"QQQ vs SMA200: {fmt_pct(pct)}")
+    if qqq_close is not None and qqq_sma200 is not None:
+        price_parts.append(f"QQQ {qqq_close} vs SMA200 {qqq_sma200}")
+    if vol_pct is not None:
+        price_parts.append(f"VIX percentile: {float(vol_pct):.1f}th")
+    if risk:
+        price_parts.append(f"session note: {risk}")
+
+    price_context = " | ".join(price_parts) if price_parts else "Market tone is mixed and should be read through the day’s catalysts."
+
+    if not cards:
+        return {
+            "price_context": price_context,
+            "primary_driver": {},
+            "secondary_driver": {},
+            "counterweight": {},
+            "watchpoint": {},
+            "supporting_events": [],
+            "regime_notes": {
+                "shock_probability": shock,
+                "defensive_trigger": dtrig,
+            },
+        }
+
+    sorted_cards = list(cards)
+    primary = next((card for card in sorted_cards if card.get("direction") != "neutral"), sorted_cards[0])
+    primary_summary = str(primary.get("summary", ""))
+    primary_direction = str(primary.get("direction", "neutral"))
+
+    secondary = next(
+        (
+            card
+            for card in sorted_cards
+            if str(card.get("summary", "")) != primary_summary
+            and card.get("event_type") != primary.get("event_type")
+        ),
+        None,
+    )
+
+    counterweight = next(
+        (
+            card
+            for card in sorted_cards
+            if card.get("direction") not in {"neutral", primary_direction}
+            or card.get("event_type") in {"risk", "macro_event"}
+        ),
+        None,
+    )
+    if counterweight and str(counterweight.get("summary", "")) == primary_summary:
+        counterweight = None
+
+    watchpoint = next(
+        (
+            card
+            for card in sorted_cards
+            if card.get("event_type") in {"earnings_calendar", "macro_event", "geopolitical"}
+            or _has_any(str(card.get("summary", "")), ("next", "upcoming", "tomorrow", "later", "this week", "watch"))
+        ),
+        None,
+    )
+    if not watchpoint:
+        watchpoint = next(
+            (card for card in sorted_cards if str(card.get("summary", "")) != primary_summary and card.get("event_type") != "risk"),
+            None,
+        )
+
+    slot_ids = {
+        str(primary.get("summary", "")),
+        str((secondary or {}).get("summary", "")),
+        str((counterweight or {}).get("summary", "")),
+        str((watchpoint or {}).get("summary", "")),
+    }
+    supporting = [
+        card for card in sorted_cards
+        if str(card.get("summary", "")) not in slot_ids
+    ][:4]
+
+    def slot(card: dict[str, Any] | None) -> dict[str, Any]:
+        if not card:
+            return {}
+        return {
+            "event": card.get("summary", ""),
+            "why": card.get("impact_hint", ""),
+            "direction": card.get("direction", "neutral"),
+            "confidence": card.get("confidence", 0.0),
+            "source": card.get("source", ""),
+        }
+
+    return {
+        "price_context": price_context,
+        "primary_driver": slot(primary),
+        "secondary_driver": slot(secondary),
+        "counterweight": slot(counterweight),
+        "watchpoint": slot(watchpoint),
+        "supporting_events": [slot(card) for card in supporting],
+        "regime_notes": {
+            "shock_probability": shock,
+            "defensive_trigger": dtrig,
+        },
+    }
+
+
+# ?? Movers filter: only real exchange stocks price > $1 ??????????????????????
+_REAL_EXCHANGES = {"NASDAQ", "NYSE", "NYSE ARCA", "AMEX", "BATS"}
+
+def filter_movers(categories: dict) -> list[dict]:
+    seen: set[str] = set()
+    result: list[dict] = []
+    for cat in ("gainers", "most_active", "unusual_volume"):
+        for item in categories.get(cat, []):
+            sym = item.get("symbol", "")
+            if sym in seen:
+                continue
+            exch  = item.get("exchange", "")
+            price = item.get("price", 0.0) or 0.0
+            rvol = item.get("relative_volume_10d_calc") or 0
+            if exch in _REAL_EXCHANGES and price >= 5.0 and rvol >= 0.3:
+                seen.add(sym)
+                result.append({**item, "_cat": cat})
+            if len(result) >= 20:
+                return result
+    return result
+
+
+def fmt_pct(v: Any) -> str:
+    if v is None:
+        return "N/A"
+    try:
+        return f"{float(v):+.2f}%"
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def _current_briefing_slot(now: datetime | None = None) -> str:
+    ref = now or datetime.now(timezone.utc)
+    local_now = ref.astimezone(ET_ZONE)
+    minutes = local_now.hour * 60 + local_now.minute
+    if minutes < MARKET_OPEN_MINUTES_ET:
+        return "preopen"
+    if minutes < MARKET_CLOSE_MINUTES_ET:
+        return "morning"
+    return "close"
+
+
+# ?? Context builder ???????????????????????????????????????????????????????????
+def build_context(
+    ms: dict, rv1: dict, re_data: dict,
+    sp: dict, econ_cal: dict, earnings: dict,
+    movers: dict, news: dict,
+) -> dict[str, str]:
+    """Returns a dict keyed by section id -> data string."""
+
+    data_date = (
+        news.get("date")
+        or ms.get("data_date")
+        or rv1.get("data_as_of")
+        or "N/A"
+    )
+    front_headlines = load_frontend_headline_cache()
+    headline_tape, mandatory_drivers, hook_driver, headline_rows = build_headline_focus(front_headlines)
+
+    # Market Flow
+    phase = ms.get("phase", {})
+    gate  = ms.get("gate",  {})
+    risk  = ms.get("risk",  {})
+    trend = ms.get("trend", {})
+
+    # Prices from economic_calendar (it stores market snapshot)
+    econ_events = econ_cal.get("events", [])
+    price_map: dict[str, dict] = {}
+    for ev in econ_events:
+        price_map[ev.get("event", "")] = ev
+
+    def ev_actual(key: str) -> str:
+        for name, ev in price_map.items():
+            if key.lower() in name.lower():
+                return ev.get("actual", "N/A")
+        return "N/A"
+
+    spy_actual = ev_actual("S&P 500")
+    qqq_actual = ev_actual("NASDAQ 100")
+    iwm_actual = ev_actual("Russell 2000")
+
+    mf_lines = [
+        f"SPY: {spy_actual}",
+        f"QQQ: {qqq_actual}",
+        f"IWM: {iwm_actual}",
+    ]
+    if phase:
+        mf_lines.append(f"Market phase: {phase.get('value','?')}")
+    if gate:
+        mf_lines.append(f"Gate score: {gate.get('value','?')}/100  detail: {gate.get('detail','')[:50]}")
+    if trend:
+        pct = trend.get("pct_from_sma200")
+        close_ = trend.get("qqq_close")
+        sma200 = trend.get("qqq_sma200")
+        if pct is not None:
+            mf_lines.append(f"QQQ vs SMA200: {fmt_pct(pct)}  (close {close_} vs SMA200 {sma200})")
+    if risk:
+        mf_lines.append(f"Session note: {risk.get('value','?')}")
+
+    # Event Drivers
+    # Priority 1: news selected_themes
+    themes = news.get("selected_themes", []) or []
+    articles = news.get("articles", []) or []
+
+    # Priority 2: earnings
+    earns = earnings.get("earnings", []) or []
+    earn_lines: list[str] = []
+    for e in earns[:6]:
+        sym   = e.get("symbol", "?")
+        name  = e.get("company", e.get("name", "?"))
+        date  = e.get("date", "?")
+        timing = e.get("timing", "")
+        earn_lines.append(f"  {sym} ({name}) | {date} {timing}")
+
+    # Priority 3: real macro events (filter out price data entries)
+    _price_keywords = {"S&P", "NASDAQ", "Russell", "Treasury", "VIX", "Dollar", "Gold", "Crude", "Bitcoin"}
+    real_events = [
+        ev for ev in econ_events
+        if not any(kw.lower() in ev.get("event", "").lower() for kw in _price_keywords)
+    ]
+
+    ed_lines: list[str] = []
+    if themes:
+        ed_lines.append("News themes: " + ", ".join(themes[:5]))
+    if articles:
+        for a in articles[:4]:
+            title = a.get("title") or a.get("headline") or str(a)[:80]
+            ed_lines.append(f"  - {title}")
+    if earn_lines:
+        ed_lines.append("Earnings:")
+        ed_lines.extend(earn_lines)
+    if real_events:
+        ed_lines.append("Economic events:")
+        for ev in real_events[:5]:
+            ed_lines.append(f"  {ev.get('date','?')} {ev.get('time','?')}  {ev.get('event','?')}  actual={ev.get('actual','-')}  forecast={ev.get('forecast','-')}")
+    if not ed_lines:
+        ed_lines.append("No major scheduled events or news themes today.")
+
+    if front_headlines:
+        ed_lines.append("Headline tape:")
+        for h in headline_tape.splitlines()[:3]:
+            ed_lines.append(f"  {h}")
+
+    # Sector Structure
+    sectors = sp.get("sectors", [])
+    sorted_1d = sorted(sectors, key=lambda x: x.get("change_1d", 0), reverse=True)
+    leaders  = sorted_1d[:3]
+    laggards = sorted_1d[-3:]
+
+    def sector_str(s: dict) -> str:
+        return (f"  {s.get('symbol','?')} {s.get('name','')[:14]:14} "
+                f"1d:{s.get('change_1d',0):+.1f}%  1w:{s.get('change_1w',0):+.1f}%  1m:{s.get('change_1m',0):+.1f}%")
+
+    ss_lines = (
+        ["Leaders:"]  + [sector_str(s) for s in leaders] +
+        ["Laggards:"] + [sector_str(s) for s in laggards]
+    )
+
+    # Macro & Commodities
+    us10y = ev_actual("US 10Y")
+    vix   = ev_actual("VIX")
+    dxy   = ev_actual("Dollar")
+    gold  = ev_actual("Gold")
+    oil   = ev_actual("Crude")
+    btc   = ev_actual("Bitcoin")
+
+    mc_lines = [
+        f"US 10Y Yield:  {us10y}",
+        f"VIX:           {vix}",
+        f"DXY (Dollar):  {dxy}",
+        f"Gold:          {gold}",
+        f"Crude Oil:     {oil}",
+        f"Bitcoin:       {btc}",
+    ]
+
+    # Key Stocks
+    # Leveraged ETFs + mega-cap watchlist from core_price_snapshot
+    cps_data  = load("core_price_snapshot_latest.json")
+    cps_map   = {r["symbol"]: r for r in cps_data.get("records", [])}
+    action_snapshot = load("action_snapshot.json")
+
+    LEVERAGE_WATCH = [
+        ("TQQQ", "3x QQQ (ProShares)"),
+        ("SOXL", "3x Semi (Direxion)"),
+        ("SMH",  "VanEck Semiconductor ETF"),
+        ("QQQ",  "Invesco QQQ"),
+    ]
+    MEGA_CAPS = ["TSLA", "NVDA", "MSFT", "AAPL", "AMZN", "META"]
+
+    sm_lines: list[str] = ["=== LEVERAGED & SECTOR ETFs ==="]
+    for sym, label in LEVERAGE_WATCH:
+        r = cps_map.get(sym)
+        if r:
+            sm_lines.append(f"  {sym:6} {label:30} ${r['price']:.2f}  {r['change_pct']:+.2f}%")
+
+    sm_lines.append("=== MEGA-CAP WATCH ===")
+    for sym in MEGA_CAPS:
+        r = cps_map.get(sym)
+        if r:
+            sm_lines.append(f"  {sym:6} {r['name'][:28]:28} ${r['price']:.2f}  {r['change_pct']:+.2f}%")
+
+    # Notable movers (filtered, price >= $5, real exchanges)
+    categories = movers.get("categories", {})
+    filtered   = filter_movers(categories)
+    if filtered:
+        sm_lines.append("=== NOTABLE MOVERS (NASDAQ/NYSE, price >$5) ===")
+        for item in filtered[:10]:
+            sym  = item.get("symbol", "?")
+            name = item.get("name", "")[:24]
+            chg  = item.get("change_pct", 0)
+            rvol = item.get("relative_volume_10d_calc") or 0
+            # skip if already in mega-cap list
+            if sym in MEGA_CAPS or sym in [w[0] for w in LEVERAGE_WATCH]:
+                continue
+            sm_lines.append(f"  {sym:8} {name:24} ${item['price']:.2f}  {chg:+.2f}%  rvol={rvol:.1f}x")
+    else:
+        sm_lines.append("No significant movers above filter threshold today.")
+
+    watchlist_moves = action_snapshot.get("watchlist_moves", []) if isinstance(action_snapshot, dict) else []
+    if watchlist_moves:
+        sm_lines.append("=== WATCHLIST IMPACT ===")
+        for row in watchlist_moves[:5]:
+            sym = str(row.get("symbol", "?"))
+            chg = row.get("chg_pct", None)
+            badge = str(row.get("badge", ""))
+            reason = str(row.get("badge_reason", ""))
+            if chg is None:
+                sm_lines.append(f"  {sym:6} {badge:10} {reason}")
+            else:
+                sm_lines.append(f"  {sym:6} {float(chg):+6.2f}%  {badge:10} {reason}")
+
+    watchlist_focus_lines: list[str] = []
+    for row in watchlist_moves[:5]:
+        sym = str(row.get("symbol", "")).upper()
+        if not sym:
+            continue
+        chg = row.get("chg_pct", None)
+        reason = str(row.get("badge_reason", "")).strip()
+        if chg is None:
+            watchlist_focus_lines.append(f"{sym}: watchlist move available, reason={reason or 'n/a'}")
+        else:
+            watchlist_focus_lines.append(f"{sym}: {float(chg):+.2f}% ({reason or 'no reason'})")
+    if not watchlist_focus_lines:
+        watchlist_focus_lines.append("No watchlist move diagnostics available.")
+
+    event_cards = build_event_cards(
+        headline_rows=headline_rows,
+        themes=themes,
+        articles=articles,
+        earnings=earns,
+        econ_events=real_events,
+        movers=filtered,
+        watchlist_moves=watchlist_moves,
+        sector_leaders=leaders,
+        sector_laggards=laggards,
+    )
+    narrative_plan = build_narrative_plan(event_cards, ms, rv1, re_data)
+
+    # Economic Data
+    # Only real economic releases (CPI, NFP, FOMC, GDP, etc.)
+    econ_data_lines: list[str] = []
+    if real_events:
+        for ev in real_events[:8]:
+            actual_   = ev.get("actual", "-")
+            forecast_ = ev.get("forecast", "-")
+            surprise  = ""
+            try:
+                a_num = float(str(actual_).split()[0].replace("%","").replace(",",""))
+                f_num = float(str(forecast_).split()[0].replace("%","").replace(",",""))
+                diff  = a_num - f_num
+                surprise = f"(surprise: {diff:+.2f})" if abs(diff) > 0.01 else "(in-line)"
+            except Exception:
+                pass
+            econ_data_lines.append(
+                f"  {ev.get('date','?')} | {ev.get('event','?'):30} "
+                f"actual={actual_}  forecast={forecast_}  {surprise}"
+            )
+    if earns:
+        econ_data_lines.append("Earnings reports in window:")
+        for e in earns[:5]:
+            sym  = e.get("symbol","?")
+            eps  = e.get("eps_actual", e.get("eps","?"))
+            est  = e.get("eps_estimate","?")
+            rev  = e.get("revenue_actual", e.get("revenue","?"))
+            econ_data_lines.append(f"  {sym}: EPS={eps} est={est}  Rev={rev}")
+    if not econ_data_lines:
+        econ_data_lines.append("No major economic data releases scheduled for this session.")
+
+    # Technical & Regime
+    curr = rv1.get("current", {})
+    mss        = curr.get("score", "?")
+    level      = curr.get("level", "?")
+    level_label = curr.get("level_label", "?")
+    zone       = curr.get("score_zone", "?")
+    vol_pct    = curr.get("vol_pct", None)
+    dd_pct     = curr.get("dd_pct", None)
+
+    # Track A / B status
+    track_a = rv1.get("track_a", [])
+    track_b = rv1.get("track_b", [])
+
+    tr_lines = [
+        f"Market Structure Score (MSS): {mss}",
+        f"Level: {level} ({level_label})",
+        f"Zone:  {zone}",
+    ]
+    if vol_pct is not None:
+        tr_lines.append(f"VIX percentile: {vol_pct:.1f}th")
+    if dd_pct is not None:
+        tr_lines.append(f"QQQ drawdown from peak: {dd_pct:.2f}%")
+
+    # Risk overlay stays in section 07 only.
+    shock = re_data.get("shock_probability", {})
+    dtrig = re_data.get("defensive_trigger", {})
+    if shock:
+        tr_lines.append(f"Shock probability: {shock.get('value','?')}% ({shock.get('label','?')}, {shock.get('trend','?')})")
+    if dtrig:
+        tr_lines.append(f"Defensive trigger: {dtrig.get('status','?')} | {dtrig.get('reason','?')[:60]}")
+
+    # Recent regime history (last 3)
+    history = rv1.get("history", [])[-3:]
+    if history:
+        tr_lines.append("Recent MSS history:")
+        for h in history:
+            tr_lines.append(f"  {h.get('date','?')}  MSS={h.get('score','?')}  zone={h.get('score_zone','?')}")
+
+    return {
+        "data_date":        data_date,
+        "headline_tape":    headline_tape,
+        "mandatory_drivers": mandatory_drivers,
+        "watchlist_focus":  "\n".join(watchlist_focus_lines),
+        "hook_driver":      hook_driver,
+        "event_cards_json":  json.dumps(event_cards, ensure_ascii=False),
+        "narrative_plan_json": json.dumps(narrative_plan, ensure_ascii=False),
+        "market_flow":      "\n".join(mf_lines),
+        "event_drivers":    "\n".join(ed_lines),
+        "sector_structure": "\n".join(ss_lines),
+        "macro_commodities":"\n".join(mc_lines),
+        "stock_moves":      "\n".join(sm_lines),
+        "economic_data":    "\n".join(econ_data_lines),
+        "technical_regime": "\n".join(tr_lines),
+    }
+
+
+# ?? Hook builder (rule-based) ?????????????????????????????????????????????
+def build_hook(
+    ctx: dict[str, str],
+    rv1: dict,
+    re_data: dict,
+    narrative_plan: dict[str, Any] | None = None,
+) -> str:
+    # Direction: parse SPY line from market_flow
+    spy_line = next((ln for ln in ctx["market_flow"].splitlines() if ln.startswith("SPY:")), "")
+    direction = "U.S. equities moved"
+    try:
+        # e.g. "SPY: 655.24 (+0.75%)"
+        import re
+        m = re.search(r"\(([+-][0-9.]+)%\)", spy_line)
+        if m:
+            pct = float(m.group(1))
+            if pct > 1.5:
+                direction = f"U.S. equities rallied strongly (+{pct:.2f}%)"
+            elif pct > 0:
+                direction = f"U.S. equities edged higher (+{pct:.2f}%)"
+            elif pct < -1.5:
+                direction = f"U.S. equities sold off sharply ({pct:.2f}%)"
+            else:
+                direction = f"U.S. equities slipped ({pct:.2f}%)"
+    except Exception:
+        pass
+
+    # Pressure: VIX from macro_commodities
+    vix_val = None
+    vix_line = next((ln for ln in ctx["macro_commodities"].splitlines() if "VIX" in ln), "")
+    try:
+        import re
+        m = re.search(r"([\d.]+)", vix_line)
+        if m:
+            vix_val = float(m.group(1))
+    except Exception:
+        pass
+
+    if vix_val is not None:
+        if vix_val >= 30:
+            pressure = "under severe volatility stress (VIX {:.1f})".format(vix_val)
+        elif vix_val >= 20:
+            pressure = "amid elevated market uncertainty (VIX {:.1f})".format(vix_val)
+        else:
+            pressure = "in a subdued volatility environment (VIX {:.1f})".format(vix_val)
+    else:
+        pressure = "amid mixed volatility signals"
+
+    hook_driver = str(ctx.get("hook_driver", "") or "").strip()
+    if not hook_driver and narrative_plan:
+        primary = narrative_plan.get("primary_driver", {}) if isinstance(narrative_plan, dict) else {}
+        primary_event = str(primary.get("event", "") or "").strip()
+        primary_why = str(primary.get("why", "") or "").strip()
+        if primary_event:
+            hook_driver = primary_event if not primary_why else f"{primary_event} ({primary_why})"
+    if hook_driver:
+        return f"{direction} as {hook_driver}, with volatility {pressure}."
+    return f"{direction}, with volatility {pressure}."
+
+
+# ?? Risk Check (rule-based) ???????????????????????????????????????????????????
+def build_risk_check(rv1: dict) -> dict:
+    curr  = rv1.get("current", {})
+    mss   = curr.get("score", 100)
+    level = curr.get("level", 0)
+    zone  = curr.get("score_zone", "")
+    label = curr.get("level_label", "")
+
+    triggered = level >= 2
+
+    if level >= 4:
+        color   = "#ef4444"
+        message = (
+            f"CRISIS ALERT - MSS {mss} has entered {zone} territory (Level {level}: {label}). "
+            "The structural foundation of the market is deteriorating. Exposure management is critical. "
+            "Any rally should be treated as a distribution opportunity until MSS recovers above 100."
+        )
+    elif level == 3:
+        color   = "#f97316"
+        message = (
+            f"HIGH RISK - MSS {mss} is in {zone} (Level {level}: {label}). "
+            "The market is showing meaningful structural weakness. "
+            "Reduce high-beta exposure and tighten stops on open positions."
+        )
+    elif level == 2:
+        color   = "#f59e0b"
+        message = (
+            f"WARNING - MSS {mss} has crossed into {zone} territory (Level {level}: {label}). "
+            "Market structure is under pressure. Review position sizing and monitor key support levels closely."
+        )
+    else:
+        color   = "#22c55e"
+        message = f"No active risk alerts. MSS {mss} in {zone} (Level {level}: {label}). Structure intact."
+
+    return {
+        "triggered": triggered,
+        "level":     level,
+        "mss":       mss,
+        "zone":      zone,
+        "message":   message,
+        "color":     color,
+    }
+
+
+# ?? One Line (rule-based) ????????????????????????????????????????????????????
+def build_one_line(sections: list[dict], rv1: dict) -> str:
+    curr  = rv1.get("current", {})
+    level = curr.get("level", 0)
+    zone  = curr.get("score_zone", "Neutral")
+    mss   = curr.get("score", 100)
+
+    signals = [s.get("signal", "neutral") for s in sections]
+    bull    = signals.count("bull")
+    bear    = signals.count("bear")
+    caution = signals.count("caution")
+
+    if bull >= 5:
+        stance = "Market tone is constructive, with leadership broadening beyond one index"
+    elif level >= 4 or bear >= 4:
+        stance = "Market tone is defensive, with catalysts and breadth leaning risk-off"
+    elif caution >= 3:
+        stance = "Market tone is mixed, with selective leadership and uneven follow-through"
+    else:
+        stance = "Market tone is balanced, with headlines driving rotation more than a full trend"
+
+    risk_tail = "Section 07 carries the explicit risk overlay."
+    if level >= 3:
+        risk_tail = "Section 07 carries the explicit risk overlay and should be read carefully."
+    return f"{stance}. {risk_tail}"
+
+
+def enforce_required_mentions(
+    sections: list[dict[str, Any]],
+    hook: str,
+    mandatory_drivers: str,
+    watchlist_focus: str,
+) -> list[dict[str, Any]]:
+    """
+    Deterministic safety net:
+    If required catalysts are missing from model prose, append concise lines so
+    the final briefing does not ignore key live drivers.
+    """
+    text_blob = " ".join(
+        [hook]
+        + [str(s.get("structural", "")) + " " + str(s.get("implication", "")) for s in sections]
+    ).lower()
+    need_geo = any(k in mandatory_drivers.lower() for k in ("trump", "iran", "hormuz", "geopolitical"))
+    need_tsla = any(k in (mandatory_drivers + " " + watchlist_focus).lower() for k in ("tsla", "tesla"))
+
+    def _sec(section_id: str) -> dict[str, Any] | None:
+        for s in sections:
+            if s.get("id") == section_id:
+                return s
+        return None
+
+    if need_geo and not any(k in text_blob for k in ("trump", "iran", "hormuz")):
+        sec = _sec("event_drivers")
+        if sec is not None:
+            extra = (
+                " Geopolitical headlines around Trump/Iran/Hormuz are a live macro driver, "
+                "mainly through oil risk premium and cross-asset volatility spillover."
+            )
+            sec["implication"] = (str(sec.get("implication", "")).rstrip() + extra).strip()
+
+    if need_tsla and not any(k in text_blob for k in ("tsla", "tesla")):
+        sec = _sec("stock_moves")
+        if sec is not None:
+            extra = (
+                " TSLA remains a key single-name sentiment pivot today, with delivery/news flow "
+                "feeding directly into growth-risk appetite."
+            )
+            sec["implication"] = (str(sec.get("implication", "")).rstrip() + extra).strip()
+
+    return sections
+
+
+def build_fallback_section_payload(section_id: str, section_text: str, rv1: dict) -> dict[str, str]:
+    lines = [ln.strip() for ln in (section_text or "").splitlines() if ln.strip()]
+    structural = " ".join(lines[:2]) if lines else "Data is temporarily unavailable for this section."
+    implication = " ".join(lines[2:4]) if len(lines) > 2 else "Wait for the next refresh and keep position sizing disciplined."
+
+    level = int((rv1.get("current", {}) or {}).get("level", 0) or 0)
+    if section_id == "technical_regime":
+        signal = "bear" if level >= 4 else "caution" if level >= 2 else "neutral"
+    else:
+        signal = "neutral"
+
+    return {
+        "structural": structural,
+        "structural_ko": "",
+        "implication": implication,
+        "implication_ko": "",
+        "signal": signal,
+    }
+
+
+# ?? Prompt ????????????????????????????????????????????????????????????????????
+SYSTEM_PROMPT = """\
+You are a senior market analyst writing the daily briefing for sophisticated retail investors.
+Your tone should be that of a "Situation Room" director—dynamic, narrative-driven, and focused on the flow of money and cause-and-effect, avoiding dry lists of index numbers.
+
+Your job is to write a market front-page brief, not a risk memo.
+The 7 sections must follow this dynamic structure:
+01. The Battleground (market_flow): What is the single dominant narrative today? What are the bulls and bears fighting over? Keep broad index numbers in the background.
+02. Live Triggers & Transmission (event_drivers): What news or catalyst sparked the move, and how did the shockwave travel through the market?
+03. Money Velocity & Rotation (sector_structure): Where is the smart money flowing? Which sectors are being liquidated, and which are absorbing the capital?
+04. Macro Tremors (macro_commodities): How are rates, VIX, and the dollar acting as gravity or rocket fuel for equities?
+05. The Hotzones (stock_moves): Focus on 2-3 specific battleground stocks (including TSLA if relevant). Why is capital crowding here?
+06. Next 24H Radar (economic_data): What is the next immediate catalyst that could blow up or boost the market in the next 24 hours?
+07. System DEFCON (technical_regime): The only explicit risk section. Provide a definitive safety/risk rating based on MSS, Gate, and regime overlays.
+
+Hard constraints:
+1) Lead with the day's mood and catalysts, not with a defensive risk narrative.
+2) Do not make QQQ/TQQQ the center of gravity; use broad market, sectors, movers, and events first.
+3) If geopolitical or policy items appear (Trump, Iran, Hormuz, tariffs, speech), explain the transmission chain, but keep the framing market-wide.
+4) Key Stocks section must analyze at most 3 names with cause-and-effect language. If TSLA is in watchlist/headlines, TSLA must be included.
+5) Macro & Rates section must interpret DXY/VIX/US10Y/Oil/BTC (why they moved and what they imply).
+6) Section 07 should carry the explicit risk overlay: MSS, zone, drawdown, shock probability, and defensive trigger.
+7) Keep each field concise but substantive. Do not pad.
+8) "hook" / "one_line" should sound like a market front page headline with a catalyst and tone, not a risk alert.
+9) Treat EVENT CARDS and NARRATIVE PLAN as the primary evidence pack: build the brief from event extraction, relevance, and narrative slots before rendering prose.
+
+For each section provide:
+- "structural": what the data reveals about current market structure or tone.
+- "implication": what it means for participants going forward.
+
+For each section also provide Korean translations:
+- "structural_ko"
+- "implication_ko"
+
+At the top level provide all of:
+- "hook" (English)
+- "hook_ko" (Korean)
+- "one_line" (English)
+- "one_line_ko" (Korean)
+
+Korean quality rules (strict):
+1) Korean text must match the English meaning.
+2) Prefer natural Korean finance phrasing over literal translation.
+3) Keep proper nouns/tickers exactly as in English.
+4) "one_line_ko" should be a dense market headline with catalyst + tone + posture.
+5) Do not put section-07 risk language into sections 01-06.
+6) EVENT CARDS and NARRATIVE PLAN should guide the whole front page, not be paraphrased mechanically.
+
+"signal" must be exactly one of: "bull", "caution", "bear", "neutral"
+Respond ONLY with valid JSON - no markdown fences, no extra text.\
+"""
+
+USER_TEMPLATE = """\
+DATA DATE: {data_date}
+
+MANDATORY NARRATIVE DRIVERS:
+{mandatory_drivers}
+
+LIVE HEADLINE TAPE (prioritized):
+{headline_tape}
+
+WATCHLIST FOCUS:
+{watchlist_focus}
+
+EVENT CARDS (Layer 1-2, scored evidence pack):
+{event_cards_json}
+
+NARRATIVE PLAN (Layer 3-4, storyline spine):
+{narrative_plan_json}
+
+SECTION 1 - THE BATTLEGROUND
+{market_flow}
+
+SECTION 2 - LIVE TRIGGERS & TRANSMISSION
+{event_drivers}
+
+SECTION 3 - MONEY VELOCITY & ROTATION
+{sector_structure}
+
+SECTION 4 - MACRO TREMORS
+{macro_commodities}
+
+SECTION 5 - THE HOTZONES
+{stock_moves}
+
+SECTION 6 - NEXT 24H RADAR
+{economic_data}
+
+SECTION 7 - SYSTEM DEFCON
+{technical_regime}
+
+Generate a JSON object with exactly this structure (no extra keys):
+{{
+  "hook": "...",
+  "hook_ko": "...",
+  "one_line": "...",
+  "one_line_ko": "...",
+  "sections": {{
+    "market_flow":       {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}},
+    "event_drivers":     {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}},
+    "sector_structure":  {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}},
+    "macro_commodities": {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}},
+    "stock_moves":       {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}},
+    "economic_data":     {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}},
+    "technical_regime":  {{"structural": "...", "structural_ko": "...", "implication": "...", "implication_ko": "...", "signal": "..."}}
+  }}
+}}\
+"""
+
+KO_ALIGNMENT_SYSTEM_PROMPT = """\
+You are a senior Korean financial localization editor.
+
+Task:
+- Convert English briefing text to Korean with high fidelity.
+- Preserve meaning, tone, and risk posture.
+
+Hard constraints:
+1) Korean must be meaning-equivalent to English for each field.
+2) Do not add or remove facts, numbers, names, tickers, or conclusions.
+3) Use natural Korean market language (not literal translation).
+4) Prefer familiar terms (e.g., "외부 충격", "장중 흐름", "이벤트 장세", "재평가", "스마트 머니", "자금 이동").
+5) Keep proper nouns/tickers exactly as written (TSLA, QQQ, VIX, US10Y, Hormuz, Reuters).
+
+Return ONLY valid JSON (no markdown):
+{
+  "hook_ko": "...",
+  "one_line_ko": "...",
+  "sections": {
+    "market_flow": {"structural_ko": "...", "implication_ko": "..."},
+    "event_drivers": {"structural_ko": "...", "implication_ko": "..."},
+    "sector_structure": {"structural_ko": "...", "implication_ko": "..."},
+    "macro_commodities": {"structural_ko": "...", "implication_ko": "..."},
+    "stock_moves": {"structural_ko": "...", "implication_ko": "..."},
+    "economic_data": {"structural_ko": "...", "implication_ko": "..."},
+    "technical_regime": {"structural_ko": "...", "implication_ko": "..."}
+  }
+}
+"""
+
+# ── Korean-only primary prompt (default generation mode) ──────────────────────
+KO_ONLY_SYSTEM_PROMPT = """\
+당신은 한국 개인 투자자를 위한 일일 마켓 브리핑을 작성하는 시니어 마켓 애널리스트이자 종합 상황실(Situation Room) 디렉터입니다.
+단순한 지수 나열을 피하고, 스마트 머니의 자금 이동과 인과관계 중심의 역동적인 서사(Storytelling)를 전개하세요.
+
+01~07 섹션은 다음의 역할극에 맞게 구성해야 합니다:
+01. 오늘의 전장 상황 (market_flow): 지수 숫자는 뒤로 숨기고, 오늘 시장을 지배한 '단 하나의 거대한 내러티브'와 매수/매도 세력의 치열한 공방을 묘사.
+02. 실시간 트리거 & 연쇄 반응 (event_drivers): 촉매가 된 속보/이벤트가 어떻게 시장 전체로 타격을 주거나 환호하게 만들었는지 인과관계 서술.
+03. 자금 이동 지도 (sector_structure): 어디서 차익 실현이 나오고 어느 섹터로 자금이 쏠리는지 스마트 머니의 로테이션 추적.
+04. 매크로 지진계 (macro_commodities): 금리, VIX, 달러가 현재 주식 밸류에이션을 어떻게 억누르거나 밀어올리는지 묘사.
+05. 격전지 핫스팟 (stock_moves): 자금이 폭발적으로 쏠린 2~3개 핵심 종목(TSLA 포함 시 필수)의 전투 상황 묘사.
+06. 내일의 레이더 (economic_data): 향후 24시간 내 시장의 폭탄이나 로켓이 될 수 있는 핀포인트 이벤트 경고.
+07. 시스템 DEFCON (technical_regime): 유일한 명시적 시스템 리스크 경고 구역. MSS, Gate 점수에 따른 단호한 액션 플랜(방어 vs 공격) 제시.
+
+필수 조건:
+1) 촉매와 시장 분위기를 먼저 쓰고, 위험도 문구는 07 섹션으로만 제한하세요.
+2) QQQ/TQQQ만 중심에 두지 말고, 광범위한 시장, 섹터, 종목, 이벤트를 균형 있게 다루세요.
+3) 지정학·정책 이벤트(트럼프, 이란, 호르무즈, 관세, 파월)가 있으면 시장에 미치는 전달 경로를 설명하세요.
+4) structural_ko: 각 카테고리의 역할에 맞춰 현재 시장 구조나 자금 흐름을 설명하는 2-5문장.
+5) implication_ko: 이 상황이 시장 참여자의 포지션에 어떤 의미가 있는지, 어떻게 대비해야 하는지 담은 2-5문장.
+6) hook_ko: 오늘 세션을 대표하는 전장 헤드라인 한 줄.
+7) one_line_ko: 촉매 + 자금 흐름 + 포지션 시사점을 담은 밀도 높은 한 문장.
+8) signal: "bull", "caution", "bear", "neutral" 중 정확히 하나.
+
+문장 스타일: 군더더기 없는 상황실 브리핑 톤. 자연스러운 금융 한국어. 직역 금지. 틱커/고유명사는 원문 그대로 (TSLA, QQQ, VIX 등).
+
+COMMENTARY ENGINE (추가 필드 — 반드시 포함):
+아래 필드를 sections와 동일한 레벨에 추가하라.
+
+commentary_type: 다음 9개 중 정확히 하나:
+  MOMENTUM_STRETCH | PULLBACK_WATCH | BREADTH_CHECK | LEADERSHIP_ROTATION |
+  MACRO_PRESSURE | THESIS_CONFIRMATION | CONTRADICTION_ALERT | EVENT_SETUP | RISK_RELIEF
+
+core_question: 정확히 1문장. "~인가?" 형식. 지수 나열 금지.
+
+human_commentary: 문자열 배열. 정확히 3개 요소.
+  각 요소 = 한국어 기준 정확히 1문장, 마침표(.)로 종료.
+  구조: ["관찰.", "해석.", "전망."]
+  엄격한 제한:
+  - 배열 요소 하나에 문장 2개 이상 절대 금지 (마침표 2개 이상 금지)
+  - 각 요소 최대 50자 (한국어 글자 수 기준)
+  - 숫자는 배열 전체에서 최대 2개
+  - 티커 등락률 나열 절대 금지 ("SPY +0.99%, QQQ..." 금지)
+  - 섹션 01~07 내용 반복 금지
+  - 금지 어구: 무너지고, 포연 속, 폭탄, 시한폭탄, 충격파, 최후의, 지뢰
+  - 선호 어구: 압박받고, 경계 속, 부담 요인, 전이 경로
+
+market_tension: 정확히 1문장. "A이지만 B다" 또는 "A인데 B다" 구조. 금지 어구(폭탄, 시한폭탄, 지뢰, 충격파) 사용 금지.
+
+next_checkpoints: 문자열 배열. 최대 3개. 각 항목은 "지표/종목 — 확인내용" 형식. 설명은 짧게 (20자 이내).
+
+총 commentary 블록(core_question + human_commentary + market_tension + next_checkpoints)은 120단어 이내.
+human_commentary는 반드시 문자열 배열이어야 한다. 단일 문자열로 반환하지 마라.
+Respond ONLY with valid JSON - no markdown fences, no extra text.\
+"""
+
+KO_ONLY_USER_TEMPLATE = """\
+DATA DATE: {data_date}
+
+MANDATORY NARRATIVE DRIVERS:
+{mandatory_drivers}
+
+LIVE HEADLINE TAPE (prioritized):
+{headline_tape}
+
+WATCHLIST FOCUS:
+{watchlist_focus}
+
+EVENT CARDS (Layer 1-2, scored evidence pack):
+{event_cards_json}
+
+NARRATIVE PLAN (Layer 3-4, storyline spine):
+{narrative_plan_json}
+
+SECTION 1 - THE BATTLEGROUND
+{market_flow}
+
+SECTION 2 - LIVE TRIGGERS & TRANSMISSION
+{event_drivers}
+
+SECTION 3 - MONEY VELOCITY & ROTATION
+{sector_structure}
+
+SECTION 4 - MACRO TREMORS
+{macro_commodities}
+
+SECTION 5 - THE HOTZONES
+{stock_moves}
+
+SECTION 6 - NEXT 24H RADAR
+{economic_data}
+
+SECTION 7 - SYSTEM DEFCON
+{technical_regime}
+
+Generate a JSON object with ONLY Korean fields:
+{{
+  "commentary_type": "MOMENTUM_STRETCH|PULLBACK_WATCH|BREADTH_CHECK|LEADERSHIP_ROTATION|MACRO_PRESSURE|THESIS_CONFIRMATION|CONTRADICTION_ALERT|EVENT_SETUP|RISK_RELIEF",
+  "core_question": "오늘 장의 핵심 질문 한 문장 (반드시 ~인가? 형식)",
+  "human_commentary": ["관찰 문단", "해석 문단", "다음 세션 전망 문단"],
+  "market_tension": "A인데 B다 구조의 긴장 구도 한 문장",
+  "next_checkpoints": ["지표/종목 — 확인내용 — 이유", "지표/종목 — 확인내용 — 이유"],
+  "hook_ko": "...",
+  "one_line_ko": "...",
+  "sections": {{
+    "market_flow":       {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}},
+    "event_drivers":     {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}},
+    "sector_structure":  {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}},
+    "macro_commodities": {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}},
+    "stock_moves":       {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}},
+    "economic_data":     {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}},
+    "technical_regime":  {{"structural_ko": "...", "implication_ko": "...", "signal": "..."}}
+  }}
+}}\
+"""
+
+
+def _escape_literal_newlines_in_strings(s: str) -> str:
+    """Replace bare newlines inside JSON string values with \\n escape sequences."""
+    result: list[str] = []
+    in_string = False
+    escaped = False
+    for ch in s:
+        if escaped:
+            result.append(ch)
+            escaped = False
+        elif ch == '\\' and in_string:
+            result.append(ch)
+            escaped = True
+        elif ch == '"':
+            in_string = not in_string
+            result.append(ch)
+        elif ch == '\n' and in_string:
+            result.append('\\n')
+        elif ch == '\r' and in_string:
+            result.append('\\r')
+        else:
+            result.append(ch)
+    return ''.join(result)
+
+
+def _parse_json_from_llm(raw: str) -> dict[str, Any]:
+    text = (raw or "").strip()
+    if not text:
+        raise ValueError("Empty LLM output")
+
+    candidates: list[str] = [text]
+
+    fenced = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
+    if fenced:
+        candidates.append(fenced.group(1).strip())
+
+    first = text.find("{")
+    last = text.rfind("}")
+    if first != -1 and last != -1 and last > first:
+        candidates.append(text[first:last + 1].strip())
+
+    # Also try with literal newlines inside strings escaped
+    fixed = _escape_literal_newlines_in_strings(text)
+    if fixed != text:
+        candidates.append(fixed)
+        f_first = fixed.find("{")
+        f_last = fixed.rfind("}")
+        if f_first != -1 and f_last > f_first:
+            candidates.append(fixed[f_first:f_last + 1].strip())
+
+    last_err: Exception | None = None
+    seen: set[str] = set()
+    for cand in candidates:
+        if not cand or cand in seen:
+            continue
+        seen.add(cand)
+        try:
+            parsed = json.loads(cand)
+            if isinstance(parsed, dict):
+                return parsed
+            raise ValueError("Parsed JSON is not an object")
+        except Exception as e:
+            last_err = e
+            continue
+
+    raise ValueError(f"LLM output is not valid JSON: {last_err}")
+
+
+def _call_llm_json_with_retry(
+    client: Any,
+    *,
+    system_prompt: str,
+    user_content: str,
+    max_tokens: int,
+    retries: int = 1,
+) -> tuple[dict[str, Any], int, int, str]:
+    """
+    Call Claude and require JSON output.
+    Retries with stricter instruction if parse fails.
+    Returns: (parsed_json, input_tokens_total, output_tokens_total, raw_text_last)
+    """
+    in_total = 0
+    out_total = 0
+    raw_last = ""
+
+    for attempt in range(retries + 1):
+        strict_suffix = ""
+        if attempt > 0:
+            strict_suffix = (
+                "\n\nCRITICAL FORMAT FIX:\n"
+                "Return ONLY ONE valid JSON object.\n"
+                "No prose. No markdown fences. No commentary.\n"
+            )
+
+        resp = client.messages.create(
+            model=MODEL_ID,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_content + strict_suffix}],
+        )
+        raw_last = resp.content[0].text.strip()
+        in_total += int(getattr(resp.usage, "input_tokens", 0) or 0)
+        out_total += int(getattr(resp.usage, "output_tokens", 0) or 0)
+
+        try:
+            parsed = _parse_json_from_llm(raw_last)
+            return parsed, in_total, out_total, raw_last
+        except Exception as e:
+            print(f"[build_daily_briefing_v6] WARN parse failed (attempt {attempt + 1}/{retries + 1}): {e}")
+            if attempt >= retries:
+                raise
+
+    raise ValueError("Unexpected JSON retry loop termination")
+
+
+def align_korean_from_english(client: Any, hook_en: str, one_line_en: str, sections: list[dict[str, Any]]) -> tuple[dict[str, Any], int, int]:
+    payload = {
+        "hook": hook_en,
+        "one_line": one_line_en,
+        "sections": {
+            sec.get("id", ""): {
+                "structural": sec.get("structural", ""),
+                "implication": sec.get("implication", ""),
+            }
+            for sec in sections
+        },
+    }
+    parsed, in_tok, out_tok, _raw = _call_llm_json_with_retry(
+        client,
+        system_prompt=KO_ALIGNMENT_SYSTEM_PROMPT,
+        user_content=json.dumps(payload, ensure_ascii=False),
+        max_tokens=4096,
+        retries=1,
+    )
+    return parsed if isinstance(parsed, dict) else {}, in_tok, out_tok
+
+
+def resolve_briefing_system_prompt() -> tuple[str, dict[str, Any]]:
+    fallback_text = KO_ONLY_SYSTEM_PROMPT
+    fallback_meta: dict[str, Any] = {
+        "page": "briefing",
+        "version": "inline_fallback",
+        "key": "briefing",
+        "source": "inline_fallback",
+        "fallback_used": True,
+    }
+
+    if PromptManager is None:
+        return fallback_text, fallback_meta
+
+    try:
+        loaded_text = PromptManager.get_auto_prompt("briefing").strip()
+        loaded_meta = PromptManager.get_auto_prompt_meta("briefing")
+        if loaded_text:
+            return loaded_text, {
+                "page": "briefing",
+                "version": loaded_meta.get("version", "unknown"),
+                "key": loaded_meta.get("key", "briefing"),
+                "source": loaded_meta.get("source", "registry"),
+                "fallback_used": bool(loaded_meta.get("fallback_used", False)),
+            }
+        print("[build_daily_briefing_v6] WARN briefing prompt registry is empty; using inline fallback")
+    except Exception as exc:
+        print(f"[build_daily_briefing_v6] WARN briefing prompt load failed: {exc}")
+
+    return fallback_text, fallback_meta
+
+
+def resolve_briefing_en_prompts() -> tuple[str, str, dict[str, Any]]:
+    fallback_meta: dict[str, Any] = {
+        "page": "briefing_en",
+        "version": "v1.1",
+        "key": "briefing_en",
+        "source": "inline_fallback",
+        "user_source": "inline_fallback",
+        "fallback_used": True,
+    }
+
+    if load_prompt_text is None:
+        return SYSTEM_PROMPT, USER_TEMPLATE, fallback_meta
+
+    try:
+        system_prompt = load_prompt_text(DAILY_BRIEFING_EN_SYSTEM_PROMPT_SOURCE).strip()
+        user_template = load_prompt_text(DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE).strip()
+        if system_prompt and user_template:
+            return system_prompt, user_template, {
+                "page": "briefing_en",
+                "version": "v1.1",
+                "key": "briefing_en",
+                "source": DAILY_BRIEFING_EN_SYSTEM_PROMPT_SOURCE,
+                "user_source": DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE,
+                "fallback_used": False,
+            }
+        print("[build_daily_briefing_v6] WARN briefing EN prompt files are empty; using inline fallback")
+    except Exception as exc:
+        print(f"[build_daily_briefing_v6] WARN briefing EN prompt load failed: {exc}")
+
+    return SYSTEM_PROMPT, USER_TEMPLATE, fallback_meta
+
+
+# ?? Stale check ???????????????????????????????????????????????????????????????
+def is_stale(max_minutes: int = 1440, slot: str | None = None) -> bool:
+    if not OUT_PATH.exists():
+        return True
+    try:
+        with open(OUT_PATH, encoding="utf-8") as f:
+            existing = json.load(f)
+        ts  = existing.get("generated_at", "")
+        gen = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        existing_slot = str(existing.get("slot") or "").strip().lower()
+        current_slot = str(slot or _current_briefing_slot()).strip().lower() or _current_briefing_slot()
+        current_date = datetime.now(timezone.utc).astimezone(ET_ZONE).strftime("%Y-%m-%d")
+        existing_date = str(existing.get("data_date") or existing.get("date") or "")[:10]
+        if existing_date and existing_date != current_date:
+            return True
+        if existing_slot and existing_slot != current_slot:
+            return True
+        age = (datetime.now(timezone.utc) - gen).total_seconds() / 60
+        return age > max_minutes
+    except Exception:
+        return True
+
+
+# -- Shared data loader --------------------------------------------------
+def _load_inputs():
+    ms       = load("market_state.json")
+    overview = load("overview.json",          [CACHE_DIR, OUTPUT_DIR])
+    rv1      = load("risk_v1.json",                [OUTPUT_DIR])
+    re_data  = load("risk_engine.json")
+    sp       = load("sector_performance.json",     [OUTPUT_DIR, CACHE_DIR])
+    econ_cal = load("economic_calendar.json",      [OUTPUT_DIR])
+    earnings = load("earnings_calendar.json",      [OUTPUT_DIR])
+    movers   = load("movers_snapshot_latest.json")
+    news     = load("context_news.json")
+    return ms, overview, rv1, re_data, sp, econ_cal, earnings, movers, news
+
+
+def _refresh_context_news(slot: str) -> dict[str, Any] | None:
+    if build_context_news_cache is None:
+        return None
+    try:
+        refreshed = build_context_news_cache(region="us", limit=5, slot=slot)
+        if isinstance(refreshed, dict):
+            print(
+                "[build_daily_briefing_v6] context news "
+                f"refreshed date={refreshed.get('date')} "
+                f"status={refreshed.get('news_status')}"
+            )
+            return refreshed
+        print("[build_daily_briefing_v6] WARN context news refresh returned non-dict payload")
+    except Exception as exc:
+        print(f"[build_daily_briefing_v6] WARN context news refresh failed: {exc}")
+    return None
+
+
+def _load_api_key() -> str:
+    api_key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip().strip(chr(34)).strip(chr(39))
+    if api_key:
+        return api_key
+
+    env_candidates = [
+        BACKEND_DIR / ".env",
+        BACKEND_DIR / ".env.local",
+        BACKEND_DIR.parent / ".env",
+        BACKEND_DIR.parent / ".env.local",
+    ]
+    for _env_path in env_candidates:
+        if not _env_path.exists():
+            continue
+        with open(_env_path, encoding="utf-8", errors="replace") as _ef:
+            for _line in _ef:
+                line = _line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                if key not in {"ANTHROPIC_API_KEY", "CLAUDE_API_KEY"}:
+                    continue
+                _val = value.strip().strip(chr(34)).strip(chr(39))
+                if _val:
+                    api_key = _val
+                    break
+        if api_key:
+            break
+
+    if not api_key:
+        alias = (os.environ.get("CLAUDE_API_KEY") or "").strip().strip(chr(34)).strip(chr(39))
+        if alias:
+            api_key = alias
+    return api_key
+
+
+# -- Main -----------------------------------------------------------------
+def main() -> None:
+    def _configure_utf8_stdio() -> None:
+        # Environment variables alone do not reconfigure the already-running stdio streams.
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8")
+
+    _configure_utf8_stdio()
+    os.environ["PYTHONUTF8"] = "1"
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+    
+    force = "--force" in sys.argv
+    # Default: Korean only. Pass --lang=en to fill English fields.
+    lang = "ko"
+    slot = _current_briefing_slot()
+    argv = sys.argv[1:]
+    idx = 0
+    while idx < len(argv):
+        arg = argv[idx]
+        if arg.startswith("--lang="):
+            lang = arg.split("=", 1)[1].strip().lower()
+        elif arg == "--lang" and idx + 1 < len(argv):
+            lang = argv[idx + 1].strip().lower()
+            idx += 1
+        elif arg.startswith("--slot="):
+            slot = arg.split("=", 1)[1].strip().lower() or _current_briefing_slot()
+        elif arg == "--slot" and idx + 1 < len(argv):
+            slot = argv[idx + 1].strip().lower() or _current_briefing_slot()
+            idx += 1
+        idx += 1
+
+    if not force and not is_stale(slot=slot):
+        print("[build_daily_briefing_v6] output is fresh, skipping (use --force to override)")
+        return
+
+    api_key = _load_api_key()
+    if not api_key:
+        print("[build_daily_briefing_v6] WARN: ANTHROPIC_API_KEY / CLAUDE_API_KEY not found; using rule-based fallback.", flush=True)
+
+    refreshed_news = _refresh_context_news(slot)
+    ms, overview, rv1, re_data, sp, econ_cal, earnings, movers, news = _load_inputs()
+    if refreshed_news:
+        news = refreshed_news
+    ctx = build_context(ms, rv1, re_data, sp, econ_cal, earnings, movers, news)
+    risk_check = build_risk_check(rv1)
+    freshness = build_freshness_meta(
+        ctx.get("data_date"),
+        overview.get("latest_date"),
+        ms.get("generated_at"),
+    )
+    briefing_system_prompt, briefing_prompt_meta = resolve_briefing_system_prompt()
+    briefing_prompt_meta = dict(briefing_prompt_meta or {})
+    briefing_prompt_meta["registry_version"] = briefing_prompt_meta.get("registry_version") or briefing_prompt_meta.get("version", "unknown")
+    briefing_prompt_meta["version"] = RELEASE_VERSION
+    briefing_prompt_meta["release"] = RELEASE_VERSION
+    print(
+        "[build_daily_briefing_v6] briefing prompt "
+        f"source={briefing_prompt_meta.get('source')} "
+        f"version={briefing_prompt_meta.get('version')} "
+        f"registry_version={briefing_prompt_meta.get('registry_version')}"
+    )
+    try:
+        narrative_plan = json.loads(ctx.get("narrative_plan_json", "{}"))
+        if not isinstance(narrative_plan, dict):
+            narrative_plan = {}
+    except Exception:
+        narrative_plan = {}
+    hook_fallback = build_hook(ctx, rv1, re_data, narrative_plan)
+
+    if not api_key:
+        sections = []
+        for sid, title in SECTION_META:
+            fallback_sec = build_fallback_section_payload(sid, ctx.get(sid, ""), rv1)
+            sections.append({
+                "id": sid,
+                "title": title,
+                "structural": fallback_sec["structural"],
+                "structural_ko": fallback_sec["structural"],
+                "implication": fallback_sec["implication"],
+                "implication_ko": fallback_sec["implication"],
+                "signal": fallback_sec["signal"],
+                "color": SIGNAL_COLOR.get(fallback_sec["signal"], "#64748b"),
+            })
+
+        one_line = build_one_line(sections, rv1)
+        output = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_date":    ctx["data_date"],
+            "slot":         slot,
+            "model":        "rules",
+            "lang":         lang,
+            "release":      RELEASE_VERSION,
+            "tokens": {"input": 0, "output": 0, "cost_usd": 0.0},
+            "freshness": freshness,
+            "prompt": briefing_prompt_meta,
+            "hook":       hook_fallback,
+            "hook_ko":    hook_fallback,
+            "sections":   sections,
+            "risk_check": risk_check,
+            "one_line":   one_line,
+            "one_line_ko": one_line,
+        }
+
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with open(OUT_PATH, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+
+        print(f"[build_daily_briefing_v6] saved -> {OUT_PATH}  lang={lang} slot={slot} (fallback)")
+        if freshness.get("warning"):
+            print(f"  Freshness: {freshness['status']}  {freshness['warning']}")
+        for sec in sections:
+            print(f"  [{sec['id']:20}] signal={sec['signal']:8}")
+        print(f"  Risk: triggered={risk_check['triggered']}  level={risk_check['level']}  mss={risk_check['mss']}")
+        return
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
+
+    if lang == "en":
+        # EN fill: generate English fields, preserve existing Korean
+        briefing_en_system_prompt, briefing_en_user_template, briefing_prompt_meta = resolve_briefing_en_prompts()
+        briefing_prompt_meta = dict(briefing_prompt_meta or {})
+        briefing_prompt_meta["version"] = RELEASE_VERSION
+        briefing_prompt_meta["release"] = RELEASE_VERSION
+        existing: dict = {}
+        if OUT_PATH.exists():
+            try:
+                with open(OUT_PATH, encoding="utf-8") as f:
+                    existing = json.load(f)
+            except Exception:
+                pass
+
+        user_msg = briefing_en_user_template.format(**ctx)
+        print(f"[build_daily_briefing_v6] lang=en  model={MODEL_ID}  context={len(user_msg)} chars")
+        parsed, in_tok, out_tok, _ = _call_llm_json_with_retry(
+            client, system_prompt=briefing_en_system_prompt,
+            user_content=user_msg, max_tokens=8192, retries=1,
+        )
+        cost = in_tok * PRICE_IN + out_tok * PRICE_OUT
+        print(f"[build_daily_briefing_v6] tokens: in={in_tok} out={out_tok} cost=${cost:.5f}")
+
+        llm_sections = parsed.get("sections", {}) if isinstance(parsed, dict) else {}
+        hook     = str((parsed.get("hook",     "") if isinstance(parsed, dict) else "") or "").strip()
+        one_line = str((parsed.get("one_line", "") if isinstance(parsed, dict) else "") or "").strip()
+
+        sections: list[dict] = []
+        ex_sections: list[dict] = existing.get("sections", []) if isinstance(existing, dict) else []
+        for sid, title in SECTION_META:
+            raw_sec = llm_sections.get(sid, {}) if isinstance(llm_sections, dict) else {}
+            fallback_sec = build_fallback_section_payload(sid, ctx.get(sid, ""), rv1)
+            if not isinstance(raw_sec, dict):
+                raw_sec = {}
+            ex_sec = next((s for s in ex_sections if isinstance(s, dict) and s.get("id") == sid), {})
+
+            structural  = str(raw_sec.get("structural",  "") or "").strip() or fallback_sec["structural"]
+            implication = str(raw_sec.get("implication", "") or "").strip() or fallback_sec["implication"]
+            structural_ko  = str(ex_sec.get("structural_ko",  "") or raw_sec.get("structural_ko",  "") or "").strip()
+            implication_ko = str(ex_sec.get("implication_ko", "") or raw_sec.get("implication_ko", "") or "").strip()
+            signal = str(raw_sec.get("signal", "") or "").strip().lower()
+            if signal not in SIGNAL_COLOR:
+                signal = ex_sec.get("signal") or fallback_sec["signal"]
+
+            sections.append({
+                "id": sid, "title": title,
+                "structural": structural, "structural_ko": structural_ko,
+                "implication": implication, "implication_ko": implication_ko,
+                "signal": signal, "color": SIGNAL_COLOR.get(signal, "#64748b"),
+            })
+
+        sections = enforce_required_mentions(
+            sections=sections, hook=hook,
+            mandatory_drivers=ctx.get("mandatory_drivers", ""),
+            watchlist_focus=ctx.get("watchlist_focus", ""),
+        )
+        if not hook:
+            hook = hook_fallback
+        if not one_line:
+            one_line = build_one_line(sections, rv1)
+
+        prev_tokens = existing.get("tokens", {}) if isinstance(existing, dict) else {}
+        output = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_date":    ctx["data_date"],
+            "slot":         slot,
+            "model":        MODEL_ID,
+            "lang":         "en",
+            "release":      RELEASE_VERSION,
+            "tokens": {
+                "input":    (prev_tokens.get("input", 0) or 0) + in_tok,
+                "output":   (prev_tokens.get("output", 0) or 0) + out_tok,
+                "cost_usd": round((prev_tokens.get("cost_usd", 0) or 0) + cost, 6),
+            },
+            "freshness": freshness,
+            "prompt": briefing_prompt_meta,
+            "hook":       hook,
+            "hook_ko":    existing.get("hook_ko", "") if isinstance(existing, dict) else "",
+            "sections":   sections,
+            "risk_check": risk_check,
+            "one_line":   one_line,
+            "one_line_ko": existing.get("one_line_ko", "") if isinstance(existing, dict) else "",
+        }
+
+    else:
+        # KO mode (default): single-pass Korean-only, cheaper + faster
+        user_msg = KO_ONLY_USER_TEMPLATE.format(**ctx)
+        print(f"[build_daily_briefing_v6] lang=ko  model={MODEL_ID}  context={len(user_msg)} chars")
+        parsed, in_tok, out_tok, _ = _call_llm_json_with_retry(
+            client, system_prompt=briefing_system_prompt,
+            user_content=user_msg, max_tokens=6144, retries=1,
+        )
+        cost = in_tok * PRICE_IN + out_tok * PRICE_OUT
+        print(f"[build_daily_briefing_v6] tokens: in={in_tok} out={out_tok} cost=${cost:.5f}")
+
+        llm_sections = parsed.get("sections", {}) if isinstance(parsed, dict) else {}
+        hook_ko     = str((parsed.get("hook_ko",     "") if isinstance(parsed, dict) else "") or "").strip()
+        one_line_ko = str((parsed.get("one_line_ko", "") if isinstance(parsed, dict) else "") or "").strip()
+
+        # Commentary Engine fields
+        commentary_type = str((parsed.get("commentary_type", "") if isinstance(parsed, dict) else "") or "").strip()
+        core_question   = str((parsed.get("core_question",   "") if isinstance(parsed, dict) else "") or "").strip()
+        raw_hc = parsed.get("human_commentary") if isinstance(parsed, dict) else None
+        if isinstance(raw_hc, list):
+            human_commentary = [str(p).strip() for p in raw_hc if str(p).strip()][:3]
+        elif isinstance(raw_hc, str) and raw_hc.strip():
+            human_commentary = [p.strip() for p in raw_hc.split('\n\n') if p.strip()][:3]
+        else:
+            human_commentary = []
+        # Post-process: keep only the first sentence of each element
+        def _first_sentence(text: str) -> str:
+            import re as _re
+            t = text.strip()
+            # Cut at first period-terminated sentence boundary (Korean particle + "." + space)
+            m = _re.search(r'(?<=[가-힣다요며까죠네])[.!?]\s', t)
+            if m:
+                return t[:m.start() + 1].strip()
+            # Cut at first mid-text sentence boundary (particle + space before next clause)
+            m2 = _re.search(r'(?<=[가-힣])[다요며까죠네]\s+(?=[가-힣])', t)
+            if m2:
+                return t[:m2.end()].strip()
+            return t
+        human_commentary = [_first_sentence(p) for p in human_commentary]
+        # Hard char cap: 50 Korean chars per element (cut at last natural boundary before limit)
+        def _cap50(text: str) -> str:
+            if len(text) <= 50:
+                return text
+            cut = text[:50]
+            last = max(cut.rfind(' '), cut.rfind(','))
+            return (cut[:last] if last > 30 else cut).rstrip(',').strip()
+        human_commentary = [_cap50(p) for p in human_commentary]
+        market_tension  = str((parsed.get("market_tension",  "") if isinstance(parsed, dict) else "") or "").strip()
+        raw_nc = parsed.get("next_checkpoints") if isinstance(parsed, dict) else None
+        next_checkpoints = [str(c).strip() for c in raw_nc if str(c).strip()][:3] if isinstance(raw_nc, list) else []
+
+        sections = []
+        for sid, title in SECTION_META:
+            raw_sec = llm_sections.get(sid, {}) if isinstance(llm_sections, dict) else {}
+            fallback_sec = build_fallback_section_payload(sid, ctx.get(sid, ""), rv1)
+            if not isinstance(raw_sec, dict):
+                raw_sec = {}
+            structural_ko  = str(raw_sec.get("structural_ko",  "") or "").strip()
+            implication_ko = str(raw_sec.get("implication_ko", "") or "").strip()
+            signal = str(raw_sec.get("signal", "") or "").strip().lower()
+            if signal not in SIGNAL_COLOR:
+                signal = fallback_sec["signal"]
+            sections.append({
+                "id": sid, "title": title,
+                "structural": "",  "structural_ko":  structural_ko,
+                "implication": "", "implication_ko": implication_ko,
+                "signal": signal,  "color": SIGNAL_COLOR.get(signal, "#64748b"),
+            })
+
+        if not hook_ko:
+            hook_ko = hook_fallback
+        if not one_line_ko:
+            one_line_ko = build_one_line(sections, rv1)
+
+        output = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_date":    ctx["data_date"],
+            "slot":         slot,
+            "model":        MODEL_ID,
+            "lang":         "ko",
+            "release":      RELEASE_VERSION,
+            "tokens": {"input": in_tok, "output": out_tok, "cost_usd": round(cost, 6)},
+            "freshness": freshness,
+            "prompt": briefing_prompt_meta,
+            "commentary_type":  commentary_type,
+            "core_question":    core_question,
+            "human_commentary": human_commentary,
+            "market_tension":   market_tension,
+            "next_checkpoints": next_checkpoints,
+            "hook":       "",
+            "hook_ko":    hook_ko,
+            "sections":   sections,
+            "risk_check": risk_check,
+            "one_line":   "",
+            "one_line_ko": one_line_ko,
+        }
+
+    # Translate KO → EN via DeepL (fills empty English fields)
+    deepl_key = os.environ.get("DEEPL_API_KEY", "").strip()
+    output = fill_en_fields_via_deepl(output, deepl_key, output.get("data_date", ""))
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(OUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+
+    print(f"[build_daily_briefing_v6] saved -> {OUT_PATH}  lang={lang} slot={slot}")
+    if freshness.get("warning"):
+        print(f"  Freshness: {freshness['status']}  {freshness['warning']}")
+    for sec in sections:
+        print(f"  [{sec['id']:20}] signal={sec['signal']:8}")
+    print(f"  Risk: triggered={risk_check['triggered']}  level={risk_check['level']}  mss={risk_check['mss']}")
+
+if __name__ == "__main__":
+    main()
+

@@ -76,6 +76,20 @@ mkdir -p /app/output/cache
         echo "[bg] daily_briefing_v3.json exists, skipping"
     fi
 
+    if [ ! -f "/app/output/cache/daily_briefing_v4.json" ]; then
+        echo "[bg] Building daily_briefing_v4..."
+        python scripts/build_daily_briefing_v4.py && echo "[bg][OK] daily_briefing_v4" || echo "[bg][FAIL] daily_briefing_v4"
+    else
+        echo "[bg] daily_briefing_v4.json exists, skipping"
+    fi
+
+    if [ ! -f "/app/output/cache/daily_briefing_v5.json" ]; then
+        echo "[bg] Building daily_briefing_v5..."
+        python scripts/build_daily_briefing_v5.py && echo "[bg][OK] daily_briefing_v5" || echo "[bg][FAIL] daily_briefing_v5"
+    else
+        echo "[bg] daily_briefing_v5.json exists, skipping"
+    fi
+
     if [ ! -f "/app/output/vr_pattern_dashboard.json" ]; then
         echo "[bg] Building vr_pattern_dashboard..."
         python scripts/build_vr_pattern_dashboard.py && echo "[bg][OK] vr_pattern_dashboard" || echo "[bg][FAIL] vr_pattern_dashboard"

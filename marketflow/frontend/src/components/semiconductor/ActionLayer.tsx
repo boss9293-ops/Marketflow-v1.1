@@ -2,6 +2,7 @@
 // B-5: Action Layer — SOXX + SOXL + invalidation + thesis
 import type { TranslationOutput } from '@/lib/semiconductor/types'
 
+
 const ACTION_COLOR: Record<string, string> = {
   'ADD / HOLD': '#22c55e', 'HOLD / ADD ON DIPS': '#38bdf8',
   'HOLD / ADD GRADUALLY': '#38bdf8', HOLD: '#94a3b8',
@@ -13,6 +14,9 @@ const WINDOW_COLOR: Record<string, string> = {
 const INV_COLOR: Record<string, string> = { 'not triggered': '#22c55e', TRIGGERED: '#ef4444' }
 
 interface Props { translation: TranslationOutput }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function ActionLayer({ translation }: Props) {
   const { soxx, soxl, conflict_mode, conflict_note,

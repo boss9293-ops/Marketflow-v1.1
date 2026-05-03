@@ -162,7 +162,7 @@ function drawRRG(
   }
 
   // Center lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4])
+  ctx.strokeStyle = '#3a3f47'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4])
   ctx.beginPath(); ctx.moveTo(cx, PAD.top); ctx.lineTo(cx, PAD.top + plotH); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(PAD.left, cy); ctx.lineTo(PAD.left + plotW, cy); ctx.stroke()
   ctx.setLineDash([])

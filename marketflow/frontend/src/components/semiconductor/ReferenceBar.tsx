@@ -3,12 +3,16 @@
 import Link from 'next/link'
 import type { StageOutput, SignalInputs } from '@/lib/semiconductor/types'
 
+
 const CONF_COLOR: Record<string, string> = { HIGH: '#22c55e', MODERATE: '#eab308', LOW: '#f97316' }
 const STAGE_COLOR: Record<string, string> = {
   EXPAND: '#22c55e', BUILD: '#38bdf8', PEAK: '#eab308', RESET: '#ef4444', BOTTOM: '#a78bfa',
 }
 
 interface Props { stage: StageOutput; signals: SignalInputs }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function ReferenceBar({ stage, signals }: Props) {
   const equipWarn = signals.equipment_state === 'LAGGING' || signals.equipment_state === 'DIVERGING'

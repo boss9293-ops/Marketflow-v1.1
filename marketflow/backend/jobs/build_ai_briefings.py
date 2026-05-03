@@ -48,6 +48,8 @@ def build_ai_briefings(run_label: str = "manual", refresh_inputs: bool = False) 
             ("build_context_news.py", ["--region", "us", "--limit", "5", "--slot", run_label], 180),
             ("build_account_ticker_briefs.py", [], 900),
             ("build_daily_briefing_v3.py", ["--force", "--slot", run_label], 300),
+            ("build_daily_briefing_v4.py", ["--force", "--slot", run_label], 300),
+            ("build_daily_briefing_v5.py", ["--force", "--slot", run_label], 360),
         ]
 
         for script_name, extra_args, timeout in refresh_steps:

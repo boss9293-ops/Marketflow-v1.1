@@ -2,6 +2,7 @@
 // B-2: SOXX Anchor View
 import type { SoxxOutput, SignalInputs } from '@/lib/semiconductor/types'
 
+
 const CONF_COLOR: Record<string, string> = { HIGH: '#22c55e', MODERATE: '#eab308', LOW: '#f97316' }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -14,6 +15,9 @@ const ACTION_COLOR: Record<string, string> = {
 }
 
 interface Props { soxx: SoxxOutput; signals: SignalInputs }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function SoxxAnchor({ soxx, signals }: Props) {
   const actionColor = ACTION_COLOR[soxx.action] ?? '#94a3b8'

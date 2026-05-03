@@ -11139,7 +11139,7 @@ function PlaybackTab({
                   yAxisId={executionMode === 'compare' ? undefined : 'evaluation'}
 
 
-                  stroke={lockedCursorDate ? 'rgba(255,255,255,0.58)' : 'rgba(255,255,255,0.32)'}
+                  stroke={lockedCursorDate ? 'rgba(255,255,255,0.58)' : '#737880'}
 
 
                   strokeDasharray={lockedCursorDate ? '3 3' : '2 3'}

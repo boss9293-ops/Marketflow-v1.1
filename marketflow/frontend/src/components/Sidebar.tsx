@@ -32,8 +32,9 @@ const crashItems = [
 
 // Zone SC: Semiconductor Cycle
 const scItems = [
-  { href: '/semiconductor', label: { ko: '반도체 사이클', en: 'Semiconductor Cycle' }, dot: '#00D9FF' },
-  { href: '/soxx-soxl',    label: { ko: 'SOXX / SOXL', en: 'SOXX / SOXL' }, dot: '#6366f1' },
+  { href: '/semiconductor',      label: { ko: '반도체 사이클', en: 'Semiconductor Cycle' }, dot: '#00D9FF' },
+  { href: '/soxx-soxl',          label: { ko: 'SOXX / SOXL',   en: 'SOXX / SOXL'         }, dot: '#6366f1' },
+  { href: '/semiconductor-lens', label: { ko: '반도체렌즈',     en: 'Semiconductor Lens'  }, dot: '#f59e0b' },
 ]
 
 // ?? Zone LV: ?덈쾭由ъ? 湲몃뱾?닿린 ???????????????????????????????????????????????

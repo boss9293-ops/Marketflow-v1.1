@@ -17,7 +17,7 @@ const TICKER_NEWS_RETRY_DELAY_MS = 150
 const TICKER_NEWS_HTTP_TIMEOUT_MS = 2200
 const TICKER_NEWS_CRUMB_TIMEOUT_MS = 1500
 const TICKER_NEWS_HISTORY_PATH = resolveNewsHistoryPath('ticker-news-history-v2-1630.json')
-const TICKER_NEWS_HISTORY_TRADING_DAYS = 4
+const TICKER_NEWS_HISTORY_TRADING_DAYS = 5
 const MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 const MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
 
@@ -567,7 +567,7 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
   freshTimeline.forEach((item) => symbolHistory.timelineById.set(item.id, item))
   freshDetails.forEach((item) => symbolHistory.detailsById.set(item.id, item))
 
-  // Keep last 4 trading days of news ending on the requested ET session date.
+  // Keep last 5 trading days of news ending on the requested ET session date.
   const tradingDaySet = getLastTradingDaysSet(anchorDateET)
   let mergedTimeline = sortNewsItems(
     Array.from(symbolHistory.timelineById.values()).filter(item => tradingDaySet.has(item.dateET))

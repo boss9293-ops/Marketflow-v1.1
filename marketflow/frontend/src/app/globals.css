@@ -52,8 +52,8 @@
 
   /* Text Tokens */
   --text-primary:   #f5f8ff;   /* near-white                          */
-  --text-secondary: #d7e1ee;   /* crisp secondary gray                */
-  --text-muted:     #9fb0c3;   /* readable muted tone                 */
+  --text-secondary: #e2e4e9;   /* crisp secondary gray                */
+  --text-muted:     #8b9098;   /* readable muted tone                 */
 
   /* Capital OS Accent */
   --accent-lime:  #c4ff0d;   /* capital-lime — primary CTA        */
@@ -102,12 +102,14 @@
   --risk-accent-stress: #FB7185;
 
   /* Component sizing */
-  --font-base: 16px;
-  --font-terminal: 'Satoshi';
-  --font-ui-latin: var(--font-terminal);
-  --font-terminal-ui: var(--font-terminal);
-  --font-terminal-mono: var(--font-terminal);
-  --font-ui-sans: var(--font-terminal), 'Nanum Gothic Coding', 'Noto Sans KR', 'IBM Plex Mono', 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-base: 14px;
+  --font-ui: 'Inter', 'Pretendard', sans-serif;
+  --font-data: 'JetBrains Mono', 'Roboto Mono', monospace;
+  --font-terminal: var(--font-ui);
+  --font-ui-latin: var(--font-ui);
+  --font-terminal-ui: var(--font-ui);
+  --font-terminal-mono: var(--font-data);
+  --font-ui-sans: var(--font-ui);
 }
 
 /* ── Reset ───────────────────────────────────────────────────────────────── */
@@ -126,6 +128,7 @@ html, body {
   font-family: var(--font-ui-sans);
   font-weight: 400;
   line-height: 1.6;
+  letter-spacing: 0.02em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

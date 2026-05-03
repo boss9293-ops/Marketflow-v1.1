@@ -265,7 +265,7 @@ function TimelineChart({
       <line x1={cx} y1={PAD.t} x2={cx} y2={H - PAD.b}
         stroke='rgba(255,255,255,0.5)' strokeWidth={1.2} strokeDasharray='4 3' />
       <circle cx={cx} cy={yScale(snapshots[currentIdx]?.total_risk ?? 0)}
-        r={3.5} fill='white' stroke='rgba(255,255,255,0.4)' strokeWidth={1} />
+        r={3.5} fill='white' stroke='#737880' strokeWidth={1} />
 
       {/* X-axis labels — show ~6 dates */}
       {[0, Math.floor(n/5), Math.floor(2*n/5), Math.floor(3*n/5), Math.floor(4*n/5), n-1].map(idx => {

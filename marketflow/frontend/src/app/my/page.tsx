@@ -2053,7 +2053,7 @@ export default function MyPage() {
             <button
               onClick={refreshTs}
               style={{
-                border: '1px solid rgba(255,255,255,0.2)',
+                border: '1px solid #3a3f47',
                 background: 'rgba(255,255,255,0.06)',
                 color: '#e5e7eb',
                 borderRadius: 8,
@@ -2231,7 +2231,7 @@ export default function MyPage() {
               <button
                 onClick={toggleAllTabs}
                 style={{
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  border: '1px solid #3a3f47',
                   background: allTabsSelected ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
                   color: allTabsSelected ? '#fca5a5' : '#e5e7eb',
                   borderRadius: 8,

@@ -2,6 +2,7 @@
 // B-3: SOXL Tactical View — score breakdown always visible
 import type { SoxlOutput } from '@/lib/semiconductor/types'
 
+
 const CONF_COLOR: Record<string, string> = { HIGH: '#22c55e', MODERATE: '#eab308', LOW: '#f97316' }
 
 const WINDOW_STYLE: Record<string, { color: string; bg: string }> = {
@@ -27,6 +28,9 @@ function AdjRow({ label, value, p }: { label: string; value: number; p?: string 
 }
 
 interface Props { soxl: SoxlOutput }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function SoxlTactical({ soxl }: Props) {
   const ws = WINDOW_STYLE[soxl.window] ?? { color: '#94a3b8', bg: '#1e293b' }

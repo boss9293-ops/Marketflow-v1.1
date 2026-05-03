@@ -1,4 +1,4 @@
-import { runBacktest } from '@/lib/backtest/engine'
+﻿import { runBacktest } from '@/lib/backtest/engine'
 import {
   BacktestEngineHooks,
   BacktestResult,
@@ -35,11 +35,11 @@ export const VR_G_VALUE_DEFAULTS: StrategyInputs = {
   disableSell: false,
 }
 
-// ── P/V → 상승률 테이블 ─────────────────────────────────────────────────────
-// 출처: VR V4 원형 테이블
-// [P/V, 평가금<V 상승률, 평가금>V 상승률]
-// 보간 없음 — P/V가 테이블에 없으면 보수적으로 낮은 쪽(floor) 사용
-// 예: P/V=0.04 → 0.01 행 사용 (0.05 미만이므로)
+// ?? P/V ???곸듅瑜??뚯씠釉??????????????????????????????????????????????????????
+// 異쒖쿂: VR V4 ?먰삎 ?뚯씠釉?
+// [P/V, ?됯?湲?V ?곸듅瑜? ?됯?湲?V ?곸듅瑜?
+// 蹂닿컙 ?놁쓬 ??P/V媛 ?뚯씠釉붿뿉 ?놁쑝硫?蹂댁닔?곸쑝濡???? 履?floor) ?ъ슜
+// ?? P/V=0.04 ??0.01 ???ъ슜 (0.05 誘몃쭔?대?濡?
 const PV_RATE_TABLE: ReadonlyArray<readonly [number, number, number]> = [
   [0.00, 1.000, 1.001],
   [0.01, 1.001, 1.005],
@@ -68,19 +68,19 @@ const PV_RATE_TABLE: ReadonlyArray<readonly [number, number, number]> = [
 ] as const
 
 /**
- * P/V 테이블 조회
- *   pv          = pool / (G × currentVref)
- *   evalBelowV  = eval < currentVref  → 왼쪽 열(보수적), 아니면 오른쪽 열
+ * P/V ?뚯씠釉?議고쉶
+ *   pv          = pool / (G 횞 currentVref)
+ *   evalBelowV  = eval < currentVref  ???쇱そ ??蹂댁닔??, ?꾨땲硫??ㅻⅨ履???
  *
- *   보간 없음: pv가 테이블 키 사이에 있으면 floor (더 낮은 행) 사용
- *   예) pv=0.04 → 0.01 행, pv=0.07 → 0.05 행
+ *   蹂닿컙 ?놁쓬: pv媛 ?뚯씠釉????ъ씠???덉쑝硫?floor (????? ?? ?ъ슜
+ *   ?? pv=0.04 ??0.01 ?? pv=0.07 ??0.05 ??
  *
- * @returns 상승률 (예: 1.025)
+ * @returns ?곸듅瑜?(?? 1.025)
  */
 export function lookupPvRate(pv: number, evalBelowV: boolean): number {
-  // 1.10이 최대값 — 그 이상은 모두 1.10 행으로 고정
+  // 1.10??理쒕?媛???洹??댁긽? 紐⑤몢 1.10 ?됱쑝濡?怨좎젙
   const clampedPv = Math.min(pv, 1.10)
-  // 내림(floor): clampedPv ≤ 테이블 키인 행 중 가장 큰 것
+  // ?대┝(floor): clampedPv ???뚯씠釉??ㅼ씤 ??以?媛????寃?
   let row = PV_RATE_TABLE[0]
   for (const r of PV_RATE_TABLE) {
     if (r[0] <= clampedPv) row = r
@@ -89,43 +89,77 @@ export function lookupPvRate(pv: number, evalBelowV: boolean): number {
   return evalBelowV ? row[1] : row[2]
 }
 
+const VREF_EXTRA_RISE = 0.005
+
+function computeNextVref(
+  currentVref: number,
+  poolCash: number,
+  evalAtReset: number,
+  gValue: number,
+  depositCash = 0,
+) {
+  if (currentVref <= 0) {
+    return {
+      nextVref: evalAtReset,
+      poolRatio: 0,
+      baseRise: 0,
+      extraRise: 0,
+      poolContribution: 0,
+    }
+  }
+
+  const poolRatio = poolCash > 0 ? poolCash / currentVref : 0
+  const baseRise = poolRatio / gValue
+  const extraRise = evalAtReset >= currentVref ? VREF_EXTRA_RISE : 0
+  const poolContribution = currentVref * baseRise
+  const extraContribution = currentVref * extraRise
+
+  return {
+    nextVref: currentVref + poolContribution + extraContribution + depositCash,
+    poolRatio,
+    baseRise,
+    extraRise,
+    poolContribution,
+  }
+}
+
 /**
- * VR Engine V4 — P/V 테이블 기반 Vref 상승
+ * VR Engine V4 ??P/V ?뚯씠釉?湲곕컲 Vref ?곸듅
  *
- * ─── 핵심 개념 ───────────────────────────────────────────────────────────
- *   V (Vref)    = 기준 평가금 — cycle마다 갱신
- *   eval        = currentShares × currentPrice  ← V와 별개
- *   Vmin        = Vref × lowerMult
- *   Vmax        = Vref × upperMult
+ * ??? ?듭떖 媛쒕뀗 ???????????????????????????????????????????????????????????
+ *   V (Vref)    = 湲곗? ?됯?湲???cycle留덈떎 媛깆떊
+ *   eval        = currentShares 횞 currentPrice  ??V? 蹂꾧컻
+ *   Vmin        = Vref 횞 lowerMult
+ *   Vmax        = Vref 횞 upperMult
  *
- * ─── Vref 갱신 (cycle reset) ─────────────────────────────────────────────
- *   P/V ratio   = pool / (G × prevVref)    ← G ↑ → P/V ↓ → 보수적
- *   상승률      = PV_RATE_TABLE.lookup(P/V, eval < prevVref)  [보간 없음]
- *   newVref     = prevVref × 상승률
+ * ??? Vref 媛깆떊 (cycle reset) ?????????????????????????????????????????????
+ *   P/V ratio   = pool / (G 횞 prevVref)    ??G ????P/V ????蹂댁닔??
+ *   ?곸듅瑜?     = PV_RATE_TABLE.lookup(P/V, eval < prevVref)  [蹂닿컙 ?놁쓬]
+ *   newVref     = prevVref 횞 ?곸듅瑜?
  *
- *   G 의미:
- *     G=1  → P/V = pool/Vref  (최공격적, pool 전체가 P/V 기여)
- *     G=10 → P/V = pool/(10×Vref)  (기본값, pool 기여 1/10)
+ *   G ?섎?:
+ *     G=1  ??P/V = pool/Vref  (理쒓났寃⑹쟻, pool ?꾩껜媛 P/V 湲곗뿬)
+ *     G=10 ??P/V = pool/(10횞Vref)  (湲곕낯媛? pool 湲곗뿬 1/10)
  *
- * ─── 매수 (eval < Vmin) ───────────────────────────────────────────────────
+ * ??? 留ㅼ닔 (eval < Vmin) ???????????????????????????????????????????????????
  *   BuyRequest  = Vmin - eval
  *   ActualBuy   = min(BuyRequest, pool, cycleCap)
  *   Pool        -= ActualBuy
  *
- * ─── 매도 (eval > Vmax) ───────────────────────────────────────────────────
+ * ??? 留ㅻ룄 (eval > Vmax) ???????????????????????????????????????????????????
  *   SellRequest = eval - Vmax
- *   ActualSell  = min(SellRequest, shares×close)
+ *   ActualSell  = min(SellRequest, shares횞close)
  *   Pool        += ActualSell
  */
 
 interface VrCycleState {
   currentCycleNo: number
-  cycleVref: number              // 현재 cycle Vref (매수/매도 기준)
-  cycleEvalBase: number          // cycle 시작 eval (display용)
-  cyclePvRatio: number           // pool/(G×Vref) at reset (display용)
-  cycleRate: number              // 적용된 상승률 (display용)
-  cyclePoolUsed: number          // 이번 cycle 누적 매수금
-  cycleStartPoolCash: number     // cycle 시작 pool (cap 계산 기준)
+  cycleVref: number              // ?꾩옱 cycle Vref (留ㅼ닔/留ㅻ룄 湲곗?)
+  cycleEvalBase: number          // cycle ?쒖옉 eval (display??
+  cyclePvRatio: number           // pool/(G횞Vref) at reset (display??
+  cycleRate: number              // ?곸슜???곸듅瑜?(display??
+  cyclePoolUsed: number          // ?대쾲 cycle ?꾩쟻 留ㅼ닔湲?
+  cycleStartPoolCash: number     // cycle ?쒖옉 pool (cap 怨꾩궛 湲곗?)
 }
 
 export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks {
@@ -139,7 +173,7 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
     cycleStartPoolCash: 0,
   }
 
-  // ── onStart (index = 0, Day 0) ────────────────────────────────────────────
+  // ?? onStart (index = 0, Day 0) ????????????????????????????????????????????
   function onStart(ctx: EngineStepContext): EngineStepResult {
     const investedCash = inputs.initialInvestAmount > 0
       ? inputs.initialInvestAmount
@@ -151,14 +185,14 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
       ? investedCash / price0
       : Math.floor(investedCash / price0)
 
-    // C0 Vref: eval 그대로 (cycle 0은 이전 Vref 없으므로 상승률 미적용)
+    // C0 Vref: eval 洹몃?濡?(cycle 0? ?댁쟾 Vref ?놁쑝誘濡??곸듅瑜?誘몄쟻??
     const evalBase0 = initShares * price0   // = investedCash
     const G         = Math.max(1, inputs.initialGValue)
 
-    // C0에서도 P/V 조회 — eval = Vref이므로 "eval < V = false" → 오른쪽 열
-    const pv0   = poolCash / (G * evalBase0)
-    const rate0 = lookupPvRate(pv0, false)    // C0는 eval=Vref → above 열
-    const vref0 = evalBase0 * rate0           // 최초 Vref에 소폭 상승률 반영
+    // C0?먯꽌??P/V 議고쉶 ??eval = Vref?대?濡?"eval < V = false" ???ㅻⅨ履???
+    const pv0 = poolCash > 0 && evalBase0 > 0 ? poolCash / evalBase0 : 0
+    const rate0 = 1    // C0??eval=Vref ??above ??
+    const vref0 = evalBase0           // 理쒖큹 Vref???뚰룺 ?곸듅瑜?諛섏쁺
 
     const vmin0 = vref0 * inputs.lowerMult
     const vmax0 = vref0 * inputs.upperMult
@@ -167,7 +201,7 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
     vr.currentCycleNo    = 0
     vr.cycleVref         = vref0
     vr.cycleEvalBase     = evalBase0
-    vr.cyclePvRatio      = pv0
+    vr.cyclePvRatio      = vref0 > 0 ? poolCash / vref0 : 0
     vr.cycleRate         = rate0
     vr.cyclePoolUsed     = 0
     vr.cycleStartPoolCash = poolCash
@@ -183,61 +217,48 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
         buyRequest:    0,
         sellRequest:   0,
         cycleBaseEval: evalBase0,
-        poolContrib:   pv0,   // P/V ratio (display용)
+        poolContrib:   0,   // P/V ratio (display??
       },
       trade: {
         action: 'INIT_BUY',
         amount: investedCash,
         reason: `Init: invest=${investedCash.toFixed(0)} pool=${poolCash.toFixed(0)} G=${G} ` +
-                `P/V=${pv0.toFixed(4)} rate=${rate0.toFixed(4)} ` +
                 `Vref=${vref0.toFixed(0)} Vmin=${vmin0.toFixed(0)} Vmax=${vmax0.toFixed(0)}`,
       },
     }
   }
 
-  // ── onBar (index ≥ 1) ─────────────────────────────────────────────────────
+  // ?? onBar (index ??1) ?????????????????????????????????????????????????????
   function onBar(ctx: EngineStepContext): EngineStepResult {
     const { bar, state: portfolio } = ctx
     const cycleNo = Math.floor(portfolio.totalDays / inputs.rebalanceDays)
 
     let pendingCashAdd = 0
 
-    // ── Cycle reset ──────────────────────────────────────────────────────────
+    // ?? Cycle reset ??????????????????????????????????????????????????????????
     if (cycleNo !== vr.currentCycleNo) {
       pendingCashAdd = inputs.fixedAdd ?? 0
-      const effectivePool = portfolio.cash + pendingCashAdd
+      const cyclePoolCash = portfolio.cash
+      const effectivePool = cyclePoolCash + pendingCashAdd
 
-      const G            = Math.max(1, inputs.initialGValue)
-      const evalAtReset  = portfolio.shares * bar.close   // shares × 종가 (사이클 시작)
+      const G           = Math.max(1, inputs.initialGValue)
+      const evalAtReset = portfolio.shares * bar.close   // shares x price at cycle start
+      const prevVref    = vr.cycleVref
+      const next        = computeNextVref(prevVref, cyclePoolCash, evalAtReset, G, pendingCashAdd)
 
-      // ── VR V4 공식 (vr-survival build_execution_playback.ts와 동일) ─────────
-      // P/V = pool / (G × prevVref) — pool이 클수록 Vref 더 빨리 상승
-      const prevVref     = vr.cycleVref
-      const pvRatio      = prevVref > 0 ? effectivePool / (G * prevVref) : 0
-      const evalBelowV   = evalAtReset < prevVref   // 하락장 → 보수적 열
-      const rate         = lookupPvRate(pvRatio, evalBelowV)
-
-      // newVref = max(prevVref × rate, evalAtReset)
-      //   → 시장이 상승해 평가금이 Vref를 초과하면 밴드도 따라 올라감 (ratchet)
-      //   → 하락장에서는 P/V 상승률만 적용 (원본 공식 유지)
-      // 최초 cycleVref == 0 이면 evalAtReset으로 시드
-      const newVref = prevVref > 0
-        ? Math.max(prevVref * rate, evalAtReset)
-        : evalAtReset
-
-      vr.currentCycleNo    = cycleNo
-      vr.cycleVref         = newVref
-      vr.cycleEvalBase     = evalAtReset
-      vr.cyclePvRatio      = pvRatio
-      vr.cycleRate         = prevVref > 0 ? newVref / prevVref : 1
-      vr.cyclePoolUsed     = 0
+      vr.currentCycleNo     = cycleNo
+      vr.cycleVref          = next.nextVref
+      vr.cycleEvalBase      = evalAtReset
+      vr.cyclePvRatio       = next.poolRatio
+      vr.cycleRate          = prevVref > 0 ? next.nextVref / prevVref : 1
+      vr.cyclePoolUsed      = 0
       vr.cycleStartPoolCash = effectivePool
     }
 
     const effectiveCash = portfolio.cash + pendingCashAdd
     const G             = Math.max(1, inputs.initialGValue)
 
-    // ── Vref / Vmin / Vmax (cycle 내 고정) ─────────────────────────────────
+    // ?? Vref / Vmin / Vmax (cycle ??怨좎젙) ?????????????????????????????????
     const vref = vr.cycleVref
     const vmin = vref * inputs.lowerMult
     const vmax = vref * inputs.upperMult
@@ -249,13 +270,13 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
       upperBand:      vmax,
       lowerBand:      vmin,
       cycleBaseEval:  vr.cycleEvalBase,
-      poolContrib:    vr.cyclePvRatio,  // P/V ratio (display용)
+      poolContrib:    0,  // cycle 0 seed has no pool contribution yet
       ...(pendingCashAdd > 0 ? { cash: effectiveCash } : {}),
     }
 
-    const evalVal = portfolio.shares * bar.close  // Evaluation = shares × price
+    const evalVal = portfolio.shares * bar.close  // Evaluation = shares 횞 price
 
-    // ── Buy: eval < Vmin ─────────────────────────────────────────────────────
+    // ?? Buy: eval < Vmin ?????????????????????????????????????????????????????
     if (evalVal < vmin && !inputs.disableBuy) {
       const buyRequest   = vmin - evalVal
       const cycleCap     = vr.cycleStartPoolCash * (inputs.cycleAllocationRate / 100)
@@ -276,11 +297,11 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
       }
     }
 
-    // ── Sell: eval > Vmax ────────────────────────────────────────────────────
+    // ?? Sell: eval > Vmax ????????????????????????????????????????????????????
     if (evalVal > vmax && !inputs.disableSell) {
       const sellRequest  = evalVal - vmax
       const actualSell   = Math.min(sellRequest, portfolio.shares * bar.close)
-      // minimumOrderCash 체크: 부동소수점 잔차($0.00 로그) 방지
+      // minimumOrderCash 泥댄겕: 遺?숈냼?섏젏 ?붿감($0.00 濡쒓렇) 諛⑹?
       if (actualSell >= (inputs.minimumOrderCash ?? 1)) {
         return {
           statePatch: { ...statePatchBase, buyRequest: 0, sellRequest },
@@ -294,7 +315,7 @@ export function createVrGValueHooks(inputs: StrategyInputs): BacktestEngineHooks
       }
     }
 
-    // Gap 표시용: disableBuy/disableSell이어도 request 값은 계산해서 표시
+    // Gap ?쒖떆?? disableBuy/disableSell?댁뼱??request 媛믪? 怨꾩궛?댁꽌 ?쒖떆
     const buyReqDisplay  = evalVal < vmin ? vmin - evalVal : 0
     const sellReqDisplay = evalVal > vmax ? evalVal - vmax : 0
     return { statePatch: { ...statePatchBase, buyRequest: buyReqDisplay, sellRequest: sellReqDisplay } }
@@ -309,3 +330,4 @@ export function runVrGValueBacktest(
 ): BacktestResult {
   return runBacktest(bars, inputs, createVrGValueHooks(inputs))
 }
+

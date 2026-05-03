@@ -58,12 +58,12 @@ export default function TransitionProbabilityCard({ payload, reliability, isPrem
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700 }}>CURRENT</span>
+            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.10em' }}>CURRENT</span>
             <span style={{ borderRadius: 5, background: stateColor + '12', border: '1px solid ' + stateColor + '30', color: stateColor, fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px' }}>
               {STATE_LABEL[view.current_state]}
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.12)', fontSize: '0.65rem' }}>·</span>
-            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700 }}>BIAS</span>
+            <span style={{ color: '#555a62', fontSize: '0.65rem' }}>·</span>
+            <span style={{ color: '#6B7280', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.10em' }}>BIAS</span>
             <span style={{ borderRadius: 5, background: bias.bg, border: '1px solid ' + bias.border, color: bias.color, fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px' }}>
               {bias.label}
             </span>

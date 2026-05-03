@@ -400,7 +400,7 @@ function EventPlaybackTab({ events }: { events: EventRecord[] }) {
                   <ReferenceArea x1={evStart} x2={evEnd} fill={col} fillOpacity={0.08} stroke={col} strokeOpacity={0.3} strokeWidth={1} />
                 )}
                 {/* 100 baseline */}
-                <ReferenceLine y={100} stroke="rgba(255,255,255,0.2)" strokeDasharray="4 2" strokeWidth={1} />
+                <ReferenceLine y={100} stroke="#3a3f47" strokeDasharray="4 2" strokeWidth={1} />
                 <Line dataKey="ma200_n" stroke="#a78bfa" strokeWidth={1.2} dot={false} strokeDasharray="5 3" name="MA200" connectNulls />
                 <Line dataKey="ma50_n"  stroke="#fbbf24" strokeWidth={1.2} dot={false} strokeDasharray="3 2" name="MA50"  connectNulls />
                 <Line dataKey="qqq_n"   stroke="#60a5fa" strokeWidth={2}   dot={false} name="QQQ" />

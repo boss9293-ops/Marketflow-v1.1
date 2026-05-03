@@ -1,47 +1,47 @@
-// Phase 1D — Deterministic SOXX/SOXL translation from semiconductor state
+﻿// Phase 1D ??Deterministic SOXX/SOXL translation from semiconductor state
 import type {
   SignalInputs, StageOutput, TranslationOutput,
   SoxxOutput, SoxlOutput, SoxlBreakdown,
   Confidence, InvStatus, CycleStage,
 } from './types'
 
-// ── SOXX: S1–S9, first match wins ────────────────────────────────────────────
+// ?? SOXX: S1?밪9, first match wins ????????????????????????????????????????????
 function computeSoxx(stage: StageOutput, s: SignalInputs): SoxxOutput {
   const cs = stage.stage
 
   if (cs === 'RESET')
     return { action: 'REDUCE', confidence: 'HIGH', reason: 'Cycle reset confirmed',
              dominant_signal: 'Cycle Stage', rule_applied: 'S1',
-             upgrade_if: 'Stage → BOTTOM + P2 stabilizing', downgrade_if: 'N/A' }
+             upgrade_if: 'Stage ??BOTTOM + P2 stabilizing', downgrade_if: 'N/A' }
 
   if (cs === 'PEAK' && s.capex_signal === 'CONTRACTING' && s.breadth_state === 'NARROW')
     return { action: 'HOLD / REDUCE', confidence: 'HIGH',
              reason: 'Late cycle + P1 contracting + narrow breadth',
              dominant_signal: 'Equipment (P1)', rule_applied: 'S2',
-             upgrade_if: 'P1 → NEUTRAL + breadth improves', downgrade_if: 'Stage → RESET' }
+             upgrade_if: 'P1 ??NEUTRAL + breadth improves', downgrade_if: 'Stage ??RESET' }
 
   if (cs === 'PEAK')
     return { action: 'HOLD', confidence: 'MODERATE', reason: 'Late cycle; hold only',
              dominant_signal: 'Cycle Stage', rule_applied: 'S3',
              upgrade_if: 'Stage holds + P1 stabilizes',
-             downgrade_if: 'P1 → CONTRACTING or breadth → NARROW' }
+             downgrade_if: 'P1 ??CONTRACTING or breadth ??NARROW' }
 
   if (cs === 'BOTTOM')
-    return { action: 'HOLD', confidence: 'LOW', reason: 'Bottom — not yet confirmed recovery',
+    return { action: 'HOLD', confidence: 'LOW', reason: 'Bottom ??not yet confirmed recovery',
              dominant_signal: 'Cycle Stage', rule_applied: 'S4',
-             upgrade_if: 'P2 → RECOVERING + P1 stabilizes', downgrade_if: 'Stage → RESET' }
+             upgrade_if: 'P2 ??RECOVERING + P1 stabilizes', downgrade_if: 'Stage ??RESET' }
 
   if (cs === 'BUILD' && (s.memory_strength === 'RECOVERING' || s.memory_strength === 'STRONG'))
     return { action: 'HOLD / ADD GRADUALLY', confidence: 'MODERATE',
              reason: 'Build phase with P2 memory confirming',
              dominant_signal: 'Memory (P2)', rule_applied: 'S5',
-             upgrade_if: 'Stage → EXPAND + P1 → NEUTRAL',
-             downgrade_if: 'P2 → NEUTRAL or equipment deteriorates' }
+             upgrade_if: 'Stage ??EXPAND + P1 ??NEUTRAL',
+             downgrade_if: 'P2 ??NEUTRAL or equipment deteriorates' }
 
   if (cs === 'BUILD')
-    return { action: 'HOLD', confidence: 'LOW', reason: 'Build — P2 not yet confirming',
+    return { action: 'HOLD', confidence: 'LOW', reason: 'Build ??P2 not yet confirming',
              dominant_signal: 'Cycle Stage', rule_applied: 'S6',
-             upgrade_if: 'P2 → RECOVERING', downgrade_if: 'Demand weakens' }
+             upgrade_if: 'P2 ??RECOVERING', downgrade_if: 'Demand softens' }
 
   const sBroad = s.breadth_state === 'BROAD' || s.breadth_state === 'VERY BROAD'
   const p1Ok   = s.capex_signal === 'EXPANDING' || s.capex_signal === 'STRONG'
@@ -51,29 +51,29 @@ function computeSoxx(stage: StageOutput, s: SignalInputs): SoxxOutput {
     return { action: 'ADD / HOLD', confidence: 'HIGH',
              reason: 'EXPAND + P1 + P2 + breadth all confirming',
              dominant_signal: 'P1 + P2 aligned', rule_applied: 'S7',
-             upgrade_if: 'N/A — full confirmation',
-             downgrade_if: 'P1 → LAGGING or breadth → MODERATE' }
+             upgrade_if: 'N/A ??full confirmation',
+             downgrade_if: 'P1 ??LAGGING or breadth ??MODERATE' }
 
   if (cs === 'EXPAND' && s.breadth_state === 'MODERATE')
     return { action: 'HOLD / ADD ON DIPS', confidence: 'HIGH',
              reason: 'EXPAND + moderate breadth',
              dominant_signal: 'Cycle Stage', rule_applied: 'S8',
-             upgrade_if: 'Breadth → BROAD + P1 → IN-LINE',
-             downgrade_if: 'P1 → DIVERGING OR breadth → NARROW' }
+             upgrade_if: 'Breadth ??BROAD + P1 ??IN-LINE',
+             downgrade_if: 'P1 ??DIVERGING OR breadth ??NARROW' }
 
   if (cs === 'EXPAND' && s.breadth_state === 'NARROW')
     return { action: 'HOLD', confidence: 'MODERATE',
-             reason: 'EXPAND but narrow — fragile',
+             reason: 'EXPAND but narrow ??fragile',
              dominant_signal: 'Breadth (P3)', rule_applied: 'S9',
-             upgrade_if: 'Breadth → MODERATE + P2 confirms',
-             downgrade_if: 'P1 → DIVERGING' }
+             upgrade_if: 'Breadth ??MODERATE + P2 confirms',
+             downgrade_if: 'P1 ??DIVERGING' }
 
   return { action: 'HOLD', confidence: 'LOW', reason: 'Insufficient signal clarity',
            dominant_signal: 'N/A', rule_applied: 'FALLBACK',
            upgrade_if: 'Signals align', downgrade_if: 'Stage deteriorates' }
 }
 
-// ── SOXL: score + priority overrides ─────────────────────────────────────────
+// ?? SOXL: score + priority overrides ?????????????????????????????????????????
 function computeSoxl(stage: StageOutput, s: SignalInputs): SoxlOutput {
   const cs = stage.stage
 
@@ -138,14 +138,14 @@ function computeSoxl(stage: StageOutput, s: SignalInputs): SoxlOutput {
     suitability = Math.min(suitability, 38)
     overrides = 'O3: Equipment DIVERGING structural warning'
     dominant_signal = 'Equipment (P1) O3'
-    override_reason = 'Equipment (P1) diverging — structural warning'
+    override_reason = 'Equipment (P1) diverging ??structural warning'
   }
   // O4: Memory WEAK + Constraint HIGH
   else if (s.memory_strength === 'WEAK' && s.constraint_warning === 'HIGH') {
     suitability = Math.min(suitability, 40)
     overrides = 'O4: P2 WEAK + Constraint HIGH'
     dominant_signal = 'Memory (P2) O4'
-    override_reason = 'P2 weak + constraint HIGH — dual supply-side risk'
+    override_reason = 'P2 weak + constraint HIGH ??dual supply-side risk'
   }
 
   // O5: Conflict Mode cap
@@ -165,9 +165,9 @@ function computeSoxl(stage: StageOutput, s: SignalInputs): SoxlOutput {
   if (window === 'ALLOWED') {
     sizing = 'Full size per plan'; hold_window = 'Per strategy plan'
   } else if (window === 'TACTICAL ONLY') {
-    if (suitability >= 60)      { sizing = '50–75% of full'; hold_window = '10–15 trading days' }
-    else if (suitability >= 50) { sizing = '25–50% of full'; hold_window = '5–10 trading days' }
-    else                        { sizing = 'Starter only <25%'; hold_window = '3–5 trading days' }
+    if (suitability >= 60)      { sizing = '50??5% of full'; hold_window = '10??5 trading days' }
+    else if (suitability >= 50) { sizing = '25??0% of full'; hold_window = '5??0 trading days' }
+    else                        { sizing = 'Starter only <25%'; hold_window = '3?? trading days' }
   }
 
   const confidence: Confidence = stage.conflict_mode
@@ -187,7 +187,7 @@ function computeSoxl(stage: StageOutput, s: SignalInputs): SoxlOutput {
            sizing, hold_window, reason, dominant_signal }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ?? Helpers ???????????????????????????????????????????????????????????????????
 function checkInv(s: SignalInputs, stage: StageOutput): { inv1: InvStatus; inv2: InvStatus } {
   const inv1: InvStatus = s.breadth_state === 'NARROW' ? 'TRIGGERED' : 'not triggered'
   const weak = [
@@ -223,19 +223,19 @@ function formatDivergences(s: SignalInputs) {
   const lrLabel = top2 > 25 ? 'EXTREME' : top2 > 15 ? 'WIDE' : top2 > 5 ? 'SEPARATING' : 'ALIGNED'
 
   return {
-    nvda_mu_gap:     `${pct(s.nvda_mu_gap)} — ${nmLabel}${s.nvda_mu_gap > 0.30 ? ' (constraint active)' : ''}`,
-    soxx_equip_gap:  `${pct(s.equipment_vs_soxx_60d)} — ${eqLabel}${s.equipment_vs_soxx_60d < -0.03 ? ' (P1 warning)' : ''}`,
-    leaders_vs_rest: `${top2 > 0 ? '+' : ''}${top2}% compute vs basket — ${lrLabel}`,
+    nvda_mu_gap:     `${pct(s.nvda_mu_gap)} ??${nmLabel}${s.nvda_mu_gap > 0.30 ? ' (constraint active)' : ''}`,
+    soxx_equip_gap:  `${pct(s.equipment_vs_soxx_60d)} ??${eqLabel}${s.equipment_vs_soxx_60d < -0.03 ? ' (P1 warning)' : ''}`,
+    leaders_vs_rest: `${top2 > 0 ? '+' : ''}${top2}% compute vs basket ??${lrLabel}`,
   }
 }
 
 function education(stage: StageOutput, s: SignalInputs, soxx: SoxxOutput, soxl: SoxlOutput) {
   const begMap: Record<CycleStage, string> = {
-    EXPAND: '반도체는 성장 단계입니다. AI 칩 수요가 앞서고 있으나 장비주 흐름을 주시해야 합니다.',
-    BUILD:  '사이클 바닥을 지나 회복 준비 중입니다. 확신 신호는 아직 약합니다.',
-    PEAK:   '고점 신호가 나타나고 있습니다. 레버리지 비중 축소가 적절합니다.',
-    RESET:  '사이클 하강이 확인되었습니다. SOXL은 피해야 합니다.',
-    BOTTOM: '바닥권이나 회복 신호는 아직입니다. 관망이 적절합니다.',
+    EXPAND: '諛섎룄泥대뒗 ?깆옣 ?④퀎?낅땲?? AI 移??섏슂媛 ?욎꽌怨??덉쑝???λ퉬二??먮쫫??二쇱떆?댁빞 ?⑸땲??',
+    BUILD:  '?ъ씠??諛붾떏??吏???뚮났 以鍮?以묒엯?덈떎. ?뺤떊 ?좏샇???꾩쭅 ?쏀빀?덈떎.',
+    PEAK:   '怨좎젏 ?좏샇媛 ?섑??섍퀬 ?덉뒿?덈떎. ?덈쾭由ъ? 鍮꾩쨷 異뺤냼媛 ?곸젅?⑸땲??',
+    RESET:  '?ъ씠???섍컯???뺤씤?섏뿀?듬땲?? SOXL? ?쇳빐???⑸땲??',
+    BOTTOM: '諛붾떏沅뚯씠???뚮났 ?좏샇???꾩쭅?낅땲?? 愿留앹씠 ?곸젅?⑸땲??',
   }
   const adv = [
     `Stage: ${stage.stage}, Confidence ${stage.confidence} (P1=${s.equipment_state}, P2=${s.memory_strength}).`,
@@ -248,7 +248,7 @@ function education(stage: StageOutput, s: SignalInputs, soxx: SoxxOutput, soxl: 
   return { education_beginner: begMap[stage.stage], education_advanced: adv }
 }
 
-// ── Main entry ────────────────────────────────────────────────────────────────
+// ?? Main entry ????????????????????????????????????????????????????????????????
 export function translate(signals: SignalInputs, stage: StageOutput): TranslationOutput {
   const soxx       = computeSoxx(stage, signals)
   const soxl       = computeSoxl(stage, signals)
@@ -270,6 +270,8 @@ export function translate(signals: SignalInputs, stage: StageOutput): Translatio
     inv2_status:     inv2,
     education_beginner,
     education_advanced,
-    action_summary:  `SOXX: ${soxx.action} [${soxx.dominant_signal}] · SOXL: ${soxl.window} (${soxl.sizing}) [${soxl.dominant_signal}]`,
+    action_summary:  `SOXX: ${soxx.action} [${soxx.dominant_signal}] 쨌 SOXL: ${soxl.window} (${soxl.sizing}) [${soxl.dominant_signal}]`,
   }
 }
+
+

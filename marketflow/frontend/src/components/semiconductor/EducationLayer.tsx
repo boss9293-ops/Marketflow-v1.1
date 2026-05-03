@@ -2,10 +2,14 @@
 // A-5: Education Layer — Beginner / Advanced toggle
 import { useState } from 'react'
 
+
 interface Props {
   beginner: string
   advanced: string
 }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function EducationLayer({ beginner, advanced }: Props) {
   const [mode, setMode] = useState<'BEGINNER' | 'ADVANCED'>('BEGINNER')

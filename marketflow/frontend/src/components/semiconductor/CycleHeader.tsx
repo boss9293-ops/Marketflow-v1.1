@@ -2,6 +2,7 @@
 // A-1: Sticky Cycle Position Header
 import type { StageOutput } from '@/lib/semiconductor/types'
 
+
 const CONF_COLOR: Record<string, string> = {
   HIGH: '#22c55e', MODERATE: '#eab308', LOW: '#f97316',
 }
@@ -16,6 +17,9 @@ interface Props {
   momentum: string
   summary:  string
 }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function CycleHeader({ stage, breadth, momentum, summary }: Props) {
   const stageColor = STAGE_COLOR[stage.stage] ?? '#94a3b8'

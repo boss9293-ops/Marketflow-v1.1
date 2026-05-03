@@ -2,6 +2,7 @@
 
 import SourceTable from '@/components/watchlist_mvp/SourceTable'
 import styles from '@/components/watchlist_mvp/watchlistMvp.module.css'
+import { useContentLang } from '@/lib/useLangMode'
 import type {
   ETDateString,
   ETTimezone,
@@ -481,7 +482,8 @@ export default function CenterPanel({
       }))
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
   }, [currentEtDate, currentEtMinutes, dateET, timeline])
-  const [langMode, setLangMode] = useState<'EN' | 'KR'>('KR')
+  const contentLang = useContentLang()
+  const [langMode, setLangMode] = useState<'EN' | 'KR'>(contentLang === 'ko' ? 'KR' : 'EN')
   const [synthEN, setSynthEN] = useState<Map<string, string>>(new Map())
   const [synthKO, setSynthKO] = useState<Map<string, string>>(new Map())
   const [isSynthesizingEN, setIsSynthesizingEN] = useState(false)
@@ -491,22 +493,31 @@ export default function CenterPanel({
   const synthKORequested = useRef<Set<string>>(new Set())
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [synthSignal, setSynthSignal] = useState<Map<string, 'bull' | 'bear' | 'neutral'>>(new Map())
+  const [synthCommentaryType, setSynthCommentaryType] = useState<Map<string, string>>(new Map())
+  const [synthCoreQuestion, setSynthCoreQuestion] = useState<Map<string, string>>(new Map())
+  const [synthWatchNext, setSynthWatchNext] = useState<Map<string, string[]>>(new Map())
 
   const [exportStatus, setExportStatus] = useState<ExportUiStatus>('idle')
   const [exportFeedback, setExportFeedback] = useState<string | null>(null)
 
-  // ?щ낵 蹂寃????⑹꽦 罹먯떆 珥덇린??
+  useEffect(() => {
+    setLangMode(contentLang === 'ko' ? 'KR' : 'EN')
+  }, [contentLang])
+
+  // Reset synthesized content when the session context changes, but keep the chosen language mode.
   useEffect(() => {
     digestGenerationRef.current += 1
     setSynthEN(new Map())
     setSynthKO(new Map())
     synthENRequested.current = new Set()
     synthKORequested.current = new Set()
-    setLangMode('EN')
     setIsSynthesizingEN(false)
     setIsSynthesizingKO(false)
     setExpandedItems(new Set())
     setSynthSignal(new Map())
+    setSynthCommentaryType(new Map())
+    setSynthCoreQuestion(new Map())
+    setSynthWatchNext(new Map())
   }, [dateET, selectedSymbol, todayClose, todayCloseSymbol])
 
   // EN auto synthesis — only when EN mode
@@ -554,7 +565,7 @@ export default function CenterPanel({
             }),
           })
           if (!res.ok || digestGenerationRef.current !== requestGeneration) return
-          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string }> }
+          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string; commentary_type?: string; core_question?: string; watch_next?: string[] }> }
           if (digestGenerationRef.current !== requestGeneration) return
           setSynthEN(prev => {
             const next = new Map(prev)
@@ -567,6 +578,21 @@ export default function CenterPanel({
               const sig = r.signal === 'bull' || r.signal === 'bear' ? r.signal : 'neutral'
               next.set(r.id, sig)
             }
+            return next
+          })
+          setSynthCommentaryType(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (r.commentary_type) next.set(r.id, r.commentary_type)
+            return next
+          })
+          setSynthCoreQuestion(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (r.core_question) next.set(r.id, r.core_question)
+            return next
+          })
+          setSynthWatchNext(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (Array.isArray(r.watch_next) && r.watch_next.length) next.set(r.id, r.watch_next)
             return next
           })
         }))
@@ -624,7 +650,7 @@ export default function CenterPanel({
             }),
           })
           if (!res.ok || digestGenerationRef.current !== requestGeneration) return
-          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string }> }
+          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string; commentary_type?: string; core_question?: string; watch_next?: string[] }> }
           if (digestGenerationRef.current !== requestGeneration) return
           setSynthKO(prev => {
             const next = new Map(prev)
@@ -637,6 +663,21 @@ export default function CenterPanel({
               const sig = r.signal === 'bull' || r.signal === 'bear' ? r.signal : 'neutral'
               if (!prev.has(r.id)) next.set(r.id, sig)
             }
+            return next
+          })
+          setSynthCommentaryType(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (r.commentary_type) next.set(r.id, r.commentary_type)
+            return next
+          })
+          setSynthCoreQuestion(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (r.core_question) next.set(r.id, r.core_question)
+            return next
+          })
+          setSynthWatchNext(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (Array.isArray(r.watch_next) && r.watch_next.length) next.set(r.id, r.watch_next)
             return next
           })
         }))
@@ -694,7 +735,7 @@ export default function CenterPanel({
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
               boxShadow: '0 0 6px rgba(56,189,248,0.06)',
             }}>
-              {(['EN', 'KR'] as const).map((m, idx) => {
+              {(['KR', 'EN'] as const).map((m, idx) => {
                 const active = langMode === m
                 const isBusy = m === 'EN' ? isSynthesizingEN : isSynthesizingKO
                 const flag = m === 'EN' ? '🇺🇸' : '🇰🇷'
@@ -792,6 +833,9 @@ export default function CenterPanel({
                         const isExpanded = isFirstItem || expandedItems.has(item.id)
                         const timeLabel = formatPublishedEtLabel(item.publishedAtET, item.dateET, item.timeET)
                         const signal = synthSignal.get(item.id)
+                        const commentaryType = synthCommentaryType.get(item.id)
+                        const coreQuestion = synthCoreQuestion.get(item.id)
+                        const watchNext = synthWatchNext.get(item.id)
                         const signalColor = signal === 'bull' ? '#4ade80' : signal === 'bear' ? '#f87171' : '#94a3b8'
                         const signalBg = signal === 'bull' ? 'rgba(34,197,94,0.1)' : signal === 'bear' ? 'rgba(239,68,68,0.1)' : 'rgba(148,163,184,0.08)'
                         const signalLabel = signal === 'bull' ? (langMode === 'KR' ? '강세' : 'BULL') : signal === 'bear' ? (langMode === 'KR' ? '약세' : 'BEAR') : (langMode === 'KR' ? '중립' : 'NEUTRAL')
@@ -845,6 +889,51 @@ export default function CenterPanel({
                             }}>
                               {bodyText}
                             </p>
+                            {commentaryType && (
+                              <span style={{
+                                display: 'inline-block',
+                                marginTop: '0.5rem',
+                                fontSize: '0.60rem',
+                                fontWeight: 700,
+                                letterSpacing: '0.10em',
+                                padding: '0.06rem 0.32rem',
+                                borderRadius: 3,
+                                color: '#737880',
+                                background: 'rgba(148,163,184,0.07)',
+                                border: '1px solid rgba(148,163,184,0.15)',
+                                fontFamily: 'var(--font-mono, monospace)',
+                              }}>
+                                {commentaryType}
+                              </span>
+                            )}
+                            {coreQuestion && (
+                              <p style={{
+                                margin: '0.45rem 0 0',
+                                fontSize: '0.78rem',
+                                lineHeight: 1.5,
+                                color: '#8b9098',
+                                borderLeft: '2px solid rgba(148,163,184,0.20)',
+                                paddingLeft: '0.55rem',
+                              }}>
+                                {coreQuestion}
+                              </p>
+                            )}
+                            {watchNext && watchNext.length > 0 && (
+                              <ul style={{ margin: '0.4rem 0 0', padding: 0, listStyle: 'none' }}>
+                                {watchNext.slice(0, 3).map((w, wIdx) => (
+                                  <li key={wIdx} style={{
+                                    fontSize: '0.74rem',
+                                    lineHeight: 1.5,
+                                    color: '#737880',
+                                    paddingLeft: '0.9rem',
+                                    position: 'relative',
+                                  }}>
+                                    <span style={{ position: 'absolute', left: 0 }}>→</span>
+                                    {w}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                             <button
                               type="button"
                               onClick={() => {

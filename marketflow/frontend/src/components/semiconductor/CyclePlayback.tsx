@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { CYCLE_EVENTS, type CycleEvent } from '@/lib/semiconductor/cycleEvents'
 
+
 const STAGE_BG: Record<string, string> = {
   BOTTOM: '#a78bfa28',
   BUILD:  '#38bdf828',
@@ -41,6 +42,9 @@ const LEFT_BG: Record<string, string> = {
 
 interface Props { currentStage: string }
 
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
+
 export default function CyclePlayback({ currentStage }: Props) {
   const [selectedId, setSelectedId] = useState<string>('2016-memory-super')
   const [showSoxl, setShowSoxl]     = useState(false)
@@ -75,7 +79,7 @@ export default function CyclePlayback({ currentStage }: Props) {
               color:        isSel ? '#818cf8' : isCurrent ? '#00D9FF' : isHigh ? '#f97316' : '#94a3b8',
             }}>
               {event.label}
-              {isHigh && !isCurrent && <span style={{ marginLeft: 4, fontSize: 10, color: '#f97316' }}>★</span>}
+              {isHigh && !isCurrent && <span style={{ marginLeft: 4, fontSize: 11, color: '#f97316' }}>★</span>}
             </button>
           )
         })}
@@ -164,12 +168,12 @@ export default function CyclePlayback({ currentStage }: Props) {
             ))}
             <CartesianGrid strokeDasharray="3 3" stroke="#1e2736" strokeWidth={0.5} vertical={false} />
             <XAxis dataKey="day"
-                   tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+                   tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={{ stroke: '#1e2736' }}
                    tickFormatter={v => `D${v}`}
                    interval={Math.floor(selected.chartData.length / 6)} />
             <YAxis domain={['auto', 'auto']}
-                   tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+                   tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={false}
                    tickFormatter={v => `${v >= 100 ? '+' : ''}${(v - 100).toFixed(0)}%`} />
             <Tooltip

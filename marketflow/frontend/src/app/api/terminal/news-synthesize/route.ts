@@ -2,9 +2,12 @@
 import {
   TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION,
   TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER,
-  buildBriefSystemPromptEN,
-  buildBriefUserPromptEN,
+  buildTerminalEnSystemPrompt,
+  buildTerminalEnUserPrompt,
+  buildTerminalKoSystemPrompt,
+  buildTerminalKoUserPrompt,
 } from '@/lib/terminal-mvp/newsSynthesizePrompts'
+import { rankEvents } from '@/lib/terminal-mvp/eventRanker'
 
 import fs from 'fs'
 import pathModule from 'path'
@@ -40,6 +43,9 @@ type SynthesizedItem = {
   id: string
   text: string
   signal?: 'bull' | 'bear' | 'neutral'
+  commentary_type?: string
+  core_question?: string
+  watch_next?: string[]
 }
 
 type TerminalNewsProviderName = (typeof TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER)[number]
@@ -55,7 +61,7 @@ const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 const OPENAI_API = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL = 'gpt-4o-mini'
-const SYNTH_CACHE_VERSION = `v7_${TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION}_context_bound`
+const SYNTH_CACHE_VERSION = `v9_${TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION}_ko_first`
 
 const containsAny = (value: string, keywords: string[]): boolean =>
   keywords.some((keyword) => value.includes(keyword))
@@ -251,7 +257,7 @@ async function callAnthropic(
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 3200,
+      max_tokens: 2500,
       temperature: 0.35,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -345,7 +351,7 @@ function isMarketOpen(dateStr: string): boolean {
   return dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(dateStr)
 }
 
-function getLastTradingDays(fromDateET: string, count = 4): Set<string> {
+function getLastTradingDays(fromDateET: string, count = 5): Set<string> {
   const result: string[] = []
   const d = new Date(fromDateET + 'T12:00:00Z')
   while (result.length < count) {
@@ -357,7 +363,7 @@ function getLastTradingDays(fromDateET: string, count = 4): Set<string> {
 }
 
 function pruneToTradingDays<T>(cache: Record<string, T>, todayET: string): Record<string, T> {
-  const keep = getLastTradingDays(todayET, 4)
+  const keep = getLastTradingDays(todayET, 5)
   const pruned: Record<string, T> = {}
   for (const [k, v] of Object.entries(cache)) {
     const dateKey = k.split(':')[1] ?? ''
@@ -366,39 +372,39 @@ function pruneToTradingDays<T>(cache: Record<string, T>, todayET: string): Recor
   return pruned
 }
 
-// -- EN synthesis file cache (prevents repeated LLM calls after server restart) --
-const SYNTH_EN_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'synth-en-cache.json')
-type SynthEnEntry = { text: string; signal: string; provider_used?: TerminalNewsProviderName }
+// -- KO synthesis file cache (prevents repeated LLM calls after server restart) --
+const SYNTH_KO_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'synth-ko-cache.json')
+type SynthKoEntry = { text: string; signal: string; provider_used?: TerminalNewsProviderName }
 
-function loadSynthEnCache(): Record<string, SynthEnEntry> {
+function loadSynthKoCache(): Record<string, SynthKoEntry> {
+  try {
+    const dir = pathModule.dirname(SYNTH_KO_CACHE_FILE)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(SYNTH_KO_CACHE_FILE)) return {}
+    return JSON.parse(fs.readFileSync(SYNTH_KO_CACHE_FILE, 'utf-8')) as Record<string, SynthKoEntry>
+  } catch { return {} }
+}
+
+function saveSynthKoCache(cache: Record<string, SynthKoEntry>): void {
+  try { fs.writeFileSync(SYNTH_KO_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8') }
+  catch (err) { console.error('[synth-ko-cache] write error:', err) }
+}
+
+// -- EN translation file cache (DeepL KO -> EN, 5-trading-day file cache) --
+const SYNTH_EN_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'deepl-ko-en-cache.json')
+
+function loadSynthEnCache(): Record<string, string> {
   try {
     const dir = pathModule.dirname(SYNTH_EN_CACHE_FILE)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     if (!fs.existsSync(SYNTH_EN_CACHE_FILE)) return {}
-    return JSON.parse(fs.readFileSync(SYNTH_EN_CACHE_FILE, 'utf-8')) as Record<string, SynthEnEntry>
+    return JSON.parse(fs.readFileSync(SYNTH_EN_CACHE_FILE, 'utf-8')) as Record<string, string>
   } catch { return {} }
 }
 
-function saveSynthEnCache(cache: Record<string, SynthEnEntry>): void {
+function saveSynthEnCache(cache: Record<string, string>): void {
   try { fs.writeFileSync(SYNTH_EN_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8') }
   catch (err) { console.error('[synth-en-cache] write error:', err) }
-}
-
-// -- DeepL translation with 5-trading-day file cache --
-const DEEPL_CACHE_FILE = pathModule.join(process.cwd(), '.cache', 'deepl-ko-cache.json')
-
-function loadDeeplFileCache(): Record<string, string> {
-  try {
-    const dir = pathModule.dirname(DEEPL_CACHE_FILE)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    if (!fs.existsSync(DEEPL_CACHE_FILE)) return {}
-    return JSON.parse(fs.readFileSync(DEEPL_CACHE_FILE, 'utf-8')) as Record<string, string>
-  } catch { return {} }
-}
-
-function saveDeeplFileCache(cache: Record<string, string>): void {
-  try { fs.writeFileSync(DEEPL_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8') }
-  catch (err) { console.error('[deepl-cache] write error:', err) }
 }
 
 const cachePriceKey = (price?: number | null): string =>
@@ -429,38 +435,68 @@ const buildBatchSignature = (items: NewsInputItem[]): string =>
     .digest('hex')
     .slice(0, 12)
 
-async function translateToKoViaDeepl(
-  enText: string,
+async function translateKoToEnViaDeepl(
+  koText: string,
   symbol: string,
   dateET: string,
   priceKey: string,
   changeKey: string,
   companyKey: string,
   marketContextKey: string,
-  batchSignature: string,
+  koTextHash: string,
 ): Promise<string | null> {
-  const DEEPL_KEY = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
+  const rawKey = Object.entries(process.env).find(([k]) => k.trim().toLowerCase() === 'deepl_api_key')?.[1]?.trim() ?? ''
+  const DEEPL_KEY = rawKey.replace(/^['"]|['"]$/g, '')
   if (!DEEPL_KEY) return null
 
-  const cacheKey = `${symbol}:${dateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
-  let fileCache = pruneToTradingDays(loadDeeplFileCache(), dateET)
+  const cacheKey = `${symbol}:${dateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${koTextHash}`
+  let fileCache = pruneToTradingDays(loadSynthEnCache(), dateET)
   if (fileCache[cacheKey]) {
-    console.log(`[deepl] cache hit: ${cacheKey}`)
+    console.log(`[deepl-en] cache hit: ${cacheKey}`)
     return fileCache[cacheKey]
   }
   try {
     const res = await fetch('https://api-free.deepl.com/v2/translate', {
       method: 'POST',
       headers: { 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: [enText], target_lang: 'KO' }),
+      body: JSON.stringify({ text: [koText], source_lang: 'KO', target_lang: 'EN' }),
       signal: AbortSignal.timeout(8000),
     })
-    if (!res.ok) { console.error('[deepl] error:', res.status); return null }
+    if (!res.ok) { console.error('[deepl-en] error:', res.status); return null }
     const data = await res.json() as { translations?: { text: string }[] }
-    const koText = data.translations?.[0]?.text ?? null
-    if (koText) { fileCache[cacheKey] = koText; saveDeeplFileCache(fileCache); console.log(`[deepl] cached: ${cacheKey}`) }
-    return koText
-  } catch (err) { console.error('[deepl] exception:', err); return null }
+    const enText = data.translations?.[0]?.text ?? null
+    if (enText) { fileCache[cacheKey] = enText; saveSynthEnCache(fileCache); console.log(`[deepl-en] cached: ${cacheKey}`) }
+    return enText
+  } catch (err) { console.error('[deepl-en] exception:', err); return null }
+}
+
+async function translateKoToEnViaModel(
+  koText: string,
+  symbol: string,
+  dateET: string,
+  companyName?: string,
+  marketContext?: string,
+): Promise<string | null> {
+  const systemPrompt = buildTerminalEnSystemPrompt()
+  const userPrompt = buildTerminalEnUserPrompt(symbol, koText, dateET, companyName, marketContext)
+  const providerResult = await runTerminalProviderSequence(
+    TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER,
+    systemPrompt,
+    userPrompt,
+  )
+  if (!providerResult) return null
+
+  const raw = providerResult.raw.trim()
+  let text = raw
+  try {
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (match) {
+      const parsed = JSON.parse(match[0]) as Record<string, unknown>
+      text = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
+    }
+  } catch {}
+
+  return text || null
 }
 
 
@@ -507,7 +543,7 @@ const runTerminalProviderSequence = async (
   return null
 }
 
-// ── DeepL translation with daily file cache ──
+// ── KO-first synthesis with DeepL EN translation ──
 async function synthesizeBatch(
   symbol: string,
   batch: NewsInputItem[],
@@ -520,24 +556,18 @@ async function synthesizeBatch(
 ): Promise<SynthesizedBatchResult> {
   const selected = selectRelevantItems(batch, symbol, companyName)
   if (selected.length === 0) return { items: [] }
+  const rankedSelected = rankEvents(selected)
   const priceKey = cachePriceKey(price)
   const changeKey = cacheChangeKey(changePct)
   const companyKey = cacheTextKey(companyName)
   const marketContextKey = cacheTextKey(marketContext)
   const batchSignature = buildBatchSignature(selected)
 
-  // Build price-lead first sentence
-  const direction = (changePct ?? 0) > 0 ? 'up' : (changePct ?? 0) < 0 ? 'down' : 'unchanged'
-  const priceStr = price != null ? ` at $${price.toFixed(2)}` : ''
-  const pctStr = changePct != null ? ` ${(changePct > 0 ? '+' : '') + changePct.toFixed(2)}%` : ''
   const koName = KO_NAMES[symbol] || (companyName ? companyName.replace(/\s*(Inc|Corp|Ltd|LLC|Co)\.?$/i, '') : symbol)
   const koDir = (changePct ?? 0) > 0 ? '상승' : (changePct ?? 0) < 0 ? '하락' : '보합'
   const koPct = changePct != null ? `${Math.abs(changePct).toFixed(2)}%` : ''
   const koPrice = price != null ? ` $${price.toFixed(2)}에` : ''
-  const leadSentenceEN = `${symbol} closed ${direction}${pctStr}${priceStr},`
-  const leadSentence = lang === 'ko'
-    ? `${koName}(${symbol})는 ${koPct} ${koDir}하며${koPrice} 마감했다,`
-    : leadSentenceEN
+  const leadSentenceKO = `${koName}(${symbol})는 ${koPct} ${koDir}하며${koPrice} 마감했다,`
 
   // Check in-memory cache
   const effectiveDateET = dateET || getCurrentEtDate()
@@ -548,26 +578,29 @@ async function synthesizeBatch(
   }
   cleanSynthCache(effectiveDateET)
 
-  // EN file cache check — zero token cost on hit
-  const enCacheKey = `${symbol}:${effectiveDateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
-  let enFileCache = loadSynthEnCache()
-  const cachedEN = enFileCache[enCacheKey]
-  let enText: string
+  // KO file cache check — zero token cost on hit
+  const koCacheKey = `${symbol}:${effectiveDateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
+  let koFileCache = loadSynthKoCache()
+  const cachedKO = koFileCache[koCacheKey]
+  let koText: string
   let signal: 'bull' | 'bear' | 'neutral'
   let providerUsed: TerminalNewsProviderName | undefined
+  let commentaryType: string | undefined
+  let coreQuestion: string | undefined
+  let watchNext: string[] | undefined
 
-  if (cachedEN) {
-    enText = cachedEN.text
-    signal = (cachedEN.signal as 'bull' | 'bear' | 'neutral') ?? 'neutral'
-    providerUsed = cachedEN.provider_used
-    console.log(`[synth-en] file cache hit: ${enCacheKey}`)
+  if (cachedKO) {
+    koText = cachedKO.text
+    signal = (cachedKO.signal as 'bull' | 'bear' | 'neutral') ?? 'neutral'
+    providerUsed = cachedKO.provider_used
+    console.log(`[synth-ko] file cache hit: ${koCacheKey}`)
   } else {
-    // LLM call — always English (one call serves both EN display and DeepL-KO)
-    const systemPrompt = buildBriefSystemPromptEN()
-    const userPrompt = buildBriefUserPromptEN(
+    // LLM call — always Korean (one call serves both KO display and DeepL-EN)
+    const systemPrompt = buildTerminalKoSystemPrompt()
+    const userPrompt = buildTerminalKoUserPrompt(
       symbol,
-      leadSentenceEN,
-      selected,
+      leadSentenceKO,
+      rankedSelected,
       effectiveDateET,
       companyName || undefined,
       marketContext || undefined,
@@ -578,46 +611,71 @@ async function synthesizeBatch(
       userPrompt,
     )
     if (!providerResult) {
-      return { items: [{ id: selected[0].id, text: leadSentenceEN, signal: 'neutral' as const }] }
+      koText = leadSentenceKO
+      signal = 'neutral'
+    } else {
+      providerUsed = providerResult.provider
+      const raw = providerResult.raw
+      koText = raw.trim()
+      signal = 'neutral'
+      try {
+        const match = raw.match(/\{[\s\S]*\}/)
+        if (match) {
+          const parsed = JSON.parse(match[0]) as Record<string, unknown>
+          koText = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
+          const rawSig = parsed.signal
+          signal = rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
+          commentaryType = typeof parsed.commentary_type === 'string' ? parsed.commentary_type : undefined
+          coreQuestion = typeof parsed.core_question === 'string' ? parsed.core_question.trim() : undefined
+          watchNext = Array.isArray(parsed.watch_next)
+            ? (parsed.watch_next as unknown[]).filter((s): s is string => typeof s === 'string')
+            : undefined
+        }
+      } catch {}
+      // Persist KO — no re-LLM after server restart
+      koFileCache = pruneToTradingDays(koFileCache, effectiveDateET)
+      koFileCache[koCacheKey] = { text: koText, signal, provider_used: providerUsed }
+      saveSynthKoCache(koFileCache)
     }
-
-    providerUsed = providerResult.provider
-    const raw = providerResult.raw
-    enText = raw.trim()
-    signal = 'neutral'
-    try {
-      const match = raw.match(/\{[\s\S]*\}/)
-      if (match) {
-        const parsed = JSON.parse(match[0]) as Record<string, unknown>
-        enText = typeof parsed.text === 'string' ? parsed.text.trim() : raw.trim()
-        const rawSig = parsed.signal
-        signal = rawSig === 'bull' || rawSig === 'bear' ? rawSig : 'neutral'
-      }
-    } catch {}
-    // Persist EN — no re-LLM after server restart
-    enFileCache = pruneToTradingDays(enFileCache, effectiveDateET)
-    enFileCache[enCacheKey] = { text: enText, signal, provider_used: providerUsed }
-    saveSynthEnCache(enFileCache)
   }
 
-  if (lang === 'en') {
-    const result = [{ id: selected[0].id, text: enText, signal }]
+  if (lang === 'ko') {
+    const result = [{ id: rankedSelected[0].id, text: koText, signal, commentary_type: commentaryType, core_question: coreQuestion, watch_next: watchNext }]
     synthCache.set(cacheKey, { result, providerUsed, cachedAt: Date.now() })
     return { items: result, providerUsed }
   }
 
-  // KO: DeepL translation (file-cached per 5 trading days) — zero token cost
-  const koText = await translateToKoViaDeepl(
-    enText,
+  const koTextHash = createHash('sha1').update(koText).digest('hex').slice(0, 12)
+  const enCacheKey = `${symbol}:${effectiveDateET}:${SYNTH_CACHE_VERSION}:${priceKey}:${changeKey}:${companyKey}:${marketContextKey}:${koTextHash}`
+  let enText = await translateKoToEnViaDeepl(
+    koText,
     symbol,
     effectiveDateET,
     priceKey,
     changeKey,
     companyKey,
     marketContextKey,
-    batchSignature,
-  ) ?? leadSentence
-  const result = [{ id: selected[0].id, text: koText, signal }]
+    koTextHash,
+  )
+  if (!enText) {
+    enText = await translateKoToEnViaModel(
+      koText,
+      symbol,
+      effectiveDateET,
+      companyName,
+      marketContext,
+    )
+  }
+  if (!enText) enText = koText
+
+  const existingENCache = loadSynthEnCache()
+  if (!existingENCache[enCacheKey]) {
+    const enFileCache = pruneToTradingDays(existingENCache, effectiveDateET)
+    enFileCache[enCacheKey] = enText
+    saveSynthEnCache(enFileCache)
+  }
+
+  const result = [{ id: rankedSelected[0].id, text: enText, signal, commentary_type: commentaryType, core_question: coreQuestion, watch_next: watchNext }]
   synthCache.set(cacheKey, { result, providerUsed, cachedAt: Date.now() })
   return { items: result, providerUsed }
 }

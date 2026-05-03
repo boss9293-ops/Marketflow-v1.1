@@ -3610,7 +3610,7 @@ function OverviewTab({
                                 label={{ value: co.label, position:'insideTopLeft', fill: co.color, fontSize:9, fontWeight:700 }}
                               />
                             ))}
-                            <ReferenceLine y={100} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 2" />
+                            <ReferenceLine y={100} stroke="#3a3f47" strokeDasharray="3 2" />
                             {ltLatestScore != null && Number.isFinite(ltLatestScore) && (
                               <ReferenceLine
                                 y={ltLatestScore}
@@ -3653,7 +3653,7 @@ function OverviewTab({
                     <ReferenceLine key={`rlabel-${z.label}`} yAxisId="risk" y={(z.min + z.max) / 2} stroke="rgba(255,255,255,0.06)" label={{ value: z.label, fill: z.color, fontSize: 10, position: 'right' }} />
                   ))}
                   {chartMode !== 'risk' && (
-                    <ReferenceLine yAxisId="score" y={100} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 2" />
+                    <ReferenceLine yAxisId="score" y={100} stroke="#3a3f47" strokeDasharray="3 2" />
                   )}
                   {chartMode === 'score' && (
                     <>
@@ -3723,7 +3723,7 @@ function OverviewTab({
                   <YAxis tick={{ fontSize: 12, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} domain={['auto', 'auto']} />
                   <Tooltip contentStyle={{ background:'#1c1f26', border:'1px solid rgba(255,255,255,0.1)', fontSize: '1.1rem', borderRadius:6 }}
                     formatter={(v:number) => `${v?.toFixed(2)}%`} />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} />
+                  <ReferenceLine y={0} stroke="#3a3f47" strokeWidth={1.5} />
                   <Area dataKey="dd_rel"      stroke="#ef4444" fill="rgba(239,68,68,0.15)" strokeWidth={1.5} dot={false} name="QQQ DD" />
                   <Area dataKey="tqqq_dd_rel" stroke="#a78bfa" fill="rgba(167,139,250,0.10)" strokeWidth={1.5} dot={false} name="TQQQ DD" />
                 </ComposedChart>
@@ -3753,7 +3753,7 @@ function OverviewTab({
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [`${v?.toFixed(2)}%`, 'QQQ vs MA200']} />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} strokeDasharray="3 2" />
+                  <ReferenceLine y={0} stroke="#555a62" strokeWidth={1.5} strokeDasharray="3 2" />
                   <ReferenceLine y={-5} stroke="#ef4444" strokeDasharray="2 3" strokeWidth={0.8} label={{ value: '-5%', position: 'right', fill: '#ef4444', fontSize: 10 }} />
                   <Area dataKey="qqq_vs_ma200" stroke="#a78bfa" fill="rgba(167,139,250,0.14)" strokeWidth={1.5} dot={false} name="QQQ vs MA200" />
                 </ComposedChart>
@@ -3770,7 +3770,7 @@ function OverviewTab({
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [`${v?.toFixed(2)}%`, 'SPY vs MA200']} />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} strokeDasharray="3 2" />
+                  <ReferenceLine y={0} stroke="#555a62" strokeWidth={1.5} strokeDasharray="3 2" />
                   <ReferenceLine y={-5} stroke="#ef4444" strokeDasharray="2 3" strokeWidth={0.8} label={{ value: '-5%', position: 'right', fill: '#ef4444', fontSize: 10 }} />
                   <Area dataKey="spy_vs_ma200" stroke="#60a5fa" fill="rgba(96,165,250,0.15)" strokeWidth={1.5} dot={false} name="SPY vs MA200" />
                 </ComposedChart>
@@ -3821,7 +3821,7 @@ function OverviewTab({
                       <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                       <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                         formatter={(v: number) => [`${v?.toFixed(2)}%`, 'SPY vs MA200']} />
-                      <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} strokeDasharray="3 2" />
+                      <ReferenceLine y={0} stroke="#555a62" strokeWidth={1.5} strokeDasharray="3 2" />
                       <ReferenceLine y={-5} stroke="#ef4444" strokeDasharray="2 3" strokeWidth={0.8} label={{ value: '-5%', position: 'right', fill: '#ef4444', fontSize: 10 }} />
                       <Area dataKey="spy_vs_ma200" stroke="#60a5fa" fill="rgba(96,165,250,0.15)" strokeWidth={1.5} dot={false} name="SPY vs MA200" />
                     </ComposedChart>
@@ -3838,7 +3838,7 @@ function OverviewTab({
                       <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                       <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                         formatter={(v: number) => [`${v?.toFixed(2)}%`, 'DIA vs MA200']} />
-                      <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} strokeDasharray="3 2" />
+                      <ReferenceLine y={0} stroke="#555a62" strokeWidth={1.5} strokeDasharray="3 2" />
                       <ReferenceLine y={-5} stroke="#ef4444" strokeDasharray="2 3" strokeWidth={0.8} label={{ value: '-5%', position: 'right', fill: '#ef4444', fontSize: 10 }} />
                       <Area dataKey="dia_vs_ma200" stroke="#fbbf24" fill="rgba(251,191,36,0.12)" strokeWidth={1.5} dot={false} name="DIA vs MA200" />
                     </ComposedChart>
@@ -3855,7 +3855,7 @@ function OverviewTab({
                       <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} domain={['auto', 'auto']} width={30} />
                       <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                         formatter={(v: number) => [v?.toFixed(1), 'RS (base=100)']} />
-                      <ReferenceLine y={100} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="3 2" />
+                      <ReferenceLine y={100} stroke="#3a3f47" strokeWidth={1.5} strokeDasharray="3 2" />
                       <Line dataKey="rs_n" stroke="#a78bfa" strokeWidth={1.5} dot={false} name="QQQ/SPY RS" />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -3873,7 +3873,7 @@ function OverviewTab({
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} tickFormatter={(v) => `${v.toFixed(0)}%`} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [`${v?.toFixed(2)}%`, 'DIA vs MA200']} />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} strokeDasharray="3 2" />
+                  <ReferenceLine y={0} stroke="#555a62" strokeWidth={1.5} strokeDasharray="3 2" />
                   <ReferenceLine y={-5} stroke="#ef4444" strokeDasharray="2 3" strokeWidth={0.8} label={{ value: '-5%', position: 'right', fill: '#ef4444', fontSize: 10 }} />
                   <Area dataKey="dia_vs_ma200" stroke="#fbbf24" fill="rgba(251,191,36,0.12)" strokeWidth={1.5} dot={false} name="DIA vs MA200" />
                 </ComposedChart>
@@ -3890,7 +3890,7 @@ function OverviewTab({
                   <YAxis tick={{ fontSize: 11, fill: '#e5e7eb' }} domain={['auto', 'auto']} width={30} />
                   <Tooltip contentStyle={{ background: '#1c1f26', border: '1px solid rgba(255,255,255,0.1)', fontSize: '1.06rem', borderRadius: 6 }}
                     formatter={(v: number) => [v?.toFixed(1), 'RS (base=100)']} />
-                  <ReferenceLine y={100} stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="3 2" />
+                  <ReferenceLine y={100} stroke="#3a3f47" strokeWidth={1.5} strokeDasharray="3 2" />
                   <Line dataKey="rs_n" stroke="#a78bfa" strokeWidth={1.5} dot={false} name="QQQ/SPY RS" />
                 </ComposedChart>
               </ResponsiveContainer>

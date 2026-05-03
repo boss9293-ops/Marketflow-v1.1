@@ -9,7 +9,7 @@ export const CONTENT_LANG_STORAGE_KEY = 'mf_content_lang'
 export const LEGACY_CONTENT_LANG_STORAGE_KEY = 'mf_output_lang'
 
 export function normalizeUiLang(value: unknown): UiLang {
-  return value === 'ko' ? 'ko' : 'en'
+  return value === 'en' ? 'en' : 'ko'
 }
 
 export function normalizeContentLang(value: unknown): ContentLang {
@@ -20,7 +20,7 @@ export function pickLang<T>(uiLang: UiLang, ko: T, en: T): T {
   return uiLang === 'ko' ? ko : en
 }
 
-export function readStoredUiLang(fallback: UiLang = 'en'): UiLang {
+export function readStoredUiLang(fallback: UiLang = 'ko'): UiLang {
   if (typeof window === 'undefined') return fallback
 
   try {

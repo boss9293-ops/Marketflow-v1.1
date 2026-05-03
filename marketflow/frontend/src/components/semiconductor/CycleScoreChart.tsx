@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import type { ConflictType } from '@/lib/semiconductor/types'
 
+
 interface Props {
   currentScore: number
   currentStage: string
@@ -84,6 +85,9 @@ function CycleTooltip({ active, payload, label }: { active?: boolean; payload?: 
   )
 }
 
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
+
 export default function CycleScoreChart({ currentScore, currentStage, conflictMode, conflictType }: Props) {
   const [range, setRange] = useState<'3m' | '6m' | '1y'>('6m')
   const days = { '3m': 90, '6m': 180, '1y': 365 }[range]
@@ -108,7 +112,7 @@ export default function CycleScoreChart({ currentScore, currentStage, conflictMo
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 10, color: '#64748b', letterSpacing: 2, marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: '#64748b', letterSpacing: 2, marginBottom: 4 }}>
             PANEL 1 — CYCLE SCORE
           </div>
           <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'monospace' }}>
@@ -146,10 +150,10 @@ export default function CycleScoreChart({ currentScore, currentStage, conflictMo
                              fill={STAGE_BG[r.stage] ?? '#ffffff08'} />
             ))}
             <CartesianGrid strokeDasharray="3 3" stroke="#1e2736" strokeWidth={0.5} vertical={false} />
-            <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+            <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={{ stroke: '#1e2736' }}
                    interval={Math.floor(data.length / 7)} />
-            <YAxis domain={[10, 100]} tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+            <YAxis domain={[10, 100]} tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={false} width={24} />
             <Tooltip content={<CycleTooltip />} />
             {THRESHOLDS.map(t => (

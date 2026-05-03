@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import type { SignalInputs } from '@/lib/semiconductor/types'
 
+
 interface Props { signals: SignalInputs }
 
 function bucketRows(s: SignalInputs) {
@@ -51,6 +52,9 @@ function ScoreTip({ active, payload, label }: { active?: boolean; payload?: { va
   )
 }
 
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
+
 export default function BucketPerfChart({ signals }: Props) {
   const bd  = bucketRows(signals)
   const sd  = scoreRows(signals)
@@ -68,7 +72,7 @@ export default function BucketPerfChart({ signals }: Props) {
         <div style={{ fontSize: 11, color: '#64748b', letterSpacing: 2 }}>SECTOR RADAR</div>
         <div style={{ fontSize: 12, fontWeight: 700, color: decColor }}>
           SOXX vs QQQ 60d: {decPct} &nbsp;
-          <span style={{ fontSize: 10, background: `${decColor}22`, padding: '2px 6px', borderRadius: 4 }}>
+          <span style={{ fontSize: 11, background: `${decColor}22`, padding: '2px 6px', borderRadius: 4 }}>
             {decLabel}
           </span>
         </div>
@@ -78,15 +82,15 @@ export default function BucketPerfChart({ signals }: Props) {
 
         {/* ── Left: Bucket vs SOXX ── */}
         <div>
-          <div style={{ fontSize: 10, color: '#475569', letterSpacing: 1, marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: '#475569', letterSpacing: 1, marginBottom: 6 }}>
             BUCKET vs SOXX (30d, pp)
           </div>
           <ResponsiveContainer width="100%" height={150}>
             <BarChart data={bd} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }}
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }}
                      axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false}
+              <YAxis tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false}
                      tickFormatter={v => `${v > 0 ? '+' : ''}${v}`} />
               <ReferenceLine y={0} stroke="#334155" strokeWidth={1.5} />
               <Tooltip content={<BucketTip />} cursor={{ fill: '#ffffff08' }} />
@@ -106,16 +110,16 @@ export default function BucketPerfChart({ signals }: Props) {
 
         {/* ── Right: Signal scores ── */}
         <div>
-          <div style={{ fontSize: 10, color: '#475569', letterSpacing: 1, marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: '#475569', letterSpacing: 1, marginBottom: 6 }}>
             SIGNAL HEALTH (0–100)
           </div>
           <ResponsiveContainer width="100%" height={150}>
             <BarChart data={sd} layout="vertical" margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
               <XAxis type="number" domain={[0, 100]}
-                     tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+                     tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" width={62}
-                     tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                     tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <ReferenceLine x={50} stroke="#334155" strokeDasharray="4 3" />
               <Tooltip content={<ScoreTip />} cursor={{ fill: '#ffffff08' }} />
               <Bar dataKey="value" radius={[0, 3, 3, 0]} maxBarSize={16}>

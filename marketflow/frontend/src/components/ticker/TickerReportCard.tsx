@@ -35,7 +35,7 @@ function segmentedGauge(pct?: number | null, color?: string) {
             height: 14,
             borderRadius: 2,
             background: '#e6edf3',
-            boxShadow: '0 0 4px rgba(255,255,255,0.35)',
+            boxShadow: '0 0 4px rgba(0,0,0,0.10)',
           }}
         />
       )}

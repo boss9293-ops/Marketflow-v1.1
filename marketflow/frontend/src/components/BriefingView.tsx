@@ -33,6 +33,36 @@ interface MarketData {
   commodities?: Record<string, MarketItem>
 }
 
+interface BriefingV5LLMOutput {
+  commentary_type?: string
+  core_question?: string
+  human_commentary?: string[]
+  market_tension?: string
+  next_checkpoints?: string[]
+  headline_ko?: string
+}
+
+interface BriefingSection {
+  id: string
+  title: string
+  structural_ko: string
+  implication_ko: string
+  signal: string
+  color: string
+}
+
+interface BriefingVX {
+  hook_ko?: string
+  one_line_ko?: string
+  sections?: BriefingSection[]
+  commentary_type?: string
+  core_question?: string
+  human_commentary?: string[]
+  market_tension?: string
+  next_checkpoints?: string[]
+  data_date?: string
+}
+
 
 const panelStyle: CSSProperties = {
   background: 'linear-gradient(180deg, rgba(20,22,28,0.95) 0%, rgba(14,16,22,0.96) 100%)',
@@ -102,6 +132,28 @@ function liftOff(node: HTMLElement, borderColor = 'rgba(255,255,255,0.06)') {
   node.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.03)'
 }
 
+const SIGNAL_DOT: Record<string, string> = {
+  bull: '#22c55e', caution: '#fbbf24', bear: '#ef4444', neutral: '#8b9098',
+}
+
+function SectionList({ sections }: { sections?: { id: string; title: string; structural_ko: string; implication_ko: string; signal: string }[] }) {
+  if (!sections || sections.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.1rem' }}>
+      {sections.map((sec) => (
+        <div key={sec.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.32rem' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: SIGNAL_DOT[sec.signal] || '#8b9098', flexShrink: 0, display: 'inline-block' }} />
+            <span style={{ color: '#c9cdd4', fontSize: '0.76rem', fontWeight: 700, letterSpacing: '0.07em' }}>{sec.title?.toUpperCase()}</span>
+          </div>
+          {sec.structural_ko && <p style={{ color: '#acb3c2', fontSize: '0.88rem', lineHeight: 1.65, margin: '0 0 0.28rem 1rem' }}>{sec.structural_ko}</p>}
+          {sec.implication_ko && <p style={{ color: '#737880', fontSize: '0.84rem', lineHeight: 1.6, margin: '0 0 0 1rem', fontStyle: 'italic' }}>{sec.implication_ko}</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function rowOn(node: HTMLElement) {
   node.style.transform = 'translateX(2px)'
   node.style.borderColor = 'rgba(245,158,11,0.28)'
@@ -121,6 +173,10 @@ interface BriefingViewProps {
 export default function BriefingView({ onOpenSectorRotation }: BriefingViewProps) {
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [market, setMarket] = useState<MarketData | null>(null)
+  const [briefingV5, setBriefingV5] = useState<BriefingV5LLMOutput | null>(null)
+  const [briefingV3, setBriefingV3] = useState<BriefingVX | null>(null)
+  const [briefingV6, setBriefingV6] = useState<BriefingVX | null>(null)
+  const [compareTab, setCompareTab] = useState<'v3' | 'v6'>('v6')
   const [loading, setLoading] = useState(true)
 
   const loadAll = () => {
@@ -128,9 +184,21 @@ export default function BriefingView({ onOpenSectorRotation }: BriefingViewProps
     Promise.all([
       fetch('http://localhost:5001/api/briefing').then((r) => r.json()).catch(() => null),
       fetch('http://localhost:5001/api/market/indices').then((r) => r.json()).catch(() => null),
-    ]).then(([briefingData, marketData]) => {
+      fetch('http://localhost:5001/api/briefing/today').then((r) => r.json()).catch(() => null),
+      fetch('http://localhost:5001/api/briefing/v3').then((r) => r.json()).catch(() => null),
+      fetch('http://localhost:5001/api/briefing/v6').then((r) => r.json()).catch(() => null),
+    ]).then(([briefingData, marketData, v5Data, v3Data, v6Data]) => {
       setBriefing(briefingData)
       setMarket(marketData)
+      const llm = v5Data?.llm_output
+      if (llm && !v5Data?.error && (llm.core_question || llm.human_commentary)) {
+        if (llm.human_commentary && typeof llm.human_commentary === 'string') {
+          llm.human_commentary = (llm.human_commentary as string).split('\n\n').filter((p: string) => p.trim())
+        }
+        setBriefingV5(llm as BriefingV5LLMOutput)
+      }
+      if (v3Data && !v3Data.error) setBriefingV3(v3Data as BriefingVX)
+      if (v6Data && !v6Data.error) setBriefingV6(v6Data as BriefingVX)
       setLoading(false)
     })
   }
@@ -417,7 +485,7 @@ export default function BriefingView({ onOpenSectorRotation }: BriefingViewProps
             onClick={onOpenSectorRotation}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-1px)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'
+              e.currentTarget.style.borderColor = '#555a62'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)'
@@ -429,22 +497,102 @@ export default function BriefingView({ onOpenSectorRotation }: BriefingViewProps
           </button>
         </div>
 
-        <div style={{ marginTop: '0.9rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.72rem' }}>
-          <div
-            style={{ ...panelStyle, padding: '0.95rem 1.02rem', transition: 'all 170ms ease', willChange: 'transform' }}
-            onMouseEnter={(e) => liftOn(e.currentTarget, 'rgba(245,158,11,0.25)')}
-            onMouseLeave={(e) => liftOff(e.currentTarget)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.42rem', marginBottom: '0.72rem' }}>
-              <Brain size={15} color="#f3b43f" />
-              <span style={{ color: '#f4f6fb', fontWeight: 700, fontSize: '1.02rem' }}>Market Analysis</span>
-              <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#636d85' }}>AI Generated</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-              {analysis.map((line, index) => (
-                <p key={`${line}-${index}`} style={{ color: '#acb3c2', fontSize: '0.91rem', lineHeight: 1.65 }}>{line}</p>
-              ))}
-            </div>
+        {/* V3 vs V6 Comparison */}
+        <div style={{ marginTop: '0.9rem' }}>
+          {/* Tab Bar */}
+          <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.65rem', alignItems: 'center' }}>
+            <Brain size={14} color="#f3b43f" />
+            <span style={{ color: '#737880', fontSize: '0.68rem', letterSpacing: '0.10em', fontWeight: 700, marginRight: '0.3rem' }}>BRIEFING</span>
+            {(['v3', 'v6'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setCompareTab(t)}
+                style={{
+                  border: `1px solid ${compareTab === t ? 'rgba(245,158,11,0.55)' : 'rgba(255,255,255,0.1)'}`,
+                  background: compareTab === t ? 'rgba(245,158,11,0.14)' : 'rgba(255,255,255,0.03)',
+                  color: compareTab === t ? '#f3b43f' : '#737880',
+                  borderRadius: 7,
+                  padding: '0.25rem 0.65rem',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  cursor: 'pointer',
+                  transition: 'all 120ms ease',
+                }}
+              >{t.toUpperCase()}</button>
+            ))}
+            {compareTab === 'v6' && briefingV6?.commentary_type && (
+              <span style={{ marginLeft: 'auto', color: '#8b9098', fontSize: '0.66rem', letterSpacing: '0.10em', fontWeight: 700 }}>
+                {briefingV6.commentary_type}
+              </span>
+            )}
+          </div>
+
+          {/* Tab Content */}
+          <div style={{ ...panelStyle, padding: '1rem 1.1rem' }}>
+            {compareTab === 'v6' ? (
+              briefingV6 ? (
+                <>
+                  {/* Commentary Block */}
+                  {briefingV6.core_question && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ color: '#737880', fontSize: '0.68rem', letterSpacing: '0.10em', fontWeight: 700, marginBottom: '0.3rem' }}>CORE QUESTION</div>
+                      <p style={{ color: '#f0f3f9', fontSize: '1.02rem', fontWeight: 600, lineHeight: 1.55, margin: 0 }}>
+                        {briefingV6.core_question}
+                      </p>
+                    </div>
+                  )}
+                  {briefingV6.human_commentary && briefingV6.human_commentary.length > 0 && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.75rem', marginBottom: '0.75rem' }}>
+                      {briefingV6.human_commentary.filter((p) => p.trim()).slice(0, 3).map((para, i) => (
+                        <p key={i} style={{ color: '#acb3c2', fontSize: '0.91rem', lineHeight: 1.7, margin: i > 0 ? '0.55rem 0 0' : 0 }}>
+                          {para}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {briefingV6.market_tension && (
+                    <div style={{ borderLeft: '2px solid rgba(245,158,11,0.45)', paddingLeft: '0.72rem', marginBottom: '0.75rem' }}>
+                      <div style={{ color: '#737880', fontSize: '0.68rem', letterSpacing: '0.10em', fontWeight: 700, marginBottom: '0.2rem' }}>TENSION</div>
+                      <p style={{ color: '#c9cdd4', fontSize: '0.86rem', lineHeight: 1.55, margin: 0 }}>{briefingV6.market_tension}</p>
+                    </div>
+                  )}
+                  {briefingV6.next_checkpoints && briefingV6.next_checkpoints.length > 0 && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.7rem', marginBottom: '1rem' }}>
+                      <div style={{ color: '#737880', fontSize: '0.68rem', letterSpacing: '0.10em', fontWeight: 700, marginBottom: '0.45rem' }}>CHECKPOINTS</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
+                        {briefingV6.next_checkpoints.map((cp, i) => (
+                          <div key={i} style={{ display: 'flex', gap: '0.42rem', alignItems: 'flex-start' }}>
+                            <span style={{ color: '#f59e0b', fontSize: '0.74rem', marginTop: '0.18rem', flexShrink: 0 }}>→</span>
+                            <span style={{ color: '#8b9098', fontSize: '0.86rem', lineHeight: 1.5 }}>{cp}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Sections */}
+                  {briefingV6.hook_ko && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.7rem', marginBottom: '0.6rem' }}>
+                      <p style={{ color: '#e2e6f0', fontSize: '0.94rem', fontWeight: 600, lineHeight: 1.5, margin: 0 }}>{briefingV6.hook_ko}</p>
+                      {briefingV6.one_line_ko && <p style={{ color: '#737880', fontSize: '0.82rem', lineHeight: 1.55, margin: '0.35rem 0 0' }}>{briefingV6.one_line_ko}</p>}
+                    </div>
+                  )}
+                  <SectionList sections={briefingV6.sections} />
+                </>
+              ) : <div style={{ color: '#555a62', fontSize: '0.86rem' }}>V6 데이터 없음 — build_daily_briefing_v6.py 실행 필요</div>
+            ) : (
+              briefingV3 ? (
+                <>
+                  {briefingV3.hook_ko && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <p style={{ color: '#e2e6f0', fontSize: '0.94rem', fontWeight: 600, lineHeight: 1.5, margin: 0 }}>{briefingV3.hook_ko}</p>
+                      {briefingV3.one_line_ko && <p style={{ color: '#737880', fontSize: '0.82rem', lineHeight: 1.55, margin: '0.35rem 0 0' }}>{briefingV3.one_line_ko}</p>}
+                    </div>
+                  )}
+                  <SectionList sections={briefingV3.sections} />
+                </>
+              ) : <div style={{ color: '#555a62', fontSize: '0.86rem' }}>V3 데이터 없음 — build_daily_briefing_v3.py 실행 필요</div>
+            )}
           </div>
         </div>
 

@@ -188,9 +188,21 @@ from jobs.scheduler import start_scheduler
 
 from news.context_narrative import build_context_narrative
 try:
-    from news.news_paths import CONTEXT_NEWS_PATH, DAILY_BRIEFING_V3_PATH, read_json_file as _read_news_artifact_json
+    from news.news_paths import (
+        CONTEXT_NEWS_PATH,
+        DAILY_BRIEFING_V3_PATH,
+        DAILY_BRIEFING_V4_PATH,
+        DAILY_BRIEFING_V5_PATH,
+        read_json_file as _read_news_artifact_json,
+    )
 except Exception:
-    from backend.news.news_paths import CONTEXT_NEWS_PATH, DAILY_BRIEFING_V3_PATH, read_json_file as _read_news_artifact_json  # type: ignore
+    from backend.news.news_paths import (  # type: ignore
+        CONTEXT_NEWS_PATH,
+        DAILY_BRIEFING_V3_PATH,
+        DAILY_BRIEFING_V4_PATH,
+        DAILY_BRIEFING_V5_PATH,
+        read_json_file as _read_news_artifact_json,
+    )
 
 
 _CACHE_STORE: dict = {}
@@ -412,12 +424,19 @@ def _run_builds_if_needed():
             ('build_smart_money.py', os.path.join(_out, 'smart_money.json')),
             ('build_market_tape.py', os.path.join(_out, 'market_tape.json')),
             ('build_market_state.py', os.path.join(_out, 'market_state.json')),
+            ('run_market_data_update.py', os.path.join(_out, 'cache', 'core_price_snapshot_latest.json')),
+            ('run_market_data_update.py', os.path.join(_out, 'cache', 'movers_snapshot_latest.json')),
+            ('run_market_data_update.py', os.path.join(_out, 'cache', 'market_data_update_report.json')),
             ('build_snapshots_120d.py', os.path.join(_out, 'cache', 'snapshots_120d.json')),
             ('build_health_snapshot.py', os.path.join(_out, 'cache', 'health_snapshot.json')),
             ('build_action_snapshot.py', os.path.join(_out, 'cache', 'action_snapshot.json')),
             ('build_context_news.py', os.path.join(_out, 'cache', 'context_news.json')),
             ('build_daily_briefing_v3.py', os.path.join(_out, 'cache', 'daily_briefing_v3.json')),
+            ('build_daily_briefing_v4.py', os.path.join(_out, 'cache', 'daily_briefing_v4.json')),
+            ('build_daily_briefing_v5.py', os.path.join(_out, 'cache', 'daily_briefing_v5.json')),
+            ('build_daily_briefing_v6.py', os.path.join(_out, 'cache', 'daily_briefing_v6.json')),
             ('build_vr_pattern_dashboard.py', os.path.join(_out, 'vr_pattern_dashboard.json')),
+            ('build_data_manifest.py', os.path.join(_out, 'cache', 'data_manifest.json')),
         ]
         for script, output_file in builds:
             if not os.path.exists(output_file):
@@ -774,6 +793,9 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'action_snapshot.json': ('build_action_snapshot.py', 300),
     'context_news.json': ('build_context_news.py', 180),
     'daily_briefing_v3.json': ('build_daily_briefing_v3.py', 300),
+    'daily_briefing_v4.json': ('build_daily_briefing_v4.py', 300),
+    'daily_briefing_v5.json': ('build_daily_briefing_v5.py', 300),
+    'daily_briefing_v6.json': ('build_daily_briefing_v6.py', 300),
     'vr_pattern_dashboard.json': ('build_vr_pattern_dashboard.py', 180),
     'vr_survival.json': ('build_vr_survival.py', 600),
     'vr_survival_playback.json': ('build_vr_survival.py', 600),
@@ -1449,6 +1471,12 @@ def load_context_news_cache():
 def load_daily_briefing_cache():
     if _read_news_artifact_json is None:
         return None
+    payload_v5 = _read_news_artifact_json(DAILY_BRIEFING_V5_PATH)
+    if isinstance(payload_v5, dict):
+        return payload_v5
+    payload_v4 = _read_news_artifact_json(DAILY_BRIEFING_V4_PATH)
+    if isinstance(payload_v4, dict):
+        return payload_v4
     return _read_news_artifact_json(DAILY_BRIEFING_V3_PATH)
 
 
@@ -3249,7 +3277,11 @@ def briefing():
 def briefing_today():
 
 
-    data = load_json_or_none_cached('cache/daily_briefing_v3.json')
+    data = load_json_or_none_cached('cache/daily_briefing_v5.json')
+    if not data:
+        data = load_json_or_none_cached('cache/daily_briefing_v4.json')
+    if not data:
+        data = load_json_or_none_cached('cache/daily_briefing_v3.json')
 
 
     if data:
@@ -3261,13 +3293,28 @@ def briefing_today():
     return jsonify({
 
 
-        'error': 'daily_briefing_v3.json not generated yet.',
-
-
-        'rerun_hint': 'python backend/scripts/build_daily_briefing_v3.py',
+        'error': 'daily_briefing_v5.json not generated yet.',
+        'rerun_hint': 'python backend/scripts/build_daily_briefing_v5.py',
+        'fallback_hint': 'python backend/scripts/build_daily_briefing_v3.py',
 
 
     }), 404
+
+
+@app.route('/api/briefing/v3')
+def briefing_v3():
+    data = load_json_or_none_cached('cache/daily_briefing_v3.json')
+    if data:
+        return jsonify(data)
+    return jsonify({'error': 'daily_briefing_v3.json not generated yet.'}), 404
+
+
+@app.route('/api/briefing/v6')
+def briefing_v6():
+    data = load_json_or_none_cached('cache/daily_briefing_v6.json')
+    if data:
+        return jsonify(data)
+    return jsonify({'error': 'daily_briefing_v6.json not generated yet.'}), 404
 
 
 
@@ -5516,7 +5563,7 @@ def briefing_cards():
         "risk_brief": _build_card("risk_brief", "ai/std_risk/latest.json"),
 
 
-        "market_structure_brief": _build_card("market_structure_brief", "ai/integrated/latest.json", "cache/daily_briefing_v3.json")
+        "market_structure_brief": _build_card("market_structure_brief", "ai/integrated/latest.json", "cache/daily_briefing_v5.json")
 
 
     })
@@ -9851,6 +9898,132 @@ def briefing_v3_generate():
 
 
 
+
+
+@app.route('/api/briefing/v4', methods=['GET'])
+def briefing_v4_read():
+    out_path = os.path.join(OUTPUT_DIR, 'cache', 'daily_briefing_v4.json')
+    if not os.path.exists(out_path):
+        return jsonify({
+            'error': 'daily_briefing_v4.json not generated yet.',
+            'rerun_hint': 'python backend/scripts/build_daily_briefing_v4.py',
+            'fallback_hint': 'python backend/scripts/build_daily_briefing_v3.py',
+        }), 404
+    with open(out_path, encoding='utf-8') as f:
+        return jsonify(json.load(f))
+
+
+@app.route('/api/briefing/v4/generate', methods=['POST'])
+def briefing_v4_generate():
+    import time as _time
+    import subprocess, sys
+
+    t0 = _time.time()
+    timeout_sec = 300
+
+    # Refresh the news cache first so the briefing sees today's headlines.
+    try:
+        _run_backend_script('build_context_news.py', extra_args=['--region', 'us', '--limit', '5'], timeout=180)
+    except Exception:
+        pass
+
+    script = os.path.join(os.path.dirname(__file__), 'scripts', 'build_daily_briefing_v4.py')
+    req_body = request.json if request.is_json else {}
+    force = req_body.get('force', False)
+    lang = req_body.get('lang', 'ko')
+
+    args = [sys.executable, '-X', 'utf8', script]
+    if force:
+        args.append('--force')
+    args.append(f'--lang={lang}')
+
+    env = build_script_env()
+    try:
+        result = subprocess.run(
+            args, capture_output=True, timeout=timeout_sec, env=env,
+            cwd=os.path.dirname(__file__),
+        )
+        elapsed = round(_time.time() - t0, 1)
+        ok = result.returncode == 0
+        if not ok:
+            err = result.stderr.decode('utf-8', errors='replace').strip()[-400:]
+            return jsonify({'ok': False, 'elapsed': elapsed, 'error': err}), 500
+
+        out_path = os.path.join(OUTPUT_DIR, 'cache', 'daily_briefing_v4.json')
+        if os.path.exists(out_path):
+            with open(out_path, encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {}
+        return jsonify({'ok': True, 'elapsed': elapsed, 'data': data})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'elapsed': timeout_sec, 'error': 'timeout'}), 504
+    except Exception as e:
+        return jsonify({'ok': False, 'elapsed': 0, 'error': str(e)}), 500
+
+
+@app.route('/api/briefing/v5', methods=['GET'])
+def briefing_v5_read():
+    out_path = os.path.join(OUTPUT_DIR, 'cache', 'daily_briefing_v5.json')
+    if not os.path.exists(out_path):
+        return jsonify({
+            'error': 'daily_briefing_v5.json not generated yet.',
+            'rerun_hint': 'python backend/scripts/build_daily_briefing_v5.py',
+            'fallback_hint': 'python backend/scripts/build_daily_briefing_v4.py',
+        }), 404
+    with open(out_path, encoding='utf-8') as f:
+        return jsonify(json.load(f))
+
+
+@app.route('/api/briefing/v5/generate', methods=['POST'])
+def briefing_v5_generate():
+    import time as _time
+    import subprocess, sys
+
+    t0 = _time.time()
+    timeout_sec = 360
+
+    try:
+        _run_backend_script('build_context_news.py', extra_args=['--region', 'us', '--limit', '5'], timeout=180)
+    except Exception:
+        pass
+
+    script = os.path.join(os.path.dirname(__file__), 'scripts', 'build_daily_briefing_v5.py')
+    req_body = request.json if request.is_json else {}
+    force = req_body.get('force', False)
+    slot = req_body.get('slot')
+
+    args = [sys.executable, '-X', 'utf8', script]
+    if force:
+        args.append('--force')
+    if slot:
+        args.append(f'--slot={slot}')
+
+    env = build_script_env()
+    try:
+        result = subprocess.run(
+            args, capture_output=True, timeout=timeout_sec, env=env,
+            cwd=os.path.dirname(__file__),
+        )
+        elapsed = round(_time.time() - t0, 1)
+        ok = result.returncode == 0
+        if not ok:
+            err = result.stderr.decode('utf-8', errors='replace').strip()[-400:]
+            return jsonify({'ok': False, 'elapsed': elapsed, 'error': err}), 500
+
+        out_path = os.path.join(OUTPUT_DIR, 'cache', 'daily_briefing_v5.json')
+        if os.path.exists(out_path):
+            with open(out_path, encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {}
+        return jsonify({'ok': True, 'elapsed': elapsed, 'data': data})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'elapsed': timeout_sec, 'error': 'timeout'}), 504
+    except Exception as e:
+        return jsonify({'ok': False, 'elapsed': 0, 'error': str(e)}), 500
 
 
 @app.route('/api/briefing/v2/tavily-health', methods=['GET'])

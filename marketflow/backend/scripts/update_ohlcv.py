@@ -36,6 +36,23 @@ import yfinance as yf
 from db_utils import daily_data_root
 from ohlcv_sources import load_spooq_rows_for_symbol
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(SCRIPT_DIR)
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+try:
+    from services.soxx_lens_universe import (
+        get_soxx_lens_tickers,
+        map_soxx_provider_symbol,
+    )
+except Exception:
+    def get_soxx_lens_tickers(*_args, **_kwargs):
+        return ["SOXX"]
+
+    def map_soxx_provider_symbol(ticker: str) -> str:
+        return ticker
+
 
 def db_path() -> str:
     try:
@@ -132,7 +149,8 @@ def fetch_yfinance_rows(
     start_date: Optional[str] = None,
     years: int = 2,
 ) -> Tuple[List[Tuple], str]:
-    yf_symbol = to_yf_symbol(symbol)
+    provider_symbol = map_soxx_provider_symbol(symbol)
+    yf_symbol = to_yf_symbol(provider_symbol)
     ticker = yf.Ticker(yf_symbol)
     if start_date:
         hist = ticker.history(start=start_date, interval="1d", auto_adjust=False)
@@ -167,7 +185,8 @@ def fetch_stooq_rows(
     start_date: Optional[str] = None,
     years: int = 2,
 ) -> Tuple[List[Tuple], str]:
-    stooq_symbol = symbol.lower().replace(".", "-")
+    provider_symbol = map_soxx_provider_symbol(symbol)
+    stooq_symbol = provider_symbol.lower().replace(".", "-")
     url = f"https://stooq.com/q/d/l/?s={stooq_symbol}.us&i=d"
     r = requests.get(url, timeout=10)
     r.raise_for_status()
@@ -371,6 +390,38 @@ def ensure_ohlcv_conflict_target(conn: sqlite3.Connection) -> None:
     print("[MIGRATE] ohlcv_daily now enforces UNIQUE(symbol, date)")
 
 
+def append_soxx_lens_universe(symbols: List[str]) -> tuple[List[str], List[str], List[str]]:
+    base = sorted({s.strip().upper() for s in symbols if s and s.strip()})
+    soxx_lens_tickers = get_soxx_lens_tickers()
+    normalized_lens = sorted({s.strip().upper() for s in soxx_lens_tickers if s and s.strip()})
+    merged = sorted(set(base) | set(normalized_lens))
+    appended = sorted(set(normalized_lens) - set(base))
+    return merged, normalized_lens, appended
+
+
+def get_latest_dates_for_tickers(
+    conn: sqlite3.Connection,
+    tickers: List[str],
+) -> Dict[str, str]:
+    if not tickers:
+        return {}
+    placeholders = ",".join("?" for _ in tickers)
+    rows = conn.execute(
+        f"""
+        SELECT symbol, MAX(date) AS last_date
+        FROM ohlcv_daily
+        WHERE symbol IN ({placeholders})
+        GROUP BY symbol
+        """,
+        tickers,
+    ).fetchall()
+    return {
+        str(symbol).upper(): str(last_date)
+        for symbol, last_date in rows
+        if symbol and last_date
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit",   type=int,   default=None,  help="limit symbols for test run")
@@ -398,11 +449,18 @@ def main() -> int:
         validate_required_tables(conn)
         ensure_ohlcv_conflict_target(conn)
         if args.symbols:
-            symbols = [s.upper() for s in args.symbols if s and s.strip()]
-            seed_symbols(conn, symbols)
-            print(f"[INFO] Seeded requested symbols: {len(symbols)}")
+            base_symbols = [s.upper() for s in args.symbols if s and s.strip()]
+            seed_symbols(conn, base_symbols)
+            print(f"[INFO] Seeded requested symbols: {len(base_symbols)}")
         else:
-            symbols = get_symbols(conn, args.limit)
+            base_symbols = get_symbols(conn, args.limit)
+
+        symbols, soxx_lens_tickers, appended_soxx_lens = append_soxx_lens_universe(base_symbols)
+        if appended_soxx_lens:
+            seed_symbols(conn, appended_soxx_lens)
+        print(f"[INFO] Base universe symbols: {len(base_symbols)}")
+        print(f"[INFO] SOXX Lens required symbols: {len(soxx_lens_tickers)}")
+        print(f"[INFO] SOXX Lens symbols appended to refresh universe: {len(appended_soxx_lens)}")
         print(f"[INFO] Symbols to update: {len(symbols)}")
 
         if not symbols:
@@ -553,6 +611,26 @@ def main() -> int:
                 print(f" - {s}: {err}")
         else:
             print("[INFO] No symbol errors.")
+
+        lens_last_dates = get_latest_dates_for_tickers(conn, soxx_lens_tickers)
+        lens_missing = sorted(
+            ticker for ticker in soxx_lens_tickers if ticker not in lens_last_dates
+        )
+        failed_symbols_set = {symbol for symbol, _error in error_symbols}
+        lens_failed = sorted(
+            ticker for ticker in soxx_lens_tickers if ticker in failed_symbols_set
+        )
+        print("[INFO] SOXX Lens universe coverage summary:")
+        print(f" - Required tickers: {len(soxx_lens_tickers)}")
+        print(f" - Available tickers in ohlcv_daily: {len(lens_last_dates)}")
+        print(
+            " - Missing tickers: "
+            + (", ".join(lens_missing) if lens_missing else "None")
+        )
+        print(
+            " - Failed tickers this run: "
+            + (", ".join(lens_failed) if lens_failed else "None")
+        )
 
         return 0
     except Exception as e:

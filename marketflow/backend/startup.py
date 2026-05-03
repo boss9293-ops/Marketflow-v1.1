@@ -394,6 +394,8 @@ BUILDS = [
     ("update_ohlcv.py",          "cache/update_ohlcv_stamp.json"),
     ("update_market_daily.py",   "cache/update_market_daily_stamp.json"),
     ("run_market_data_update.py", "cache/core_price_snapshot_latest.json"),
+    ("run_market_data_update.py", "cache/movers_snapshot_latest.json"),
+    ("run_market_data_update.py", "cache/market_data_update_report.json"),
     ("build_daily_snapshot.py",  "cache/daily_snapshot_stamp.json"),
     ("update_snapshot_trends.py", "cache/update_snapshot_trends_stamp.json"),
     ("update_snapshot_alerts.py", "cache/update_snapshot_alerts_stamp.json"),
@@ -419,6 +421,8 @@ BUILDS = [
     ("build_context_news.py",    "cache/context_news.json"),
     ("build_account_ticker_briefs.py", "cache/ticker_brief_index.json"),
     ("build_daily_briefing_v3.py", "cache/daily_briefing_v3.json"),
+    ("build_daily_briefing_v4.py", "cache/daily_briefing_v4.json"),
+    ("build_daily_briefing_v5.py", "cache/daily_briefing_v5.json"),
     ("build_vr_pattern_dashboard.py", "vr_pattern_dashboard.json"),
     ("build_ai_briefings.py",    "briefing.json"),
     ("build_data_manifest.py",   "cache/data_manifest.json"),
@@ -460,6 +464,8 @@ DAILY_BUILDS = {
     "build_context_news.py",
     "build_account_ticker_briefs.py",
     "build_daily_briefing_v3.py",
+    "build_daily_briefing_v4.py",
+    "build_daily_briefing_v5.py",
     "build_vr_pattern_dashboard.py",
     "build_ai_briefings.py",
     "build_data_manifest.py",
@@ -590,6 +596,36 @@ def _is_daily_briefing_v3_fresh(out_path: str) -> bool:
     return str(payload.get("data_date") or "")[:10] == target_date and str(payload.get("slot") or "").strip().lower() == current_slot
 
 
+def _is_daily_briefing_v4_fresh(out_path: str) -> bool:
+    """Keep daily_briefing_v4 aligned with the latest market_state date."""
+    market_state_path = os.path.join(OUTPUT, "cache", "market_state.json")
+    market_state = _load_json(market_state_path)
+    target_date = str((market_state or {}).get("data_date") or "")[:10]
+    if not target_date:
+        return _is_today(out_path)
+
+    payload = _load_json(out_path)
+    if not isinstance(payload, dict):
+        return False
+    _, current_slot = _current_et_date_slot()
+    return str(payload.get("data_date") or "")[:10] == target_date and str(payload.get("slot") or "").strip().lower() == current_slot
+
+
+def _is_daily_briefing_v5_fresh(out_path: str) -> bool:
+    """Keep daily_briefing_v5 aligned with the latest market_state date."""
+    market_state_path = os.path.join(OUTPUT, "cache", "market_state.json")
+    market_state = _load_json(market_state_path)
+    target_date = str((market_state or {}).get("data_date") or "")[:10]
+    if not target_date:
+        return _is_today(out_path)
+
+    payload = _load_json(out_path)
+    if not isinstance(payload, dict):
+        return False
+    _, current_slot = _current_et_date_slot()
+    return str(payload.get("data_date") or "")[:10] == target_date and str(payload.get("slot") or "").strip().lower() == current_slot
+
+
 def _is_ai_briefings_fresh(out_path: str) -> bool:
     payload = _load_json(out_path)
     if not isinstance(payload, dict):
@@ -629,6 +665,12 @@ def run_builds(force_daily: bool = False):
                     print(f"[build][SKIP-market-slot] {script}", flush=True)
                     continue
                 if script == "build_daily_briefing_v3.py" and out_path and _is_daily_briefing_v3_fresh(out_path):
+                    print(f"[build][SKIP-market-date] {script}", flush=True)
+                    continue
+                if script == "build_daily_briefing_v4.py" and out_path and _is_daily_briefing_v4_fresh(out_path):
+                    print(f"[build][SKIP-market-date] {script}", flush=True)
+                    continue
+                if script == "build_daily_briefing_v5.py" and out_path and _is_daily_briefing_v5_fresh(out_path):
                     print(f"[build][SKIP-market-date] {script}", flush=True)
                     continue
                 if script == "build_ai_briefings.py" and out_path and _is_ai_briefings_fresh(out_path):

@@ -285,8 +285,8 @@ const mergeHeadlines = (
   return sortHeadlines(Array.from(merged.values()))
 }
 
-// Keep one ET day on screen for now; bump this to 2 when the two-day view ships.
-const MARKET_HEADLINE_DAYS_TO_KEEP = 1
+// Keep a rolling five trading days on screen so the right rail can show accumulation.
+const MARKET_HEADLINE_DAYS_TO_KEEP = 5
 
 const limitHeadlinesToRecentDates = (
   items: MarketHeadlineView[],

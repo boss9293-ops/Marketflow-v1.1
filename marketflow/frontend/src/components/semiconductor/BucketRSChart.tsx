@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import {
+
   ComposedChart, Line, ReferenceLine, ReferenceArea,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -79,12 +80,15 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
           </span>
         </div>
       ))}
-      <div style={{ padding: '4px 10px 6px', borderTop: '1px solid #1e293b', marginTop: 4, color: '#475569', fontSize: 10 }}>
+      <div style={{ padding: '4px 10px 6px', borderTop: '1px solid #1e293b', marginTop: 4, color: '#475569', fontSize: 11 }}>
         base = 100 (period start)
       </div>
     </div>
   )
 }
+
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function BucketRSChart({ currentPerf, stage }: Props) {
   const [range, setRange] = useState<'30d' | '60d' | '90d'>('30d')
@@ -114,7 +118,7 @@ export default function BucketRSChart({ currentPerf, stage }: Props) {
           <div style={{ fontSize: 11, color: '#64748b', letterSpacing: 2, marginBottom: 2 }}>
             BUCKET RELATIVE STRENGTH — Rebased 100
           </div>
-          <div style={{ fontSize: 10, color: '#475569' }}>period start = 100 · each bucket independent</div>
+          <div style={{ fontSize: 11, color: '#475569' }}>period start = 100 · each bucket independent</div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['30d', '60d', '90d'] as const).map(r => (
@@ -144,7 +148,7 @@ export default function BucketRSChart({ currentPerf, stage }: Props) {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
               <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'capitalize' }}>{key}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: lc }}>{label}</span>
-              <span style={{ fontSize: 10, color: '#475569' }}>z={z.toFixed(1)}</span>
+              <span style={{ fontSize: 11, color: '#475569' }}>z={z.toFixed(1)}</span>
             </div>
           )
         })}
@@ -156,10 +160,10 @@ export default function BucketRSChart({ currentPerf, stage }: Props) {
           <ComposedChart data={data} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
             <ReferenceArea x1={data[0]?.label} x2={data[data.length - 1]?.label} fill={stageBg} />
             <CartesianGrid strokeDasharray="3 3" stroke="#1e2736" strokeWidth={0.5} vertical={false} />
-            <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+            <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={{ stroke: '#1e2736' }}
                    interval={Math.floor(data.length / 6)} />
-            <YAxis tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+            <YAxis tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={false}
                    tickFormatter={v => `${v >= 100 ? '+' : ''}${(v - 100).toFixed(0)}%`} />
             <Tooltip content={<CustomTooltip />} />

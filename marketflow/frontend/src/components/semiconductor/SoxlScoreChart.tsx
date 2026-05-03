@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import {
+
   ComposedChart, Line, Area, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -52,6 +53,9 @@ function SoxlTooltip({ active, payload, label }: { active?: boolean; payload?: {
   )
 }
 
+const UI_FONT = "'Inter', 'Pretendard', sans-serif";
+const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
+
 export default function SoxlScoreChart({ currentScore }: Props) {
   const [data, setData] = useState<SoxlPoint[]>([])
   useEffect(() => { setData(generateHistory(currentScore, 60)) }, [currentScore])
@@ -63,7 +67,7 @@ export default function SoxlScoreChart({ currentScore }: Props) {
                   padding: '14px 18px', marginBottom: 16 }}>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ fontSize: 10, color: '#64748b', letterSpacing: 2, textTransform: 'uppercase' }}>
+        <div style={{ fontSize: 11, color: '#64748b', letterSpacing: 2, textTransform: 'uppercase' }}>
           Panel 3 — SOXL Suitability Score — 60D
         </div>
         <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
@@ -79,9 +83,9 @@ export default function SoxlScoreChart({ currentScore }: Props) {
           <ComposedChart data={data} margin={{ top: 4, right: 55, left: -10, bottom: 0 }}>
             <Area type="monotone" dataKey="score" fill="rgba(239,68,68,0.04)" stroke="none" fillOpacity={1} />
             <CartesianGrid strokeDasharray="3 3" stroke="#1e2736" strokeWidth={0.5} vertical={false} />
-            <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+            <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={{ stroke: '#1e2736' }} interval={9} />
-            <YAxis domain={[0, 100]} tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
+            <YAxis domain={[0, 100]} tick={{ fill: '#475569', fontSize: 11, fontFamily: 'monospace' }}
                    tickLine={false} axisLine={false} width={24} />
             <Tooltip content={<SoxlTooltip />} />
             {THRESHOLDS.map(t => (

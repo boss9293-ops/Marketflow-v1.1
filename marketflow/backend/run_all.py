@@ -47,6 +47,8 @@ SCRIPT_TIMEOUTS: dict[str, int] = {
 
 SCRIPT_TIMEOUTS["build_ai_briefings.py"] = 300
 SCRIPT_TIMEOUTS["build_daily_briefing_v3.py"] = 120
+SCRIPT_TIMEOUTS["build_daily_briefing_v4.py"] = 120
+SCRIPT_TIMEOUTS["build_daily_briefing_v5.py"] = 180
 SCRIPT_TIMEOUTS["build_account_ticker_briefs.py"] = 900
 SCRIPT_TIMEOUTS["build_vr_pattern_dashboard.py"] = 180
 SCRIPT_TIMEOUTS["build_data_manifest.py"] = 60
@@ -99,6 +101,8 @@ SCRIPTS = [
     ("build_context_news.py", "Build Context News Cache"),
     ("build_account_ticker_briefs.py", "Build Account Ticker Briefs"),
     ("build_daily_briefing_v3.py", "Build Daily Briefing V3 Narrative"),
+    ("build_daily_briefing_v4.py", "Build Daily Briefing V4 Narrative"),
+    ("build_daily_briefing_v5.py", "Build Daily Briefing V5 Narrative"),
     ("build_market_health.py", "Build Market Health 4-Score"),
     ("risk_engine.py",       "Compute Risk Engine Metrics"),
     ("build_risk_v1.py",     "Build Risk v1 (Standard Risk System)"),
@@ -234,6 +238,34 @@ def _is_context_news_fresh(out_path: str) -> bool:
 
 
 def _is_daily_briefing_v3_fresh(out_path: str) -> bool:
+    market_state_path = os.path.join(OUTPUT_DIR, "cache", "market_state.json")
+    market_state = _load_json(market_state_path)
+    target_date = str((market_state or {}).get("data_date") or "")[:10]
+    if not target_date:
+        return _is_today(out_path)
+
+    payload = _load_json(out_path)
+    if not isinstance(payload, dict):
+        return False
+    _, current_slot = _current_et_date_slot()
+    return str(payload.get("data_date") or "")[:10] == target_date and str(payload.get("slot") or "").strip().lower() == current_slot
+
+
+def _is_daily_briefing_v4_fresh(out_path: str) -> bool:
+    market_state_path = os.path.join(OUTPUT_DIR, "cache", "market_state.json")
+    market_state = _load_json(market_state_path)
+    target_date = str((market_state or {}).get("data_date") or "")[:10]
+    if not target_date:
+        return _is_today(out_path)
+
+    payload = _load_json(out_path)
+    if not isinstance(payload, dict):
+        return False
+    _, current_slot = _current_et_date_slot()
+    return str(payload.get("data_date") or "")[:10] == target_date and str(payload.get("slot") or "").strip().lower() == current_slot
+
+
+def _is_daily_briefing_v5_fresh(out_path: str) -> bool:
     market_state_path = os.path.join(OUTPUT_DIR, "cache", "market_state.json")
     market_state = _load_json(market_state_path)
     target_date = str((market_state or {}).get("data_date") or "")[:10]
