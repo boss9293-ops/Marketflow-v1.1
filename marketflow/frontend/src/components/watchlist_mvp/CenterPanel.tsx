@@ -834,7 +834,7 @@ export default function CenterPanel({
                           : (synthEN.get(item.id) ?? briefText)
                         const bodyText = stripLeadingTerminalNumbering(synthText)
                         const isFirstItem = groupIndex === 0 && itemIndex === 0
-                        const isExpanded = isFirstItem || expandedItems.has(item.id)
+                        const isExpanded = expandedItems.has(item.id)
                         const timeLabel = formatPublishedEtLabel(item.publishedAtET, item.dateET, item.timeET)
                         const signal = synthSignal.get(item.id)
                         const commentaryType = synthCommentaryType.get(item.id)
@@ -888,55 +888,59 @@ export default function CenterPanel({
                               color: isFirstItem ? '#e2e8f0' : '#94a3b8',
                               overflow: isExpanded ? 'visible' : 'hidden',
                               display: isExpanded ? 'block' : '-webkit-box',
-                              WebkitLineClamp: isExpanded ? undefined : 3,
+                              WebkitLineClamp: isExpanded ? undefined : (isFirstItem ? 5 : 3),
                               WebkitBoxOrient: isExpanded ? undefined : 'vertical',
                             }}>
                               {bodyText}
                             </p>
-                            {commentaryType && (
-                              <span style={{
-                                display: 'inline-block',
-                                marginTop: '0.5rem',
-                                fontSize: '0.60rem',
-                                fontWeight: 700,
-                                letterSpacing: '0.10em',
-                                padding: '0.06rem 0.32rem',
-                                borderRadius: 3,
-                                color: '#737880',
-                                background: 'rgba(148,163,184,0.07)',
-                                border: '1px solid rgba(148,163,184,0.15)',
-                                fontFamily: 'var(--font-mono, monospace)',
-                              }}>
-                                {commentaryType}
-                              </span>
-                            )}
-                            {coreQuestion && (
-                              <p style={{
-                                margin: '0.45rem 0 0',
-                                fontSize: '0.78rem',
-                                lineHeight: 1.5,
-                                color: '#8b9098',
-                                borderLeft: '2px solid rgba(148,163,184,0.20)',
-                                paddingLeft: '0.55rem',
-                              }}>
-                                {coreQuestion}
-                              </p>
-                            )}
-                            {watchNext && watchNext.length > 0 && (
-                              <ul style={{ margin: '0.4rem 0 0', padding: 0, listStyle: 'none' }}>
-                                {watchNext.slice(0, 3).map((w, wIdx) => (
-                                  <li key={wIdx} style={{
-                                    fontSize: '0.74rem',
-                                    lineHeight: 1.5,
+                            {isExpanded && (
+                              <>
+                                {commentaryType && (
+                                  <span style={{
+                                    display: 'inline-block',
+                                    marginTop: '0.5rem',
+                                    fontSize: '0.60rem',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.10em',
+                                    padding: '0.06rem 0.32rem',
+                                    borderRadius: 3,
                                     color: '#737880',
-                                    paddingLeft: '0.9rem',
-                                    position: 'relative',
+                                    background: 'rgba(148,163,184,0.07)',
+                                    border: '1px solid rgba(148,163,184,0.15)',
+                                    fontFamily: 'var(--font-mono, monospace)',
                                   }}>
-                                    <span style={{ position: 'absolute', left: 0 }}>→</span>
-                                    {w}
-                                  </li>
-                                ))}
-                              </ul>
+                                    {commentaryType}
+                                  </span>
+                                )}
+                                {coreQuestion && (
+                                  <p style={{
+                                    margin: '0.45rem 0 0',
+                                    fontSize: '0.78rem',
+                                    lineHeight: 1.5,
+                                    color: '#8b9098',
+                                    borderLeft: '2px solid rgba(148,163,184,0.20)',
+                                    paddingLeft: '0.55rem',
+                                  }}>
+                                    {coreQuestion}
+                                  </p>
+                                )}
+                                {watchNext && watchNext.length > 0 && (
+                                  <ul style={{ margin: '0.4rem 0 0', padding: 0, listStyle: 'none' }}>
+                                    {watchNext.slice(0, 3).map((w, wIdx) => (
+                                      <li key={wIdx} style={{
+                                        fontSize: '0.74rem',
+                                        lineHeight: 1.5,
+                                        color: '#737880',
+                                        paddingLeft: '0.9rem',
+                                        position: 'relative',
+                                      }}>
+                                        <span style={{ position: 'absolute', left: 0 }}>→</span>
+                                        {w}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </>
                             )}
                             <button
                               type="button"
