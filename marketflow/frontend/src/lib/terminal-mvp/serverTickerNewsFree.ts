@@ -14,8 +14,9 @@ const TICKER_NEWS_HISTORY_MAX_ITEMS = 200
 const TICKER_NEWS_HISTORY_WINDOW_HOURS = 36 // used for cache-key only, not for pruning disk history
 const TICKER_NEWS_FETCH_ATTEMPTS = 1
 const TICKER_NEWS_RETRY_DELAY_MS = 150
-const TICKER_NEWS_HTTP_TIMEOUT_MS = 2200
-const TICKER_NEWS_CRUMB_TIMEOUT_MS = 1500
+const TICKER_NEWS_HTTP_TIMEOUT_MS = 4500
+const TICKER_NEWS_GOOGLE_TIMEOUT_MS = 5500
+const TICKER_NEWS_CRUMB_TIMEOUT_MS = 2000
 const TICKER_NEWS_HISTORY_PATH = resolveNewsHistoryPath('ticker-news-history-v2-1630.json')
 const TICKER_NEWS_HISTORY_TRADING_DAYS = 5
 const MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
@@ -442,7 +443,7 @@ const fetchGoogleNewsItems = async (
 ): Promise<YahooRssItem[]> => {
   try {
     const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${locale.hl}&gl=${locale.gl}&ceid=${locale.ceid}`
-    const res = await fetchWithRetry(rssUrl, { next: { revalidate: 3600 } }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+    const res = await fetchWithRetry(rssUrl, { cache: 'no-store' }, TICKER_NEWS_GOOGLE_TIMEOUT_MS, 1)
     if (!res) return []
     const xml = await res.text()
     return parseGoogleNewsRss(xml)
@@ -575,7 +576,7 @@ const fetchYahooFreeNews = async (symbol: string): Promise<{ timeline: TickerNew
   }
 
   const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`
-  const res = await fetchWithRetry(rssUrl, { next: { revalidate: 3600 } }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
+  const res = await fetchWithRetry(rssUrl, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
   if (!res) throw new Error('Yahoo Finance request failed after retries')
   const xml = await res.text()
   return buildPayloadFromYahoo(symbol, parseYahooRss(xml))
