@@ -14,19 +14,6 @@ interface SectorData {
 }
 interface RRGResponse { timestamp: string; sectors: SectorData[] }
 
-type RawTrailPoint = { ratio?: number; momentum?: number; x?: number; y?: number }
-type RawSector = {
-  symbol?: string
-  name?: string
-  current?: RawTrailPoint
-  trail?: RawTrailPoint[]
-  rs_ratio?: number
-  rs_momentum?: number
-  price?: number
-  change?: number
-}
-type RawRRGResponse = { timestamp?: string; sectors?: RawSector[] }
-
 // ── 섹터 색상 ─────────────────────────────────────────
 const COLORS: Record<string, string> = {
   XLK:  '#06b6d4',
@@ -235,86 +222,53 @@ function drawRRG(
 // 52주 = 12mo, 26주 = 6mo, 13주 = 3mo
 const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 52 }
 
+const SECTOR_SYMS = 'XLK,XLV,XLF,XLE,XLY,XLP,XLI,XLB,XLRE,XLU,XLC'
+
 // ── 메인 컴포넌트 ─────────────────────────────────────
 export default function RRGChart() {
-  const [data,       setData]       = useState<RRGResponse | null>(null)
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState('')
-  const [visible,    setVisible]    = useState<Set<string>>(new Set())
-  const [tailLength,  setTailLength]  = useState<number>(30)
-  const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('12mo')
-  const [tailOffset, setTailOffset] = useState(0)
-  const canvasRef                   = useRef<HTMLCanvasElement>(null)
-  const initVisibleRef              = useRef(false)
-
-  const normalizeSectors = (raw?: RawSector[]): SectorData[] => {
-    const list = Array.isArray(raw) ? raw : []
-    return list
-      .map((s): SectorData | null => {
-        const symbol = (s.symbol || '').trim()
-        if (!symbol) return null
-        const name = s.name || symbol
-        const trailRaw = Array.isArray(s.trail) ? s.trail : []
-        const trail = trailRaw
-          .map((pt) => {
-            const ratio = typeof pt.ratio === 'number' ? pt.ratio : (typeof pt.x === 'number' ? pt.x : undefined)
-            const momentum = typeof pt.momentum === 'number' ? pt.momentum : (typeof pt.y === 'number' ? pt.y : undefined)
-            if (typeof ratio !== 'number' || typeof momentum !== 'number') return null
-            return { ratio, momentum }
-          })
-          .filter((pt): pt is TrailPoint => !!pt)
-        const currentRatio =
-          typeof s.current?.ratio === 'number' ? s.current.ratio :
-          (typeof s.rs_ratio === 'number' ? s.rs_ratio : (trail.length ? trail[trail.length - 1].ratio : 100))
-        const currentMomentum =
-          typeof s.current?.momentum === 'number' ? s.current.momentum :
-          (typeof s.rs_momentum === 'number' ? s.rs_momentum : (trail.length ? trail[trail.length - 1].momentum : 100))
-        const current: TrailPoint = { ratio: currentRatio, momentum: currentMomentum }
-        return {
-          symbol,
-          name,
-          current,
-          trail,
-          price: typeof s.price === 'number' ? s.price : 0,
-          change: typeof s.change === 'number' ? s.change : 0,
-        }
-      })
-      .filter((s): s is SectorData => !!s)
-  }
+  const [data,        setData]        = useState<RRGResponse | null>(null)
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState('')
+  const [visible,     setVisible]     = useState<Set<string>>(new Set())
+  const [tailLength,  setTailLength]  = useState<number>(7)
+  const [range,       setRange]       = useState<'3mo'|'6mo'|'12mo'>('12mo')
+  const [tailOffset,  setTailOffset]  = useState(0)
+  const [period,      setPeriod]      = useState<'weekly'|'daily'>('weekly')
+  const canvasRef                     = useRef<HTMLCanvasElement>(null)
+  const initVisibleRef                = useRef(false)
 
   useEffect(() => {
     setLoading(true)
     setError('')
-    fetch(clientApiUrl('/api/rrg'), { cache: 'no-store' })
-      .then(async (r) => {
-        if (!r.ok) {
-          let detail = ''
-          try {
-            const payload = await r.json()
-            detail = typeof payload?.error === 'string' ? `: ${payload.error}` : ''
-          } catch {
-            // ignore non-json error body
-          }
-          throw new Error(`RRG API ${r.status}${detail}`)
-        }
-        return r.json()
+
+    const tail = period === 'weekly' ? '7' : '10'
+    const params = new URLSearchParams({ symbols: SECTOR_SYMS, benchmark: 'SPY', period, tail })
+
+    fetch(`${clientApiUrl('/api/rrg/candidate-d')}?${params}`, { cache: 'no-store' })
+      .then(res => {
+        if (!res.ok) throw new Error(`API ${res.status}`)
+        return res.json()
       })
-      .then((d: RawRRGResponse) => {
-        const normalized: RRGResponse = {
-          timestamp: d?.timestamp || new Date().toISOString(),
-          sectors: normalizeSectors(d?.sectors),
-        }
-        if (!normalized.sectors.length) {
-          throw new Error('RRG API returned no sector rows')
-        }
-        setData(normalized)
+      .then(json => {
+        const sectors: SectorData[] = (json.symbols ?? [])
+          .filter((s: { error?: string; latest?: unknown }) => !s.error && s.latest)
+          .map((s: { symbol: string; latest: { rs_ratio: number; rs_momentum: number }; tail?: Array<{ rs_ratio: number; rs_momentum: number }> }) => ({
+            symbol:  s.symbol,
+            name:    s.symbol,
+            current: { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum },
+            trail:   (s.tail ?? []).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
+            price:   0,
+            change:  0,
+          }))
+        setData({ timestamp: json.timestamp ?? new Date().toISOString(), sectors })
+        initVisibleRef.current = false
       })
-      .catch((err) => {
-        setData({ timestamp: new Date().toISOString(), sectors: [] })
+      .catch(err => {
         setError(err instanceof Error ? err.message : String(err))
+        setData({ timestamp: new Date().toISOString(), sectors: [] })
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [period])
 
   const displaySectors = useMemo(() => {
     if (!data?.sectors?.length) return []
@@ -337,6 +291,12 @@ export default function RRGChart() {
     if (!displaySectors.length || !canvasRef.current) return
     drawRRG(canvasRef.current, displaySectors, visible, 99999)
   }, [displaySectors, visible])
+
+  // Reset tail default when period changes
+  useEffect(() => {
+    setTailLength(period === 'weekly' ? 7 : 10)
+    setTailOffset(0)
+  }, [period])
 
   useEffect(() => {
     if (initVisibleRef.current) return
@@ -375,27 +335,46 @@ export default function RRGChart() {
   return (
     <div>
       {/* 헤더 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h3 style={{ color: '#F8FCFF', fontWeight: 800, fontSize: '1.34rem', margin: 0, letterSpacing: '0.01em' }}>
             Relative Rotation Graph
           </h3>
           <p style={{ color: '#D2E0F1', fontSize: '0.9rem', marginTop: 5, fontWeight: 600 }}>
-            MarketFlow Relative Rotation — vs SPY · {ts}
+            {period === 'weekly'
+              ? 'Weekly Sector Rotation · 7-week tail'
+              : 'Daily Sector Momentum · 10-day tail'}
+            {' '}— vs SPY · {ts}
           </p>
         </div>
 
         {/* Controls row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+
+          {/* Period toggle */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            {(['weekly','daily'] as const).map(p => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
+                padding: '4px 9px',
+                background: period === p ? 'rgba(0,217,255,0.15)' : 'rgba(255,255,255,0.04)',
+                border: period === p ? '1px solid rgba(0,217,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 7, color: period === p ? '#67EEFF' : '#6b7280',
+                cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize',
+              }}>
+                {p === 'weekly' ? 'Weekly ★' : 'Daily'}
+              </button>
+            ))}
+          </div>
+
           {/* Range buttons */}
           <div style={{ display: 'flex', gap: 3 }}>
             {(['3mo','6mo','12mo'] as const).map(r => (
               <button key={r} onClick={() => setRange(r)} style={{
                 padding: '4px 10px',
-                background: range === r ? 'rgba(0,217,255,0.15)' : 'rgba(255,255,255,0.05)',
-                border: range === r ? '1px solid rgba(0,217,255,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 7, color: range === r ? '#67EEFF' : '#9ca3af',
-                cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
+                background: range === r ? 'rgba(0,217,255,0.10)' : 'rgba(255,255,255,0.04)',
+                border: range === r ? '1px solid rgba(0,217,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 7, color: range === r ? '#67EEFF' : '#6b7280',
+                cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700,
               }}>{r}</button>
             ))}
           </div>
@@ -412,7 +391,7 @@ export default function RRGChart() {
           {/* Position scrubber */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '0.48rem 0.85rem' }}>
             <span style={{ color: '#D7E5F6', fontSize: '0.85rem', whiteSpace: 'nowrap', fontWeight: 700 }}>
-              {tailOffset === 0 ? 'Now' : `-${tailOffset}w`}
+              {tailOffset === 0 ? 'Now' : `-${tailOffset}${period === 'weekly' ? 'w' : 'd'}`}
             </span>
             <input type="range" min={0} max={maxOffset}
               value={maxOffset - tailOffset}
