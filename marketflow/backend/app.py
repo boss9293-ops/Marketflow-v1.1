@@ -3575,15 +3575,17 @@ def rrg_custom():
 
 
     try:
-
-
-        period_val = max(5, min(52, int(request.args.get('weeks', '14' if period == 'daily' else '10'))))
-
-
+        # short_period: default 10 for both daily and weekly
+        short_period = max(3, min(30, int(request.args.get('short_period', '10'))))
     except (ValueError, TypeError):
+        short_period = 10
 
-
-        period_val = 14 if period == 'daily' else 10
+    try:
+        # long_period: daily default 28 (MACD-style), weekly default 65 (JdK original)
+        default_long = '28' if period == 'daily' else '65'
+        long_period  = max(10, min(200, int(request.args.get('long_period', default_long))))
+    except (ValueError, TypeError):
+        long_period = 28 if period == 'daily' else 65
 
 
 
@@ -3647,15 +3649,13 @@ def rrg_custom():
 
 
         if period == 'daily':
-
-
-            data = calculate_rrg_daily(sym, bench_close, days=period_val)
-
-
+            data = calculate_rrg_daily(sym, bench_close,
+                                       short_period=short_period,
+                                       long_period=long_period)
         else:
-
-
-            data = calculate_rrg(sym, bench_close, weeks=period_val)
+            data = calculate_rrg(sym, bench_close,
+                                 short_period=short_period,
+                                 long_period=long_period)
 
 
         if data:
@@ -3704,6 +3704,138 @@ def rrg_custom():
 
 
 
+
+
+@app.route('/api/rrg/candidate-d')
+def rrg_candidate_d_endpoint():
+    try:
+        from rrg_candidate_d import calc_rrg_candidate_d
+        from rrg_calculator import load_daily as _load_daily
+    except ImportError as e:
+        return jsonify({'error': f'Import error: {e}'}), 500
+
+    import math as _math
+    import numpy as _np
+
+    symbols_raw = request.args.get('symbols', '').strip()
+    if not symbols_raw:
+        return jsonify({'error': 'No symbols provided'}), 400
+
+    symbols   = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:20]
+    benchmark = request.args.get('benchmark', 'SPY').strip().upper() or 'SPY'
+    tail_len  = min(260, max(1, int(request.args.get('tail', '10'))))
+    debug     = request.args.get('debug', 'false').lower() == 'true'
+
+    def _safe_float(key, default, lo=None, hi=None):
+        try:
+            v = float(request.args.get(key, str(default)))
+            if lo is not None: v = max(lo, v)
+            if hi is not None: v = min(hi, v)
+            return v
+        except (ValueError, TypeError):
+            return default
+
+    lp    = int(_safe_float('lp',    28,  10, 120))
+    m     = int(_safe_float('m',     10,   3,  60))
+    n     = int(_safe_float('n',    252,  60, 1000))
+    n2    = int(_safe_float('n2',   252,  60, 1000))
+    alpha = _safe_float('alpha', 0.5, 0.1, 2.0)
+    beta  = _safe_float('beta',  0.5, 0.1, 2.0)
+    kx    = _safe_float('kx',    6.5, 1.0, 30.0)
+    ky    = _safe_float('ky',    3.0, 0.5, 20.0)
+
+    bench_close = _load_daily(benchmark, lookback_days=600)
+    if bench_close is None or len(bench_close) < 50:
+        return jsonify({'error': f'Cannot load benchmark {benchmark}'}), 400
+
+    HARD_MIN = 350
+
+    sym_results = []
+    global_warnings = []
+
+    for sym in symbols:
+        close = _load_daily(sym, lookback_days=600)
+        if close is None or len(close) < HARD_MIN:
+            sym_results.append({
+                'symbol': sym,
+                'error': 'INSUFFICIENT_HISTORY',
+                'required_rows': HARD_MIN,
+                'available_rows': len(close) if close is not None else 0,
+            })
+            continue
+
+        try:
+            df = calc_rrg_candidate_d(
+                close, bench_close,
+                lp=lp, m=m, n=n, n2=n2,
+                alpha=alpha, beta=beta, kx=kx, ky=ky,
+            )
+            df_clean = df.dropna()
+            if len(df_clean) < 1:
+                sym_results.append({'symbol': sym, 'error': 'ALL_NAN_AFTER_WARMUP'})
+                continue
+
+            tail_df = df_clean.tail(tail_len)
+            sym_warnings = []
+
+            tail_out = []
+            for row in tail_df.itertuples():
+                xn = float(row.xNorm)
+                yn = float(row.yNorm)
+                if _math.isnan(xn) or _math.isnan(yn) or _math.isinf(xn) or _math.isinf(yn):
+                    sym_warnings.append(f'NaN/Inf at {row.Index.date()}')
+                    continue
+                if abs(xn) > 2.5 or abs(yn) > 2.5:
+                    w = f'xNorm={xn:.2f}, yNorm={yn:.2f} at {row.Index.date()}'
+                    sym_warnings.append(w)
+                    global_warnings.append(f'{sym}: {w}')
+                tail_out.append({
+                    'date':         str(row.Index.date()),
+                    'rs_ratio':     round(float(row.rs_ratio), 4),
+                    'rs_momentum':  round(float(row.rs_momentum), 4),
+                    'quadrant':     str(row.quadrant),
+                    'xNorm':        round(xn, 4),
+                    'yNorm':        round(yn, 4),
+                })
+
+            if not tail_out:
+                sym_results.append({'symbol': sym, 'error': 'EMPTY_TAIL'})
+                continue
+
+            latest = tail_out[-1]
+            entry = {
+                'symbol':  sym,
+                'latest':  {**latest, 'visualDistance': round(
+                    _math.sqrt(latest['xNorm']**2 + latest['yNorm']**2), 4)},
+                'tail':    tail_out,
+                'warnings': sym_warnings,
+            }
+
+            if debug:
+                def _series_tail(col):
+                    return [round(float(v), 6) if not (_math.isnan(v) or _math.isinf(v)) else None
+                            for v in df_clean.tail(tail_len)[col].tolist()]
+                entry['debug'] = {c: _series_tail(c) for c in
+                    ['logRS','trend','trendMean','trendStd','zTrend',
+                     'rawMom','momMean','momStd','zMom']}
+
+            sym_results.append(entry)
+
+        except Exception as exc:
+            sym_results.append({'symbol': sym, 'error': str(exc)})
+
+    return jsonify({
+        'engine':       'D',
+        'engine_name':  'MarketFlow Calibrated RRG Candidate D',
+        'benchmark':    benchmark,
+        'period':       'daily',
+        'tail_length':  tail_len,
+        'params':       {'lp': lp, 'm': m, 'n': n, 'n2': n2,
+                         'alpha': alpha, 'beta': beta, 'kx': kx, 'ky': ky},
+        'symbols':      sym_results,
+        'warnings':     global_warnings,
+        'timestamp':    datetime.now().isoformat(),
+    })
 
 
 @app.route('/api/macro/summary')

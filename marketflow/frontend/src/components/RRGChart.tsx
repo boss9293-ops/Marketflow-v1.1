@@ -174,12 +174,12 @@ function drawRRG(
   ctx.fillStyle = '#6b7280'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
-  ctx.fillText('JdK RS-Ratio  →', PAD.left + plotW / 2, H - 2)
+  ctx.fillText('MF RS-Ratio  →', PAD.left + plotW / 2, H - 2)
   ctx.save()
   ctx.translate(14, PAD.top + plotH / 2)
   ctx.rotate(-Math.PI / 2)
   ctx.textBaseline = 'top'
-  ctx.fillText('JdK RS-Momentum  ↑', 0, 0)
+  ctx.fillText('MF RS-Momentum  ↑', 0, 0)
   ctx.restore()
 
   // ── 섹터 렌더링 ──────────────────────────────────────
@@ -381,7 +381,7 @@ export default function RRGChart() {
             Relative Rotation Graph
           </h3>
           <p style={{ color: '#D2E0F1', fontSize: '0.9rem', marginTop: 5, fontWeight: 600 }}>
-            SPY 대비 섹터 JdK RS-Ratio &amp; RS-Momentum · {ts}
+            MarketFlow Relative Rotation — vs SPY · {ts}
           </p>
         </div>
 
@@ -519,7 +519,7 @@ export default function RRGChart() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                {['Visible', 'Symbol', 'Name', 'RS-Ratio', 'RS-Momentum', 'Quadrant', '% Chg'].map(h => (
+                {['Visible', 'Symbol', 'Name', 'MF RS-Ratio', 'MF RS-Momentum', 'Quadrant', '% Chg'].map(h => (
                   <th key={h} style={{
                     padding: '0.5rem 0.75rem',
                     textAlign: h === 'Visible' ? 'center' : 'left',

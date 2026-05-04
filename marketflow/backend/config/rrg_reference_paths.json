@@ -1,0 +1,41 @@
+{
+  "benchmark": "SPY",
+  "period": "daily",
+  "tailLength": 10,
+  "source": "manual_visual_estimate_from_stockcharts",
+  "note": "Approximate coordinates read from StockCharts RRG as of 2026-05-01. Full 10-point paths not available; endpoint-only scoring applied.",
+  "symbols": {
+    "TSLA": {
+      "date": "2026-05-01",
+      "available": "endpoint_only",
+      "points": [
+        {"x": 95.2, "y": 99.8},
+        {"x": 95.5, "y": 100.0},
+        {"x": 95.9, "y": 100.1},
+        {"x": 96.2, "y": 100.3},
+        {"x": 96.5, "y": 100.4},
+        {"x": 96.7, "y": 100.5},
+        {"x": 97.0, "y": 100.6},
+        {"x": 97.3, "y": 100.7},
+        {"x": 97.6, "y": 100.7},
+        {"x": 98.0, "y": 100.7}
+      ]
+    },
+    "NVDA": {
+      "date": "2026-05-01",
+      "available": "endpoint_only",
+      "points": [
+        {"x": 103.0, "y": 100.5},
+        {"x": 103.1, "y": 100.4},
+        {"x": 103.2, "y": 100.3},
+        {"x": 103.3, "y": 100.3},
+        {"x": 103.4, "y": 100.2},
+        {"x": 103.5, "y": 100.3},
+        {"x": 103.5, "y": 100.2},
+        {"x": 103.6, "y": 100.2},
+        {"x": 103.6, "y": 100.2},
+        {"x": 103.7, "y": 100.2}
+      ]
+    }
+  }
+}

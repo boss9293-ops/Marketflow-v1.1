@@ -1,8 +1,15 @@
 """
 RRG (Relative Rotation Graph) Data Generator
-주간 데이터 기반 JdK RS-Ratio & RS-Momentum 계산
-Output: output/rrg_data.json
+MF RS-Ratio & MF RS-Momentum — JdK-style dual-EMA approximation.
 
+Formula:
+  RS            = (Close / BenchClose) * 100
+  MF_RS_Ratio   = 100 + ((EMA(RS, short) / EMA(RS, long) - 1) * 100)
+  MF_RS_Momentum = 100 + ((EMA(RSRatio, short) / EMA(RSRatio, long) - 1) * 100)
+
+Warm-up rule: fetch max(visibleRange, longPeriod * 3) rows before trimming.
+
+Output: output/rrg_data.json
 Data source: ohlcv_daily DB (primary) → yfinance (fallback)
 """
 import pandas as pd
@@ -26,8 +33,18 @@ SECTORS = {
     'XLC':  'Communication Services',
 }
 BENCHMARK = 'SPY'
-WEEKS = 10        # RS-Ratio SMA 기간
-TRAIL_POINTS = 260 # 저장할 최대 트레일 포인트 수
+
+SHORT_PERIOD       = 10
+LONG_PERIOD_DAILY  = 28   # Daily: 10/28 matches StockCharts daily RRG (MACD-style)
+LONG_PERIOD_WEEKLY = 65   # Weekly: original JdK 10/65 parameters
+LONG_PERIOD        = LONG_PERIOD_DAILY  # default for backward compat
+TRAIL_POINTS       = 260
+
+# Warm-up: fetch enough historical rows so EMA is stable when visible range begins.
+# Weekly: LONG_PERIOD weeks * 7 days/week * 3 (warm-up factor) + buffer
+# Daily:  LONG_PERIOD * 3 trading days + buffer
+WEEKLY_LOOKBACK = max(1600, LONG_PERIOD * 7 * 3 + 90)   # ~1545 days, EMA-65w converge
+DAILY_LOOKBACK  = max(500, LONG_PERIOD * 3 + 90)        # ~500 days, EMA-65d converge
 
 
 def get_db_path() -> str:
@@ -43,8 +60,7 @@ def get_db_path() -> str:
     return os.path.normpath(candidates[0])
 
 
-def load_weekly_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | None:
-    """Load daily close from DB and resample to weekly (Friday)."""
+def load_weekly_from_db(symbol: str, lookback_days: int = WEEKLY_LOOKBACK) -> pd.Series | None:
     db = get_db_path()
     if not os.path.exists(db):
         return None
@@ -52,7 +68,7 @@ def load_weekly_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | No
     try:
         conn = sqlite3.connect(db)
         df = pd.read_sql_query(
-            "SELECT date, close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
+            "SELECT date, COALESCE(adj_close, close) AS close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
             conn, params=(symbol, cutoff),
         )
         conn.close()
@@ -60,7 +76,6 @@ def load_weekly_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | No
             return None
         df['date'] = pd.to_datetime(df['date'])
         df = df.set_index('date')['close']
-        # Resample to weekly (Friday)
         weekly = df.resample('W-FRI').last().dropna()
         return weekly
     except Exception as e:
@@ -68,15 +83,15 @@ def load_weekly_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | No
         return None
 
 
-def load_weekly(symbol: str) -> pd.Series | None:
-    """Try DB first, fall back to yfinance."""
-    series = load_weekly_from_db(symbol)
+def load_weekly(symbol: str, lookback_days: int = WEEKLY_LOOKBACK) -> pd.Series | None:
+    series = load_weekly_from_db(symbol, lookback_days=lookback_days)
     if series is not None and len(series) >= 15:
         return series
-    # fallback
     try:
         import yfinance as yf
-        raw = yf.download(symbol, period='1y', interval='1wk',
+        # yfinance: fetch enough history for warm-up
+        period_years = max(2, (lookback_days // 365) + 1)
+        raw = yf.download(symbol, period=f'{period_years}y', interval='1wk',
                           auto_adjust=True, progress=False)
         if raw.empty:
             return None
@@ -89,70 +104,7 @@ def load_weekly(symbol: str) -> pd.Series | None:
         return None
 
 
-def calculate_rrg(symbol: str, bench_close: pd.Series, weeks: int = WEEKS):
-    try:
-        close = load_weekly(symbol)
-        if close is None:
-            return None
-
-        # Align to common index
-        common = close.index.intersection(bench_close.index)
-        if len(common) < weeks + 3:
-            return None
-        close = close[common]
-        bench = bench_close[common]
-
-        # Relative Strength
-        rs = close / bench
-
-        # RS-Ratio: rs / rolling SMA * 100
-        rs_sma = rs.rolling(window=weeks).mean()
-        rs_ratio = (rs / rs_sma) * 100
-
-        # RS-Momentum: 1-week ROC + 100 (JdK approximation)
-        rs_momentum = rs_ratio.pct_change(1) * 100 + 100
-
-        rs_ratio = rs_ratio.dropna()
-        rs_momentum = rs_momentum.dropna()
-        common2 = rs_ratio.index.intersection(rs_momentum.index)
-        if len(common2) < weeks:
-            return None
-
-        rs_ratio = rs_ratio[common2]
-        rs_momentum = rs_momentum[common2]
-
-        trail = []
-        for i in range(-TRAIL_POINTS - 1, -1):
-            if abs(i) > len(rs_ratio):
-                continue
-            trail.append({
-                'ratio':    round(float(rs_ratio.iloc[i]), 4),
-                'momentum': round(float(rs_momentum.iloc[i]), 4),
-            })
-
-        current = {
-            'ratio':    round(float(rs_ratio.iloc[-1]), 4),
-            'momentum': round(float(rs_momentum.iloc[-1]), 4),
-        }
-
-        n = min(TRAIL_POINTS, len(close))
-        price_change = float(((close.iloc[-1] / close.iloc[-n]) - 1) * 100)
-
-        return {
-            'current':  current,
-            'trail':    trail,
-            'price':    round(float(close.iloc[-1]), 2),
-            'change':   round(price_change, 2),
-        }
-
-    except Exception as e:
-        print(f"  Error {symbol}: {e}")
-        return None
-
-
-
-def load_daily_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | None:
-    """Load daily close from DB (no resampling)."""
+def load_daily_from_db(symbol: str, lookback_days: int = DAILY_LOOKBACK) -> pd.Series | None:
     db = get_db_path()
     if not os.path.exists(db):
         return None
@@ -160,7 +112,7 @@ def load_daily_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | Non
     try:
         conn = sqlite3.connect(db)
         df = pd.read_sql_query(
-            "SELECT date, close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
+            "SELECT date, COALESCE(adj_close, close) AS close FROM ohlcv_daily WHERE symbol=? AND date>=? ORDER BY date",
             conn, params=(symbol, cutoff),
         )
         conn.close()
@@ -173,14 +125,14 @@ def load_daily_from_db(symbol: str, lookback_days: int = 400) -> pd.Series | Non
         return None
 
 
-def load_daily(symbol: str) -> pd.Series | None:
-    """Try DB first, fall back to yfinance daily."""
-    series = load_daily_from_db(symbol)
+def load_daily(symbol: str, lookback_days: int = DAILY_LOOKBACK) -> pd.Series | None:
+    series = load_daily_from_db(symbol, lookback_days=lookback_days)
     if series is not None and len(series) >= 20:
         return series
     try:
         import yfinance as yf
-        raw = yf.download(symbol, period='2y', interval='1d',
+        period_years = max(2, (lookback_days // 365) + 1)
+        raw = yf.download(symbol, period=f'{period_years}y', interval='1d',
                           auto_adjust=True, progress=False)
         if raw.empty:
             return None
@@ -193,31 +145,71 @@ def load_daily(symbol: str) -> pd.Series | None:
         return None
 
 
-def calculate_rrg_daily(symbol: str, bench_close: pd.Series, days: int = 14):
-    """Calculate RRG using daily closes."""
+def _calc_ema_series(series: pd.Series, span: int) -> pd.Series:
+    return series.ewm(span=span, adjust=False).mean()
+
+
+def _apply_rrg_formula(
+    close: pd.Series,
+    bench: pd.Series,
+    short: int,
+    long_p: int,
+) -> tuple[pd.Series, pd.Series]:
+    """
+    Returns (rs_ratio, rs_momentum).
+    RS            = (close / bench) * 100
+    MF_RS_Ratio   = 100 + ((EMA(RS, short) / EMA(RS, long) - 1) * 100)
+    MF_RS_Momentum = 100 + ROC(RS_Ratio, short)
+                   = 100 + ((RS_Ratio_t / RS_Ratio_{t-short} - 1) * 100)
+    """
+    rs = (close / bench) * 100
+    ema_s = _calc_ema_series(rs, short)
+    ema_l = _calc_ema_series(rs, long_p)
+    rs_ratio = 100.0 + ((ema_s / ema_l - 1.0) * 100.0)
+
+    # ROC(RS_Ratio, short): measures whether RS_Ratio is rising or falling
+    rs_momentum = 100.0 + ((rs_ratio / rs_ratio.shift(short) - 1.0) * 100.0)
+
+    return rs_ratio, rs_momentum
+
+
+def calculate_rrg(
+    symbol: str,
+    bench_close: pd.Series,
+    weeks: int = SHORT_PERIOD,
+    short_period: int | None = None,
+    long_period: int = LONG_PERIOD_WEEKLY,
+):
+    """
+    Weekly RRG calculation.
+    `weeks` kept for backward compatibility (maps to short_period if short_period is None).
+    """
+    short = short_period if short_period is not None else weeks
+    long_p = long_period
+
+    needed_days = max(WEEKLY_LOOKBACK, long_p * 7 * 3 + 90)
     try:
-        close = load_daily(symbol)
+        close = load_weekly(symbol, lookback_days=needed_days)
         if close is None:
             return None
 
         common = close.index.intersection(bench_close.index)
-        if len(common) < days + 3:
+        min_rows = long_p + short + 2
+        if len(common) < min_rows:
             return None
         close = close[common]
         bench = bench_close[common]
 
-        rs = close / bench
-        rs_sma = rs.rolling(window=days).mean()
-        rs_ratio = (rs / rs_sma) * 100
-        rs_momentum = rs_ratio.pct_change(1) * 100 + 100
-
-        rs_ratio = rs_ratio.dropna()
+        rs_ratio, rs_momentum = _apply_rrg_formula(close, bench, short, long_p)
+        rs_ratio   = rs_ratio.dropna()
         rs_momentum = rs_momentum.dropna()
-        common2 = rs_ratio.index.intersection(rs_momentum.index)
-        if len(common2) < days:
+        common2    = rs_ratio.index.intersection(rs_momentum.index)
+        if len(common2) < short + 2:
             return None
-        rs_ratio = rs_ratio[common2]
+
+        rs_ratio    = rs_ratio[common2]
         rs_momentum = rs_momentum[common2]
+        calc_rows   = len(rs_ratio)
 
         trail = []
         for i in range(-TRAIL_POINTS - 1, -1):
@@ -237,10 +229,85 @@ def calculate_rrg_daily(symbol: str, bench_close: pd.Series, days: int = 14):
         price_change = float(((close.iloc[-1] / close.iloc[-n]) - 1) * 100)
 
         return {
-            'current':  current,
-            'trail':    trail,
-            'price':    round(float(close.iloc[-1]), 2),
-            'change':   round(price_change, 2),
+            'current':      current,
+            'trail':        trail,
+            'price':        round(float(close.iloc[-1]), 2),
+            'change':       round(price_change, 2),
+            'calcRows':     calc_rows,
+            'shortPeriod':  short,
+            'longPeriod':   long_p,
+            'dataPeriod':   'weekly',
+        }
+
+    except Exception as e:
+        print(f"  Error {symbol}: {e}")
+        return None
+
+
+def calculate_rrg_daily(
+    symbol: str,
+    bench_close: pd.Series,
+    days: int = SHORT_PERIOD,
+    short_period: int | None = None,
+    long_period: int = LONG_PERIOD_DAILY,
+):
+    """
+    Daily RRG calculation.
+    `days` kept for backward compatibility (maps to short_period if short_period is None).
+    """
+    short = short_period if short_period is not None else days
+    long_p = long_period
+
+    needed_days = max(DAILY_LOOKBACK, long_p * 3 + 90)
+    try:
+        close = load_daily(symbol, lookback_days=needed_days)
+        if close is None:
+            return None
+
+        common = close.index.intersection(bench_close.index)
+        min_rows = long_p + short + 2
+        if len(common) < min_rows:
+            return None
+        close = close[common]
+        bench = bench_close[common]
+
+        rs_ratio, rs_momentum = _apply_rrg_formula(close, bench, short, long_p)
+        rs_ratio    = rs_ratio.dropna()
+        rs_momentum = rs_momentum.dropna()
+        common2     = rs_ratio.index.intersection(rs_momentum.index)
+        if len(common2) < short + 2:
+            return None
+
+        rs_ratio    = rs_ratio[common2]
+        rs_momentum = rs_momentum[common2]
+        calc_rows   = len(rs_ratio)
+
+        trail = []
+        for i in range(-TRAIL_POINTS - 1, -1):
+            if abs(i) > len(rs_ratio):
+                continue
+            trail.append({
+                'ratio':    round(float(rs_ratio.iloc[i]), 4),
+                'momentum': round(float(rs_momentum.iloc[i]), 4),
+            })
+
+        current = {
+            'ratio':    round(float(rs_ratio.iloc[-1]), 4),
+            'momentum': round(float(rs_momentum.iloc[-1]), 4),
+        }
+
+        n = min(TRAIL_POINTS, len(close))
+        price_change = float(((close.iloc[-1] / close.iloc[-n]) - 1) * 100)
+
+        return {
+            'current':      current,
+            'trail':        trail,
+            'price':        round(float(close.iloc[-1]), 2),
+            'change':       round(price_change, 2),
+            'calcRows':     calc_rows,
+            'shortPeriod':  short,
+            'longPeriod':   long_p,
+            'dataPeriod':   'daily',
         }
 
     except Exception as e:
@@ -249,29 +316,28 @@ def calculate_rrg_daily(symbol: str, bench_close: pd.Series, days: int = 14):
 
 
 def generate_rrg_data():
-    print(f"Loading benchmark ({BENCHMARK}) from DB...")
+    print(f"Loading benchmark ({BENCHMARK})...")
     bench_close = load_weekly(BENCHMARK)
-    if bench_close is None or len(bench_close) < 15:
+    if bench_close is None or len(bench_close) < LONG_PERIOD:
         print(f"Failed to load {BENCHMARK} data")
         return
 
-    print(f"  {BENCHMARK}: {len(bench_close)} weekly bars ({bench_close.index[0].date()} -> {bench_close.index[-1].date()})")
+    print(f"  {BENCHMARK}: {len(bench_close)} weekly bars "
+          f"({bench_close.index[0].date()} -> {bench_close.index[-1].date()})")
 
     rrg_data = {
         'timestamp': datetime.now().isoformat(),
         'benchmark': BENCHMARK,
-        'sectors': [],
+        'formula':   f'MF RRG dual-EMA {SHORT_PERIOD}/{LONG_PERIOD}',
+        'sectors':   [],
     }
 
     for symbol, name in SECTORS.items():
         print(f"  Processing {symbol}...")
-        data = calculate_rrg(symbol, bench_close)
+        data = calculate_rrg(symbol, bench_close,
+                              short_period=SHORT_PERIOD, long_period=LONG_PERIOD)
         if data:
-            rrg_data['sectors'].append({
-                'symbol': symbol,
-                'name':   name,
-                **data,
-            })
+            rrg_data['sectors'].append({'symbol': symbol, 'name': name, **data})
         else:
             print(f"  Skipped {symbol} (insufficient data)")
 

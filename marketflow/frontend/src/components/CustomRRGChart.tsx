@@ -183,10 +183,10 @@ function drawRRG(
   // Axis labels
   ctx.font = '600 10px system-ui,sans-serif'; ctx.fillStyle = '#6b7280'
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
-  ctx.fillText('JdK RS-Ratio  →', PAD.left + plotW / 2, H - 2)
+  ctx.fillText('MF RS-Ratio  →', PAD.left + plotW / 2, H - 2)
   ctx.save()
   ctx.translate(14, PAD.top + plotH / 2); ctx.rotate(-Math.PI / 2)
-  ctx.textBaseline = 'top'; ctx.fillText('JdK RS-Momentum  ↑', 0, 0)
+  ctx.textBaseline = 'top'; ctx.fillText('MF RS-Momentum  ↑', 0, 0)
   ctx.restore()
 
   // Symbols
@@ -246,6 +246,8 @@ export default function CustomRRGChart() {
   const [period,     setPeriod]     = useState<'daily'|'weekly'>('daily')
   const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('6mo')
   const [tailOffset, setTailOffset] = useState(0)
+  const [engine, setEngine] = useState<'current' | 'D'>('D')
+  const [engineDError, setEngineDError] = useState('')
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const normalize = useCallback((resp: ApiResponse): SymbolData[] => {
@@ -269,27 +271,73 @@ export default function CustomRRGChart() {
     })
   }, [])
 
-  const fetchData = useCallback(async (syms: string[], bench: string, wk: number, per: string) => {
+  const fetchData = useCallback(async (
+    syms: string[], bench: string, wk: number, per: string, eng: 'current' | 'D',
+  ) => {
     if (!syms.length) { setData(null); return }
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setEngineDError('')
     try {
-      const params = new URLSearchParams({
-        symbols: syms.join(','),
-        benchmark: bench,
-        weeks: String(wk),
-        period: per,
-      })
-      const res = await fetch(`${clientApiUrl('/api/rrg/custom')}?${params.toString()}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setData(await res.json())
+      if (eng === 'D') {
+        const params = new URLSearchParams({
+          symbols: syms.join(','),
+          benchmark: bench,
+          tail: '52',
+          period: 'daily',
+        })
+        const res = await fetch(`${clientApiUrl('/api/rrg/candidate-d')}?${params.toString()}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(`Candidate D HTTP ${res.status}`)
+        const json = await res.json()
+        // Wrap Candidate D response into ApiResponse shape so normalize() also works
+        const wrapped: ApiResponse = {
+          timestamp:        json.timestamp ?? '',
+          benchmark:        json.benchmark ?? bench,
+          benchmark_price:  0,
+          benchmark_prices: [],
+          benchmark_dates:  [],
+          sectors: (json.symbols ?? [])
+            .filter((s: { error?: string }) => !s.error)
+            .map((s: { symbol: string; latest?: { rs_ratio: number; rs_momentum: number }; tail?: Array<{ rs_ratio: number; rs_momentum: number }> }, i: number) => ({
+              symbol:       s.symbol,
+              name:         s.symbol,
+              rs_ratio:     s.latest?.rs_ratio ?? 100,
+              rs_momentum:  s.latest?.rs_momentum ?? 100,
+              current:      s.latest
+                ? { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum }
+                : undefined,
+              trail: (s.tail ?? []).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
+              price:  0,
+              change: 0,
+            })),
+          failed: (json.symbols ?? [])
+            .filter((s: { error?: string }) => s.error)
+            .map((s: { symbol: string }) => s.symbol),
+        }
+        setData(wrapped)
+      } else {
+        const params = new URLSearchParams({
+          symbols: syms.join(','),
+          benchmark: bench,
+          weeks: String(wk),
+          period: per,
+        })
+        const res = await fetch(`${clientApiUrl('/api/rrg/custom')}?${params.toString()}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        setData(await res.json())
+      }
     } catch (e) {
-      setError(String(e))
+      if (eng === 'D') {
+        setEngineDError('Candidate D data unavailable. Current engine is still available.')
+      } else {
+        setError(String(e))
+      }
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { fetchData(symbols, benchmark, weeks, period) }, [symbols, benchmark, weeks, period, fetchData])
+  useEffect(() => {
+    fetchData(symbols, benchmark, weeks, period, engine)
+  }, [symbols, benchmark, weeks, period, engine, fetchData])
 
   const symbolDataList = data ? normalize(data) : []
 
@@ -366,8 +414,26 @@ export default function CustomRRGChart() {
           Custom Symbol RRG
         </h3>
         <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: 3 }}>
-          임의 심볼 JdK RS-Ratio &amp; RS-Momentum — vs {benchmark}
+          MarketFlow Relative Rotation — vs {benchmark}
         </p>
+        <p style={{ color: '#4b5563', fontSize: '0.72rem', marginTop: 2 }}
+           title="MarketFlow RRG is a JdK-style relative rotation model based on EMA-smoothed relative strength. It may differ from proprietary StockCharts RRG calculations.">
+          JdK-style approximation · EMA dual-period · hover for details
+        </p>
+        {engine === 'D' && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            marginTop: 6, padding: '3px 10px',
+            background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.30)',
+            borderRadius: 9999,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fbbf24', flexShrink: 0 }} />
+            <span style={{ color: '#fbbf24', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em' }}>
+              ENGINE: CANDIDATE D — UNIVERSAL NORMALIZATION
+            </span>
+            <span style={{ color: '#737880', fontSize: '0.68rem' }}>staging</span>
+          </div>
+        )}
       </div>
 
       {/* Benchmark sparkline bar */}
@@ -398,6 +464,13 @@ export default function CustomRRGChart() {
       {/* Errors */}
       {error && (
         <div style={{ color: '#ef4444', fontSize: '0.78rem', marginBottom: '0.5rem' }}>{error}</div>
+      )}
+      {engineDError && (
+        <div style={{
+          color: '#fbbf24', fontSize: '0.78rem', marginBottom: '0.5rem',
+          padding: '6px 10px', background: 'rgba(251,191,36,0.08)',
+          border: '1px solid rgba(251,191,36,0.20)', borderRadius: 6,
+        }}>{engineDError}</div>
       )}
       {failed.length > 0 && (
         <div style={{ color: '#f59e0b', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
@@ -441,6 +514,40 @@ export default function CustomRRGChart() {
           borderRadius: 10, padding: '0.875rem',
           display: 'flex', flexDirection: 'column', gap: '0.85rem',
         }}>
+          {/* Engine toggle */}
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>
+              RRG Engine
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {(['current', 'D'] as const).map(eng => (
+                <button
+                  key={eng}
+                  onClick={() => setEngine(eng)}
+                  title={eng === 'D'
+                    ? 'Candidate D — Universal Normalization. Symbol-level normalized log RS trend. Staging default as of 2026-05-04.'
+                    : 'Legacy engine (JdK-style dual EMA, universe-calibrated). Kept for comparison only.'}
+                  style={{
+                    flex: 1, padding: '4px 0',
+                    background: engine === eng
+                      ? eng === 'D' ? 'rgba(251,191,36,0.15)' : 'rgba(0,217,255,0.15)'
+                      : 'rgba(255,255,255,0.04)',
+                    border: engine === eng
+                      ? eng === 'D' ? '1px solid rgba(251,191,36,0.40)' : '1px solid rgba(0,217,255,0.4)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 6,
+                    color: engine === eng
+                      ? eng === 'D' ? '#fbbf24' : '#67EEFF'
+                      : '#6b7280',
+                    cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700,
+                  }}
+                >
+                  {eng === 'current' ? 'Legacy' : 'Cand D ★'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Benchmark */}
           <div>
             <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>
@@ -613,7 +720,7 @@ export default function CustomRRGChart() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                {['', 'Symbol', 'RS-Ratio', 'RS-Momentum', 'Quadrant', 'Price', '% Chg'].map(h => (
+                {['', 'Symbol', 'MF RS-Ratio', 'MF RS-Momentum', 'Quadrant', 'Price', '% Chg'].map(h => (
                   <th key={h} style={{
                     padding: '0.5rem 0.75rem',
                     textAlign: h === '' ? 'center' : 'left',
