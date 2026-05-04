@@ -14,6 +14,8 @@ import type {
 type SectionStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 type ExportUiStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AskStatus = 'idle' | 'submitting' | 'ready' | 'error'
+type TopStoryInfo = { eventType: string; headline: string; rankingReason: string; eventRankScore: number }
+type DriverInfo = { rank: number; eventType: string; headline: string }
 
 type CenterPanelProps = {
   selectedSymbol: string
@@ -499,6 +501,8 @@ export default function CenterPanel({
   const [synthCommentaryType, setSynthCommentaryType] = useState<Map<string, string>>(new Map())
   const [synthCoreQuestion, setSynthCoreQuestion] = useState<Map<string, string>>(new Map())
   const [synthWatchNext, setSynthWatchNext] = useState<Map<string, string[]>>(new Map())
+  const [synthTopStory, setSynthTopStory] = useState<Map<string, TopStoryInfo>>(new Map())
+  const [synthSupportingDrivers, setSynthSupportingDrivers] = useState<Map<string, DriverInfo[]>>(new Map())
 
   const [exportStatus, setExportStatus] = useState<ExportUiStatus>('idle')
   const [exportFeedback, setExportFeedback] = useState<string | null>(null)
@@ -521,6 +525,8 @@ export default function CenterPanel({
     setSynthCommentaryType(new Map())
     setSynthCoreQuestion(new Map())
     setSynthWatchNext(new Map())
+    setSynthTopStory(new Map())
+    setSynthSupportingDrivers(new Map())
   }, [dateET, selectedSymbol, todayClose, todayCloseSymbol])
 
   // EN auto synthesis — only when EN mode
@@ -569,7 +575,7 @@ export default function CenterPanel({
             }),
           })
           if (!res.ok || digestGenerationRef.current !== requestGeneration) return
-          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string; commentary_type?: string; core_question?: string; watch_next?: string[] }> }
+          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string; commentary_type?: string; core_question?: string; watch_next?: string[]; top_story?: TopStoryInfo; supporting_drivers?: DriverInfo[] }> }
           if (digestGenerationRef.current !== requestGeneration) return
           setSynthEN(prev => {
             const next = new Map(prev)
@@ -597,6 +603,16 @@ export default function CenterPanel({
           setSynthWatchNext(prev => {
             const next = new Map(prev)
             for (const r of data.results) if (Array.isArray(r.watch_next) && r.watch_next.length) next.set(r.id, r.watch_next)
+            return next
+          })
+          setSynthTopStory(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (r.top_story) next.set(r.id, r.top_story)
+            return next
+          })
+          setSynthSupportingDrivers(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (Array.isArray(r.supporting_drivers) && r.supporting_drivers.length) next.set(r.id, r.supporting_drivers)
             return next
           })
         }))
@@ -655,7 +671,7 @@ export default function CenterPanel({
             }),
           })
           if (!res.ok || digestGenerationRef.current !== requestGeneration) return
-          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string; commentary_type?: string; core_question?: string; watch_next?: string[] }> }
+          const data = await res.json() as { results: Array<{ id: string; text: string; signal?: string; commentary_type?: string; core_question?: string; watch_next?: string[]; top_story?: TopStoryInfo; supporting_drivers?: DriverInfo[] }> }
           if (digestGenerationRef.current !== requestGeneration) return
           setSynthKO(prev => {
             const next = new Map(prev)
@@ -683,6 +699,16 @@ export default function CenterPanel({
           setSynthWatchNext(prev => {
             const next = new Map(prev)
             for (const r of data.results) if (Array.isArray(r.watch_next) && r.watch_next.length) next.set(r.id, r.watch_next)
+            return next
+          })
+          setSynthTopStory(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (r.top_story) next.set(r.id, r.top_story)
+            return next
+          })
+          setSynthSupportingDrivers(prev => {
+            const next = new Map(prev)
+            for (const r of data.results) if (Array.isArray(r.supporting_drivers) && r.supporting_drivers.length) next.set(r.id, r.supporting_drivers)
             return next
           })
         }))
@@ -841,6 +867,8 @@ export default function CenterPanel({
                         const commentaryType = synthCommentaryType.get(item.id)
                         const coreQuestion = synthCoreQuestion.get(item.id)
                         const watchNext = synthWatchNext.get(item.id)
+                        const topStory = synthTopStory.get(item.id)
+                        const supportingDrivers = synthSupportingDrivers.get(item.id)
                         const signalColor = signal === 'bull' ? '#4ade80' : signal === 'bear' ? '#f87171' : '#94a3b8'
                         const signalBg = signal === 'bull' ? 'rgba(34,197,94,0.1)' : signal === 'bear' ? 'rgba(239,68,68,0.1)' : 'rgba(148,163,184,0.08)'
                         const signalLabel = signal === 'bull' ? (langMode === 'KR' ? '강세' : 'BULL') : signal === 'bear' ? (langMode === 'KR' ? '약세' : 'BEAR') : (langMode === 'KR' ? '중립' : 'NEUTRAL')
@@ -882,6 +910,28 @@ export default function CenterPanel({
                                 </span>
                               )}
                             </div>
+                            {isFirstItem && topStory && (
+                              <div style={{ marginBottom: '0.6rem', padding: '0.5rem 0.6rem', background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.14)', borderRadius: 5 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.25rem' }}>
+                                  <span style={{ fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.14em', color: '#22d3ee', fontFamily: 'var(--font-mono, monospace)', textTransform: 'uppercase' }}>TOP STORY</span>
+                                  <span style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.10em', color: '#8b9098', fontFamily: 'var(--font-mono, monospace)', padding: '0.04rem 0.28rem', borderRadius: 3, background: 'rgba(148,163,184,0.08)', border: '1px solid rgba(148,163,184,0.14)' }}>{topStory.eventType}</span>
+                                  <span style={{ fontSize: '0.58rem', fontFamily: 'var(--font-mono, monospace)', color: '#4a5568', letterSpacing: '0.06em' }}>#{1} · {topStory.eventRankScore.toFixed(0)}pt</span>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.76rem', lineHeight: 1.45, color: '#c9cdd4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                  {topStory.headline}
+                                </p>
+                                {supportingDrivers && supportingDrivers.length > 0 && (
+                                  <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    {supportingDrivers.slice(0, 3).map((d, di) => (
+                                      <div key={di} style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                                        <span style={{ fontSize: '0.56rem', fontWeight: 700, letterSpacing: '0.08em', color: '#737880', fontFamily: 'var(--font-mono, monospace)', flexShrink: 0 }}>#{d.rank} {d.eventType}</span>
+                                        <span style={{ fontSize: '0.70rem', color: '#737880', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>{d.headline}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <p style={{
                               margin: 0,
                               fontSize: isFirstItem ? '0.92rem' : '0.86rem',

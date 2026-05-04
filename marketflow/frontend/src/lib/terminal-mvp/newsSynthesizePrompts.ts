@@ -1,4 +1,4 @@
-export const TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION = 'v1.5'
+export const TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION = 'v1.7'
 export const TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER = ['anthropic', 'openai'] as const
 
 export type TerminalNewsPromptItem = {
@@ -17,24 +17,114 @@ export type TerminalNewsPromptItem = {
   eventType?: string
   rankingReason?: string
   eventRankScore?: number
+  tags?: string[]
+  relevanceScore?: number
 }
+
+// ─── Briefing hierarchy types ─────────────────────────────────────────────────
+
+export type BriefingTopStory = {
+  rank: 1
+  role: 'LEAD'
+  eventType: string
+  headline: string
+  summary?: string
+  rankingReason: string
+  tags?: string[]
+  relevanceScore?: number
+  eventRankScore: number
+}
+
+export type BriefingDriver = {
+  rank: number
+  role: 'SUPPORTING'
+  eventType: string
+  headline: string
+  rankingReason: string
+  tags?: string[]
+}
+
+export type BriefingContext = {
+  top_story: BriefingTopStory
+  supporting_drivers: BriefingDriver[]
+  background_items: TerminalNewsPromptItem[]
+}
+
+export function buildBriefingContext(
+  ranked: TerminalNewsPromptItem[],
+): BriefingContext | null {
+  if (ranked.length === 0) return null
+  const lead = ranked[0]
+  const supporting = ranked.slice(1, 4)
+  const background = ranked.slice(4)
+  return {
+    top_story: {
+      rank: 1,
+      role: 'LEAD',
+      eventType: lead.eventType ?? 'OTHER',
+      headline: lead.headline,
+      summary: lead.summary || undefined,
+      rankingReason: lead.rankingReason ?? '',
+      tags: lead.tags,
+      relevanceScore: lead.relevanceScore,
+      eventRankScore: lead.eventRankScore ?? 0,
+    },
+    supporting_drivers: supporting.map((it) => ({
+      rank: it.rank ?? 0,
+      role: 'SUPPORTING' as const,
+      eventType: it.eventType ?? 'OTHER',
+      headline: it.headline,
+      rankingReason: it.rankingReason ?? '',
+      tags: it.tags,
+    })),
+    background_items: background,
+  }
+}
+
+// ─── Prompt builders ──────────────────────────────────────────────────────────
 
 const buildContextSection = (companyName?: string, marketContext?: string): string[] => [
   companyName?.trim() ? `Company: ${companyName.trim()}` : '',
   marketContext?.trim() ? `Market context: ${marketContext.trim()}` : '',
 ].filter((line) => line.length > 0)
 
-const buildItemLines = (items: TerminalNewsPromptItem[]): string =>
-  items
-    .slice(0, 15)
-    .map((it) => {
-      const timestamp = it.publishedAtET?.trim() || (it.dateET && it.timeET ? `${it.dateET} ${it.timeET}` : it.timeET || '')
-      const rankPrefix = it.rank != null
-        ? `[#${it.rank}|${it.role ?? (it.is_lead ? 'LEAD' : 'OTHER')}|${it.eventType ?? 'OTHER'}] `
-        : ''
-      return `${rankPrefix}${timestamp} - ${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`
-    })
-    .join('\n')
+function buildItemTimestamp(it: TerminalNewsPromptItem): string {
+  return it.publishedAtET?.trim() || (it.dateET && it.timeET ? `${it.dateET} ${it.timeET}` : it.timeET || '')
+}
+
+function buildStructuredItemLines(items: TerminalNewsPromptItem[]): string {
+  const lead = items.filter((it) => it.role === 'LEAD' || it.is_lead)
+  const supporting = items.filter((it) => it.role === 'SUPPORTING')
+  const background = items.filter((it) => it.role === 'BACKGROUND').slice(0, 5)
+
+  const fmt = (it: TerminalNewsPromptItem): string => {
+    const ts = buildItemTimestamp(it)
+    const prefix = `[#${it.rank}|${it.role ?? 'OTHER'}|${it.eventType ?? 'OTHER'}]`
+    const body = `${it.headline}${it.summary && it.summary !== it.headline ? ' | ' + it.summary : ''}`
+    return `${prefix} ${ts} - ${body}`
+  }
+
+  const sections: string[] = []
+
+  if (lead.length > 0) {
+    sections.push('TOP STORY (anchor — build Core Question from this):')
+    sections.push(fmt(lead[0]))
+  }
+
+  if (supporting.length > 0) {
+    sections.push('')
+    sections.push('SUPPORTING DRIVERS (secondary context only):')
+    supporting.forEach((it) => sections.push(fmt(it)))
+  }
+
+  if (background.length > 0) {
+    sections.push('')
+    sections.push('BACKGROUND (use only if directly reinforces top story):')
+    background.forEach((it) => sections.push(fmt(it)))
+  }
+
+  return sections.join('\n')
+}
 
 export const buildTerminalKoSystemPrompt = (): string =>
   [
@@ -53,18 +143,20 @@ export const buildTerminalKoSystemPrompt = (): string =>
     'Do not mention source names, outlet names, URLs, or citations in the body.',
     'Write 2-3 dense paragraphs. Sound like a human market analyst, not a data reader.',
     '',
-    'News items include a rank prefix: [#N|ROLE|EVENT_TYPE].',
-    'LEAD = primary story candidate. SUPPORTING = secondary driver. BACKGROUND = context only.',
-    'Treat the LEAD item as the anchor of your synthesis.',
-    'Do not follow chronological order alone — use the ranking signals.',
-    'Your Core Question should reflect the highest-ranked market driver.',
+    'BRIEFING HIERARCHY — strictly enforce:',
+    '  TOP STORY = rank 1, pre-determined by event ranker. Your Core Question MUST be based on this.',
+    '  SUPPORTING DRIVERS = rank 2-4. Use only as secondary context to reinforce or contrast top story.',
+    '  BACKGROUND = context only. Do NOT let background items override the top story.',
+    '  Do NOT reorder by time. The hierarchy is already determined — follow it.',
+    '  Do NOT lead with an index recap unless the top story itself is a MARKET_STRUCTURE event.',
+    '  If you believe the ranking is wrong, you may note it in one short sentence — but still anchor to the top story.',
     '',
     'Commentary type — pick one that best fits:',
-    'THESIS_CONFIRMATION | CONTRADICTION_ALERT | EVENT_SETUP | MOMENTUM_STRETCH |',
+    'THESIS_CONFIRMATION | CONTRADICTION_ALERT | CATALYST_WATCH | MOMENTUM_STRETCH |',
     'MACRO_PRESSURE | RISK_RELIEF | PULLBACK_WATCH | BREADTH_CHECK | LEADERSHIP_ROTATION',
     '',
     'Forbidden: buy, sell, target price, recommendation, must buy, must sell, guaranteed.',
-    'Use instead: thesis reinforced, thesis weakened, needs confirmation, constructive setup, watchpoint.',
+    'Use instead: thesis reinforced, thesis weakened, needs confirmation, developing catalyst, watchpoint.',
     '',
     'Return JSON only — no markdown, no code block:',
     '{"text":"<Korean commentary>","signal":"bull|bear|neutral","commentary_type":"<TYPE>","core_question":"<one Korean sentence question>","watch_next":["<signal 1>","<signal 2>"]}',
@@ -80,7 +172,7 @@ export const buildTerminalKoUserPrompt = (
   marketContext?: string,
 ): string => {
   const contextSection = buildContextSection(companyName, marketContext)
-  const itemLines = buildItemLines(items)
+  const itemLines = buildStructuredItemLines(items)
 
   return [
     `Symbol: ${symbol}`,

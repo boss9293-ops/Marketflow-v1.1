@@ -6,6 +6,7 @@ import {
   buildTerminalEnUserPrompt,
   buildTerminalKoSystemPrompt,
   buildTerminalKoUserPrompt,
+  buildBriefingContext,
 } from '@/lib/terminal-mvp/newsSynthesizePrompts'
 import { rankEvents } from '@/lib/terminal-mvp/eventRanker'
 
@@ -46,6 +47,8 @@ type SynthesizedItem = {
   commentary_type?: string
   core_question?: string
   watch_next?: string[]
+  top_story?: import('@/lib/terminal-mvp/newsSynthesizePrompts').BriefingTopStory
+  supporting_drivers?: import('@/lib/terminal-mvp/newsSynthesizePrompts').BriefingDriver[]
 }
 
 type TerminalNewsProviderName = (typeof TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER)[number]
@@ -565,6 +568,7 @@ async function synthesizeBatch(
   const selected = selectRelevantItems(batch, symbol, companyName)
   if (selected.length === 0) return { items: [] }
   const rankedSelected = rankEvents(selected)
+  const briefingCtx = buildBriefingContext(rankedSelected)
   const priceKey = cachePriceKey(price)
   const changeKey = cacheChangeKey(changePct)
   const companyKey = cacheTextKey(companyName)
@@ -582,7 +586,12 @@ async function synthesizeBatch(
   const cacheKey = `${getSynthCacheKey(symbol, effectiveDateET, lang, priceKey)}:${changeKey}:${companyKey}:${marketContextKey}:${batchSignature}`
   const cached = synthCache.get(cacheKey)
   if (cached && Date.now() - cached.cachedAt < SYNTH_CACHE_TTL_MS) {
-    return { items: cached.result, providerUsed: cached.providerUsed }
+    const itemsWithCtx = cached.result.map((it) => ({
+      ...it,
+      top_story: briefingCtx?.top_story,
+      supporting_drivers: briefingCtx?.supporting_drivers,
+    }))
+    return { items: itemsWithCtx, providerUsed: cached.providerUsed }
   }
   cleanSynthCache(effectiveDateET)
 
@@ -648,7 +657,7 @@ async function synthesizeBatch(
   }
 
   if (lang === 'ko') {
-    const result = [{ id: rankedSelected[0].id, text: koText, signal, commentary_type: commentaryType, core_question: coreQuestion, watch_next: watchNext }]
+    const result = [{ id: rankedSelected[0].id, text: koText, signal, commentary_type: commentaryType, core_question: coreQuestion, watch_next: watchNext, top_story: briefingCtx?.top_story, supporting_drivers: briefingCtx?.supporting_drivers }]
     synthCache.set(cacheKey, { result, providerUsed, cachedAt: Date.now() })
     return { items: result, providerUsed }
   }
@@ -683,7 +692,7 @@ async function synthesizeBatch(
     saveSynthEnCache(enFileCache)
   }
 
-  const result = [{ id: rankedSelected[0].id, text: enText, signal, commentary_type: commentaryType, core_question: coreQuestion, watch_next: watchNext }]
+  const result = [{ id: rankedSelected[0].id, text: enText, signal, commentary_type: commentaryType, core_question: coreQuestion, watch_next: watchNext, top_story: briefingCtx?.top_story, supporting_drivers: briefingCtx?.supporting_drivers }]
   synthCache.set(cacheKey, { result, providerUsed, cachedAt: Date.now() })
   return { items: result, providerUsed }
 }
