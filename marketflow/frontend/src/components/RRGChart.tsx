@@ -292,9 +292,10 @@ export default function RRGChart() {
     drawRRG(canvasRef.current, displaySectors, visible, 99999)
   }, [displaySectors, visible])
 
-  // Reset tail default when period changes
+  // Reset tail + display range when period changes
   useEffect(() => {
     setTailLength(period === 'weekly' ? 7 : 10)
+    setRange(period === 'weekly' ? '12mo' : '3mo')
     setTailOffset(0)
   }, [period])
 

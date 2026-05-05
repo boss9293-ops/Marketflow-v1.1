@@ -223,11 +223,12 @@ function drawRRG(
   })
 }
 
-const RANGE_POINTS: Record<string, number> = { '3mo': 65, '6mo': 130, '12mo': 260 }
-const RANGE_RS: Record<string, Record<string, number>> = {
-  daily:  { '3mo': 65,  '6mo': 130, '12mo': 260 },
-  weekly: { '3mo': 13,  '6mo': 26,  '12mo': 52  },
+const RANGE_POINTS: Record<string, number> = {
+  '3mo':  65,   // daily 65 bars / weekly 13 bars (display slice only)
+  '6mo':  130,
+  '12mo': 260,
 }
+const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 52 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 const DEFAULT_SYMS = ['TSLA', 'NVDA']
@@ -235,7 +236,6 @@ const DEFAULT_SYMS = ['TSLA', 'NVDA']
 export default function CustomRRGChart() {
   const [symbols,    setSymbols]    = useState<string[]>(DEFAULT_SYMS)
   const [benchmark,  setBenchmark]  = useState('SPY')
-  const [weeks,      setWeeks]      = useState(10)
   const [inputSym,   setInputSym]   = useState('')
   const [inputBench, setInputBench] = useState('SPY')
   const [data,       setData]       = useState<ApiResponse | null>(null)
@@ -244,7 +244,7 @@ export default function CustomRRGChart() {
   const [visible,    setVisible]    = useState<Set<string>>(new Set(DEFAULT_SYMS))
   const [tailLength,  setTailLength]  = useState(8)
   const [period,     setPeriod]     = useState<'daily'|'weekly'>('daily')
-  const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('6mo')
+  const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('3mo')
   const [tailOffset, setTailOffset] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -323,7 +323,7 @@ export default function CustomRRGChart() {
   const symbolDataList = data ? normalize(data) : []
 
   const displaySymbols = useMemo(() => {
-    const rp = RANGE_POINTS[range]
+    const rp = period === 'weekly' ? RANGE_POINTS_W[range] : RANGE_POINTS[range]
     return symbolDataList.map(s => {
       const all  = [...s.trail, s.current]
       const rng  = all.slice(-rp)
@@ -335,11 +335,15 @@ export default function CustomRRGChart() {
     })
   }, [symbolDataList, range, tailOffset, tailLength])
 
-  // Reset offset + RS period when range changes
+  // Reset offset when range changes
+  useEffect(() => { setTailOffset(0) }, [range])
+
+  // Reset range + tail when period changes
   useEffect(() => {
+    setRange(period === 'weekly' ? '12mo' : '3mo')
+    setTailLength(period === 'weekly' ? 7 : 8)
     setTailOffset(0)
-    setWeeks(RANGE_RS[period]?.[range] ?? RANGE_POINTS[range])
-  }, [range, period])
+  }, [period])
 
   useEffect(() => {
     if (!canvasRef.current || !displaySymbols.length) return
@@ -379,7 +383,8 @@ export default function CustomRRGChart() {
     : 30
   const maxOffset = symbolDataList.length
     ? Math.max(0, Math.min(...symbolDataList.map(s =>
-        Math.min([...s.trail, s.current].length, RANGE_POINTS[range])
+        Math.min([...s.trail, s.current].length,
+          period === 'weekly' ? RANGE_POINTS_W[range] : RANGE_POINTS[range])
       )) - tailLength)
     : 0
 
@@ -498,21 +503,6 @@ export default function CustomRRGChart() {
             </div>
           </div>
 
-          {/* RS Period */}
-          <div>
-            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>
-              RS Period — {weeks} {period === 'daily' ? 'days' : 'weeks'}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="range" min={5} max={RANGE_RS[period]?.[range] ?? 260} value={weeks}
-                onChange={e => setWeeks(Number(e.target.value))}
-                style={{ flex: 1, accentColor: '#00D9FF' }} />
-              <span style={{ color: '#67EEFF', fontWeight: 800, fontSize: '0.88rem', minWidth: 22, textAlign: 'right' }}>
-                {weeks}
-              </span>
-            </div>
-          </div>
-
           {/* Range */}
           <div>
             <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>
@@ -549,7 +539,7 @@ export default function CustomRRGChart() {
           {/* Position scrubber */}
           <div>
             <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>
-              Position — {tailOffset === 0 ? 'Now' : `-${tailOffset}d`}
+              Position — {tailOffset === 0 ? 'Now' : `-${tailOffset}${period === 'weekly' ? 'w' : 'd'}`}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <input type="range" min={0} max={maxOffset}

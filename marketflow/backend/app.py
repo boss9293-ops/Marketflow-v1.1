@@ -3728,7 +3728,9 @@ def rrg_candidate_d_endpoint():
 
     _WEEKLY       = (period == 'weekly')
     _default_tail = '7' if _WEEKLY else '10'
-    _lookback     = 900 if _WEEKLY else 600
+    # weekly: 300 bars × 7 days = 2100 calendar days; load extra for safety
+    # daily:  500 bars + warmup 130 = 630 bars ≈ 700 calendar days
+    _lookback     = 2200 if _WEEKLY else 700
 
     tail_len = min(260, max(1, int(request.args.get('tail', _default_tail))))
 
