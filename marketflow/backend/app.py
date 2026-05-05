@@ -3709,8 +3709,9 @@ def rrg_custom():
 @app.route('/api/rrg/candidate-d')
 def rrg_candidate_d_endpoint():
     try:
-        from rrg_candidate_f import calc_rrg_candidate_f, calc_energy_metrics
-        from rrg_calculator import load_daily as _load_daily
+        from rrg_candidate_f2 import calc_rrg_candidate_f2
+        from rrg_candidate_f  import calc_energy_metrics
+        from rrg_calculator   import load_daily as _load_daily
     except ImportError as e:
         return jsonify({'error': f'Import error: {e}'}), 500
 
@@ -3754,8 +3755,13 @@ def rrg_candidate_d_endpoint():
 
         close = _to_weekly(daily) if _WEEKLY else daily
 
+        # Latest price from daily series (always use raw daily, not resampled)
+        _price  = round(float(daily.iloc[-1]), 2) if len(daily) > 0 else None
+        _n      = min(20, len(daily))
+        _pchg   = round(float((daily.iloc[-1] / daily.iloc[-_n] - 1) * 100), 2) if _n > 1 else None
+
         try:
-            df       = calc_rrg_candidate_f(close, bench_close, timeframe=period)
+            df       = calc_rrg_candidate_f2(close, bench_close, timeframe=period, kx=3.0, ky=3.0)
             df_clean = df.dropna()
             if len(df_clean) < 1:
                 sym_results.append({'symbol': sym, 'error': 'ALL_NAN_AFTER_WARMUP'})
@@ -3771,8 +3777,8 @@ def rrg_candidate_d_endpoint():
                 if _math.isnan(rsr) or _math.isnan(rsm) or _math.isinf(rsr) or _math.isinf(rsm):
                     sym_warnings.append(f'NaN/Inf at {row.Index.date()}')
                     continue
-                xn = (rsr - 100.0) / 10.0
-                yn = (rsm - 100.0) / 10.0
+                xn = (rsr - 100.0) / 3.0
+                yn = (rsm - 100.0) / 3.0
                 tail_out.append({
                     'date':        str(row.Index.date()),
                     'rs_ratio':    round(rsr, 4),
@@ -3789,12 +3795,14 @@ def rrg_candidate_d_endpoint():
             latest  = tail_out[-1]
             energy  = calc_energy_metrics(df_clean)
             entry   = {
-                'symbol':  sym,
-                'latest':  {**latest, 'visualDistance': round(
+                'symbol':       sym,
+                'latest':       {**latest, 'visualDistance': round(
                     _math.sqrt(latest['xNorm']**2 + latest['yNorm']**2), 4)},
-                'tail':     tail_out,
-                'energy':   energy,
-                'warnings': sym_warnings,
+                'tail':         tail_out,
+                'energy':       energy,
+                'price':        _price,
+                'price_change': _pchg,
+                'warnings':     sym_warnings,
             }
             sym_results.append(entry)
 
@@ -3802,7 +3810,7 @@ def rrg_candidate_d_endpoint():
             sym_results.append({'symbol': sym, 'error': str(exc)})
 
     return jsonify({
-        'engine':      'F',
+        'engine':      'F2',
         'engine_name': 'MarketFlow RRG',
         'benchmark':   benchmark,
         'period':      period,

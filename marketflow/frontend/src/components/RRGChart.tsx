@@ -256,7 +256,7 @@ export default function RRGChart() {
             symbol:  s.symbol,
             name:    s.symbol,
             current: { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum },
-            trail:   (s.tail ?? []).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
+            trail:   (s.tail ?? []).slice(0, -1).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
             price:   0,
             change:  0,
           }))

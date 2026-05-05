@@ -9,8 +9,8 @@ interface SymbolData {
   name:    string
   current: TrailPoint
   trail:   TrailPoint[]
-  price:   number
-  change:  number
+  price:   number | null
+  change:  number | null
   color:   string
 }
 interface ApiResponse {
@@ -26,8 +26,8 @@ interface ApiResponse {
     trail?:       TrailPoint[]
     rs_ratio?:    number
     rs_momentum?: number
-    price?:       number
-    change?:      number
+    price?:       number | null
+    change?:      number | null
   }>
   failed?: string[]
 }
@@ -262,8 +262,8 @@ export default function CustomRRGChart() {
         name:    s.name || s.symbol,
         current: { ratio: Number(ratio), momentum: Number(momentum) },
         trail,
-        price:   Number(s.price  ?? 0),
-        change:  Number(s.change ?? 0),
+        price:   s.price  != null ? Number(s.price)  : null,
+        change:  s.change != null ? Number(s.change) : null,
         color:   PALETTE[i % PALETTE.length],
       }
     })
@@ -292,18 +292,22 @@ export default function CustomRRGChart() {
         benchmark_dates:  [],
         sectors: (json.symbols ?? [])
           .filter((s: { error?: string }) => !s.error)
-          .map((s: { symbol: string; latest?: { rs_ratio: number; rs_momentum: number }; tail?: Array<{ rs_ratio: number; rs_momentum: number }> }) => ({
-            symbol:      s.symbol,
-            name:        s.symbol,
-            rs_ratio:    s.latest?.rs_ratio ?? 100,
-            rs_momentum: s.latest?.rs_momentum ?? 100,
-            current:     s.latest
-              ? { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum }
-              : undefined,
-            trail: (s.tail ?? []).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
-            price:  0,
-            change: 0,
-          })),
+          .map((s: { symbol: string; latest?: { rs_ratio: number; rs_momentum: number }; tail?: Array<{ rs_ratio: number; rs_momentum: number }>; price?: number; price_change?: number }) => {
+            const tailArr = s.tail ?? []
+            return {
+              symbol:      s.symbol,
+              name:        s.symbol,
+              rs_ratio:    s.latest?.rs_ratio ?? 100,
+              rs_momentum: s.latest?.rs_momentum ?? 100,
+              current:     s.latest
+                ? { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum }
+                : undefined,
+              // Exclude latest from trail (it's already in current) so all = trail+current = N unique points
+              trail: tailArr.slice(0, -1).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
+              price:  s.price ?? null,
+              change: s.price_change ?? null,
+            }
+          }),
         failed: (json.symbols ?? [])
           .filter((s: { error?: string }) => s.error)
           .map((s: { symbol: string }) => s.symbol),
@@ -681,11 +685,11 @@ export default function CustomRRGChart() {
                       }}>{quad}</span>
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', color: '#d1d5db', fontWeight: 600 }}>
-                      ${s.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {s.price != null ? `$${s.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600,
-                      color: s.change >= 0 ? '#22c55e' : '#ef4444' }}>
-                      {s.change >= 0 ? '+' : ''}{s.change.toFixed(2)}%
+                      color: s.change == null ? '#737880' : s.change >= 0 ? '#22c55e' : '#ef4444' }}>
+                      {s.change == null ? 'N/A' : `${s.change >= 0 ? '+' : ''}${s.change.toFixed(2)}%`}
                     </td>
                   </tr>
                 )
