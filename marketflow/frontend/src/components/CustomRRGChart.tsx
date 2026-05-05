@@ -86,6 +86,34 @@ function Sparkline({ prices }: { prices: number[] }) {
   )
 }
 
+// ── Catmull-Rom spline ────────────────────────────────────────────────────────
+function catmullRomSpline(
+  pts: { x: number; y: number }[],
+  samplesPerSeg = 8,
+  tension = 0.5,
+): { x: number; y: number }[] {
+  if (pts.length < 2) return pts.slice()
+  const out: { x: number; y: number }[] = []
+  // Phantom endpoints: duplicate first and last
+  const p = [pts[0], ...pts, pts[pts.length - 1]]
+  for (let i = 1; i < p.length - 2; i++) {
+    const p0 = p[i - 1], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2]
+    for (let s = 0; s < samplesPerSeg; s++) {
+      const t = s / samplesPerSeg, t2 = t * t, t3 = t2 * t
+      const b0 = -tension * t3 + 2 * tension * t2 - tension * t
+      const b1 = (2 - tension) * t3 + (tension - 3) * t2 + 1
+      const b2 = (tension - 2) * t3 + (3 - 2 * tension) * t2 + tension * t
+      const b3 = tension * t3 - tension * t2
+      out.push({
+        x: b0 * p0.x + b1 * p1.x + b2 * p2.x + b3 * p3.x,
+        y: b0 * p0.y + b1 * p1.y + b2 * p2.y + b3 * p3.y,
+      })
+    }
+  }
+  out.push({ ...pts[pts.length - 1] })
+  return out
+}
+
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 function drawRRG(
   canvas:     HTMLCanvasElement,
@@ -196,14 +224,11 @@ function drawRRG(
 
     if (all.length > 1) {
       const mapped = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
-      ctx.beginPath(); ctx.strokeStyle = color + '70'; ctx.lineWidth = 1.8
-      ctx.moveTo(mapped[0].x, mapped[0].y)
-      for (let i = 1; i < mapped.length - 1; i++) {
-        const xc = (mapped[i].x + mapped[i + 1].x) / 2
-        const yc = (mapped[i].y + mapped[i + 1].y) / 2
-        ctx.quadraticCurveTo(mapped[i].x, mapped[i].y, xc, yc)
-      }
-      ctx.lineTo(mapped[mapped.length - 1].x, mapped[mapped.length - 1].y)
+      const spline = catmullRomSpline(mapped, 8, 0.5)
+      ctx.beginPath()
+      ctx.moveTo(spline[0].x, spline[0].y)
+      for (let i = 1; i < spline.length; i++) ctx.lineTo(spline[i].x, spline[i].y)
+      ctx.strokeStyle = color + '70'; ctx.lineWidth = 1.8
       ctx.stroke()
     }
 
