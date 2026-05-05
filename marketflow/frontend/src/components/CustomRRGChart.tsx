@@ -86,7 +86,11 @@ function Sparkline({ prices }: { prices: number[] }) {
   )
 }
 
-// ── Catmull-Rom spline ────────────────────────────────────────────────────────
+// ── Tail curve mode (internal dev constant — not exposed to users) ─────────────
+type TailCurveMode = 'linear' | 'catmullRom' | 'bspline' | 'bezierAnchored'
+const TAIL_CURVE_MODE: TailCurveMode = 'bezierAnchored'
+
+// ── Catmull-Rom spline (sampled lineTo) ───────────────────────────────────────
 function catmullRomSpline(
   pts: { x: number; y: number }[],
   samplesPerSeg = 8,
@@ -94,7 +98,6 @@ function catmullRomSpline(
 ): { x: number; y: number }[] {
   if (pts.length < 2) return pts.slice()
   const out: { x: number; y: number }[] = []
-  // Phantom endpoints: duplicate first and last
   const p = [pts[0], ...pts, pts[pts.length - 1]]
   for (let i = 1; i < p.length - 2; i++) {
     const p0 = p[i - 1], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2]
@@ -112,6 +115,56 @@ function catmullRomSpline(
   }
   out.push({ ...pts[pts.length - 1] })
   return out
+}
+
+// ── Cubic uniform B-spline (smooth, does not pass through interior dots) ──────
+function bsplineInterpolate(
+  pts: { x: number; y: number }[],
+  samplesPerSeg = 12,
+): { x: number; y: number }[] {
+  if (pts.length < 2) return pts.slice()
+  const out: { x: number; y: number }[] = []
+  const f = pts[0], l = pts[pts.length - 1]
+  // Extrapolation phantoms → curve passes through first and last actual point
+  const p = [
+    { x: 2 * f.x - pts[1].x, y: 2 * f.y - pts[1].y },
+    ...pts,
+    { x: 2 * l.x - pts[pts.length - 2].x, y: 2 * l.y - pts[pts.length - 2].y },
+  ]
+  for (let i = 1; i < p.length - 2; i++) {
+    const p0 = p[i - 1], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2]
+    for (let s = 0; s < samplesPerSeg; s++) {
+      const t = s / samplesPerSeg, t2 = t * t, t3 = t2 * t
+      const b0 = (1 - 3 * t + 3 * t2 - t3) / 6
+      const b1 = (4 - 6 * t2 + 3 * t3) / 6
+      const b2 = (1 + 3 * t + 3 * t2 - 3 * t3) / 6
+      const b3 = t3 / 6
+      out.push({
+        x: b0 * p0.x + b1 * p1.x + b2 * p2.x + b3 * p3.x,
+        y: b0 * p0.y + b1 * p1.y + b2 * p2.y + b3 * p3.y,
+      })
+    }
+  }
+  out.push({ ...pts[pts.length - 1] }) // force latest point exact
+  return out
+}
+
+// ── Bezier-anchored: native ctx.bezierCurveTo, Catmull-Rom tangents ───────────
+// Passes through every actual point. No sampling artifacts (GPU-smooth).
+function drawBezierAnchored(
+  ctx: CanvasRenderingContext2D,
+  pts: { x: number; y: number }[],
+): void {
+  if (pts.length < 2) return
+  const n = pts.length
+  const p = [pts[0], ...pts, pts[n - 1]] // duplicate-endpoint phantoms
+  ctx.moveTo(pts[0].x, pts[0].y)
+  for (let i = 1; i < n; i++) {
+    const p0 = p[i - 1], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2]
+    const cp1x = p1.x + (p2.x - p0.x) / 6, cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6, cp2y = p2.y - (p3.y - p1.y) / 6
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+  }
 }
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
@@ -224,10 +277,19 @@ function drawRRG(
 
     if (all.length > 1) {
       const mapped = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
-      const spline = catmullRomSpline(mapped, 8, 0.5)
       ctx.beginPath()
-      ctx.moveTo(spline[0].x, spline[0].y)
-      for (let i = 1; i < spline.length; i++) ctx.lineTo(spline[i].x, spline[i].y)
+      if (TAIL_CURVE_MODE === 'linear') {
+        ctx.moveTo(mapped[0].x, mapped[0].y)
+        mapped.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
+      } else if (TAIL_CURVE_MODE === 'catmullRom') {
+        const sp = catmullRomSpline(mapped, 8, 0.5)
+        ctx.moveTo(sp[0].x, sp[0].y); sp.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
+      } else if (TAIL_CURVE_MODE === 'bspline') {
+        const sp = bsplineInterpolate(mapped, 12)
+        ctx.moveTo(sp[0].x, sp[0].y); sp.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
+      } else {
+        drawBezierAnchored(ctx, mapped)
+      }
       ctx.strokeStyle = color + '70'; ctx.lineWidth = 1.8
       ctx.stroke()
     }
