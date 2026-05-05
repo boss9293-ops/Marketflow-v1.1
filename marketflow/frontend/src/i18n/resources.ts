@@ -9,7 +9,7 @@ export const UI_TEXT = {
     macro: copy('매크로', 'Macro Layer'),
     chart: copy('주식분석', 'Stock Analysis'),
     sectors: copy('섹터', 'Sectors'),
-    rrg: copy('RRG', 'RRG'),
+    rrg: copy('RRG Rotation Map', 'RRG Rotation Map'),
     crashHub: copy('Crash Hub', 'Crash Hub'),
     leverageHub: copy('레버리지 길들이기 허브', 'Leverage Hub'),
     standardRisk: copy('Standard Risk', 'Standard Risk'),

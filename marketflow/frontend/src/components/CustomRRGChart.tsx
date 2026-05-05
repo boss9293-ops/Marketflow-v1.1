@@ -231,7 +231,13 @@ const RANGE_POINTS: Record<string, number> = {
 const RANGE_POINTS_W: Record<string, number> = { '3mo': 13, '6mo': 26, '12mo': 52 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-const DEFAULT_SYMS = ['TSLA', 'NVDA']
+const DEFAULT_SYMS = ['XLK','XLV','XLF','XLE','XLY','XLP','XLI','XLB','XLRE','XLU','XLC']
+
+const PRESETS = [
+  { label: 'Sector ETFs', syms: ['XLK','XLV','XLF','XLE','XLY','XLP','XLI','XLB','XLRE','XLU','XLC'], bench: 'SPY' },
+  { label: 'Mega Cap', syms: ['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AVGO','BRK.B','JPM'], bench: 'SPY' },
+  { label: 'Mixed', syms: ['XLK','XLE','NVDA','AMZN','JPM','XLV','GLD','TLT'], bench: 'SPY' },
+]
 
 export default function CustomRRGChart() {
   const [symbols,    setSymbols]    = useState<string[]>(DEFAULT_SYMS)
@@ -242,9 +248,9 @@ export default function CustomRRGChart() {
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState('')
   const [visible,    setVisible]    = useState<Set<string>>(new Set(DEFAULT_SYMS))
-  const [tailLength,  setTailLength]  = useState(8)
-  const [period,     setPeriod]     = useState<'daily'|'weekly'>('daily')
-  const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('3mo')
+  const [tailLength,  setTailLength]  = useState(7)
+  const [period,     setPeriod]     = useState<'daily'|'weekly'>('weekly')
+  const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('12mo')
   const [tailOffset, setTailOffset] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -482,6 +488,32 @@ export default function CustomRRGChart() {
           borderRadius: 10, padding: '0.875rem',
           display: 'flex', flexDirection: 'column', gap: '0.85rem',
         }}>
+          {/* Presets */}
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 5 }}>
+              Preset
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {PRESETS.map(p => {
+                const active = p.syms.join(',') === symbols.join(',') && p.bench === benchmark
+                return (
+                  <button key={p.label} onClick={() => {
+                    setSymbols(p.syms)
+                    setVisible(new Set(p.syms))
+                    setBenchmark(p.bench)
+                    setInputBench(p.bench)
+                  }} style={{
+                    padding: '5px 8px', textAlign: 'left',
+                    background: active ? 'rgba(0,217,255,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: active ? '1px solid rgba(0,217,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 6, color: active ? '#67EEFF' : '#9ca3af',
+                    cursor: 'pointer', fontSize: '0.73rem', fontWeight: 700,
+                  }}>{p.label}</button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Benchmark */}
           <div>
             <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>

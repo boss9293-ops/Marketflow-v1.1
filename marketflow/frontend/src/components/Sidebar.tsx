@@ -16,7 +16,7 @@ const osItems = [
   { href: '/chart', label: UI_TEXT.nav.chart, dot: '#22d3ee' },
   { href: '/watchlist', label: UI_TEXT.nav.terminal, dot: '#f59e0b' },
   { href: '/sectors', label: UI_TEXT.nav.sectors, dot: '#14b8a6' },
-  { href: '/sectors/rrg', label: UI_TEXT.nav.rrg, dot: '#14b8a6' },
+  { href: '/rrg', label: UI_TEXT.nav.rrg, dot: '#14b8a6' },
 ]
 
 // ?? Top Hubs (Moved to top) ??????????????????????????????????????????????????
