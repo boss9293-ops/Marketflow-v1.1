@@ -407,7 +407,7 @@ export default function CustomRRGChart() {
           MarketFlow Relative Rotation — vs {benchmark}
         </p>
         <p style={{ color: '#4b5563', fontSize: '0.72rem', marginTop: 2 }}>
-          Z-score normalization · fixed scale · hover for details
+          Relative strength and momentum rotation
         </p>
       </div>
 
@@ -425,7 +425,7 @@ export default function CustomRRGChart() {
         <div style={{ flexShrink: 0 }}>
           <div style={{ color: '#6b7280', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase' }}>Benchmark</div>
           <div style={{ color: '#F8FCFF', fontWeight: 800, fontSize: '1rem' }}>${benchmark}</div>
-          {benchPrice != null && (
+          {benchPrice != null && benchPrice > 0 && (
             <div style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600 }}>
               ${benchPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
