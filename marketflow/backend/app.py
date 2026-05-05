@@ -3709,13 +3709,10 @@ def rrg_custom():
 @app.route('/api/rrg/candidate-d')
 def rrg_candidate_d_endpoint():
     try:
-        from rrg_candidate_f2 import calc_rrg_candidate_f2
-        from rrg_candidate_f  import calc_energy_metrics
-        from rrg_calculator   import load_daily as _load_daily
+        from rrg_engine_router import classify_universe, compute_symbol_rrg
+        from rrg_calculator    import load_daily as _load_daily
     except ImportError as e:
         return jsonify({'error': f'Import error: {e}'}), 500
-
-    import math as _math
 
     symbols_raw = request.args.get('symbols', '').strip()
     if not symbols_raw:
@@ -3727,13 +3724,11 @@ def rrg_candidate_d_endpoint():
     if period not in ('daily', 'weekly'):
         period = 'daily'
 
-    _WEEKLY       = (period == 'weekly')
-    _default_tail = '7' if _WEEKLY else '10'
-    # weekly: 300 bars × 7 days = 2100 calendar days; load extra for safety
-    # daily:  500 bars + warmup 130 = 630 bars ≈ 700 calendar days
-    _lookback     = 2200 if _WEEKLY else 700
+    _WEEKLY   = (period == 'weekly')
+    _lookback = 2200 if _WEEKLY else 700
+    tail_len  = min(260, max(1, int(request.args.get('tail', '7' if _WEEKLY else '10'))))
 
-    tail_len = min(260, max(1, int(request.args.get('tail', _default_tail))))
+    universe_type = classify_universe(symbols)
 
     def _to_weekly(s):
         return s.resample('W-FRI').last().dropna() if s is not None else None
@@ -3743,81 +3738,40 @@ def rrg_candidate_d_endpoint():
         return jsonify({'error': f'Cannot load benchmark {benchmark}'}), 400
     bench_close = _to_weekly(bench_daily) if _WEEKLY else bench_daily
 
-    sym_results     = []
-    global_warnings = []
+    sym_results = []
 
     for sym in symbols:
         daily = _load_daily(sym, lookback_days=_lookback)
         if daily is None or len(daily) < 50:
-            sym_results.append({'symbol': sym, 'error': 'INSUFFICIENT_HISTORY',
-                                'available_rows': 0})
+            sym_results.append({'symbol': sym, 'error': 'INSUFFICIENT_HISTORY'})
             continue
 
-        close = _to_weekly(daily) if _WEEKLY else daily
+        close  = _to_weekly(daily) if _WEEKLY else daily
+        _price = round(float(daily.iloc[-1]), 2) if len(daily) > 0 else None
+        _n     = min(20, len(daily))
+        _pchg  = round(float((daily.iloc[-1] / daily.iloc[-_n] - 1) * 100), 2) if _n > 1 else None
 
-        # Latest price from daily series (always use raw daily, not resampled)
-        _price  = round(float(daily.iloc[-1]), 2) if len(daily) > 0 else None
-        _n      = min(20, len(daily))
-        _pchg   = round(float((daily.iloc[-1] / daily.iloc[-_n] - 1) * 100), 2) if _n > 1 else None
+        res = compute_symbol_rrg(close, bench_close, period, universe_type, tail_len)
+        if res is None or '_error' in res:
+            sym_results.append({'symbol': sym, 'error': res.get('_error', 'COMPUTE_FAILED') if res else 'COMPUTE_FAILED'})
+            continue
 
-        try:
-            df       = calc_rrg_candidate_f2(close, bench_close, timeframe=period, kx=3.0, ky=3.0)
-            df_clean = df.dropna()
-            if len(df_clean) < 1:
-                sym_results.append({'symbol': sym, 'error': 'ALL_NAN_AFTER_WARMUP'})
-                continue
-
-            tail_df      = df_clean.tail(tail_len)
-            sym_warnings = []
-            tail_out     = []
-
-            for row in tail_df.itertuples():
-                rsr = float(row.rs_ratio)
-                rsm = float(row.rs_momentum)
-                if _math.isnan(rsr) or _math.isnan(rsm) or _math.isinf(rsr) or _math.isinf(rsm):
-                    sym_warnings.append(f'NaN/Inf at {row.Index.date()}')
-                    continue
-                xn = (rsr - 100.0) / 3.0
-                yn = (rsm - 100.0) / 3.0
-                tail_out.append({
-                    'date':        str(row.Index.date()),
-                    'rs_ratio':    round(rsr, 4),
-                    'rs_momentum': round(rsm, 4),
-                    'quadrant':    str(row.quadrant),
-                    'xNorm':       round(xn, 4),
-                    'yNorm':       round(yn, 4),
-                })
-
-            if not tail_out:
-                sym_results.append({'symbol': sym, 'error': 'EMPTY_TAIL'})
-                continue
-
-            latest  = tail_out[-1]
-            energy  = calc_energy_metrics(df_clean)
-            entry   = {
-                'symbol':       sym,
-                'latest':       {**latest, 'visualDistance': round(
-                    _math.sqrt(latest['xNorm']**2 + latest['yNorm']**2), 4)},
-                'tail':         tail_out,
-                'energy':       energy,
-                'price':        _price,
-                'price_change': _pchg,
-                'warnings':     sym_warnings,
-            }
-            sym_results.append(entry)
-
-        except Exception as exc:
-            sym_results.append({'symbol': sym, 'error': str(exc)})
+        sym_results.append({
+            'symbol':       sym,
+            'latest':       res['latest'],
+            'tail':         res['tail'],
+            'price':        _price,
+            'price_change': _pchg,
+            'warnings':     res['warnings'],
+        })
 
     return jsonify({
-        'engine':      'F2',
-        'engine_name': 'MarketFlow RRG',
-        'benchmark':   benchmark,
-        'period':      period,
-        'tail_length': tail_len,
-        'symbols':     sym_results,
-        'warnings':    global_warnings,
-        'timestamp':   datetime.now().isoformat(),
+        'engine_name':   'MarketFlow RRG',
+        'benchmark':     benchmark,
+        'period':        period,
+        'tail_length':   tail_len,
+        'symbols':       sym_results,
+        'timestamp':     datetime.now().isoformat(),
     })
 
 

@@ -1,7 +1,13 @@
 """
-MarketFlow RRG — Candidate F Presets
-Kx/Ky are FIXED constants. Never derive from universe.
+MarketFlow RRG — Final Engine Policy Presets
+Engine routing is automatic and internal. Never expose to users.
 """
+
+# Standard sector ETF universe — triggers Family D routing
+STANDARD_SECTOR_ETFS: frozenset = frozenset({
+    'XLK', 'XLV', 'XLF', 'XLE', 'XLY',
+    'XLP', 'XLI', 'XLB', 'XLRE', 'XLU', 'XLC',
+})
 
 PRESETS: dict = {
     'daily': {
