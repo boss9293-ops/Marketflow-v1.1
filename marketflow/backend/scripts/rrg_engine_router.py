@@ -3,12 +3,12 @@ MarketFlow RRG Engine Router — Internal only.
 Users never see engine family, preset names, or Kx/Ky values.
 
 Routing policy:
-  All symbols in STANDARD_SECTOR_ETFS → Family D (ratio-based)
+  All symbols in STANDARD_SECTOR_ETFS → SMA 10/34/8 (updated 2026-05-05)
   Any individual stock or non-sector ETF → Family C (EMA z-score)
 
-Final presets (validated 2026-05-04):
-  Sector  daily:  D_N65_M10
-  Sector  weekly: D_N52_M5
+Final presets (validated 2026-05-05):
+  Sector  daily:  SMA_10_34_8
+  Sector  weekly: SMA_10_34_8
   Stock   daily:  C_s10_N65_Kx2_Ky2
   Stock   weekly: C_s10_N52_Kx2_Ky2
 """
@@ -24,8 +24,8 @@ STANDARD_SECTOR_ETFS: frozenset = frozenset({
 
 _PRESETS = {
     'sector': {
-        'daily':  {'family': 'D', 'N': 65, 'M': 10},
-        'weekly': {'family': 'D', 'N': 52, 'M':  5},
+        'daily':  {'family': 'SMA', 'short': 10, 'long_p': 34, 'mom': 8},
+        'weekly': {'family': 'SMA', 'short': 10, 'long_p': 34, 'mom': 8},
     },
     'stock_mixed': {
         'daily':  {'family': 'C', 'N': 65, 'Kx': 2, 'Ky': 2, 'EMA': 10},
@@ -48,6 +48,8 @@ def classify_universe(symbols: list) -> str:
 
 def preset_id(universe_type: str, timeframe: str) -> str:
     p = _PRESETS[universe_type][timeframe]
+    if p['family'] == 'SMA':
+        return f"SMA_{p['short']}_{p['long_p']}_{p['mom']}"
     if p['family'] == 'D':
         return f"D_N{p['N']}_M{p['M']}"
     return f"C_s{p['EMA']}_N{p['N']}_Kx{p['Kx']}_Ky{p['Ky']}"
@@ -81,6 +83,16 @@ def _fam_c(sc: pd.Series, bc: pd.Series, N: int, Kx: float, Ky: float, EMA: int 
     return RSR, 100.0 + Ky * (ROC - ro_m) / ro_s
 
 
+def _fam_sma(sc: pd.Series, bc: pd.Series, short: int = 10, long_p: int = 34, mom: int = 8):
+    """SMA 10/34/8: RSR = 100*SMA(RS,short)/SMA(RS,long_p), RSM = 100*RSR/SMA(RSR,mom)"""
+    s, b = _prep(sc, bc)
+    RS  = s / b  # raw ratio; SMA division normalizes to ~100
+    RSR = 100.0 * RS.rolling(short,  min_periods=short).mean() \
+                / RS.rolling(long_p, min_periods=long_p).mean()
+    RSM = 100.0 * RSR / RSR.rolling(mom, min_periods=mom).mean()
+    return RSR, RSM
+
+
 def _quadrant(x: float, y: float) -> str:
     if x >= 100 and y >= 100: return 'Leading'
     if x >= 100 and y <  100: return 'Weakening'
@@ -110,7 +122,9 @@ def compute_symbol_rrg(
     """
     p = _PRESETS[universe_type][timeframe]
     try:
-        if p['family'] == 'D':
+        if p['family'] == 'SMA':
+            rsr_s, rsm_s = _fam_sma(close, bench_close, p['short'], p['long_p'], p['mom'])
+        elif p['family'] == 'D':
             rsr_s, rsm_s = _fam_d(close, bench_close, p['N'], p['M'])
         else:
             rsr_s, rsm_s = _fam_c(close, bench_close, p['N'], p['Kx'], p['Ky'], p['EMA'])
@@ -156,6 +170,68 @@ def compute_symbol_rrg(
             'engine_family': p['family'],
             'preset_id':     preset_id(universe_type, timeframe),
             'warnings':      warnings,
+        }
+
+    except Exception as e:
+        return {'_error': str(e)}
+
+
+def compute_rrg_sma_10_34_8(
+    close: pd.Series,
+    bench_close: pd.Series,
+    tail_len: int = 52,
+) -> dict | None:
+    """
+    Production-safe Candidate A implementation.
+
+    Formula (timeframe-agnostic):
+      RS  = symbol / benchmark
+      RSR = 100 * SMA(RS, 10) / SMA(RS, 34)
+      RSM = 100 * RSR / SMA(RSR, 8)
+
+    Returns same dict shape as compute_symbol_rrg().
+    Returns None on failure.
+    """
+    try:
+        rsr_s, rsm_s = _fam_sma(close, bench_close, short=10, long_p=34, mom=8)
+        df = pd.DataFrame({'rs_ratio': rsr_s, 'rs_momentum': rsm_s}).dropna()
+        if len(df) < 2:
+            return None
+
+        tail_df  = df.tail(tail_len)
+        tail_out = []
+        for row in tail_df.itertuples():
+            rsr = float(row.rs_ratio)
+            rsm = float(row.rs_momentum)
+            if not math.isfinite(rsr) or not math.isfinite(rsm):
+                continue
+            tail_out.append({
+                'date':        str(row.Index.date()),
+                'rs_ratio':    round(rsr, 4),
+                'rs_momentum': round(rsm, 4),
+                'quadrant':    _quadrant(rsr, rsm),
+                'xNorm':       round((rsr - 100.0) / 3.0, 4),
+                'yNorm':       round((rsm - 100.0) / 3.0, 4),
+            })
+
+        if not tail_out:
+            return None
+
+        latest   = tail_out[-1]
+        rsr_now  = latest['rs_ratio']
+        rsm_now  = latest['rs_momentum']
+        cw = _coord_warn(rsr_now, rsm_now)
+
+        return {
+            'latest': {
+                **latest,
+                'visualDistance': round(
+                    math.sqrt(latest['xNorm'] ** 2 + latest['yNorm'] ** 2), 4),
+            },
+            'tail':          tail_out,
+            'engine_family': 'SMA',
+            'preset_id':     'SMA_10_34_8',
+            'warnings':      [f'{cw}_COORD: X={rsr_now:.1f} Y={rsm_now:.1f}'] if cw else [],
         }
 
     except Exception as e:
