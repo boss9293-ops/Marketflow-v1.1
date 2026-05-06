@@ -34,10 +34,10 @@ interface ApiResponse {
 
 // ── Quadrants ─────────────────────────────────────────────────────────────────
 const QUADS = {
-  Leading:   { color: '#22c55e', bg: 'rgba(34,197,94,0.10)'   },
-  Weakening: { color: '#eab308', bg: 'rgba(234,179,8,0.10)'   },
-  Lagging:   { color: '#ef4444', bg: 'rgba(239,68,68,0.10)'   },
-  Improving: { color: '#3b82f6', bg: 'rgba(59,130,246,0.10)'  },
+  Leading:   { color: '#22c55e', bg: 'rgba(34,197,94,0.18)'   },
+  Weakening: { color: '#eab308', bg: 'rgba(234,179,8,0.18)'   },
+  Lagging:   { color: '#ef4444', bg: 'rgba(239,68,68,0.18)'   },
+  Improving: { color: '#3b82f6', bg: 'rgba(59,130,246,0.18)'  },
 } as const
 
 function getQuadrant(ratio: number, momentum: number): keyof typeof QUADS {
@@ -45,6 +45,81 @@ function getQuadrant(ratio: number, momentum: number): keyof typeof QUADS {
   if (ratio >= 100 && momentum <  100) return 'Weakening'
   if (ratio <  100 && momentum >= 100) return 'Improving'
   return 'Lagging'
+}
+
+// ── Adaptive viewport ─────────────────────────────────────────────────────────
+type ViewScaleMode = 'tight' | 'normal' | 'wide'
+type RrgDomain = { xMin: number; xMax: number; yMin: number; yMax: number }
+type ViewScaleConfig = {
+  xPadding: number; yPadding: number
+  tailLowPct: number; tailHighPct: number
+  minXSpan: number; minYSpan: number
+  maxXSpan: number; maxYSpan: number
+}
+const VIEW_CONFIGS: Record<ViewScaleMode, ViewScaleConfig> = {
+  tight:  { xPadding: 3,  yPadding: 1.5, tailLowPct: 10, tailHighPct: 90,  minXSpan: 20, minYSpan: 8,  maxXSpan: 35, maxYSpan: 12 },
+  normal: { xPadding: 5,  yPadding: 2,   tailLowPct: 5,  tailHighPct: 95,  minXSpan: 25, minYSpan: 10, maxXSpan: 60, maxYSpan: 20 },
+  wide:   { xPadding: 10, yPadding: 4,   tailLowPct: 0,  tailHighPct: 100, minXSpan: 30, minYSpan: 10, maxXSpan: 80, maxYSpan: 28 },
+}
+function floorToStep(v: number, s: number) { return Math.floor(v / s) * s }
+function ceilToStep(v: number, s: number)  { return Math.ceil(v / s) * s }
+function clampV(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)) }
+function pctile(arr: number[], p: number) {
+  if (!arr.length) return 100
+  const sorted = [...arr].sort((a, b) => a - b)
+  const idx = (p / 100) * (sorted.length - 1)
+  const lo = Math.floor(idx), hi = Math.ceil(idx)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
+}
+function computeRrgDomain(
+  symbols: SymbolData[],
+  visible: Set<string>,
+  mode: ViewScaleMode,
+): RrgDomain {
+  const cfg = VIEW_CONFIGS[mode]
+  const vis = symbols.filter(s => visible.has(s.symbol))
+  if (!vis.length) return { xMin: 90, xMax: 110, yMin: 96, yMax: 104 }
+  const latX  = vis.map(s => s.current.ratio)
+  const latY  = vis.map(s => s.current.momentum)
+  const tailX = vis.flatMap(s => s.trail.map(p => p.ratio))
+  const tailY = vis.flatMap(s => s.trail.map(p => p.momentum))
+  const xLo = Math.min(Math.min(...latX), tailX.length ? pctile(tailX, cfg.tailLowPct)  : Math.min(...latX))
+  const xHi = Math.max(Math.max(...latX), tailX.length ? pctile(tailX, cfg.tailHighPct) : Math.max(...latX))
+  const yLo = Math.min(Math.min(...latY), tailY.length ? pctile(tailY, cfg.tailLowPct)  : Math.min(...latY))
+  const yHi = Math.max(Math.max(...latY), tailY.length ? pctile(tailY, cfg.tailHighPct) : Math.max(...latY))
+  let xMin = floorToStep(Math.min(xLo, 100) - cfg.xPadding, 5)
+  let xMax = ceilToStep(Math.max(xHi, 100) + cfg.xPadding, 5)
+  let yMin = floorToStep(Math.min(yLo, 100) - cfg.yPadding, 2)
+  let yMax = ceilToStep(Math.max(yHi, 100) + cfg.yPadding, 2)
+  if (xMax - xMin < cfg.minXSpan) {
+    const cx = clampV((Math.min(...latX) + Math.max(...latX)) / 2, 100 - cfg.minXSpan / 2, 100 + cfg.minXSpan / 2)
+    xMin = floorToStep(cx - cfg.minXSpan / 2, 5); xMax = ceilToStep(cx + cfg.minXSpan / 2, 5)
+  }
+  if (yMax - yMin < cfg.minYSpan) {
+    const cy = clampV((Math.min(...latY) + Math.max(...latY)) / 2, 100 - cfg.minYSpan / 2, 100 + cfg.minYSpan / 2)
+    yMin = floorToStep(cy - cfg.minYSpan / 2, 2); yMax = ceilToStep(cy + cfg.minYSpan / 2, 2)
+  }
+  if (xMax - xMin > cfg.maxXSpan) {
+    const cx = (Math.min(...latX) + Math.max(...latX)) / 2
+    let lo = cx - cfg.maxXSpan / 2, hi = cx + cfg.maxXSpan / 2
+    const lmin = Math.min(...latX) - cfg.xPadding, lmax = Math.max(...latX) + cfg.xPadding
+    if (lmin < lo) { hi += lo - lmin; lo = lmin }
+    if (lmax > hi) { lo -= lmax - hi; hi = lmax }
+    xMin = floorToStep(lo, 5); xMax = ceilToStep(hi, 5)
+  }
+  if (yMax - yMin > cfg.maxYSpan) {
+    const cy = (Math.min(...latY) + Math.max(...latY)) / 2
+    let lo = cy - cfg.maxYSpan / 2, hi = cy + cfg.maxYSpan / 2
+    const lmin = Math.min(...latY) - cfg.yPadding, lmax = Math.max(...latY) + cfg.yPadding
+    if (lmin < lo) { hi += lo - lmin; lo = lmin }
+    if (lmax > hi) { lo -= lmax - hi; hi = lmax }
+    yMin = floorToStep(lo, 2); yMax = ceilToStep(hi, 2)
+  }
+  if (xMin > 100) xMin = floorToStep(100 - cfg.xPadding, 5)
+  if (xMax < 100) xMax = ceilToStep(100 + cfg.xPadding, 5)
+  if (yMin > 100) yMin = floorToStep(100 - cfg.yPadding, 2)
+  if (yMax < 100) yMax = ceilToStep(100 + cfg.yPadding, 2)
+  return { xMin, xMax, yMin, yMax }
 }
 
 // ── Color palette ─────────────────────────────────────────────────────────────
@@ -87,6 +162,7 @@ function Sparkline({ prices }: { prices: number[] }) {
 }
 
 // ── Tail curve mode (internal dev constant — not exposed to users) ─────────────
+// Smoothing is visual only; RRG point coordinates are not modified.
 type TailCurveMode = 'linear' | 'catmullRom' | 'bspline' | 'bezierAnchored'
 const TAIL_CURVE_MODE: TailCurveMode = 'bezierAnchored'
 
@@ -173,6 +249,7 @@ function drawRRG(
   symbols:    SymbolData[],
   visible:    Set<string>,
   tailLength: number,
+  domain:     RrgDomain,
 ) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
@@ -192,16 +269,7 @@ function drawRRG(
     .filter(s => visible.has(s.symbol))
     .flatMap(s => [...s.trail, s.current])
 
-  let xMin = 96, xMax = 104, yMin = 96, yMax = 104
-  if (pts.length) {
-    const xs = pts.map(p => p.ratio)
-    const ys = pts.map(p => p.momentum)
-    const p  = 2
-    xMin = Math.min(94, Math.min(...xs) - p)
-    xMax = Math.max(106, Math.max(...xs) + p)
-    yMin = Math.min(94, Math.min(...ys) - p)
-    yMax = Math.max(106, Math.max(...ys) + p)
-  }
+  const { xMin, xMax, yMin, yMax } = domain
 
   const toX = (v: number) => PAD.left + ((v - xMin) / (xMax - xMin)) * plotW
   const toY = (v: number) => PAD.top  + ((yMax - v) / (yMax - yMin)) * plotH
@@ -233,12 +301,12 @@ function drawRRG(
     ctx.fillText(label, lx, ly)
   })
 
-  // Grid (every 1 unit)
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 0.8
-  for (let v = Math.ceil(xMin); v <= Math.floor(xMax); v++) {
+  // Grid (every 5 units)
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.8
+  for (let v = Math.ceil(xMin / 5) * 5; v <= Math.floor(xMax); v += 5) {
     ctx.beginPath(); ctx.moveTo(toX(v), PAD.top); ctx.lineTo(toX(v), PAD.top + plotH); ctx.stroke()
   }
-  for (let v = Math.ceil(yMin); v <= Math.floor(yMax); v++) {
+  for (let v = Math.ceil(yMin / 2) * 2; v <= Math.floor(yMax); v += 2) {
     ctx.beginPath(); ctx.moveTo(PAD.left, toY(v)); ctx.lineTo(PAD.left + plotW, toY(v)); ctx.stroke()
   }
 
@@ -253,12 +321,12 @@ function drawRRG(
   ctx.strokeRect(PAD.left, PAD.top, plotW, plotH)
 
   // Axis tick labels
-  ctx.font = '10px system-ui,sans-serif'; ctx.fillStyle = '#4b5563'
+  ctx.font = '11px system-ui,sans-serif'; ctx.fillStyle = '#9ca3af'
   ctx.textAlign = 'center'; ctx.textBaseline = 'top'
-  for (let v = Math.ceil(xMin); v <= Math.floor(xMax); v += 2)
+  for (let v = Math.ceil(xMin / 5) * 5; v <= Math.floor(xMax); v += 5)
     ctx.fillText(String(v), toX(v), PAD.top + plotH + 4)
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
-  for (let v = Math.ceil(yMin); v <= Math.floor(yMax); v += 2)
+  for (let v = Math.ceil(yMin / 2) * 2; v <= Math.floor(yMax); v += 2)
     ctx.fillText(String(v), PAD.left - 4, toY(v))
 
   // Axis labels
@@ -290,23 +358,31 @@ function drawRRG(
       } else {
         drawBezierAnchored(ctx, mapped)
       }
-      ctx.strokeStyle = color + '70'; ctx.lineWidth = 1.8
+      ctx.strokeStyle = color + 'bf'; ctx.lineWidth = 1.8  // 0.75 opacity
       ctx.stroke()
     }
 
     s.trail.forEach((pt, i) => {
-      const alpha = Math.round(((i + 1) / s.trail.length) * 160).toString(16).padStart(2, '0')
-      ctx.beginPath(); ctx.arc(toX(pt.ratio), toY(pt.momentum), 3, 0, Math.PI * 2)
+      const age    = s.trail.length > 1 ? i / (s.trail.length - 1) : 1  // 0=oldest 1=newest
+      const alpha  = Math.round((0.35 + age * 0.35) * 255).toString(16).padStart(2, '0')
+      const radius = 2.5 + age * 1.5  // 2.5 oldest → 4.0 newest
+      ctx.beginPath(); ctx.arc(toX(pt.ratio), toY(pt.momentum), radius, 0, Math.PI * 2)
       ctx.fillStyle = color + alpha; ctx.fill()
     })
 
     const px = toX(s.current.ratio), py = toY(s.current.momentum)
-    ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.fillStyle = color + '30'; ctx.fill()
-    ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke()
+    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = color + '30'; ctx.fill()
+    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke()
 
+    // Latest point label only; edge-aware offset
     ctx.font = 'bold 9px system-ui,sans-serif'; ctx.fillStyle = color
-    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
-    ctx.fillText(s.symbol, px, py - 10)
+    let labelX = px + 10; let labelAlign: CanvasTextAlign = 'left'
+    if (labelX + s.symbol.length * 6 > PAD.left + plotW - 4) { labelX = px - 10; labelAlign = 'right' }
+    let labelY = py - 12; let labelBase: CanvasTextBaseline = 'bottom'
+    if (labelY < PAD.top + 4) { labelY = py + 12; labelBase = 'top' }
+    if (labelY > PAD.top + plotH - 4) { labelY = py - 12; labelBase = 'bottom' }
+    ctx.textAlign = labelAlign; ctx.textBaseline = labelBase
+    ctx.fillText(s.symbol, labelX, labelY)
   })
 }
 
@@ -335,10 +411,11 @@ export default function CustomRRGChart() {
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState('')
   const [visible,    setVisible]    = useState<Set<string>>(new Set(DEFAULT_SYMS))
-  const [tailLength,  setTailLength]  = useState(7)
+  const [tailLength,  setTailLength]  = useState(5)
   const [period,     setPeriod]     = useState<'daily'|'weekly'>('weekly')
   const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('12mo')
   const [tailOffset, setTailOffset] = useState(0)
+  const [viewScale,  setViewScale]  = useState<ViewScaleMode>('normal')
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const normalize = useCallback((resp: ApiResponse): SymbolData[] => {
@@ -383,25 +460,36 @@ export default function CustomRRGChart() {
         benchmark_price:  0,
         benchmark_prices: [],
         benchmark_dates:  [],
-        sectors: (json.symbols ?? [])
+        sectors: (json.sectors ?? json.symbols ?? [])
           .filter((s: { error?: string }) => !s.error)
-          .map((s: { symbol: string; latest?: { rs_ratio: number; rs_momentum: number }; tail?: Array<{ rs_ratio: number; rs_momentum: number }>; price?: number; price_change?: number }) => {
-            const tailArr = s.tail ?? []
+          .map((s: {
+            symbol: string
+            latest?: { rs_ratio?: number; rs_momentum?: number }
+            current?: { ratio?: number; momentum?: number }
+            tail?: Array<{ rs_ratio?: number; rs_momentum?: number }>
+            trail?: Array<{ ratio?: number; momentum?: number }>
+            price?: number
+            price_change?: number
+            change?: number
+          }) => {
+            const ratio    = s.latest?.rs_ratio    ?? s.current?.ratio    ?? 100
+            const momentum = s.latest?.rs_momentum ?? s.current?.momentum ?? 100
+            const rawTrail = s.tail ?? s.trail ?? []
             return {
               symbol:      s.symbol,
               name:        s.symbol,
-              rs_ratio:    s.latest?.rs_ratio ?? 100,
-              rs_momentum: s.latest?.rs_momentum ?? 100,
-              current:     s.latest
-                ? { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum }
-                : undefined,
-              // Exclude latest from trail (it's already in current) so all = trail+current = N unique points
-              trail: tailArr.slice(0, -1).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
+              rs_ratio:    ratio,
+              rs_momentum: momentum,
+              current:     { ratio, momentum },
+              trail: rawTrail.slice(0, -1).map(pt => ({
+                ratio:    (pt as { rs_ratio?: number; ratio?: number }).rs_ratio ?? (pt as { ratio?: number }).ratio ?? 100,
+                momentum: (pt as { rs_momentum?: number; momentum?: number }).rs_momentum ?? (pt as { momentum?: number }).momentum ?? 100,
+              })),
               price:  s.price ?? null,
-              change: s.price_change ?? null,
+              change: s.price_change ?? s.change ?? null,
             }
           }),
-        failed: (json.symbols ?? [])
+        failed: (json.sectors ?? json.symbols ?? [])
           .filter((s: { error?: string }) => s.error)
           .map((s: { symbol: string }) => s.symbol),
       }
@@ -432,33 +520,38 @@ export default function CustomRRGChart() {
     })
   }, [symbolDataList, range, tailOffset, tailLength])
 
+  const autoDomain = useMemo(
+    () => computeRrgDomain(displaySymbols, visible, viewScale),
+    [displaySymbols, visible, viewScale],
+  )
+
   // Reset offset when range changes
   useEffect(() => { setTailOffset(0) }, [range])
 
   // Reset range + tail when period changes
   useEffect(() => {
     setRange(period === 'weekly' ? '12mo' : '3mo')
-    setTailLength(period === 'weekly' ? 7 : 8)
+    setTailLength(5)
     setTailOffset(0)
   }, [period])
 
   useEffect(() => {
     if (!canvasRef.current || !displaySymbols.length) return
-    drawRRG(canvasRef.current, displaySymbols, visible, 99999)
-  }, [displaySymbols, visible])
+    drawRRG(canvasRef.current, displaySymbols, visible, 99999, autoDomain)
+  }, [displaySymbols, visible, autoDomain])
 
   useEffect(() => {
     const obs = new ResizeObserver(() => {
       if (canvasRef.current && displaySymbols.length)
-        drawRRG(canvasRef.current, displaySymbols, visible, 99999)
+        drawRRG(canvasRef.current, displaySymbols, visible, 99999, autoDomain)
     })
     if (canvasRef.current) obs.observe(canvasRef.current)
     return () => obs.disconnect()
-  }, [displaySymbols, visible])
+  }, [displaySymbols, visible, autoDomain])
 
   const addSymbol = () => {
     const sym = inputSym.trim().toUpperCase()
-    if (!sym || symbols.includes(sym) || symbols.length >= 10) return
+    if (!sym || symbols.includes(sym) || symbols.length >= 25) return
     setSymbols(p => [...p, sym])
     setVisible(v => new Set([...v, sym]))
     setInputSym('')
@@ -475,9 +568,6 @@ export default function CustomRRGChart() {
     if (b && b !== benchmark) setBenchmark(b)
   }
 
-  const maxTail   = symbolDataList.length
-    ? Math.min(Math.max(...symbolDataList.map(s => s.trail.length), 1), 30)
-    : 30
   const maxOffset = symbolDataList.length
     ? Math.max(0, Math.min(...symbolDataList.map(s =>
         Math.min([...s.trail, s.current].length,
@@ -646,16 +736,19 @@ export default function CustomRRGChart() {
 
           {/* Tail length */}
           <div>
-            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>
-              Tail — {Math.min(tailLength, maxTail)} pts
+            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 5 }}>
+              Tail Length
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="range" min={1} max={maxTail} value={Math.min(tailLength, maxTail)}
-                onChange={e => setTailLength(Number(e.target.value))}
-                style={{ flex: 1, accentColor: '#00D9FF' }} />
-              <span style={{ color: '#67EEFF', fontWeight: 800, fontSize: '0.88rem', minWidth: 22, textAlign: 'right' }}>
-                {Math.min(tailLength, maxTail)}
-              </span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {([5, 7, 10] as const).map(n => (
+                <button key={n} onClick={() => setTailLength(n)} style={{
+                  flex: 1, padding: '4px 0',
+                  background: tailLength === n ? 'rgba(0,217,255,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: tailLength === n ? '1px solid rgba(0,217,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 6, color: tailLength === n ? '#67EEFF' : '#6b7280',
+                  cursor: 'pointer', fontSize: '0.73rem', fontWeight: 700,
+                }}>{n}</button>
+              ))}
             </div>
           </div>
 
@@ -672,6 +765,31 @@ export default function CustomRRGChart() {
               <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.88rem', minWidth: 26, textAlign: 'right' }}>
                 {tailOffset === 0 ? 'NOW' : tailOffset}
               </span>
+            </div>
+          </div>
+
+          {/* View Scale */}
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 5 }}>
+              View Scale
+            </div>
+            <div style={{ display: 'flex', gap: 3 }}>
+              {(['tight','normal','wide'] as const).map(m => (
+                <button key={m} onClick={() => setViewScale(m)} style={{
+                  flex: 1, padding: '4px 0',
+                  background: viewScale === m ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.04)',
+                  border: viewScale === m ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 6, color: viewScale === m ? '#fbbf24' : '#6b7280',
+                  cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, textTransform: 'capitalize',
+                }}>{m}</button>
+              ))}
+              <button onClick={() => { setViewScale('normal'); setTailLength(5) }} style={{
+                flexShrink: 0, padding: '4px 7px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, color: '#6b7280',
+                cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700,
+              }} title="Reset to normal">↺</button>
             </div>
           </div>
 
@@ -696,7 +814,7 @@ export default function CustomRRGChart() {
           {/* Symbol list */}
           <div>
             <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
-              Symbols ({symbols.length}/10)
+              Symbols ({symbols.length}/25)
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {symbols.map((sym, i) => {

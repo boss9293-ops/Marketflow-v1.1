@@ -31,11 +31,98 @@ const COLORS: Record<string, string> = {
 
 // ── 사분면 ────────────────────────────────────────────
 const QUADS = {
-  Leading:   { color: '#22c55e', bg: 'rgba(34,197,94,0.10)' },
-  Weakening: { color: '#eab308', bg: 'rgba(234,179,8,0.10)' },
-  Lagging:   { color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
-  Improving: { color: '#3b82f6', bg: 'rgba(59,130,246,0.10)' },
+  Leading:   { color: '#22c55e', bg: 'rgba(34,197,94,0.18)' },
+  Weakening: { color: '#eab308', bg: 'rgba(234,179,8,0.18)' },
+  Lagging:   { color: '#ef4444', bg: 'rgba(239,68,68,0.18)' },
+  Improving: { color: '#3b82f6', bg: 'rgba(59,130,246,0.18)' },
 } as const
+
+// ── Adaptive viewport ─────────────────────────────────
+type ViewScaleMode = 'tight' | 'normal' | 'wide'
+type RrgDomain = { xMin: number; xMax: number; yMin: number; yMax: number }
+type ViewScaleConfig = {
+  xPadding: number; yPadding: number
+  tailLowPct: number; tailHighPct: number
+  minXSpan: number; minYSpan: number
+  maxXSpan: number; maxYSpan: number
+}
+const VIEW_CONFIGS: Record<ViewScaleMode, ViewScaleConfig> = {
+  tight:  { xPadding: 3,  yPadding: 1.5, tailLowPct: 10, tailHighPct: 90,  minXSpan: 20, minYSpan: 8,  maxXSpan: 35, maxYSpan: 12 },
+  normal: { xPadding: 5,  yPadding: 2,   tailLowPct: 5,  tailHighPct: 95,  minXSpan: 25, minYSpan: 10, maxXSpan: 60, maxYSpan: 20 },
+  wide:   { xPadding: 10, yPadding: 4,   tailLowPct: 0,  tailHighPct: 100, minXSpan: 30, minYSpan: 10, maxXSpan: 80, maxYSpan: 28 },
+}
+
+function floorToStep(v: number, s: number) { return Math.floor(v / s) * s }
+function ceilToStep(v: number, s: number)  { return Math.ceil(v / s) * s }
+function clampV(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)) }
+function pctile(arr: number[], p: number) {
+  if (!arr.length) return 100
+  const sorted = [...arr].sort((a, b) => a - b)
+  const idx = (p / 100) * (sorted.length - 1)
+  const lo = Math.floor(idx), hi = Math.ceil(idx)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
+}
+
+function computeRrgDomain(
+  sectors: SectorData[],
+  visible: Set<string>,
+  mode: ViewScaleMode,
+): RrgDomain {
+  const cfg = VIEW_CONFIGS[mode]
+  const vis = sectors.filter(s => visible.has(s.symbol))
+  if (!vis.length) return { xMin: 90, xMax: 110, yMin: 96, yMax: 104 }
+
+  const latX  = vis.map(s => s.current.ratio)
+  const latY  = vis.map(s => s.current.momentum)
+  const tailX = vis.flatMap(s => s.trail.map(p => p.ratio))
+  const tailY = vis.flatMap(s => s.trail.map(p => p.momentum))
+
+  const xLo = Math.min(Math.min(...latX), tailX.length ? pctile(tailX, cfg.tailLowPct)  : Math.min(...latX))
+  const xHi = Math.max(Math.max(...latX), tailX.length ? pctile(tailX, cfg.tailHighPct) : Math.max(...latX))
+  const yLo = Math.min(Math.min(...latY), tailY.length ? pctile(tailY, cfg.tailLowPct)  : Math.min(...latY))
+  const yHi = Math.max(Math.max(...latY), tailY.length ? pctile(tailY, cfg.tailHighPct) : Math.max(...latY))
+
+  let xMin = floorToStep(Math.min(xLo, 100) - cfg.xPadding, 5)
+  let xMax = ceilToStep(Math.max(xHi, 100) + cfg.xPadding, 5)
+  let yMin = floorToStep(Math.min(yLo, 100) - cfg.yPadding, 2)
+  let yMax = ceilToStep(Math.max(yHi, 100) + cfg.yPadding, 2)
+
+  // Enforce min span
+  if (xMax - xMin < cfg.minXSpan) {
+    const cx = clampV((Math.min(...latX) + Math.max(...latX)) / 2, 100 - cfg.minXSpan / 2, 100 + cfg.minXSpan / 2)
+    xMin = floorToStep(cx - cfg.minXSpan / 2, 5); xMax = ceilToStep(cx + cfg.minXSpan / 2, 5)
+  }
+  if (yMax - yMin < cfg.minYSpan) {
+    const cy = clampV((Math.min(...latY) + Math.max(...latY)) / 2, 100 - cfg.minYSpan / 2, 100 + cfg.minYSpan / 2)
+    yMin = floorToStep(cy - cfg.minYSpan / 2, 2); yMax = ceilToStep(cy + cfg.minYSpan / 2, 2)
+  }
+
+  // Enforce max span — latest points must stay inside
+  if (xMax - xMin > cfg.maxXSpan) {
+    const cx = (Math.min(...latX) + Math.max(...latX)) / 2
+    let lo = cx - cfg.maxXSpan / 2, hi = cx + cfg.maxXSpan / 2
+    const lmin = Math.min(...latX) - cfg.xPadding, lmax = Math.max(...latX) + cfg.xPadding
+    if (lmin < lo) { hi += lo - lmin; lo = lmin }
+    if (lmax > hi) { lo -= lmax - hi; hi = lmax }
+    xMin = floorToStep(lo, 5); xMax = ceilToStep(hi, 5)
+  }
+  if (yMax - yMin > cfg.maxYSpan) {
+    const cy = (Math.min(...latY) + Math.max(...latY)) / 2
+    let lo = cy - cfg.maxYSpan / 2, hi = cy + cfg.maxYSpan / 2
+    const lmin = Math.min(...latY) - cfg.yPadding, lmax = Math.max(...latY) + cfg.yPadding
+    if (lmin < lo) { hi += lo - lmin; lo = lmin }
+    if (lmax > hi) { lo -= lmax - hi; hi = lmax }
+    yMin = floorToStep(lo, 2); yMax = ceilToStep(hi, 2)
+  }
+
+  // Final guarantee: 100/100 always inside
+  if (xMin > 100) xMin = floorToStep(100 - cfg.xPadding, 5)
+  if (xMax < 100) xMax = ceilToStep(100 + cfg.xPadding, 5)
+  if (yMin > 100) yMin = floorToStep(100 - cfg.yPadding, 2)
+  if (yMax < 100) yMax = ceilToStep(100 + cfg.yPadding, 2)
+
+  return { xMin, xMax, yMin, yMax }
+}
 
 function getQuadrant(ratio: number, momentum: number): keyof typeof QUADS {
   if (ratio >= 100 && momentum >= 100) return 'Leading'
@@ -50,6 +137,7 @@ function drawRRG(
   sectors: SectorData[],
   visible: Set<string>,
   tailLength: number,
+  domain: RrgDomain,
 ) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
@@ -71,21 +159,7 @@ function drawRRG(
     trail: s.trail.slice(-tailLength),
   }))
 
-  // 범위 계산: 보이는 섹터 기준 동적 범위
-  const pts = slicedSectors
-    .filter(s => visible.has(s.symbol))
-    .flatMap(s => [...s.trail, s.current])
-
-  let xMin = 96, xMax = 104, yMin = 96, yMax = 104
-  if (pts.length) {
-    const xVals = pts.map(p => p.ratio)
-    const yVals = pts.map(p => p.momentum)
-    const pad = 2
-    xMin = Math.min(94, Math.min(...xVals) - pad)
-    xMax = Math.max(106, Math.max(...xVals) + pad)
-    yMin = Math.min(94, Math.min(...yVals) - pad)
-    yMax = Math.max(106, Math.max(...yVals) + pad)
-  }
+  const { xMin, xMax, yMin, yMax } = domain
 
   function toX(v: number) { return PAD.left + ((v - xMin) / (xMax - xMin)) * plotW }
   function toY(v: number) { return PAD.top  + ((yMax - v) / (yMax - yMin)) * plotH }
@@ -121,13 +195,13 @@ function drawRRG(
     ctx.fillText(label, lx, ly)
   })
 
-  // 격자선 (1단위)
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)'
+  // 격자선 (5단위)
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'
   ctx.lineWidth = 0.8
-  for (let v = Math.ceil(xMin); v <= Math.floor(xMax); v++) {
+  for (let v = Math.ceil(xMin / 5) * 5; v <= Math.floor(xMax); v += 5) {
     ctx.beginPath(); ctx.moveTo(toX(v), PAD.top); ctx.lineTo(toX(v), PAD.top + plotH); ctx.stroke()
   }
-  for (let v = Math.ceil(yMin); v <= Math.floor(yMax); v++) {
+  for (let v = Math.ceil(yMin / 2) * 2; v <= Math.floor(yMax); v += 2) {
     ctx.beginPath(); ctx.moveTo(PAD.left, toY(v)); ctx.lineTo(PAD.left + plotW, toY(v)); ctx.stroke()
   }
 
@@ -145,15 +219,15 @@ function drawRRG(
   ctx.strokeRect(PAD.left, PAD.top, plotW, plotH)
 
   // 축 눈금
-  ctx.font = '10px system-ui, sans-serif'
-  ctx.fillStyle = '#4b5563'
+  ctx.font = '11px system-ui, sans-serif'
+  ctx.fillStyle = '#9ca3af'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
-  for (let v = Math.ceil(xMin); v <= Math.floor(xMax); v += 2)
+  for (let v = Math.ceil(xMin / 5) * 5; v <= Math.floor(xMax); v += 5)
     ctx.fillText(String(v), toX(v), PAD.top + plotH + 4)
   ctx.textAlign = 'right'
   ctx.textBaseline = 'middle'
-  for (let v = Math.ceil(yMin); v <= Math.floor(yMax); v += 2)
+  for (let v = Math.ceil(yMin / 2) * 2; v <= Math.floor(yMax); v += 2)
     ctx.fillText(String(v), PAD.left - 4, toY(v))
 
   // 축 레이블
@@ -176,11 +250,11 @@ function drawRRG(
       const color = COLORS[s.symbol] || '#9ca3af'
       const all   = [...s.trail, s.current]
 
-      // Trail 선 (bezier smooth)
+      // Trail 선 — smoothing is visual only; RRG point coordinates are not modified.
       if (all.length > 1) {
         const mapped = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
         ctx.beginPath()
-        ctx.strokeStyle = color + '70'
+        ctx.strokeStyle = color + 'bf'  // 0.75 opacity
         ctx.lineWidth = 1.8
         ctx.moveTo(mapped[0].x, mapped[0].y)
         for (let i = 1; i < mapped.length - 1; i++) {
@@ -192,12 +266,13 @@ function drawRRG(
         ctx.stroke()
       }
 
-      // Trail 점 (페이드)
+      // Trail 점 — age-based size (2.5 oldest → 4.0 newest) and opacity (0.35 → 0.70)
       s.trail.forEach((pt, i) => {
-        const alpha = Math.round(((i + 1) / s.trail.length) * 160)
-          .toString(16).padStart(2, '0')
+        const age    = s.trail.length > 1 ? i / (s.trail.length - 1) : 1
+        const alpha  = Math.round((0.35 + age * 0.35) * 255).toString(16).padStart(2, '0')
+        const radius = 2.5 + age * 1.5
         ctx.beginPath()
-        ctx.arc(toX(pt.ratio), toY(pt.momentum), 3, 0, Math.PI * 2)
+        ctx.arc(toX(pt.ratio), toY(pt.momentum), radius, 0, Math.PI * 2)
         ctx.fillStyle = color + alpha
         ctx.fill()
       })
@@ -205,17 +280,21 @@ function drawRRG(
       // 현재 위치 원
       const px = toX(s.current.ratio)
       const py = toY(s.current.momentum)
-      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2)
+      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2)
       ctx.fillStyle = color + '30'; ctx.fill()
-      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2)
+      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2)
       ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke()
 
-      // 심볼 레이블
+      // 최신 포인트 레이블만 — 엣지 감지 오프셋
       ctx.font = 'bold 9px system-ui, sans-serif'
       ctx.fillStyle = color
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(s.symbol, px, py - 10)
+      let labelX = px + 10; let labelAlign: CanvasTextAlign = 'left'
+      if (labelX + s.symbol.length * 6 > PAD.left + plotW - 4) { labelX = px - 10; labelAlign = 'right' }
+      let labelY = py - 12; let labelBase: CanvasTextBaseline = 'bottom'
+      if (labelY < PAD.top + 4) { labelY = py + 12; labelBase = 'top' }
+      if (labelY > PAD.top + plotH - 4) { labelY = py - 12; labelBase = 'bottom' }
+      ctx.textAlign = labelAlign; ctx.textBaseline = labelBase
+      ctx.fillText(s.symbol, labelX, labelY)
     })
 }
 
@@ -230,10 +309,11 @@ export default function RRGChart() {
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState('')
   const [visible,     setVisible]     = useState<Set<string>>(new Set())
-  const [tailLength,  setTailLength]  = useState<number>(7)
+  const [tailLength,  setTailLength]  = useState<number>(5)
   const [range,       setRange]       = useState<'3mo'|'6mo'|'12mo'>('12mo')
   const [tailOffset,  setTailOffset]  = useState(0)
   const [period,      setPeriod]      = useState<'weekly'|'daily'>('weekly')
+  const [viewScale,   setViewScale]   = useState<ViewScaleMode>('normal')
   const canvasRef                     = useRef<HTMLCanvasElement>(null)
   const initVisibleRef                = useRef(false)
 
@@ -241,7 +321,7 @@ export default function RRGChart() {
     setLoading(true)
     setError('')
 
-    const tail = period === 'weekly' ? '7' : '10'
+    const tail = '52'
     const params = new URLSearchParams({ symbols: SECTOR_SYMS, benchmark: 'SPY', period, tail })
 
     fetch(`${clientApiUrl('/api/rrg/candidate-d')}?${params}`, { cache: 'no-store' })
@@ -250,16 +330,30 @@ export default function RRGChart() {
         return res.json()
       })
       .then(json => {
-        const sectors: SectorData[] = (json.symbols ?? [])
-          .filter((s: { error?: string; latest?: unknown }) => !s.error && s.latest)
-          .map((s: { symbol: string; latest: { rs_ratio: number; rs_momentum: number }; tail?: Array<{ rs_ratio: number; rs_momentum: number }> }) => ({
-            symbol:  s.symbol,
-            name:    s.symbol,
-            current: { ratio: s.latest.rs_ratio, momentum: s.latest.rs_momentum },
-            trail:   (s.tail ?? []).slice(0, -1).map(pt => ({ ratio: pt.rs_ratio, momentum: pt.rs_momentum })),
-            price:   0,
-            change:  0,
-          }))
+        // candidate-d returns { sectors: [...] } with rs_ratio/rs_momentum keys
+        // /api/rrg/custom returns { symbols: [...] } — using sectors here
+        const rawList = json.sectors ?? json.symbols ?? []
+        const sectors: SectorData[] = rawList
+          .filter((s: { error?: string; latest?: unknown; current?: unknown }) => !s.error && (s.latest || s.current))
+          .map((s: {
+            symbol: string
+            latest?: { rs_ratio?: number; rs_momentum?: number }
+            current?: { ratio?: number; momentum?: number }
+            tail?: Array<{ rs_ratio?: number; rs_momentum?: number; ratio?: number; momentum?: number }>
+            trail?: Array<{ rs_ratio?: number; rs_momentum?: number; ratio?: number; momentum?: number }>
+            price?: number
+            change?: number
+          }) => {
+            const cur = s.latest
+              ? { ratio: s.latest.rs_ratio ?? 100, momentum: s.latest.rs_momentum ?? 100 }
+              : { ratio: s.current?.ratio ?? 100, momentum: s.current?.momentum ?? 100 }
+            const rawTrail = s.tail ?? s.trail ?? []
+            const trail = rawTrail.slice(0, -1).map(pt => ({
+              ratio:    pt.rs_ratio    ?? pt.ratio    ?? 100,
+              momentum: pt.rs_momentum ?? pt.momentum ?? 100,
+            }))
+            return { symbol: s.symbol, name: s.symbol, current: cur, trail, price: s.price ?? 0, change: s.change ?? 0 }
+          })
         setData({ timestamp: json.timestamp ?? new Date().toISOString(), sectors })
         initVisibleRef.current = false
       })
@@ -284,17 +378,22 @@ export default function RRGChart() {
     })
   }, [data, range, tailOffset, tailLength])
 
+  const autoDomain = useMemo(
+    () => computeRrgDomain(displaySectors, visible, viewScale),
+    [displaySectors, visible, viewScale],
+  )
+
   // Reset offset when range changes
   useEffect(() => { setTailOffset(0) }, [range])
 
   useEffect(() => {
     if (!displaySectors.length || !canvasRef.current) return
-    drawRRG(canvasRef.current, displaySectors, visible, 99999)
-  }, [displaySectors, visible])
+    drawRRG(canvasRef.current, displaySectors, visible, 99999, autoDomain)
+  }, [displaySectors, visible, autoDomain])
 
   // Reset tail + display range when period changes
   useEffect(() => {
-    setTailLength(period === 'weekly' ? 7 : 10)
+    setTailLength(5)
     setRange(period === 'weekly' ? '12mo' : '3mo')
     setTailOffset(0)
   }, [period])
@@ -310,16 +409,13 @@ export default function RRGChart() {
   useEffect(() => {
     const obs = new ResizeObserver(() => {
       if (displaySectors.length && canvasRef.current)
-        drawRRG(canvasRef.current, displaySectors, visible, 99999)
+        drawRRG(canvasRef.current, displaySectors, visible, 99999, autoDomain)
     })
     if (canvasRef.current) obs.observe(canvasRef.current)
     return () => obs.disconnect()
-  }, [displaySectors, visible])
+  }, [displaySectors, visible, autoDomain])
 
   const sectors   = data?.sectors ?? []
-  const maxTail   = sectors.length > 0
-    ? Math.min(Math.max(...sectors.map(s => s.trail.length)), 30)
-    : 30
   const maxOffset = sectors.length > 0
     ? Math.max(0, Math.min(...sectors.map(s =>
         Math.min([...s.trail, s.current].length, RANGE_POINTS_W[range])
@@ -343,8 +439,8 @@ export default function RRGChart() {
           </h3>
           <p style={{ color: '#D2E0F1', fontSize: '0.9rem', marginTop: 5, fontWeight: 600 }}>
             {period === 'weekly'
-              ? 'Weekly Sector Rotation · 7-week tail'
-              : 'Daily Sector Momentum · 10-day tail'}
+              ? `Weekly Sector Rotation · ${tailLength}-week tail`
+              : `Daily Sector Momentum · ${tailLength}-day tail`}
             {' '}— vs SPY · {ts}
           </p>
         </div>
@@ -380,13 +476,39 @@ export default function RRGChart() {
             ))}
           </div>
 
+          {/* View Scale */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span style={{ color: '#8b9098', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.10em', marginRight: 2 }}>VIEW</span>
+            {(['tight','normal','wide'] as const).map(m => (
+              <button key={m} onClick={() => setViewScale(m)} style={{
+                padding: '4px 8px',
+                background: viewScale === m ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.04)',
+                border: viewScale === m ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 7, color: viewScale === m ? '#fbbf24' : '#6b7280',
+                cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, textTransform: 'capitalize',
+              }}>{m}</button>
+            ))}
+            <button onClick={() => { setViewScale('normal'); setTailLength(5) }} style={{
+              padding: '4px 7px',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 7, color: '#6b7280',
+              cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700,
+            }} title="Reset view">↺</button>
+          </div>
+
           {/* Tail length */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '0.48rem 0.85rem' }}>
-            <span style={{ color: '#D7E5F6', fontSize: '0.85rem', whiteSpace: 'nowrap', fontWeight: 700 }}>Tail</span>
-            <input type="range" min={1} max={maxTail} value={tailLength}
-              onChange={e => setTailLength(Number(e.target.value))}
-              style={{ width: 90, accentColor: '#00D9FF', cursor: 'pointer' }} />
-            <span style={{ color: '#67EEFF', fontWeight: 800, fontSize: '0.95rem', minWidth: 26, textAlign: 'right' }}>{tailLength}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '0.48rem 0.85rem' }}>
+            <span style={{ color: '#8b9098', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.10em', whiteSpace: 'nowrap' }}>TAIL</span>
+            {([5, 7, 10] as const).map(n => (
+              <button key={n} onClick={() => setTailLength(n)} style={{
+                padding: '3px 8px',
+                background: tailLength === n ? 'rgba(0,217,255,0.15)' : 'rgba(255,255,255,0.04)',
+                border: tailLength === n ? '1px solid rgba(0,217,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 6, color: tailLength === n ? '#67EEFF' : '#6b7280',
+                cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
+              }}>{n}</button>
+            ))}
           </div>
 
           {/* Position scrubber */}
@@ -430,14 +552,14 @@ export default function RRGChart() {
           ) : (
             <canvas
               ref={canvasRef}
-              style={{ width: '100%', height: '600px', borderRadius: '8px', background: '#111113', display: 'block' }}
+              style={{ width: '90%', height: '560px', borderRadius: '8px', background: '#111113', display: 'block' }}
             />
           )}
         </div>
 
         {/* 우측 심볼 패널 */}
         <div style={{
-          width: 196, flexShrink: 0,
+          width: 240, flexShrink: 0,
           background: 'rgba(255,255,255,0.02)',
           border: '1px solid rgba(255,255,255,0.06)',
           borderRadius: 10, padding: '0.875rem',
