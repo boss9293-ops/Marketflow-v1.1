@@ -3600,7 +3600,8 @@ def rrg_custom():
 
 
 
-    symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:10]
+    MAX_RRG_SYMBOLS = 25
+    symbols = [s.strip().upper() for s in symbols_raw.split(',') if s.strip()][:MAX_RRG_SYMBOLS]
 
 
 
@@ -3708,6 +3709,8 @@ def rrg_custom():
 
 @app.route('/api/rrg/candidate-d')
 def rrg_candidate_d_endpoint():
+    # Production RRG endpoint. Formula: SMA_10_34_8 (universal, all symbol groups).
+    # URL kept as /api/rrg/candidate-d for frontend compatibility; "candidate-d" is legacy codename only.
     try:
         from rrg_engine_router import classify_universe, compute_symbol_rrg
         from rrg_calculator    import load_daily as _load_daily
