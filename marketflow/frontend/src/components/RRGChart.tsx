@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { clientApiUrl } from '@/lib/backendApi'
 
 // ── 타입 ──────────────────────────────────────────────
@@ -133,11 +133,15 @@ function getQuadrant(ratio: number, momentum: number): keyof typeof QUADS {
 
 // ── 캔버스 그리기 ─────────────────────────────────────
 function drawRRG(
-  canvas: HTMLCanvasElement,
-  sectors: SectorData[],
-  visible: Set<string>,
-  tailLength: number,
-  domain: RrgDomain,
+  canvas:        HTMLCanvasElement,
+  sectors:       SectorData[],
+  visible:       Set<string>,
+  tailLength:    number,
+  domain:        RrgDomain,
+  focusedSymbol: string | null = null,
+  showTrails:    boolean = true,
+  showLabels:    boolean = true,
+  activeQuads:   Set<string> = new Set(['Leading','Weakening','Lagging','Improving']),
 ) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
@@ -243,59 +247,80 @@ function drawRRG(
   ctx.fillText('MF RS-Momentum  ↑', 0, 0)
   ctx.restore()
 
-  // ── 섹터 렌더링 ──────────────────────────────────────
-  slicedSectors
-    .filter(s => visible.has(s.symbol))
-    .forEach(s => {
-      const color = COLORS[s.symbol] || '#9ca3af'
-      const all   = [...s.trail, s.current]
+  // ── 섹터 렌더링 — quadrant filter + focus-aware
+  const filtered = slicedSectors.filter(s => {
+    if (!visible.has(s.symbol)) return false
+    if (activeQuads.size < 4) {
+      const q = getQuadrant(s.current.ratio, s.current.momentum)
+      if (!activeQuads.has(q)) return false
+    }
+    return true
+  })
+  const drawOrder = focusedSymbol
+    ? [...filtered.filter(s => s.symbol !== focusedSymbol), ...filtered.filter(s => s.symbol === focusedSymbol)]
+    : filtered
 
-      // Trail 선 — smoothing is visual only; RRG point coordinates are not modified.
-      if (all.length > 1) {
-        const mapped = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
-        ctx.beginPath()
-        ctx.strokeStyle = color + 'bf'  // 0.75 opacity
-        ctx.lineWidth = 1.8
-        ctx.moveTo(mapped[0].x, mapped[0].y)
-        for (let i = 1; i < mapped.length - 1; i++) {
-          const xc = (mapped[i].x + mapped[i + 1].x) / 2
-          const yc = (mapped[i].y + mapped[i + 1].y) / 2
-          ctx.quadraticCurveTo(mapped[i].x, mapped[i].y, xc, yc)
-        }
-        ctx.lineTo(mapped[mapped.length - 1].x, mapped[mapped.length - 1].y)
-        ctx.stroke()
+  drawOrder.forEach(s => {
+    const color     = COLORS[s.symbol] || '#9ca3af'
+    const isFocused = focusedSymbol === s.symbol
+    const dimmed    = focusedSymbol !== null && !isFocused
+    const all       = [...s.trail, s.current]
+
+    // Trail 선 — smoothing is visual only; RRG point coordinates are not modified.
+    if (showTrails && all.length > 1) {
+      const mapped    = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
+      const lineAlpha = isFocused ? 'f2' : (dimmed ? '14' : '73')
+      const lineWidth = isFocused ? 2.8  : (dimmed ? 1.0  : 1.5)
+      ctx.beginPath()
+      ctx.strokeStyle = color + lineAlpha
+      ctx.lineWidth   = lineWidth
+      ctx.moveTo(mapped[0].x, mapped[0].y)
+      for (let i = 1; i < mapped.length - 1; i++) {
+        const xc = (mapped[i].x + mapped[i + 1].x) / 2
+        const yc = (mapped[i].y + mapped[i + 1].y) / 2
+        ctx.quadraticCurveTo(mapped[i].x, mapped[i].y, xc, yc)
       }
+      ctx.lineTo(mapped[mapped.length - 1].x, mapped[mapped.length - 1].y)
+      ctx.stroke()
+    }
 
-      // Trail 점 — age-based size (2.5 oldest → 4.0 newest) and opacity (0.35 → 0.70)
+    // Trail 점 — age-based, dimmed when not focused
+    if (showTrails) {
       s.trail.forEach((pt, i) => {
-        const age    = s.trail.length > 1 ? i / (s.trail.length - 1) : 1
-        const alpha  = Math.round((0.35 + age * 0.35) * 255).toString(16).padStart(2, '0')
-        const radius = 2.5 + age * 1.5
+        const age     = s.trail.length > 1 ? i / (s.trail.length - 1) : 1
+        const baseOp  = 0.35 + age * 0.35
+        const finalOp = dimmed ? baseOp * 0.2 : baseOp
+        const alpha   = Math.round(finalOp * 255).toString(16).padStart(2, '0')
+        const radius  = dimmed ? 2 : (2.5 + age * 1.5)
         ctx.beginPath()
         ctx.arc(toX(pt.ratio), toY(pt.momentum), radius, 0, Math.PI * 2)
         ctx.fillStyle = color + alpha
         ctx.fill()
       })
+    }
 
-      // 현재 위치 원
-      const px = toX(s.current.ratio)
-      const py = toY(s.current.momentum)
-      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2)
-      ctx.fillStyle = color + '30'; ctx.fill()
-      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2)
-      ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke()
+    // 현재 위치 원
+    const px   = toX(s.current.ratio)
+    const py   = toY(s.current.momentum)
+    const latR = isFocused ? 9 : (dimmed ? 5 : 7)
+    ctx.beginPath(); ctx.arc(px, py, latR, 0, Math.PI * 2)
+    ctx.fillStyle = color + (dimmed ? '28' : '30'); ctx.fill()
+    ctx.beginPath(); ctx.arc(px, py, latR, 0, Math.PI * 2)
+    ctx.strokeStyle = color + (dimmed ? '50' : 'ff')
+    ctx.lineWidth = isFocused ? 3.0 : (dimmed ? 1.5 : 2.2); ctx.stroke()
 
-      // 최신 포인트 레이블만 — 엣지 감지 오프셋
-      ctx.font = 'bold 9px system-ui, sans-serif'
-      ctx.fillStyle = color
+    // 최신 포인트 레이블만
+    if (showLabels) {
+      ctx.font      = (isFocused ? 'bold 10px' : (dimmed ? '9px' : 'bold 9px')) + ' system-ui,sans-serif'
+      ctx.fillStyle = color + (dimmed ? '50' : 'ff')
       let labelX = px + 10; let labelAlign: CanvasTextAlign = 'left'
       if (labelX + s.symbol.length * 6 > PAD.left + plotW - 4) { labelX = px - 10; labelAlign = 'right' }
-      let labelY = py - 12; let labelBase: CanvasTextBaseline = 'bottom'
-      if (labelY < PAD.top + 4) { labelY = py + 12; labelBase = 'top' }
-      if (labelY > PAD.top + plotH - 4) { labelY = py - 12; labelBase = 'bottom' }
+      let labelY = py - (latR + 5); let labelBase: CanvasTextBaseline = 'bottom'
+      if (labelY < PAD.top + 4) { labelY = py + latR + 5; labelBase = 'top' }
       ctx.textAlign = labelAlign; ctx.textBaseline = labelBase
       ctx.fillText(s.symbol, labelX, labelY)
-    })
+    }
+  })
 }
 
 // 52주 = 12mo, 26주 = 6mo, 13주 = 3mo
@@ -313,9 +338,16 @@ export default function RRGChart() {
   const [range,       setRange]       = useState<'3mo'|'6mo'|'12mo'>('12mo')
   const [tailOffset,  setTailOffset]  = useState(0)
   const [period,      setPeriod]      = useState<'weekly'|'daily'>('weekly')
-  const [viewScale,   setViewScale]   = useState<ViewScaleMode>('normal')
-  const canvasRef                     = useRef<HTMLCanvasElement>(null)
-  const initVisibleRef                = useRef(false)
+  const [viewScale,     setViewScale]     = useState<ViewScaleMode>('normal')
+  const [focusedSymbol, setFocusedSymbol] = useState<string | null>(null)
+  const [showTrails,    setShowTrails]    = useState(true)
+  const [showLabels,    setShowLabels]    = useState(true)
+  const [activeQuads,   setActiveQuads]   = useState<Set<string>>(
+    new Set(['Leading', 'Weakening', 'Lagging', 'Improving'])
+  )
+  const canvasRef      = useRef<HTMLCanvasElement>(null)
+  const initVisibleRef = useRef(false)
+  const domainRef      = useRef<RrgDomain>({ xMin: 90, xMax: 110, yMin: 96, yMax: 104 })
 
   useEffect(() => {
     setLoading(true)
@@ -387,9 +419,11 @@ export default function RRGChart() {
   useEffect(() => { setTailOffset(0) }, [range])
 
   useEffect(() => {
+    domainRef.current = autoDomain
     if (!displaySectors.length || !canvasRef.current) return
-    drawRRG(canvasRef.current, displaySectors, visible, 99999, autoDomain)
-  }, [displaySectors, visible, autoDomain])
+    drawRRG(canvasRef.current, displaySectors, visible, 99999, autoDomain,
+      focusedSymbol, showTrails, showLabels, activeQuads)
+  }, [displaySectors, visible, autoDomain, focusedSymbol, showTrails, showLabels, activeQuads])
 
   // Reset tail + display range when period changes
   useEffect(() => {
@@ -409,11 +443,34 @@ export default function RRGChart() {
   useEffect(() => {
     const obs = new ResizeObserver(() => {
       if (displaySectors.length && canvasRef.current)
-        drawRRG(canvasRef.current, displaySectors, visible, 99999, autoDomain)
+        drawRRG(canvasRef.current, displaySectors, visible, 99999, domainRef.current,
+          focusedSymbol, showTrails, showLabels, activeQuads)
     })
     if (canvasRef.current) obs.observe(canvasRef.current)
     return () => obs.disconnect()
-  }, [displaySectors, visible, autoDomain])
+  }, [displaySectors, visible, focusedSymbol, showTrails, showLabels, activeQuads])
+
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !displaySectors.length) return
+    const rect  = canvasRef.current.getBoundingClientRect()
+    const cssX  = e.clientX - rect.left
+    const cssY  = e.clientY - rect.top
+    const dom   = domainRef.current
+    const PAD   = { top: 36, right: 20, bottom: 44, left: 52 }
+    const plotW = rect.width  - PAD.left - PAD.right
+    const plotH = rect.height - PAD.top  - PAD.bottom
+    const toPixX = (v: number) => PAD.left + ((v - dom.xMin) / (dom.xMax - dom.xMin)) * plotW
+    const toPixY = (v: number) => PAD.top  + ((dom.yMax - v) / (dom.yMax - dom.yMin)) * plotH
+    let nearest: string | null = null
+    let minDist = Infinity
+    for (const s of displaySectors.filter(ss => visible.has(ss.symbol))) {
+      const dx = toPixX(s.current.ratio) - cssX
+      const dy = toPixY(s.current.momentum) - cssY
+      const d  = Math.sqrt(dx * dx + dy * dy)
+      if (d < minDist && d < 24) { minDist = d; nearest = s.symbol }
+    }
+    setFocusedSymbol(prev => nearest === null ? null : prev === nearest ? null : nearest)
+  }, [displaySectors, visible])
 
   const sectors   = data?.sectors ?? []
   const maxOffset = sectors.length > 0
@@ -488,7 +545,7 @@ export default function RRGChart() {
                 cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, textTransform: 'capitalize',
               }}>{m}</button>
             ))}
-            <button onClick={() => { setViewScale('normal'); setTailLength(5) }} style={{
+            <button onClick={() => { setViewScale('normal'); setTailLength(5); setFocusedSymbol(null) }} style={{
               padding: '4px 7px',
               background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.08)',
@@ -524,6 +581,47 @@ export default function RRGChart() {
               {tailOffset === 0 ? 'NOW' : tailOffset}
             </span>
           </div>
+
+          {/* Show Trails / Labels */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            {([['Trails', showTrails, setShowTrails], ['Labels', showLabels, setShowLabels]] as const).map(([label, active, setter]) => (
+              <button key={label} onClick={() => (setter as (v: boolean) => void)(!active)} style={{
+                padding: '4px 8px',
+                background: active ? 'rgba(0,217,255,0.12)' : 'rgba(255,255,255,0.04)',
+                border: active ? '1px solid rgba(0,217,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 7, color: active ? '#67EEFF' : '#6b7280',
+                cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700,
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Quadrant filter */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            {(['Leading','Weakening','Lagging','Improving'] as const).map(q => {
+              const on = activeQuads.has(q)
+              const qc = { Leading: '#22c55e', Weakening: '#eab308', Lagging: '#ef4444', Improving: '#3b82f6' }[q]
+              return (
+                <button key={q} onClick={() => setActiveQuads(prev => {
+                  const s = new Set(prev); s.has(q) ? s.delete(q) : s.add(q); return s
+                })} style={{
+                  padding: '3px 6px',
+                  background: on ? `${qc}22` : 'rgba(255,255,255,0.04)',
+                  border: on ? `1px solid ${qc}66` : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 5, color: on ? qc : '#6b7280',
+                  cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                }}>{q.slice(0,4)}</button>
+              )
+            })}
+            {focusedSymbol && (
+              <button onClick={() => setFocusedSymbol(null)} style={{
+                padding: '3px 8px',
+                background: 'rgba(251,191,36,0.15)',
+                border: '1px solid rgba(251,191,36,0.4)',
+                borderRadius: 5, color: '#fbbf24',
+                cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+              }}>✕ {focusedSymbol}</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -552,7 +650,8 @@ export default function RRGChart() {
           ) : (
             <canvas
               ref={canvasRef}
-              style={{ width: '90%', height: '560px', borderRadius: '8px', background: '#111113', display: 'block' }}
+              onClick={handleCanvasClick}
+              style={{ width: '90%', height: '560px', borderRadius: '8px', background: '#111113', display: 'block', cursor: 'crosshair' }}
             />
           )}
         </div>

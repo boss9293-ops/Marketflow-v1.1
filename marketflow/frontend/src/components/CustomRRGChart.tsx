@@ -245,11 +245,15 @@ function drawBezierAnchored(
 
 // ── Canvas drawing ────────────────────────────────────────────────────────────
 function drawRRG(
-  canvas:     HTMLCanvasElement,
-  symbols:    SymbolData[],
-  visible:    Set<string>,
-  tailLength: number,
-  domain:     RrgDomain,
+  canvas:        HTMLCanvasElement,
+  symbols:       SymbolData[],
+  visible:       Set<string>,
+  tailLength:    number,
+  domain:        RrgDomain,
+  focusedSymbol: string | null = null,
+  showTrails:    boolean = true,
+  showLabels:    boolean = true,
+  activeQuads:   Set<string> = new Set(['Leading','Weakening','Lagging','Improving']),
 ) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
@@ -338,13 +342,32 @@ function drawRRG(
   ctx.textBaseline = 'top'; ctx.fillText('MF RS-Momentum  ↑', 0, 0)
   ctx.restore()
 
-  // Symbols
-  sliced.filter(s => visible.has(s.symbol)).forEach(s => {
-    const color = s.color || '#9ca3af'
-    const all   = [...s.trail, s.current]
+  // Symbols — quadrant filter + focus-aware rendering
+  const filteredSliced = sliced.filter(s => {
+    if (!visible.has(s.symbol)) return false
+    if (activeQuads.size < 4) {
+      const q = getQuadrant(s.current.ratio, s.current.momentum)
+      if (!activeQuads.has(q)) return false
+    }
+    return true
+  })
 
-    if (all.length > 1) {
-      const mapped = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
+  // Draw non-focused symbols first (z-order: focused on top)
+  const drawOrder = focusedSymbol
+    ? [...filteredSliced.filter(s => s.symbol !== focusedSymbol), ...filteredSliced.filter(s => s.symbol === focusedSymbol)]
+    : filteredSliced
+
+  drawOrder.forEach(s => {
+    const color    = s.color || '#9ca3af'
+    const isFocused = focusedSymbol === s.symbol
+    const dimmed    = focusedSymbol !== null && !isFocused
+    const all       = [...s.trail, s.current]
+
+    // Trail line — default 45%, focused 95%, dimmed 8%
+    if (showTrails && all.length > 1) {
+      const mapped    = all.map(pt => ({ x: toX(pt.ratio), y: toY(pt.momentum) }))
+      const lineAlpha = isFocused ? 'f2' : (dimmed ? '14' : '73')
+      const lineWidth = isFocused ? 2.8  : (dimmed ? 1.0  : 1.5)
       ctx.beginPath()
       if (TAIL_CURVE_MODE === 'linear') {
         ctx.moveTo(mapped[0].x, mapped[0].y)
@@ -358,31 +381,42 @@ function drawRRG(
       } else {
         drawBezierAnchored(ctx, mapped)
       }
-      ctx.strokeStyle = color + 'bf'; ctx.lineWidth = 1.8  // 0.75 opacity
+      ctx.strokeStyle = color + lineAlpha; ctx.lineWidth = lineWidth
       ctx.stroke()
     }
 
-    s.trail.forEach((pt, i) => {
-      const age    = s.trail.length > 1 ? i / (s.trail.length - 1) : 1  // 0=oldest 1=newest
-      const alpha  = Math.round((0.35 + age * 0.35) * 255).toString(16).padStart(2, '0')
-      const radius = 2.5 + age * 1.5  // 2.5 oldest → 4.0 newest
-      ctx.beginPath(); ctx.arc(toX(pt.ratio), toY(pt.momentum), radius, 0, Math.PI * 2)
-      ctx.fillStyle = color + alpha; ctx.fill()
-    })
+    // Trail dots — age-based, further dimmed when not focused
+    if (showTrails) {
+      s.trail.forEach((pt, i) => {
+        const age     = s.trail.length > 1 ? i / (s.trail.length - 1) : 1
+        const baseOp  = 0.35 + age * 0.35
+        const finalOp = dimmed ? baseOp * 0.2 : baseOp
+        const alpha   = Math.round(finalOp * 255).toString(16).padStart(2, '0')
+        const radius  = dimmed ? 2 : (2.5 + age * 1.5)
+        ctx.beginPath(); ctx.arc(toX(pt.ratio), toY(pt.momentum), radius, 0, Math.PI * 2)
+        ctx.fillStyle = color + alpha; ctx.fill()
+      })
+    }
 
-    const px = toX(s.current.ratio), py = toY(s.current.momentum)
-    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = color + '30'; ctx.fill()
-    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke()
+    // Latest point — focused larger, dimmed smaller
+    const px    = toX(s.current.ratio), py = toY(s.current.momentum)
+    const latR  = isFocused ? 9 : (dimmed ? 5 : 7)
+    ctx.beginPath(); ctx.arc(px, py, latR, 0, Math.PI * 2)
+    ctx.fillStyle = color + (dimmed ? '28' : '30'); ctx.fill()
+    ctx.beginPath(); ctx.arc(px, py, latR, 0, Math.PI * 2)
+    ctx.strokeStyle = color + (dimmed ? '50' : 'ff'); ctx.lineWidth = isFocused ? 3.0 : (dimmed ? 1.5 : 2.2); ctx.stroke()
 
-    // Latest point label only; edge-aware offset
-    ctx.font = 'bold 9px system-ui,sans-serif'; ctx.fillStyle = color
-    let labelX = px + 10; let labelAlign: CanvasTextAlign = 'left'
-    if (labelX + s.symbol.length * 6 > PAD.left + plotW - 4) { labelX = px - 10; labelAlign = 'right' }
-    let labelY = py - 12; let labelBase: CanvasTextBaseline = 'bottom'
-    if (labelY < PAD.top + 4) { labelY = py + 12; labelBase = 'top' }
-    if (labelY > PAD.top + plotH - 4) { labelY = py - 12; labelBase = 'bottom' }
-    ctx.textAlign = labelAlign; ctx.textBaseline = labelBase
-    ctx.fillText(s.symbol, labelX, labelY)
+    // Symbol label — latest only, dimmed when not focused
+    if (showLabels) {
+      ctx.font      = (isFocused ? 'bold 10px' : (dimmed ? '9px' : 'bold 9px')) + ' system-ui,sans-serif'
+      ctx.fillStyle = color + (dimmed ? '50' : 'ff')
+      let labelX = px + 10; let labelAlign: CanvasTextAlign = 'left'
+      if (labelX + s.symbol.length * 6 > PAD.left + plotW - 4) { labelX = px - 10; labelAlign = 'right' }
+      let labelY = py - (latR + 5); let labelBase: CanvasTextBaseline = 'bottom'
+      if (labelY < PAD.top + 4) { labelY = py + latR + 5; labelBase = 'top' }
+      ctx.textAlign = labelAlign; ctx.textBaseline = labelBase
+      ctx.fillText(s.symbol, labelX, labelY)
+    }
   })
 }
 
@@ -415,8 +449,15 @@ export default function CustomRRGChart() {
   const [period,     setPeriod]     = useState<'daily'|'weekly'>('weekly')
   const [range,      setRange]      = useState<'3mo'|'6mo'|'12mo'>('12mo')
   const [tailOffset, setTailOffset] = useState(0)
-  const [viewScale,  setViewScale]  = useState<ViewScaleMode>('normal')
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [viewScale,     setViewScale]     = useState<ViewScaleMode>('normal')
+  const [focusedSymbol, setFocusedSymbol] = useState<string | null>(null)
+  const [showTrails,    setShowTrails]    = useState(true)
+  const [showLabels,    setShowLabels]    = useState(true)
+  const [activeQuads,   setActiveQuads]   = useState<Set<string>>(
+    new Set(['Leading', 'Weakening', 'Lagging', 'Improving'])
+  )
+  const canvasRef   = useRef<HTMLCanvasElement>(null)
+  const domainRef   = useRef<RrgDomain>({ xMin: 90, xMax: 110, yMin: 96, yMax: 104 })
 
   const normalize = useCallback((resp: ApiResponse): SymbolData[] => {
     if (!resp.sectors?.length) return []
@@ -536,18 +577,47 @@ export default function CustomRRGChart() {
   }, [period])
 
   useEffect(() => {
+    domainRef.current = autoDomain
     if (!canvasRef.current || !displaySymbols.length) return
-    drawRRG(canvasRef.current, displaySymbols, visible, 99999, autoDomain)
-  }, [displaySymbols, visible, autoDomain])
+    drawRRG(canvasRef.current, displaySymbols, visible, 99999, autoDomain,
+      focusedSymbol, showTrails, showLabels, activeQuads)
+  }, [displaySymbols, visible, autoDomain, focusedSymbol, showTrails, showLabels, activeQuads])
 
   useEffect(() => {
     const obs = new ResizeObserver(() => {
       if (canvasRef.current && displaySymbols.length)
-        drawRRG(canvasRef.current, displaySymbols, visible, 99999, autoDomain)
+        drawRRG(canvasRef.current, displaySymbols, visible, 99999, domainRef.current,
+          focusedSymbol, showTrails, showLabels, activeQuads)
     })
     if (canvasRef.current) obs.observe(canvasRef.current)
     return () => obs.disconnect()
-  }, [displaySymbols, visible, autoDomain])
+  }, [displaySymbols, visible, focusedSymbol, showTrails, showLabels, activeQuads])
+
+  // Click-to-highlight: click latest point to focus, click again or Clear to unfocus
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !displaySymbols.length) return
+    const rect  = canvasRef.current.getBoundingClientRect()
+    const cssX  = e.clientX - rect.left
+    const cssY  = e.clientY - rect.top
+    const dom   = domainRef.current
+    const PAD   = { top: 36, right: 20, bottom: 44, left: 52 }
+    const plotW = rect.width  - PAD.left - PAD.right
+    const plotH = rect.height - PAD.top  - PAD.bottom
+    const toPixX = (v: number) => PAD.left + ((v - dom.xMin) / (dom.xMax - dom.xMin)) * plotW
+    const toPixY = (v: number) => PAD.top  + ((dom.yMax - v) / (dom.yMax - dom.yMin)) * plotH
+    let nearest: string | null = null
+    let minDist = Infinity
+    for (const s of displaySymbols.filter(ss => visible.has(ss.symbol))) {
+      const dx = toPixX(s.current.ratio) - cssX
+      const dy = toPixY(s.current.momentum) - cssY
+      const d  = Math.sqrt(dx * dx + dy * dy)
+      if (d < minDist && d < 24) { minDist = d; nearest = s.symbol }
+    }
+    setFocusedSymbol(prev => nearest === null ? null : prev === nearest ? null : nearest)
+  }, [displaySymbols, visible])
+
+  // Reset focus when symbol list changes
+  useEffect(() => { setFocusedSymbol(null) }, [symbols])
 
   const addSymbol = () => {
     const sym = inputSym.trim().toUpperCase()
@@ -650,9 +720,10 @@ export default function CustomRRGChart() {
               데이터를 불러오는 중...
             </div>
           ) : (
-            <canvas ref={canvasRef} style={{
+            <canvas ref={canvasRef} onClick={handleCanvasClick} style={{
               width: '100%', height: '500px',
               borderRadius: 8, background: '#111113', display: 'block',
+              cursor: 'crosshair',
             }} />
           )}
         </div>
@@ -783,7 +854,7 @@ export default function CustomRRGChart() {
                   cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, textTransform: 'capitalize',
                 }}>{m}</button>
               ))}
-              <button onClick={() => { setViewScale('normal'); setTailLength(5) }} style={{
+              <button onClick={() => { setViewScale('normal'); setTailLength(5); setFocusedSymbol(null) }} style={{
                 flexShrink: 0, padding: '4px 7px',
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',
@@ -792,6 +863,67 @@ export default function CustomRRGChart() {
               }} title="Reset to normal">↺</button>
             </div>
           </div>
+
+          {/* Display toggles */}
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 5 }}>
+              Display
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {([['Trails', showTrails, setShowTrails], ['Labels', showLabels, setShowLabels]] as const).map(([label, active, setter]) => (
+                <button key={label} onClick={() => (setter as (v: boolean) => void)(!active)} style={{
+                  flex: 1, padding: '4px 0',
+                  background: active ? 'rgba(0,217,255,0.12)' : 'rgba(255,255,255,0.04)',
+                  border: active ? '1px solid rgba(0,217,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 6, color: active ? '#67EEFF' : '#6b7280',
+                  cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700,
+                }}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quadrant filter */}
+          <div>
+            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 5 }}>
+              Quadrants
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              {(['Leading','Weakening','Lagging','Improving'] as const).map(q => {
+                const on = activeQuads.has(q)
+                const qc = { Leading: '#22c55e', Weakening: '#eab308', Lagging: '#ef4444', Improving: '#3b82f6' }[q]
+                return (
+                  <button key={q} onClick={() => setActiveQuads(prev => {
+                    const s = new Set(prev); s.has(q) ? s.delete(q) : s.add(q); return s
+                  })} style={{
+                    padding: '3px 6px',
+                    background: on ? `${qc}22` : 'rgba(255,255,255,0.04)',
+                    border: on ? `1px solid ${qc}66` : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 5, color: on ? qc : '#6b7280',
+                    cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700,
+                  }}>{q.slice(0,4)}</button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Focus indicator */}
+          {focusedSymbol && (
+            <div>
+              <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 5 }}>
+                Focus
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.88rem', flex: 1 }}>{focusedSymbol}</span>
+                <button onClick={() => setFocusedSymbol(null)} style={{
+                  padding: '2px 8px',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 5, color: '#9ca3af',
+                  cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700,
+                }}>Clear</button>
+              </div>
+            </div>
+          )}
 
           {/* Period toggle */}
           <div>
