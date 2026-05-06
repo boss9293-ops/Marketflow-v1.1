@@ -3,14 +3,13 @@ MarketFlow RRG Engine Router — Internal only.
 Users never see engine family, preset names, or Kx/Ky values.
 
 Routing policy:
-  All symbols in STANDARD_SECTOR_ETFS → SMA 10/34/8 (updated 2026-05-05)
-  Any individual stock or non-sector ETF → Family C (EMA z-score)
+  All symbols → SMA 10/34/8 (universal, updated 2026-05-05)
 
 Final presets (validated 2026-05-05):
   Sector  daily:  SMA_10_34_8
   Sector  weekly: SMA_10_34_8
-  Stock   daily:  C_s10_N65_Kx2_Ky2
-  Stock   weekly: C_s10_N52_Kx2_Ky2
+  Stock   daily:  SMA_10_34_8
+  Stock   weekly: SMA_10_34_8
 """
 import math
 import pandas as pd
@@ -28,8 +27,8 @@ _PRESETS = {
         'weekly': {'family': 'SMA', 'short': 10, 'long_p': 34, 'mom': 8},
     },
     'stock_mixed': {
-        'daily':  {'family': 'C', 'N': 65, 'Kx': 2, 'Ky': 2, 'EMA': 10},
-        'weekly': {'family': 'C', 'N': 52, 'Kx': 2, 'Ky': 2, 'EMA': 10},
+        'daily':  {'family': 'SMA', 'short': 10, 'long_p': 34, 'mom': 8},
+        'weekly': {'family': 'SMA', 'short': 10, 'long_p': 34, 'mom': 8},
     },
 }
 
