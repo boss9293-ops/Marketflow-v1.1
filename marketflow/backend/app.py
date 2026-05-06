@@ -3766,6 +3766,14 @@ def rrg_candidate_d_endpoint():
             'price':        _price,
             'price_change': _pchg,
             'warnings':     res['warnings'],
+            'debug': {
+                'formula_key':     res.get('preset_id', 'unknown'),
+                'route_group':     universe_type,
+                'preset_key':      res.get('preset_id', 'unknown'),
+                'function_called': 'compute_symbol_rrg',
+                'code_version':    '2026-05-06',
+                'git_commit':      '7a1ad1d',
+            },
         })
 
     return jsonify({

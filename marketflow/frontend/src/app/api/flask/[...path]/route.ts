@@ -16,6 +16,7 @@ async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
     method: req.method,
     headers: { 'Content-Type': contentType },
     body: body ? Buffer.from(body) : undefined,
+    cache: 'no-store',
   })
 
   const data = await resp.arrayBuffer()
