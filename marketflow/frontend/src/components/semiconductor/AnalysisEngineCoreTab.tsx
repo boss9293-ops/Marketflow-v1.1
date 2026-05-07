@@ -12,7 +12,69 @@ const V = {
 
 type CenterTab = 'map'|'cycle'|'perform'|'health'|'soxl'
 type HistTab   = 'event'|'snapshot'
-interface Props { live?: unknown; interpData?: unknown; history?: unknown }
+
+// ── Live data types ───────────────────────────────────────────────────────────
+type AIComp = { state: string; signal: number; spread: number; note: string; sources: string[] }
+type InterpAIRegime = {
+  regime_label: string; regime_confidence: string; data_mode?: string
+  ai_infra: AIComp; memory: AIComp; foundry: AIComp; equipment: AIComp; rotation_risk: AIComp
+}
+type LiveBucket = { name: string; color: string; m6: string; vs_soxx: string; up: boolean }
+type RsRow      = { name: string; rs: string; vs: string; up: boolean }
+type LiveKpis   = {
+  engine_score: number; stage: string; cycle_position: number
+  breadth_pct: number; advancing_pct: number; declining_pct: number
+  confidence_label: string; confidence_score: number
+  leader_concentration_top5: number | null; equal_weight_vs_cap_spread: number | null
+  market_regime: string
+}
+type BreadthDetail  = { pct_above_ma20: number | null; pct_above_ma50: number | null; pct_above_ma200: number | null }
+type MomentumDetail = { rsi_14: number | null; roc_1m: number | null; roc_3m: number | null }
+type HistRow = { date: string; comp: number; phase: string }
+
+interface Props {
+  live?: {
+    kpis: LiveKpis; buckets: LiveBucket[]; rs_table: RsRow[]
+    breadth_detail?: BreadthDetail | null
+    momentum_detail?: MomentumDetail | null
+  } | null
+  interpData?: {
+    ai_regime?: InterpAIRegime; regime_context?: string
+    summary?: string; interpretation?: string
+  } | null
+  history?: { rows: HistRow[] } | null
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function stageColor(stage: string): string {
+  const s = stage.toUpperCase()
+  if (s.includes('CONTRACTION') || s.includes('PEAK')) return V.red
+  if (s.includes('LATE')) return V.amber
+  if (s.includes('EARLY')) return V.mint
+  return V.teal
+}
+function flowBadge(state: string): { badge: string; color: string } {
+  const s = (state ?? '').toLowerCase()
+  if (s === 'confirmed' || s === 'strong')   return { badge:'CONFIRMED', color:V.teal }
+  if (s === 'partial')                        return { badge:'PARTIAL',   color:V.teal }
+  if (s === 'lagging' || s === 'declining')   return { badge:'LAGGING',   color:V.red  }
+  return                                             { badge:'WEAK',      color:V.amber }
+}
+function fmtPp(v: number): string { return `${v>=0?'+':''}${v.toFixed(1)}pp` }
+function barW(state: string): string {
+  const b = flowBadge(state).badge
+  if (b==='CONFIRMED') return '80%'; if (b==='PARTIAL') return '65%'; if (b==='LAGGING') return '20%'; return '40%'
+}
+function regimeDisplay(label: string): string {
+  const m: Record<string,string> = {AI_LED_BROAD:'AI-led Broadening',AI_LED_NARROW:'Narrow AI Leadership',ROTATING:'Capital Rotation',BROAD_RECOVERY:'Broad Recovery',CONTRACTION:'Semiconductor Contraction'}
+  return m[label] ?? label.replace(/_/g,' ')
+}
+function gaugeArc(cx: number, cy: number, r: number, pct: number) {
+  const p = Math.max(0.5, Math.min(99.5, pct))
+  const t = Math.PI * (1 - p / 100)
+  const ex = cx + r * Math.cos(t), ey = cy - r * Math.sin(t)
+  return { path:`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`, ex, ey }
+}
 
 function EduBox({ title, children }: { title:string; children:React.ReactNode }) {
   return (
@@ -31,16 +93,23 @@ function SecTitle({ children, style }: { children:React.ReactNode; style?:React.
   return <div style={{fontSize:10,fontWeight:600,letterSpacing:'0.16em',color:V.text3,marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between',fontFamily:V.ui,...style}}>{children}</div>
 }
 
-function RegimeBars() {
+function RegimeBars({ aiRegime }: { aiRegime?: InterpAIRegime }) {
+  const rows = aiRegime ? [
+    {name:'AI Infra',  w:barW(aiRegime.ai_infra.state),   color:V.teal,  sig:`${flowBadge(aiRegime.ai_infra.state).badge} ${fmtPp(aiRegime.ai_infra.spread)}`},
+    {name:'Memory',   w:barW(aiRegime.memory.state),      color:V.amber, sig:`${flowBadge(aiRegime.memory.state).badge} ${fmtPp(aiRegime.memory.spread)}`},
+    {name:'Foundry',  w:barW(aiRegime.foundry.state),     color:V.gold,  sig:`${flowBadge(aiRegime.foundry.state).badge} ${fmtPp(aiRegime.foundry.spread)}`},
+    {name:'Equipment',w:barW(aiRegime.equipment.state),   color:V.red,   sig:`${flowBadge(aiRegime.equipment.state).badge} ${fmtPp(aiRegime.equipment.spread)}`},
+    {name:'Rotation', w:barW(aiRegime.rotation_risk.state),color:V.mint, sig:`BROAD ${fmtPp(aiRegime.rotation_risk.spread)}`},
+  ] : [
+    {name:'AI Infra', w:'78%',color:V.teal, sig:'IN LINE +4.5pp'},
+    {name:'Memory',   w:'55%',color:V.amber,sig:'NOT CONF −3.6pp'},
+    {name:'Foundry',  w:'32%',color:V.gold, sig:'LAGGING −14.9pp'},
+    {name:'Equipment',w:'18%',color:V.red,  sig:'LAG AI DLY −16.5pp'},
+    {name:'Rotation', w:'90%',color:V.mint, sig:'BROAD +0.0pp'},
+  ]
   return (
     <div style={{display:'flex',flexDirection:'column',gap:6}}>
-      {[
-        {name:'AI Infra', w:'78%',color:V.teal, sig:'IN LINE +4.5pp'},
-        {name:'Memory',  w:'55%',color:V.amber,sig:'NOT CONF −3.6pp'},
-        {name:'Foundry', w:'32%',color:V.gold, sig:'LAGGING −14.9pp'},
-        {name:'Equipment',w:'18%',color:V.red, sig:'LAG AI DLY −16.5pp'},
-        {name:'Rotation',w:'90%',color:V.mint, sig:'BROAD +0.0pp'},
-      ].map(r=>(
+      {rows.map(r=>(
         <div key={r.name} style={{display:'grid',gridTemplateColumns:'70px 1fr 140px',alignItems:'center',gap:8}}>
           <div style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>{r.name}</div>
           <div style={{height:5,background:V.bg3,borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:r.w,background:r.color,borderRadius:3}}/></div>
@@ -52,14 +121,27 @@ function RegimeBars() {
 }
 
 // ── TAB: MAP ────────────────────────────────────────────────────────────────
-function TabMap() {
-  const buckets=[
-    {color:V.teal, name:'AI Compute',        drivers:'NVDA / AVGO / AMD · Internal Driver',         m1:'+3.6%',vs:'+0.0%',vsC:V.text2},
-    {color:V.amber,name:'Memory / HBM',      drivers:'MU · Internal Driver',                         m1:'+2.6%',vs:'−1.0%',vsC:V.red},
-    {color:V.red,  name:'Foundry / Packaging',drivers:'TSM · Internal Driver',                        m1:'+1.6%',vs:'−2.0%',vsC:V.red},
-    {color:V.gold, name:'Equipment',          drivers:'AMAT / ASML / LRCX / KLAC · Internal Driver', m1:'+1.6%',vs:'−2.0%',vsC:V.red},
-  ]
-  const flow=[
+const STATIC_BUCKET_META = [
+  {color:V.teal, key:'AI Compute',         name:'AI Compute',         drivers:'NVDA / AVGO / AMD · Internal Driver'},
+  {color:V.amber,key:'Memory',             name:'Memory / HBM',       drivers:'MU · Internal Driver'},
+  {color:V.red,  key:'Foundry',            name:'Foundry / Packaging',drivers:'TSM · Internal Driver'},
+  {color:V.gold, key:'Equipment',          name:'Equipment',          drivers:'AMAT / ASML / LRCX / KLAC · Internal Driver'},
+]
+function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIRegime }) {
+  const findRs = (key: string) => rsTable?.find(r => r.name.toLowerCase().includes(key.toLowerCase()))
+  const buckets = STATIC_BUCKET_META.map(b => {
+    const r = findRs(b.key)
+    return { color:b.color, name:b.name, drivers:b.drivers, m1:r?.rs??'—', vs:r?.vs??'—', vsC:r ? (r.up?V.teal:V.red) : V.text2 }
+  })
+  const ar = aiRegime
+  const aiComp  = ar?.ai_infra,  memComp = ar?.memory, fndComp = ar?.foundry, eqComp = ar?.equipment, rotComp = ar?.rotation_risk
+  const flow = ar ? [
+    {label:'AI Compute',badge:flowBadge(aiComp!.state).badge, bc:flowBadge(aiComp!.state).color,  pp:fmtPp(aiComp!.spread),  pc:flowBadge(aiComp!.state).color},
+    {label:'Memory',    badge:flowBadge(memComp!.state).badge,bc:flowBadge(memComp!.state).color,  pp:fmtPp(memComp!.spread), pc:flowBadge(memComp!.state).color},
+    {label:'Foundry',   badge:flowBadge(fndComp!.state).badge,bc:flowBadge(fndComp!.state).color,  pp:fmtPp(fndComp!.spread), pc:flowBadge(fndComp!.state).color},
+    {label:'Equipment', badge:flowBadge(eqComp!.state).badge, bc:flowBadge(eqComp!.state).color,   pp:fmtPp(eqComp!.spread),  pc:flowBadge(eqComp!.state).color},
+    {label:'Broad',     badge:flowBadge(rotComp!.state).badge,bc:flowBadge(rotComp!.state).color,  pp:fmtPp(rotComp!.spread), pc:flowBadge(rotComp!.state).color},
+  ] : [
     {label:'AI Compute',badge:'PARTIAL',bc:V.teal, pp:'+4.5pp',pc:V.teal},
     {label:'Memory',    badge:'WEAK',   bc:V.amber,pp:'−3.6pp',pc:V.amber},
     {label:'Foundry',   badge:'WEAK',   bc:V.amber,pp:'−14.9pp',pc:V.amber},
@@ -114,20 +196,20 @@ function TabMap() {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
           <SecTitle style={{margin:0}}>AI REGIME LENS</SecTitle>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.ui}}>Broad Recovery</span>
-            <span style={{fontSize:11,color:V.teal,border:'1px solid rgba(63,182,168,0.3)',padding:'2px 6px',borderRadius:2,fontFamily:V.mono}}>HIGH CONF</span>
-            <span style={{fontSize:10,background:'rgba(63,182,168,0.15)',color:V.teal,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>LIVE</span>
+            <span style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.ui}}>{ar ? regimeDisplay(ar.regime_label) : 'Broad Recovery'}</span>
+            <span style={{fontSize:11,color:V.teal,border:'1px solid rgba(63,182,168,0.3)',padding:'2px 6px',borderRadius:2,fontFamily:V.mono}}>{ar?.regime_confidence?.toUpperCase() ?? 'HIGH CONF'}</span>
+            <span style={{fontSize:10,background:ar?'rgba(63,182,168,0.15)':'rgba(107,123,149,0.15)',color:ar?V.teal:V.text3,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>{ar?'LIVE':'STATIC'}</span>
           </div>
         </div>
-        <RegimeBars/>
-        <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:8,padding:'6px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>Participation is broad across all semiconductor segments with no dominant concentration, consistent with an early recovery structure.</div>
+        <RegimeBars aiRegime={aiRegime}/>
+        <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:8,padding:'6px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>{'Participation is broad across all semiconductor segments with no dominant concentration, consistent with an early recovery structure.'}</div>
       </Card>
     </div>
   )
 }
 
 // ── TAB: CYCLE VIEW ──────────────────────────────────────────────────────────
-function TabCycle() {
+function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: string; confidenceLabel?: string }) {
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="CYCLE VIEW — 실물이 기준, SOXX는 반영도">
@@ -139,9 +221,9 @@ function TabCycle() {
       <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:12,alignItems:'stretch',marginBottom:12}}>
         <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'14px 20px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',minWidth:130}}>
           <div style={{fontSize:11,letterSpacing:'0.16em',color:V.text3,fontWeight:500,marginBottom:6,fontFamily:V.ui}}>CYCLE SCORE</div>
-          <div style={{fontSize:38,fontWeight:500,color:V.teal,fontFamily:V.mono,lineHeight:1}}>68</div>
-          <div style={{fontSize:11,color:V.teal,fontWeight:500,marginTop:4,fontFamily:V.ui}}>EXPANSION</div>
-          <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>High Conf · Fundamental</div>
+          <div style={{fontSize:38,fontWeight:500,color:V.teal,fontFamily:V.mono,lineHeight:1}}>{score ?? 68}</div>
+          <div style={{fontSize:11,color:stageColor(stage??'EXPANSION'),fontWeight:500,marginTop:4,fontFamily:V.ui}}>{stage ? stage.replace('MID ','').replace('EARLY ','') : 'EXPANSION'}</div>
+          <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>{confidenceLabel ?? 'High Conf'} · Fundamental</div>
         </div>
         <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'12px 16px'}}>
           <div style={{fontSize:11,letterSpacing:'0.16em',color:V.text3,fontWeight:500,marginBottom:10,fontFamily:V.ui}}>3-LAYER CONTRIBUTION</div>
@@ -383,7 +465,7 @@ function TabCycle() {
 }
 
 // ── TAB: PERFORMANCE ─────────────────────────────────────────────────────────
-function TabPerformance() {
+function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegime?: InterpAIRegime }) {
   const perfRows = [
     {dot:V.blue, name:'SOXX Index',        d1:'+1.0%',d5:'+1.2%',m1:'+3.6%',m3:'+8.2%',m6:'+17.0%',vs:'—',dir:'Benchmark',dirC:V.teal},
     {dot:V.teal, name:'AI Infrastructure', d1:'+0.0%',d5:'+1.2%',m1:'+3.6%',m3:'+5.2%',m6:'+12.0%',vs:'+0.0%',dir:'Fading',dirC:V.amber},
@@ -437,27 +519,42 @@ function TabPerformance() {
       <Card style={{marginBottom:0}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
           <div>
-            <span style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.ui}}>Broad Recovery</span>
-            <span style={{fontSize:11,color:V.teal,border:'1px solid rgba(63,182,168,0.3)',padding:'2px 6px',borderRadius:2,marginLeft:8,fontFamily:V.mono}}>HIGH CONF</span>
+            <span style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.ui}}>{aiRegime ? regimeDisplay(aiRegime.regime_label) : 'Broad Recovery'}</span>
+            <span style={{fontSize:11,color:V.teal,border:'1px solid rgba(63,182,168,0.3)',padding:'2px 6px',borderRadius:2,marginLeft:8,fontFamily:V.mono}}>{aiRegime?.regime_confidence?.toUpperCase() ?? 'HIGH CONF'}</span>
           </div>
-          <span style={{fontSize:10,background:'rgba(63,182,168,0.15)',color:V.teal,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>LIVE</span>
+          <span style={{fontSize:10,background:aiRegime?'rgba(63,182,168,0.15)':'rgba(107,123,149,0.15)',color:aiRegime?V.teal:V.text3,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>{aiRegime?'LIVE':'STATIC'}</span>
         </div>
-        <RegimeBars/>
-        <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:8,padding:'6px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>Participation is broad across all semiconductor segments with no dominant concentration, consistent with an early recovery structure.</div>
+        <RegimeBars aiRegime={aiRegime}/>
+        <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:8,padding:'6px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>{'Participation is broad across all semiconductor segments with no dominant concentration, consistent with an early recovery structure.'}</div>
       </Card>
     </div>
   )
 }
 
 // ── TAB: HEALTH ──────────────────────────────────────────────────────────────
-function TabHealth() {
-  const mRows = [
+const BUCKET_DOT: Record<string,string> = {'AI Compute':V.teal,'Memory / HBM':V.amber,'Memory':V.amber,'Foundry / Packaging':V.red,'Foundry':V.red,'Equipment':V.gold,'SOXX':V.blue,'SOXX Index':V.blue}
+function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
+  { rsTable?: RsRow[]; kpis?: LiveKpis; breadthDetail?: BreadthDetail | null; concentrationTop5?: number | null }) {
+  const liveRows = rsTable?.map(r => ({
+    dot: BUCKET_DOT[r.name] ?? V.blue,
+    name: r.name, ret: r.rs, vs: r.vs,
+    dir: r.up ? 'Sustaining' : 'Fading', dirC: r.up ? V.teal : V.amber,
+    conc: r.name.toLowerCase().includes('ai') ? `Med · ${Math.round(concentrationTop5 ?? 36)}%` : 'Low',
+    concC: r.name.toLowerCase().includes('ai') ? V.gold : V.text3,
+  }))
+  const mRows = liveRows ?? [
     {dot:V.blue, name:'SOXX Index',      ret:'+3.6%',vs:'—',dir:'Sustaining',dirC:V.teal,conc:'Low',concC:V.text3},
-    {dot:V.teal, name:'AI Infrastructure',ret:'+3.6%',vs:'+0.0%',dir:'Fading',dirC:V.amber,conc:'Med · 36%',concC:V.gold},
+    {dot:V.teal, name:'AI Infrastructure',ret:'+3.6%',vs:'+0.0%',dir:'Fading',dirC:V.amber,conc:`Med · ${Math.round(concentrationTop5??36)}%`,concC:V.gold},
     {dot:V.amber,name:'Memory',          ret:'+2.6%',vs:'−1.0%',dir:'Fading',dirC:V.amber,conc:'Low',concC:V.text3},
     {dot:V.red,  name:'Foundry',         ret:'+1.6%',vs:'−2.0%',dir:'Fading',dirC:V.amber,conc:'Low',concC:V.text3},
     {dot:V.gold, name:'Equipment',       ret:'+1.6%',vs:'−2.0%',dir:'Fading',dirC:V.amber,conc:'Low',concC:V.text3},
   ]
+  const breadthScore = Math.round(kpis?.breadth_pct ?? 100)
+  const advPct = Math.round(kpis?.advancing_pct ?? 100)
+  const decPct = Math.round(kpis?.declining_pct ?? 0)
+  const ma20pct = breadthDetail?.pct_above_ma20 ?? 100
+  const conflictLabel = kpis ? (kpis.breadth_pct < 40 ? 'BREADTH WEAK' : 'NO CONFLICT') : 'NO CONFLICT'
+  const conflictC = kpis ? (kpis.breadth_pct < 40 ? V.red : V.teal) : V.teal
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="HEALTH — SOXX 내부가 건강한가">
@@ -469,9 +566,9 @@ function TabHealth() {
       <SecTitle>HEALTH COMPOSITE — BREADTH · MOMENTUM · PARTICIPATION</SecTitle>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
         {[
-          {label:'BREADTH SCORE',  val:'100', state:'Healthy',     sub:'Confirms trend',   c:V.teal, bc:'rgba(63,182,168,0.3)'},
-          {label:'MOMENTUM SIGNAL',val:'+31', state:'Sustaining',  sub:'Stable regime',    c:V.amber,bc:'rgba(242,169,59,0.3)'},
-          {label:'LEADERSHIP SIGNAL',val:'+14',state:'Broad Partic.',sub:'Conf 91 · High',c:V.mint, bc:'rgba(93,207,176,0.3)'},
+          {label:'BREADTH SCORE',    val:String(breadthScore), state:breadthScore>=70?'Healthy':breadthScore>=40?'Mixed':'Weak', sub:'Confirms trend',   c:breadthScore>=70?V.teal:breadthScore>=40?V.amber:V.red,  bc:breadthScore>=70?'rgba(63,182,168,0.3)':'rgba(242,169,59,0.3)'},
+          {label:'MOMENTUM SIGNAL',  val:'+31',  state:'Sustaining',    sub:'Stable regime',    c:V.amber,bc:'rgba(242,169,59,0.3)'},
+          {label:'LEADERSHIP SIGNAL',val:'+14',  state:'Broad Partic.', sub:'Conf 91 · High',   c:V.mint, bc:'rgba(93,207,176,0.3)'},
         ].map(h=>(
           <div key={h.label} style={{background:V.bg2,border:`1px solid ${h.bc}`,borderRadius:6,padding:'10px 12px',textAlign:'center'}}>
             <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:6,fontFamily:V.ui}}>{h.label}</div>
@@ -485,14 +582,14 @@ function TabHealth() {
         <SecTitle style={{marginBottom:8}}>ADVANCING / DECLINING</SecTitle>
         <div style={{marginBottom:8}}>
           <div style={{height:12,background:V.bg3,borderRadius:6,overflow:'hidden',marginBottom:6}}>
-            <div style={{height:'100%',width:'100%',background:V.teal,borderRadius:6}}/>
+            <div style={{height:'100%',width:`${advPct}%`,background:V.teal,borderRadius:6}}/>
           </div>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:11,fontFamily:V.mono}}>
-            <span style={{color:V.teal}}>Adv 100%</span><span style={{color:V.text3}}>Net +100</span><span style={{color:V.red}}>Dec 0%</span>
+            <span style={{color:V.teal}}>Adv {advPct}%</span><span style={{color:V.text3}}>Net +{advPct - decPct}</span><span style={{color:V.red}}>Dec {decPct}%</span>
           </div>
         </div>
-        <div style={{fontSize:10,color:V.text2,fontFamily:V.ui}}>% above 20MA: <span style={{color:V.teal,fontWeight:500}}>100%</span> · <span style={{color:V.teal}}>BULLISH</span></div>
-        <div style={{marginTop:6,fontSize:10,fontWeight:600,letterSpacing:'0.10em',color:V.teal,padding:'4px 8px',background:'rgba(63,182,168,0.08)',border:'1px solid rgba(63,182,168,0.2)',borderRadius:4,display:'inline-block',fontFamily:V.mono}}>NO CONFLICT</div>
+        <div style={{fontSize:10,color:V.text2,fontFamily:V.ui}}>% above 20MA: <span style={{color:ma20pct!=null&&ma20pct>=60?V.teal:V.amber,fontWeight:500}}>{ma20pct!=null?`${Math.round(ma20pct)}%`:'—'}</span> · <span style={{color:ma20pct!=null&&ma20pct>=60?V.teal:V.amber}}>{ma20pct!=null&&ma20pct>=60?'BULLISH':'MIXED'}</span></div>
+        <div style={{marginTop:6,fontSize:10,fontWeight:600,letterSpacing:'0.10em',color:conflictC,padding:'4px 8px',background:`rgba(${conflictC===V.teal?'63,182,168':'229,90,90'},0.08)`,border:`1px solid rgba(${conflictC===V.teal?'63,182,168':'229,90,90'},0.2)`,borderRadius:4,display:'inline-block',fontFamily:V.mono}}>{conflictLabel}</div>
         <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:6,fontFamily:V.ui}}>Participation is consistent with the current trend. Broad advance confirms expansion regime.</div>
       </Card>
       <SecTitle style={{marginTop:10}}>BUCKET MOMENTUM RANKING <span style={{color:V.text3,fontSize:11,fontWeight:400,letterSpacing:0}}>1M return proxy</span></SecTitle>
@@ -652,29 +749,37 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
 }
 
 // ── LEFT PANEL ───────────────────────────────────────────────────────────────
-function LeftPanel() {
+function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
   return (
     <div style={{background:V.bg2,borderRight:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* Cycle Position */}
       <div style={{padding:'12px 16px',borderBottom:`1px solid ${V.border}`}}>
         <div style={{fontSize:10,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>CYCLE POSITION</div>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
-          <svg width="120" height="70" viewBox="0 0 120 70">
-            <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="#1A2740" strokeWidth="8" fill="none" strokeLinecap="round"/>
-            <path d="M 10 65 A 50 50 0 0 1 87 28" stroke="#3FB6A8" strokeWidth="8" fill="none" strokeLinecap="round"/>
-            <text x="60" y="58" textAnchor="middle" fill="#3FB6A8" fontSize="18" fontWeight="500" fontFamily="monospace">71%</text>
-            <circle cx="87" cy="28" r="5" fill="#F2A93B"/>
-          </svg>
-          <div style={{fontSize:12,fontWeight:600,color:V.teal,letterSpacing:'0.10em',marginTop:4,fontFamily:V.ui}}>MID EXPANSION</div>
-          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Cycle Progress</div>
-        </div>
+        {(()=>{
+          const pct = progress ?? 71
+          const stg = stage ?? 'MID EXPANSION'
+          const sc  = stageColor(stg)
+          const {path, ex, ey} = gaugeArc(60, 65, 50, pct)
+          return (
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+              <svg width="120" height="70" viewBox="0 0 120 70">
+                <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="#1A2740" strokeWidth="8" fill="none" strokeLinecap="round"/>
+                <path d={path} stroke={sc} strokeWidth="8" fill="none" strokeLinecap="round"/>
+                <text x="60" y="58" textAnchor="middle" fill={sc} fontSize="18" fontWeight="500" fontFamily="monospace">{Math.round(pct)}%</text>
+                <circle cx={ex.toFixed(1)} cy={ey.toFixed(1)} r="5" fill="#F2A93B"/>
+              </svg>
+              <div style={{fontSize:12,fontWeight:600,color:sc,letterSpacing:'0.10em',marginTop:4,fontFamily:V.ui}}>{stg}</div>
+              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Cycle Progress</div>
+            </div>
+          )
+        })()}
         <div style={{height:8,background:V.bg3,borderRadius:4,overflow:'hidden',marginTop:8}}>
-          <div style={{height:'100%',width:'71%',background:`linear-gradient(90deg,${V.teal},${V.mint})`,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:4}}>
-            <span style={{fontSize:9,color:V.bg,fontWeight:600,fontFamily:V.mono}}>Expansion 100%</span>
+          <div style={{height:'100%',width:`${progress ?? 71}%`,background:`linear-gradient(90deg,${V.teal},${V.mint})`,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:4}}>
+            <span style={{fontSize:9,color:V.bg,fontWeight:600,fontFamily:V.mono}}>{stage?.replace('MID ','').replace('EARLY ','') ?? 'Expansion'} 100%</span>
           </div>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,fontSize:11,color:V.text3,fontFamily:V.ui}}>
-          <span>Early</span><span style={{color:V.teal,fontWeight:500}}>Mid</span><span>Late</span><span>Peak</span>
+          <span>Early</span><span style={{color:stageColor(stage??'MID EXPANSION'),fontWeight:500}}>Mid</span><span>Late</span><span>Peak</span>
         </div>
       </div>
       {/* 5Y Cycle Band */}
@@ -740,7 +845,8 @@ function LeftPanel() {
 }
 
 // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
-function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
+function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn }:
+  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string }) {
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* ① AI vs Legacy */}
@@ -753,7 +859,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
         <div style={{marginBottom:8}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
             <span style={{fontSize:11,fontWeight:500,color:V.amber,fontFamily:V.ui}}>AI Compute</span>
-            <span style={{fontSize:13,fontWeight:500,color:V.amber,fontFamily:V.mono}}>+18.4%</span>
+            <span style={{fontSize:13,fontWeight:500,color:V.amber,fontFamily:V.mono}}>{aiBucketReturn ?? '+18.4%'}</span>
           </div>
           <div style={{height:7,background:V.bg3,borderRadius:3,overflow:'hidden'}}>
             <div style={{height:'100%',width:'75%',background:`linear-gradient(90deg,${V.amber},${V.gold})`,borderRadius:3}}/>
@@ -779,7 +885,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
               <div style={{fontSize:11,color:V.text3,marginTop:1,fontFamily:V.ui}}>AI 단독 랠리 · 폭 좁음</div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontSize:20,fontWeight:500,color:V.amber,fontFamily:V.mono}}>22pp</div>
+              <div style={{fontSize:20,fontWeight:500,color:V.amber,fontFamily:V.mono}}>{aiRegime ? `${Math.round(Math.abs(aiRegime.ai_infra.spread))}pp` : '22pp'}</div>
               <div style={{fontSize:11,color:V.gold,fontFamily:V.mono}}>↑ 전주 +4pp</div>
             </div>
           </div>
@@ -808,7 +914,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
           <path d="M 30 88 A 80 80 0 0 1 120 12" stroke="#D4B36A" strokeWidth="12" fill="none" strokeLinecap="round"/>
           <line x1="120" y1="88" x2="120" y2="18" stroke="#D4B36A" strokeWidth="2.5" strokeLinecap="round"/>
           <circle cx="120" cy="88" r="5" fill="#D4B36A"/>
-          <text x="120" y="70" textAnchor="middle" fill="#D4B36A" fontSize="22" fontWeight="500" fontFamily="monospace">36%</text>
+          <text x="120" y="70" textAnchor="middle" fill="#D4B36A" fontSize="22" fontWeight="500" fontFamily="monospace">{concentrationTop5!=null?`${Math.round(concentrationTop5)}%`:'36%'}</text>
           <text x="120" y="84" textAnchor="middle" fill="#6B7B95" fontSize="10" fontFamily="'IBM Plex Sans',sans-serif">Top 5 집중도</text>
           <text x="22" y="98" fill="#3FB6A8" fontSize="10" fontFamily="'IBM Plex Sans',sans-serif">분산</text>
           <text x="218" y="98" fill="#E55A5A" fontSize="10" textAnchor="end" fontFamily="'IBM Plex Sans',sans-serif">집중</text>
@@ -817,7 +923,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
         </svg>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:V.bg3,borderRadius:4,fontSize:10,fontFamily:V.ui}}>
           <span style={{color:V.text3}}>EW vs Cap-Weight</span>
-          <span style={{color:V.text2,fontFamily:V.mono,fontWeight:500}}>−58pt</span>
+          <span style={{color:V.text2,fontFamily:V.mono,fontWeight:500}}>{ewSpread!=null?`${ewSpread>0?'+':''}${Math.round(ewSpread)}pt`:'−58pt'}</span>
           <span style={{color:V.text3}}>Cap 쏠림</span>
         </div>
       </div>
@@ -972,6 +1078,14 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
   const [centerTab, setCenterTab] = useState<CenterTab>('map')
   const [histTab,   setHistTab]   = useState<HistTab>('event')
 
+  const kpis      = live?.kpis
+  const ar        = interpData?.ai_regime
+  const score     = kpis?.engine_score
+  const stage     = kpis?.stage
+  const progress  = kpis?.cycle_position
+  const aiBucket  = live?.buckets?.find(b => b.name.toLowerCase().includes('ai'))
+  const aiBucketReturn = aiBucket ? (aiBucket.up ? `+${aiBucket.m6}` : aiBucket.m6) : undefined
+
   const tabDesc: Record<CenterTab,string> = {
     map:     '버킷 현황 한눈에 · 사이클 단계 · 자본 흐름 · AI Regime',
     cycle:   '3-Layer 실물 → AI자본 → 시장 반영도 분석',
@@ -981,15 +1095,15 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
   }
 
   return (
-    <div style={{background:V.bg,color:V.text,fontFamily:V.ui,display:'flex',flexDirection:'column',height:'100%',overflow:'hidden'}}>
+    <div style={{background:V.bg,color:V.text,fontFamily:V.ui,display:'flex',flexDirection:'column',height:'100%',overflow:'hidden',paddingLeft:16,paddingRight:16,width:'90%',margin:'0 auto'}}>
       {/* KPI Strip */}
       <div style={{display:'flex',borderBottom:`1px solid ${V.border}`,flexShrink:0}}>
         {[
-          {label:'CYCLE SCORE',       val:'68',       sub:'Expansion · Fundamental 기반',    vc:V.teal},
-          {label:'TSMC YoY',          val:'+39%',     sub:'2026.04 · 실물 선행 신호',         vc:V.teal},
-          {label:'HYPERSCALER CAPEX', val:'$78.4B',   sub:"Q1'26 합산 · YoY +68%",           vc:V.amber},
-          {label:'SOXX 반영도',        val:'0.92',     sub:'실물 대비 약간 선행',              vc:V.gold},
-          {label:'SOXL ENVIRONMENT',  val:'Caution',  sub:'−4.7% decay · Layer spread 22pp', vc:V.gold},
+          {label:'CYCLE SCORE',       val:String(score??68),  sub:`${stage??'Expansion'} · Fundamental 기반`,    vc:V.teal},
+          {label:'TSMC YoY',          val:'+39%',             sub:'2026.04 · 실물 선행 신호',                    vc:V.teal},
+          {label:'HYPERSCALER CAPEX', val:'$78.4B',           sub:"Q1'26 합산 · YoY +68%",                      vc:V.amber},
+          {label:'SOXX 반영도',        val:'0.92',             sub:'실물 대비 약간 선행',                        vc:V.gold},
+          {label:'SOXL ENVIRONMENT',  val:ar ? regimeDisplay(ar.regime_label).split(' ')[0] : 'Caution', sub:ar?`${ar.ai_infra.spread.toFixed(1)}pp spread`:'−4.7% decay · Layer spread 22pp', vc:V.gold},
         ].map(k=>(
           <div key={k.label} style={{flex:1,padding:'10px 18px',borderRight:`1px solid ${V.border}`}}>
             <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:4,fontWeight:600,fontFamily:V.ui}}>{k.label}</div>
@@ -1002,7 +1116,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
       {/* Main 3-column layout */}
       <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
         <div style={{flex:1,minHeight:0,display:'grid',gridTemplateColumns:'234px 1fr 252px'}}>
-          <LeftPanel/>
+          <LeftPanel stage={stage} progress={progress}/>
 
           {/* Center Panel */}
           <div style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1019,15 +1133,15 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
             </div>
             {/* Tab content */}
             <div style={{flex:1,minHeight:0,overflow:'hidden',display:'flex',flexDirection:'column',background:V.bg}}>
-              {centerTab==='map'     && <TabMap/>}
-              {centerTab==='cycle'   && <TabCycle/>}
-              {centerTab==='perform' && <TabPerformance/>}
-              {centerTab==='health'  && <TabHealth/>}
+              {centerTab==='map'     && <TabMap rsTable={live?.rs_table} aiRegime={ar}/>}
+              {centerTab==='cycle'   && <TabCycle score={score} stage={stage} confidenceLabel={kpis?.confidence_label}/>}
+              {centerTab==='perform' && <TabPerformance buckets={live?.buckets} aiRegime={ar}/>}
+              {centerTab==='health'  && <TabHealth rsTable={live?.rs_table} kpis={kpis} breadthDetail={live?.breadth_detail} concentrationTop5={kpis?.leader_concentration_top5}/>}
               {centerTab==='soxl'    && <TabSoxlEnv onTab={setCenterTab}/>}
             </div>
           </div>
 
-          <RightPanel onTab={setCenterTab}/>
+          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn}/>
         </div>
 
         {/* History Card */}
