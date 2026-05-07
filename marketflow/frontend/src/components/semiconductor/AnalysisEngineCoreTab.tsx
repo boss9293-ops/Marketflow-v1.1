@@ -67,7 +67,7 @@ function TabMap() {
     {label:'Broad',     badge:'WEAK',   bc:V.amber,pp:'+0.0pp',pc:V.amber},
   ]
   return (
-    <div style={{padding:'10px 12px',overflowY:'auto',flex:1}}>
+    <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="MAP 탭 — 지금 SOXX의 전체 상태를 한눈에">
         <strong>4개 버킷(AI Compute · Memory · Foundry · Equipment)</strong>이 SOXX 지수를 구성합니다.
         각 버킷이 SOXX 대비 얼마나 강하게 움직이는지, AI 자본이 밸류체인 어디까지 흘렀는지를 이 화면에서 즉시 파악합니다.
@@ -129,7 +129,7 @@ function TabMap() {
 // ── TAB: CYCLE VIEW ──────────────────────────────────────────────────────────
 function TabCycle() {
   return (
-    <div style={{padding:'10px 12px',overflowY:'auto',flex:1}}>
+    <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="CYCLE VIEW — 실물이 기준, SOXX는 반영도">
         기관 애널리스트는 주가를 먼저 보지 않습니다. <strong>TSMC 매출 → Book-to-Bill → Hyperscaler CapEx → SOXX</strong> 순으로 읽습니다.
         실물이 강한데 SOXX가 덜 올랐으면 <strong>매수 근거</strong>, 실물이 꺾이는데 SOXX가 아직 고점이면 <strong>SOXL 위험 신호</strong>입니다.
@@ -178,10 +178,10 @@ function TabCycle() {
               <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>업데이트: 매월 10일</div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:22,fontWeight:500,color:V.teal,fontFamily:V.mono}}>NT$260B</span>
-              <span style={{fontSize:12,color:V.teal,fontFamily:V.mono}}>YoY +39%</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.teal,fontFamily:V.mono}}>NT$260B</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>YoY +39%</span>
             </div>
-            <svg viewBox="0 0 280 70" style={{width:'100%',height:'auto',display:'block'}}>
+            <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="tsmc-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3FB6A8" stopOpacity="0.35"/><stop offset="100%" stopColor="#3FB6A8" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
               <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">+50%</text><text x="16" y="38" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">+25%</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">0%</text>
@@ -190,7 +190,7 @@ function TabCycle() {
               <circle cx="275" cy="9" r="3" fill="#3FB6A8"/>
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#3FB6A8" fontSize="10" textAnchor="end" fontFamily="monospace">2026.04</text>
             </svg>
-            <div style={{fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>파운드리 전체 온도계 · SOXX 2~3주 선행</div>
+            <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>파운드리 전체 온도계 · SOXX 2~3주 선행</div>
           </div>
           {/* B2B */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -199,10 +199,10 @@ function TabCycle() {
               <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SEMI.org · 월 1회</div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:22,fontWeight:500,color:V.amber,fontFamily:V.mono}}>1.18</span>
-              <span style={{fontSize:11,color:V.teal,fontFamily:V.ui}}>수주 증가 중</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>1.18</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.ui}}>수주 증가 중</span>
             </div>
-            <svg viewBox="0 0 280 70" style={{width:'100%',height:'auto',display:'block'}}>
+            <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="btb-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F2A93B" stopOpacity="0.3"/><stop offset="100%" stopColor="#F2A93B" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="42" x2="275" y2="42" stroke="#3FB6A8" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.7"/>
               <text x="16" y="45" fill="#3FB6A8" fontSize="10" textAnchor="end" fontFamily="monospace">1.0</text>
@@ -213,7 +213,7 @@ function TabCycle() {
               <circle cx="275" cy="13" r="3" fill="#F2A93B"/>
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#F2A93B" fontSize="10" textAnchor="end" fontFamily="monospace">1.18</text>
             </svg>
-            <div style={{fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>장비 수주/출하 · 제조 투자 3~6개월 선행</div>
+            <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>장비 수주/출하 · 제조 투자 3~6개월 선행</div>
           </div>
           {/* SIA */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -222,10 +222,10 @@ function TabCycle() {
               <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SIA · 월 1회</div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:22,fontWeight:500,color:V.mint,fontFamily:V.mono}}>$56.1B</span>
-              <span style={{fontSize:11,color:V.teal,fontFamily:V.mono}}>YoY +28%</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.mint,fontFamily:V.mono}}>$56.1B</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>YoY +28%</span>
             </div>
-            <svg viewBox="0 0 280 70" style={{width:'100%',height:'auto',display:'block'}}>
+            <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="sia-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5DCFB0" stopOpacity="0.3"/><stop offset="100%" stopColor="#5DCFB0" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
               <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$60B</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$35B</text>
@@ -234,7 +234,7 @@ function TabCycle() {
               <circle cx="275" cy="10" r="3" fill="#5DCFB0"/>
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#5DCFB0" fontSize="10" textAnchor="end" fontFamily="monospace">$56.1B</text>
             </svg>
-            <div style={{fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>전체 반도체 시장 크기 공식 데이터</div>
+            <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>전체 반도체 시장 크기 공식 데이터</div>
           </div>
           {/* NVDA */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -243,10 +243,10 @@ function TabCycle() {
               <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>분기 실적</div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:22,fontWeight:500,color:V.gold,fontFamily:V.mono}}>$35.6B</span>
-              <span style={{fontSize:11,color:V.teal,fontFamily:V.mono}}>QoQ +12%</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.gold,fontFamily:V.mono}}>$35.6B</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>QoQ +12%</span>
             </div>
-            <svg viewBox="0 0 280 70" style={{width:'100%',height:'auto',display:'block'}}>
+            <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
               <rect x="24" y="58" width="22" height="2" fill="#D4B36A" opacity="0.4" rx="1"/>
               <rect x="56" y="54" width="22" height="6" fill="#D4B36A" opacity="0.5" rx="1"/>
@@ -261,7 +261,7 @@ function TabCycle() {
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">Q1&apos;24</text>
               <text x="275" y="68" fill="#D4B36A" fontSize="10" textAnchor="end" fontFamily="monospace">Q1&apos;26</text>
             </svg>
-            <div style={{fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>AI 가속기 수요 직접 신호 · 가이던스 방향 핵심</div>
+            <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>AI 가속기 수요 직접 신호 · 가이던스 방향 핵심</div>
           </div>
         </div>
       </div>
@@ -278,8 +278,8 @@ function TabCycle() {
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,marginBottom:8,fontFamily:V.ui}}>HYPERSCALER CAPEX (합산)</div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:22,fontWeight:500,color:V.amber,fontFamily:V.mono}}>$78.4B</span>
-              <span style={{fontSize:11,color:V.teal,fontFamily:V.mono}}>Q1&apos;26 · YoY +68%</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>$78.4B</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>Q1&apos;26 · YoY +68%</span>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:4}}>
               {[{co:'MSFT',w:'82%',c:V.teal,v:'$21.4B'},{co:'AMZN',w:'90%',c:V.amber,v:'$24.3B'},{co:'GOOG',w:'68%',c:V.gold,v:'$17.2B'},{co:'META',w:'59%',c:V.mint,v:'$15.5B'}].map(x=>(
@@ -329,8 +329,8 @@ function TabCycle() {
               </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:20,fontWeight:500,color:V.text,fontFamily:V.mono}}>$568</span>
-              <span style={{fontSize:11,color:V.teal,fontFamily:V.ui}}>20W 위 · Bullish</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.text,fontFamily:V.mono}}>$568</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.ui}}>20W 위 · Bullish</span>
             </div>
             <svg viewBox="0 0 280 80" style={{width:'100%',height:'auto',display:'block'}}>
               <defs><linearGradient id="soxx-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4A9EE0" stopOpacity="0.25"/><stop offset="100%" stopColor="#4A9EE0" stopOpacity="0.02"/></linearGradient></defs>
@@ -393,7 +393,7 @@ function TabPerformance() {
   ]
   const tdS = (c:string):React.CSSProperties => ({padding:'7px 8px',fontSize:11,color:c,fontFamily:V.mono,textAlign:'right'})
   return (
-    <div style={{padding:'10px 12px',overflowY:'auto',flex:1}}>
+    <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="PERFORMANCE — 멀티 타임프레임 성과 비교">
         같은 버킷도 시간 단위에 따라 해석이 다릅니다. <strong>1D · 5D는 노이즈</strong>에 가깝고,
         <strong>1M · 3M · 6M</strong>이 실제 추세를 보여줍니다.
@@ -459,7 +459,7 @@ function TabHealth() {
     {dot:V.gold, name:'Equipment',       ret:'+1.6%',vs:'−2.0%',dir:'Fading',dirC:V.amber,conc:'Low',concC:V.text3},
   ]
   return (
-    <div style={{padding:'10px 12px',overflowY:'auto',flex:1}}>
+    <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="HEALTH — SOXX 내부가 건강한가">
         <strong>Breadth(폭)</strong>는 SOXX 안에서 오르는 종목이 얼마나 많은지입니다. 100%면 전원 상승 — 최고 건강 상태.
         <strong>Momentum(모멘텀)</strong>은 현재 추세의 강도입니다. +31 Sustaining은 상승세가 유지되고 있다는 뜻.
@@ -534,7 +534,7 @@ function TabHealth() {
 // ── TAB: SOXL ENV ────────────────────────────────────────────────────────────
 function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
   return (
-    <div style={{padding:'10px 12px',overflowY:'auto',flex:1}}>
+    <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="SOXL ENV — 무한매수 환경 진단 (추천 아님 · 환경 인식)">
         <strong>SOXL은 SOXX의 3배 레버리지</strong>이지만, 실제 수익은 이론치(×3)보다 항상 작습니다.
         이 차이를 <strong>변동성 감쇠(Volatility Decay)</strong>라고 합니다.
@@ -656,7 +656,7 @@ function LeftPanel() {
   return (
     <div style={{background:V.bg2,borderRight:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* Cycle Position */}
-      <div style={{padding:'12px 14px',borderBottom:`1px solid ${V.border}`}}>
+      <div style={{padding:'12px 16px',borderBottom:`1px solid ${V.border}`}}>
         <div style={{fontSize:10,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>CYCLE POSITION</div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
           <svg width="120" height="70" viewBox="0 0 120 70">
@@ -678,7 +678,7 @@ function LeftPanel() {
         </div>
       </div>
       {/* 5Y Cycle Band */}
-      <div style={{padding:'12px 14px',flex:1,overflowY:'auto'}}>
+      <div style={{padding:'12px 16px',flex:1,overflowY:'auto'}}>
         <div style={{fontSize:10,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>5Y CYCLE HISTORY</div>
         <svg viewBox="0 0 220 310" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'auto',display:'block',marginBottom:8}}>
           <line x1="30" y1="8" x2="30" y2="298" stroke="#1A2740" strokeWidth="1"/>
@@ -744,7 +744,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* ① AI vs Legacy */}
-      <div style={{padding:'12px 14px',borderBottom:'2px solid rgba(242,169,59,0.2)'}}>
+      <div style={{padding:'12px 16px',borderBottom:'2px solid rgba(242,169,59,0.2)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
           <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>★ AI vs LEGACY LAYER</div>
           <span style={{fontSize:11,color:V.amber,letterSpacing:'0.08em',fontWeight:500,fontFamily:V.mono}}>BRIDGE 3</span>
@@ -799,7 +799,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
         </div>
       </div>
       {/* ② Concentration */}
-      <div style={{padding:'12px 14px',borderBottom:`1px solid ${V.border}`}}>
+      <div style={{padding:'12px 16px',borderBottom:`1px solid ${V.border}`}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
           <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>SOXX 집중도</div>
         </div>
@@ -822,7 +822,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
         </div>
       </div>
       {/* ③ SOXL mini */}
-      <div style={{padding:'12px 14px',borderTop:'1px solid rgba(229,90,90,0.2)',borderBottom:`1px solid ${V.border}`}}>
+      <div style={{padding:'12px 16px',borderTop:'1px solid rgba(229,90,90,0.2)',borderBottom:`1px solid ${V.border}`}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
           <div style={{fontSize:10,letterSpacing:'0.12em',color:V.red,fontWeight:600,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
           <button onClick={()=>onTab('soxl')} style={{background:'transparent',border:'1px solid rgba(229,90,90,0.3)',color:V.red,fontSize:11,padding:'3px 8px',borderRadius:3,cursor:'pointer',letterSpacing:'0.06em',fontFamily:V.mono}}>상세 →</button>
@@ -864,7 +864,7 @@ function RightPanel({ onTab }: { onTab:(t:CenterTab)=>void }) {
         </div>
       </div>
       {/* ④ Quick Nav */}
-      <div style={{padding:'12px 14px',flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+      <div style={{padding:'12px 16px',flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
         <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>빠른 이동</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}}>
           {[
@@ -991,10 +991,10 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
           {label:'SOXX 반영도',        val:'0.92',     sub:'실물 대비 약간 선행',              vc:V.gold},
           {label:'SOXL ENVIRONMENT',  val:'Caution',  sub:'−4.7% decay · Layer spread 22pp', vc:V.gold},
         ].map(k=>(
-          <div key={k.label} style={{flex:1,padding:'10px 14px',borderRight:`1px solid ${V.border}`}}>
+          <div key={k.label} style={{flex:1,padding:'10px 18px',borderRight:`1px solid ${V.border}`}}>
             <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:4,fontWeight:600,fontFamily:V.ui}}>{k.label}</div>
-            <div style={{fontSize:22,fontWeight:500,color:k.vc,fontFamily:V.mono,lineHeight:1}}>{k.val}</div>
-            <div style={{fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>{k.sub}</div>
+            <div style={{fontSize:28,fontWeight:500,color:k.vc,fontFamily:V.mono,lineHeight:1}}>{k.val}</div>
+            <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>{k.sub}</div>
           </div>
         ))}
       </div>
