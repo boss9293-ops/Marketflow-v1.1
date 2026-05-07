@@ -1001,7 +1001,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
 
       {/* Main 3-column layout */}
       <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
-        <div style={{flex:1,minHeight:0,display:'grid',gridTemplateColumns:'260px 1fr 280px'}}>
+        <div style={{flex:1,minHeight:0,display:'grid',gridTemplateColumns:'234px 1fr 252px'}}>
           <LeftPanel/>
 
           {/* Center Panel */}
