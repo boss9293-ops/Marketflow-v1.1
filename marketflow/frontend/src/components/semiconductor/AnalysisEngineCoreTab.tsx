@@ -44,6 +44,7 @@ interface Props {
   } | null
   history?: { rows: HistRow[] } | null
   onViewDataLab?: () => void
+  dataStatusCounts?: { live: number; cache: number; static: number; pending: number }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -862,8 +863,8 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
 }
 
 // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
-function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab }:
-  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void }) {
+function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab, dataStatusCounts }:
+  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void; dataStatusCounts?: { live: number; cache: number; static: number; pending: number } }) {
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* ① AI vs Legacy */}
@@ -1018,8 +1019,13 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
             </div>
           ))}
           <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:2}}>
-            {[['4 LIVE','#22c55e'],['1 CACHE','#22d3ee'],['3 STATIC','#fbbf24'],['3 PENDING','#737880']].map(([l,c])=>(
-              <span key={l} style={{fontSize:10,padding:'1px 5px',border:`1px solid ${c}33`,color:c as string,borderRadius:2,fontFamily:'monospace'}}>{l}</span>
+            {([
+              [`${dataStatusCounts?.live    ?? 4} LIVE`,    '#22c55e'],
+              [`${dataStatusCounts?.cache   ?? 1} CACHE`,   '#22d3ee'],
+              [`${dataStatusCounts?.static  ?? 3} STATIC`,  '#fbbf24'],
+              [`${dataStatusCounts?.pending ?? 3} PENDING`, '#737880'],
+            ] as [string, string][]).map(([l,c])=>(
+              <span key={l} style={{fontSize:10,padding:'1px 5px',border:`1px solid ${c}33`,color:c,borderRadius:2,fontFamily:'monospace'}}>{l}</span>
             ))}
           </div>
         </div>
@@ -1118,7 +1124,7 @@ function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:H
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function AnalysisEngineCoreTab({ live, interpData, history, onViewDataLab }: Props) {
+export default function AnalysisEngineCoreTab({ live, interpData, history, onViewDataLab, dataStatusCounts }: Props) {
   const [centerTab, setCenterTab] = useState<CenterTab>('map')
   const [histTab,   setHistTab]   = useState<HistTab>('event')
 
@@ -1185,7 +1191,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
             </div>
           </div>
 
-          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn} onViewDataLab={onViewDataLab}/>
+          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn} onViewDataLab={onViewDataLab} dataStatusCounts={dataStatusCounts}/>
         </div>
 
         {/* History Card */}

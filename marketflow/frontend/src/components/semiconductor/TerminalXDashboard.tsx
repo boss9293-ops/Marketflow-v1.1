@@ -327,6 +327,38 @@ const TAB_TIPS: Record<string, string> = {
 const UI_FONT = "'Inter', 'Pretendard', sans-serif";
 const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
+const DATA_STATUS_ROWS = [
+  { group: 'SOXX Holdings',            status: 'CACHE',     source: 'ETF API',     updated: 'Daily',    note: '보유종목 구성 · 기여 분석 기반' },
+  { group: 'Selected Coverage',        status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '버킷 편입 종목 · 엔진 직접 연산' },
+  { group: 'Residual Participation',   status: 'PENDING',   source: '—',           updated: '—',        note: 'Holding-level data 대기' },
+  { group: 'Contribution Bias',        status: 'PENDING',   source: '—',           updated: '—',        note: '개별 종목 기여도 데이터 필요' },
+  { group: 'Top Contribution Drivers', status: 'PENDING',   source: '—',           updated: '—',        note: '기여 수익 API 대기' },
+  { group: 'Bucket Relative Strength', status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: 'vs SOXX RS · 엔진 직접 연산' },
+  { group: 'Breadth Raw',              status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '20MA 이상 비율 · 실시간 연산' },
+  { group: 'Momentum Raw',             status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '도메인 신호 · 엔진 출력' },
+  { group: 'Correlation Matrix',       status: 'STATIC',    source: 'Manual',      updated: '2026-04',  note: '실시간 수익 데이터 미연결' },
+  { group: 'L1 Fundamentals',          status: 'STATIC',    source: 'Manual',      updated: '2026-05',  note: 'TSMC YoY · CapEx · B2B — 수동 업데이트' },
+  { group: 'L2 AI Capital Flow',       status: 'STATIC',    source: 'Manual',      updated: '2026-04',  note: 'NVDA DC Rev · SIA Sales — 분기/월별 발표' },
+  { group: 'SOXL Environment',         status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '레짐 · 디케이 · 엔진 번역 레이어' },
+] as const
+
+const DATA_STATUS_COUNTS = {
+  live:    DATA_STATUS_ROWS.filter(r => r.status === 'LIVE').length,
+  cache:   DATA_STATUS_ROWS.filter(r => r.status === 'CACHE').length,
+  static:  DATA_STATUS_ROWS.filter(r => r.status === 'STATIC').length,
+  pending: DATA_STATUS_ROWS.filter(r => r.status === 'PENDING').length,
+}
+
+const PENDING_LOG = [
+  'SOXX holding-level contribution return data',
+  'Selected bucket contribution return by ticker',
+  'Residual contribution return calculation',
+  'L1 Fundamentals API endpoint (TSMC · B2B · SIA)',
+  'Book-to-Bill live feed (SEMI.org)',
+  'Hyperscaler CapEx live feed',
+  'SOXL decay live calculation endpoint',
+]
+
 export default function TerminalXDashboard() {
   const [mainTab,  setMainTab]  = useState<'ENGINE' | 'DATA_LAB' | 'STRATEGY' | 'PLAYBACK'>('ENGINE')
   const [centerTab,setCenterTab]= useState('PERFORMANCE')
@@ -989,7 +1021,7 @@ export default function TerminalXDashboard() {
 
       {/* ???? TAB: ENGINE ???? */}
       {mainTab === 'ENGINE' && (
-        <AnalysisEngineCoreTab live={live} interpData={interpData} history={history} onViewDataLab={() => setMainTab('DATA_LAB')} />
+        <AnalysisEngineCoreTab live={live} interpData={interpData} history={history} onViewDataLab={() => setMainTab('DATA_LAB')} dataStatusCounts={DATA_STATUS_COUNTS} />
       )}
 
       {/* DATA LAB header strip */}
@@ -1160,29 +1192,6 @@ export default function TerminalXDashboard() {
             const StatusBadge = ({ s }: { s: string }) => (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 border rounded-sm font-mono tracking-[0.06em] shrink-0 ${STATUS_CLS[s] ?? STATUS_CLS.PENDING}`}>{s}</span>
             )
-            const ROWS = [
-              { group: 'SOXX Holdings',            status: 'CACHE',     source: 'ETF API',     updated: 'Daily',    note: '보유종목 구성 · 기여 분석 기반' },
-              { group: 'Selected Coverage',        status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '버킷 편입 종목 · 엔진 직접 연산' },
-              { group: 'Residual Participation',   status: 'PENDING',   source: '—',           updated: '—',        note: 'Holding-level data 대기' },
-              { group: 'Contribution Bias',        status: 'PENDING',   source: '—',           updated: '—',        note: '개별 종목 기여도 데이터 필요' },
-              { group: 'Top Contribution Drivers', status: 'PENDING',   source: '—',           updated: '—',        note: '기여 수익 API 대기' },
-              { group: 'Bucket Relative Strength', status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: 'vs SOXX RS · 엔진 직접 연산' },
-              { group: 'Breadth Raw',              status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '20MA 이상 비율 · 실시간 연산' },
-              { group: 'Momentum Raw',             status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '도메인 신호 · 엔진 출력' },
-              { group: 'Correlation Matrix',       status: 'STATIC',    source: 'Manual',      updated: '2026-04',  note: '실시간 수익 데이터 미연결' },
-              { group: 'L1 Fundamentals',          status: 'STATIC',    source: 'Manual',      updated: '2026-05',  note: 'TSMC YoY · CapEx · B2B — 수동 업데이트' },
-              { group: 'L2 AI Capital Flow',       status: 'STATIC',    source: 'Manual',      updated: '2026-04',  note: 'NVDA DC Rev · SIA Sales — 분기/월별 발표' },
-              { group: 'SOXL Environment',         status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '레짐 · 디케이 · 엔진 번역 레이어' },
-            ] as const
-            const PENDING_LOG = [
-              'SOXX holding-level contribution return data',
-              'Selected bucket contribution return by ticker',
-              'Residual contribution return calculation',
-              'L1 Fundamentals API endpoint (TSMC · B2B · SIA)',
-              'Book-to-Bill live feed (SEMI.org)',
-              'Hyperscaler CapEx live feed',
-              'SOXL decay live calculation endpoint',
-            ]
             return (
               <Panel title="DATA STATUS" icon={Database} headerExtra={
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.10em] font-mono">Data Audit Layer</span>
@@ -1199,7 +1208,7 @@ export default function TerminalXDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {ROWS.map(r => (
+                    {DATA_STATUS_ROWS.map(r => (
                       <tr key={r.group} className="border-b border-slate-800/30 hover:bg-white/[0.02]">
                         <td className="py-1 pr-3 text-slate-300 font-medium whitespace-nowrap" style={{ fontFamily: UI_FONT }}>{r.group}</td>
                         <td className="py-1 pr-3"><StatusBadge s={r.status} /></td>

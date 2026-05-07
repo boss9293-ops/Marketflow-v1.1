@@ -135,7 +135,7 @@ export default function SemiconductorRiskPanel() {
       </header>
 
       <nav className="flex bg-[#0a0f1e] border-b border-slate-800 px-6 shrink-0">
-        {['MASTER', 'ENGINE', 'STRATEGY'].map(tab => (
+        {['ENGINE', 'DATA LAB', 'STRATEGY'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -279,7 +279,7 @@ export default function SemiconductorRiskPanel() {
             </>
           )}
 
-          {activeTab === 'MASTER' && (
+          {activeTab === 'DATA LAB' && (
             <Card>
               <SectionHeader title="Supply / Demand Structural Balance" icon={Database} />
               <div className="h-[400px] w-full">
