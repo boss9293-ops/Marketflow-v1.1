@@ -257,7 +257,10 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>TSMC MONTHLY REVENUE</div>
-              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>업데이트: 매월 10일</div>
+              <div style={{display:'flex',alignItems:'center',gap:5}}>
+                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>MANUAL</span>
+                <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>매월 10일</span>
+              </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
               <span style={{fontSize:28,fontWeight:500,color:V.teal,fontFamily:V.mono}}>NT$260B</span>
@@ -278,7 +281,10 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>BOOK-TO-BILL RATIO</div>
-              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SEMI.org · 월 1회</div>
+              <div style={{display:'flex',alignItems:'center',gap:5}}>
+                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>MANUAL</span>
+                <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SEMI.org · 월 1회</span>
+              </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
               <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>1.18</span>
@@ -301,7 +307,10 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>SIA GLOBAL SEMI SALES</div>
-              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SIA · 월 1회</div>
+              <div style={{display:'flex',alignItems:'center',gap:5}}>
+                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>MANUAL</span>
+                <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SIA · 월 1회</span>
+              </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
               <span style={{fontSize:28,fontWeight:500,color:V.mint,fontFamily:V.mono}}>$56.1B</span>
@@ -322,7 +331,10 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>NVDA DATA CENTER REVENUE</div>
-              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>분기 실적</div>
+              <div style={{display:'flex',alignItems:'center',gap:5}}>
+                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>STATIC</span>
+                <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>분기 실적</span>
+              </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
               <span style={{fontSize:28,fontWeight:500,color:V.gold,fontFamily:V.mono}}>$35.6B</span>
@@ -358,7 +370,10 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
-            <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,marginBottom:8,fontFamily:V.ui}}>HYPERSCALER CAPEX (합산)</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+              <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>HYPERSCALER CAPEX (합산)</div>
+              <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>STATIC</span>
+            </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
               <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>$78.4B</span>
               <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>Q1&apos;26 · YoY +68%</span>
@@ -400,6 +415,7 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:13,fontWeight:500,color:V.gold,fontFamily:V.mono}}>0.92</span>
             <span style={{fontSize:11,color:V.text3,padding:'2px 6px',border:'1px solid rgba(107,123,149,0.3)',borderRadius:2,fontFamily:V.ui}}>실물 대비 약간 선행</span>
+            <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>STATIC</span>
           </div>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>

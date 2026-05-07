@@ -4,7 +4,7 @@ import {
   LineChart, Line, AreaChart, Area, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
-import { Cpu, TrendingUp, Activity, Bell, History, Maximize2, X, RotateCcw } from 'lucide-react'
+import { Cpu, TrendingUp, Activity, Bell, History, Maximize2, X, RotateCcw, Database } from 'lucide-react'
 import SoxxSoxlTranslationTab    from './SoxxSoxlTranslationTab'
 import SemiconductorPlaybackTab  from './SemiconductorPlaybackTab'
 import AnalysisEngineCoreTab     from './AnalysisEngineCoreTab'
@@ -1134,6 +1134,86 @@ export default function TerminalXDashboard() {
 
         {/* CENTER 50% */}
         <section className="w-1/2 flex flex-col gap-[10px]">
+
+          {/* DATA STATUS PANEL */}
+          {mainTab === 'MASTER' && (() => {
+            const STATUS_CLS: Record<string, string> = {
+              LIVE:        'bg-emerald-500/10 border-emerald-500/40 text-emerald-400',
+              CACHE:       'bg-cyan-500/10 border-cyan-500/40 text-cyan-400',
+              STATIC:      'bg-amber-500/10 border-amber-500/40 text-amber-400',
+              MANUAL:      'bg-amber-500/10 border-amber-500/40 text-amber-400',
+              QUARTERLY:   'bg-amber-500/10 border-amber-500/40 text-amber-400',
+              PENDING:     'bg-slate-800/60 border-slate-700 text-slate-500',
+              UNAVAILABLE: 'bg-slate-800/40 border-slate-800 text-slate-600',
+            }
+            const StatusBadge = ({ s }: { s: string }) => (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 border rounded-sm font-mono tracking-[0.06em] shrink-0 ${STATUS_CLS[s] ?? STATUS_CLS.PENDING}`}>{s}</span>
+            )
+            const ROWS = [
+              { group: 'SOXX Holdings',            status: 'CACHE',     source: 'ETF API',     updated: 'Daily',    note: '보유종목 구성 · 기여 분석 기반' },
+              { group: 'Selected Coverage',        status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '버킷 편입 종목 · 엔진 직접 연산' },
+              { group: 'Residual Participation',   status: 'PENDING',   source: '—',           updated: '—',        note: 'Holding-level data 대기' },
+              { group: 'Contribution Bias',        status: 'PENDING',   source: '—',           updated: '—',        note: '개별 종목 기여도 데이터 필요' },
+              { group: 'Top Contribution Drivers', status: 'PENDING',   source: '—',           updated: '—',        note: '기여 수익 API 대기' },
+              { group: 'Bucket Relative Strength', status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: 'vs SOXX RS · 엔진 직접 연산' },
+              { group: 'Breadth Raw',              status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '20MA 이상 비율 · 실시간 연산' },
+              { group: 'Momentum Raw',             status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '도메인 신호 · 엔진 출력' },
+              { group: 'Correlation Matrix',       status: 'STATIC',    source: 'Manual',      updated: '2026-04',  note: '실시간 수익 데이터 미연결' },
+              { group: 'L1 Fundamentals',          status: 'STATIC',    source: 'Manual',      updated: '2026-05',  note: 'TSMC YoY · CapEx · B2B — 수동 업데이트' },
+              { group: 'L2 AI Capital Flow',       status: 'STATIC',    source: 'Manual',      updated: '2026-04',  note: 'NVDA DC Rev · SIA Sales — 분기/월별 발표' },
+              { group: 'SOXL Environment',         status: 'LIVE',      source: 'CycleEngine', updated: 'On load',  note: '레짐 · 디케이 · 엔진 번역 레이어' },
+            ] as const
+            const PENDING_LOG = [
+              'SOXX holding-level contribution return data',
+              'Selected bucket contribution return by ticker',
+              'Residual contribution return calculation',
+              'L1 Fundamentals API endpoint (TSMC · B2B · SIA)',
+              'Book-to-Bill live feed (SEMI.org)',
+              'Hyperscaler CapEx live feed',
+              'SOXL decay live calculation endpoint',
+            ]
+            return (
+              <Panel title="DATA STATUS" icon={Database} headerExtra={
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.10em] font-mono">Data Audit Layer</span>
+              }>
+                {/* Status table */}
+                <table className="w-full text-[11px] mb-3" style={{ fontFamily: DATA_FONT }}>
+                  <thead>
+                    <tr className="text-[10px] text-slate-500 uppercase tracking-[0.10em] border-b border-slate-800">
+                      <th className="text-left py-1 font-bold pr-3" style={{ fontFamily: UI_FONT }}>DATA GROUP</th>
+                      <th className="text-left py-1 font-bold pr-3">STATUS</th>
+                      <th className="text-left py-1 font-bold pr-3">SOURCE</th>
+                      <th className="text-left py-1 font-bold pr-3">UPDATED</th>
+                      <th className="text-left py-1 font-bold">NOTE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ROWS.map(r => (
+                      <tr key={r.group} className="border-b border-slate-800/30 hover:bg-white/[0.02]">
+                        <td className="py-1 pr-3 text-slate-300 font-medium whitespace-nowrap" style={{ fontFamily: UI_FONT }}>{r.group}</td>
+                        <td className="py-1 pr-3"><StatusBadge s={r.status} /></td>
+                        <td className="py-1 pr-3 text-slate-400 whitespace-nowrap">{r.source}</td>
+                        <td className="py-1 pr-3 text-slate-400 whitespace-nowrap">{r.updated}</td>
+                        <td className="py-1 text-slate-500 text-[10px]" style={{ fontFamily: UI_FONT }}>{r.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {/* Missing Data Log */}
+                <div className="border-t border-slate-800 pt-2">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.10em] mb-1.5" style={{ fontFamily: UI_FONT }}>Missing Data Log — PENDING</div>
+                  <div className="flex flex-col gap-0.5">
+                    {PENDING_LOG.map(item => (
+                      <div key={item} className="flex items-center gap-[6px] text-[10px] text-slate-500" style={{ fontFamily: UI_FONT }}>
+                        <span className="w-1 h-1 rounded-full bg-slate-600 shrink-0" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Panel>
+            )
+          })()}
 
           <Panel title="Analysis Engine Core" className="flex-none">
             {/* Chart tab bar */}
