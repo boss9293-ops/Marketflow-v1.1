@@ -8,6 +8,7 @@ import { Cpu, TrendingUp, Activity, Bell, History, Maximize2, X, RotateCcw, Data
 import SoxxSoxlTranslationTab    from './SoxxSoxlTranslationTab'
 import SemiconductorPlaybackTab  from './SemiconductorPlaybackTab'
 import AnalysisEngineCoreTab     from './AnalysisEngineCoreTab'
+import { useSemiconductorFundamentals } from '@/lib/semiconductor/useSemiconductorFundamentals'
 import { SoxxContributionTrendMiniChart } from './SoxxContributionTrendMiniChart'
 import {
   formatBucketClassificationHint,
@@ -366,6 +367,7 @@ export default function TerminalXDashboard() {
   const [histTab,  setHistTab]  = useState('HISTORY TABLE')
   const [drillTab, setDrillTab] = useState('SUMMARY')
   const [contributionPeriod, setContributionPeriod] = useState<SoxxContributionPeriod>('1D')
+  const fundamentals = useSemiconductorFundamentals()
   const [live,     setLive]     = useState<LensData | null>(null)
   const [history,  setHistory]  = useState<{
     rows: Array<{ date:string; soxx:number; ai:number; mem:number; foundry:number; equip:number; comp:number; avg:number; phase:string }>
@@ -1021,7 +1023,7 @@ export default function TerminalXDashboard() {
 
       {/* ???? TAB: ENGINE ???? */}
       {mainTab === 'ENGINE' && (
-        <AnalysisEngineCoreTab live={live} interpData={interpData} history={history} onViewDataLab={() => setMainTab('DATA_LAB')} dataStatusCounts={DATA_STATUS_COUNTS} />
+        <AnalysisEngineCoreTab live={live} interpData={interpData} history={history} onViewDataLab={() => setMainTab('DATA_LAB')} dataStatusCounts={DATA_STATUS_COUNTS} fundamentals={fundamentals.data} fundamentalsLoading={fundamentals.loading} />
       )}
 
       {/* DATA LAB header strip */}
@@ -1192,6 +1194,27 @@ export default function TerminalXDashboard() {
             const StatusBadge = ({ s }: { s: string }) => (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 border rounded-sm font-mono tracking-[0.06em] shrink-0 ${STATUS_CLS[s] ?? STATUS_CLS.PENDING}`}>{s}</span>
             )
+            // Merge fundamentals payload status into display rows
+            const fund = fundamentals.data
+            const displayRows = DATA_STATUS_ROWS.map(r => {
+              if (!fund) return r
+              if (r.group === 'L1 Fundamentals') {
+                const s = Object.values(fund.l1Fundamentals).find(m => m.status === 'CACHE' || m.status === 'LIVE')?.status
+                return { ...r, status: (s ?? r.status) as typeof r.status }
+              }
+              if (r.group === 'L2 AI Capital Flow') {
+                const s = fund.l2CapitalFlow.hyperscalerCapex.status
+                return { ...r, status: (s === 'CACHE' || s === 'LIVE' ? s : r.status) as typeof r.status }
+              }
+              return r
+            })
+            const apiStatus = fundamentals.loading ? 'PENDING'
+              : fundamentals.error ? 'UNAVAILABLE'
+              : fundamentals.source === 'cache' ? 'CACHE' : 'STATIC'
+            const apiNote = fundamentals.loading ? 'Loading...'
+              : fundamentals.error ? 'Fetch failed · using fallback fixture'
+              : fundamentals.source === 'fixture' ? 'Using fixture · backend cache not found'
+              : `Cache · Updated ${fundamentals.lastUpdated?.slice(0, 10) ?? '—'}`
             return (
               <Panel title="DATA STATUS" icon={Database} headerExtra={
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.10em] font-mono">Data Audit Layer</span>
@@ -1208,7 +1231,7 @@ export default function TerminalXDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {DATA_STATUS_ROWS.map(r => (
+                    {displayRows.map(r => (
                       <tr key={r.group} className="border-b border-slate-800/30 hover:bg-white/[0.02]">
                         <td className="py-1 pr-3 text-slate-300 font-medium whitespace-nowrap" style={{ fontFamily: UI_FONT }}>{r.group}</td>
                         <td className="py-1 pr-3"><StatusBadge s={r.status} /></td>
@@ -1230,6 +1253,11 @@ export default function TerminalXDashboard() {
                       </div>
                     ))}
                   </div>
+                </div>
+                {/* API Status Indicator */}
+                <div className="border-t border-slate-800 pt-2 flex items-center gap-2">
+                  <StatusBadge s={apiStatus} />
+                  <span className="text-[10px] text-slate-400" style={{ fontFamily: UI_FONT }}>/api/semiconductor-fundamentals · {apiNote}</span>
                 </div>
               </Panel>
             )

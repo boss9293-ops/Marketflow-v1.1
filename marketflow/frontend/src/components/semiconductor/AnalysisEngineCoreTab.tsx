@@ -2,6 +2,7 @@
 // 반도체 사이클 엔진 — 3-Layer Pyramid 기반 분석 탭 (레퍼런스 HTML 직접 포팅)
 
 import { useState } from 'react'
+import type { SemiconductorFundamentalsPayload } from '@/lib/semiconductor/fundamentalDataContract'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -45,6 +46,8 @@ interface Props {
   history?: { rows: HistRow[] } | null
   onViewDataLab?: () => void
   dataStatusCounts?: { live: number; cache: number; static: number; pending: number }
+  fundamentals?: SemiconductorFundamentalsPayload | null
+  fundamentalsLoading?: boolean
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -211,7 +214,9 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
 }
 
 // ── TAB: CYCLE VIEW ──────────────────────────────────────────────────────────
-function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: string; confidenceLabel?: string }) {
+function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: number; stage?: string; confidenceLabel?: string; fundamentals?: SemiconductorFundamentalsPayload | null }) {
+  const f1 = fundamentals?.l1Fundamentals
+  const f2 = fundamentals?.l2CapitalFlow
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="CYCLE VIEW — 실물이 기준, SOXX는 반영도">
@@ -278,6 +283,7 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#3FB6A8" fontSize="10" textAnchor="end" fontFamily="monospace">2026.04</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>파운드리 전체 온도계 · SOXX 2~3주 선행</div>
+            {f1?.tsmcRevenueYoY.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.tsmcRevenueYoY.source} · As of {f1.tsmcRevenueYoY.asOf}</div>}
           </div>
           {/* B2B */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -304,6 +310,7 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#F2A93B" fontSize="10" textAnchor="end" fontFamily="monospace">1.18</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>장비 수주/출하 · 제조 투자 3~6개월 선행</div>
+            {f1?.bookToBill.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.bookToBill.source} · As of {f1.bookToBill.asOf}</div>}
           </div>
           {/* SIA */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -328,6 +335,7 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
               <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#5DCFB0" fontSize="10" textAnchor="end" fontFamily="monospace">$56.1B</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>전체 반도체 시장 크기 공식 데이터</div>
+            {f1?.siaSemiSales.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.siaSemiSales.source} · As of {f1.siaSemiSales.asOf}</div>}
           </div>
           {/* NVDA */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -358,6 +366,7 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
               <text x="275" y="68" fill="#D4B36A" fontSize="10" textAnchor="end" fontFamily="monospace">Q1&apos;26</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>AI 가속기 수요 직접 신호 · 가이던스 방향 핵심</div>
+            {f1?.nvdaDataCenterRevenue.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.nvdaDataCenterRevenue.source} · As of {f1.nvdaDataCenterRevenue.asOf}</div>}
           </div>
         </div>
       </div>
@@ -390,6 +399,7 @@ function TabCycle({ score, stage, confidenceLabel }: { score?: number; stage?: s
               ))}
             </div>
             <div style={{fontSize:11,color:V.text3,marginTop:6,fontFamily:V.ui}}>AI 서버/GPU 수요의 직접 연료</div>
+            {f2?.hyperscalerCapex.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f2.hyperscalerCapex.source ?? 'MSFT·AMZN·GOOG·META'} · As of {f2.hyperscalerCapex.asOf}</div>}
           </div>
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,marginBottom:10,fontFamily:V.ui}}>AI 인프라 공급 신호</div>
@@ -1124,7 +1134,7 @@ function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:H
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function AnalysisEngineCoreTab({ live, interpData, history, onViewDataLab, dataStatusCounts }: Props) {
+export default function AnalysisEngineCoreTab({ live, interpData, history, onViewDataLab, dataStatusCounts, fundamentals }: Props) {
   const [centerTab, setCenterTab] = useState<CenterTab>('map')
   const [histTab,   setHistTab]   = useState<HistTab>('event')
 
@@ -1184,7 +1194,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
             {/* Tab content */}
             <div style={{flex:1,minHeight:0,overflow:'hidden',display:'flex',flexDirection:'column',background:V.bg}}>
               {centerTab==='map'     && <TabMap rsTable={live?.rs_table} aiRegime={ar}/>}
-              {centerTab==='cycle'   && <TabCycle score={score} stage={stage} confidenceLabel={kpis?.confidence_label}/>}
+              {centerTab==='cycle'   && <TabCycle score={score} stage={stage} confidenceLabel={kpis?.confidence_label} fundamentals={fundamentals}/>}
               {centerTab==='perform' && <TabPerformance buckets={live?.buckets} aiRegime={ar}/>}
               {centerTab==='health'  && <TabHealth rsTable={live?.rs_table} kpis={kpis} breadthDetail={live?.breadth_detail} concentrationTop5={kpis?.leader_concentration_top5}/>}
               {centerTab==='soxl'    && <TabSoxlEnv onTab={setCenterTab}/>}
