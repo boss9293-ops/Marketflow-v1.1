@@ -1,0 +1,189 @@
+{
+  "generatedAt": "2026-05-07T00:00:00Z",
+  "_note": "Static fixture — all values manually sourced. Replace with cache-backed data in Phase C-4.",
+  "dataStatusSummary": {
+    "live": 0,
+    "cache": 0,
+    "static": 4,
+    "manual": 4,
+    "pending": 7,
+    "unavailable": 0
+  },
+  "l1Fundamentals": {
+    "tsmcRevenueYoY": {
+      "id": "tsmc_revenue_yoy",
+      "label": "TSMC Monthly Revenue YoY",
+      "value": 39,
+      "unit": "%",
+      "displayValue": "+39%",
+      "status": "MANUAL",
+      "source": "TSMC IR",
+      "sourceUrl": "https://ir.tsmc.com",
+      "asOf": "2026-04",
+      "updatedAt": "2026-05-07",
+      "frequency": "monthly",
+      "note": "Manually updated from TSMC monthly revenue release. 파운드리 전체 온도계 · SOXX 2~3주 선행"
+    },
+    "bookToBill": {
+      "id": "book_to_bill",
+      "label": "Book-to-Bill Ratio",
+      "value": 1.18,
+      "displayValue": "1.18",
+      "status": "MANUAL",
+      "source": "SEMI.org",
+      "sourceUrl": "https://www.semi.org",
+      "asOf": "2026-03",
+      "updatedAt": "2026-04-01",
+      "frequency": "monthly",
+      "note": "Manually updated from SEMI.org monthly release. 장비 수주/출하 · 제조 투자 3~6개월 선행"
+    },
+    "siaSemiSales": {
+      "id": "sia_semi_sales",
+      "label": "SIA Global Semiconductor Sales",
+      "value": 56.1,
+      "unit": "B USD",
+      "displayValue": "$56.1B",
+      "status": "MANUAL",
+      "source": "SIA",
+      "sourceUrl": "https://www.semiconductors.org",
+      "asOf": "2026-03",
+      "updatedAt": "2026-05-01",
+      "frequency": "monthly",
+      "note": "Manually updated from SIA monthly release. 전체 반도체 시장 크기 공식 데이터"
+    },
+    "nvdaDataCenterRevenue": {
+      "id": "nvda_dc_revenue",
+      "label": "NVDA Data Center Revenue",
+      "value": 35.6,
+      "unit": "B USD",
+      "displayValue": "$35.6B",
+      "status": "STATIC",
+      "source": "NVIDIA IR Q1'26",
+      "sourceUrl": "https://investor.nvidia.com",
+      "asOf": "2026-Q1",
+      "updatedAt": "2026-05-07",
+      "frequency": "quarterly",
+      "note": "Quarterly earnings release. AI 가속기 수요 직접 신호 · 가이던스 방향 핵심"
+    }
+  },
+  "l2CapitalFlow": {
+    "hyperscalerCapex": {
+      "id": "hyperscaler_capex",
+      "label": "Hyperscaler CapEx Aggregate",
+      "value": 78.4,
+      "unit": "B USD",
+      "displayValue": "$78.4B",
+      "status": "STATIC",
+      "source": "MSFT · AMZN · GOOG · META Q1'26",
+      "asOf": "2026-Q1",
+      "updatedAt": "2026-04-30",
+      "frequency": "quarterly",
+      "note": "YoY +68%. Manually aggregated from Q1'26 earnings. AI 수요 가속 신호"
+    },
+    "microsoftCapex": {
+      "id": "msft_capex",
+      "label": "Microsoft CapEx",
+      "value": 21.4,
+      "unit": "B USD",
+      "displayValue": "$21.4B",
+      "status": "STATIC",
+      "source": "MSFT Q1'26",
+      "asOf": "2026-Q1",
+      "updatedAt": "2026-04-30",
+      "frequency": "quarterly"
+    },
+    "amazonCapex": {
+      "id": "amzn_capex",
+      "label": "Amazon CapEx",
+      "value": 24.3,
+      "unit": "B USD",
+      "displayValue": "$24.3B",
+      "status": "STATIC",
+      "source": "AMZN Q1'26",
+      "asOf": "2026-Q1",
+      "updatedAt": "2026-04-30",
+      "frequency": "quarterly"
+    },
+    "googleCapex": {
+      "id": "goog_capex",
+      "label": "Google/Alphabet CapEx",
+      "value": 17.2,
+      "unit": "B USD",
+      "displayValue": "$17.2B",
+      "status": "STATIC",
+      "source": "GOOG Q1'26",
+      "asOf": "2026-Q1",
+      "updatedAt": "2026-04-30",
+      "frequency": "quarterly"
+    },
+    "metaCapex": {
+      "id": "meta_capex",
+      "label": "Meta CapEx",
+      "value": 15.5,
+      "unit": "B USD",
+      "displayValue": "$15.5B",
+      "status": "STATIC",
+      "source": "META Q1'26",
+      "asOf": "2026-Q1",
+      "updatedAt": "2026-04-30",
+      "frequency": "quarterly"
+    },
+    "hbmSupply": {
+      "id": "hbm_supply",
+      "label": "HBM Supply Signal",
+      "value": null,
+      "displayValue": "—",
+      "status": "PENDING",
+      "source": "Not connected",
+      "frequency": "unknown",
+      "note": "SK Hynix / Samsung HBM order backlog endpoint pending"
+    },
+    "asmlOrders": {
+      "id": "asml_orders",
+      "label": "ASML Order Backlog",
+      "value": null,
+      "displayValue": "—",
+      "status": "PENDING",
+      "source": "Not connected",
+      "frequency": "quarterly",
+      "note": "ASML quarterly order data endpoint pending"
+    },
+    "dataCenterPowerDemand": {
+      "id": "dc_power_demand",
+      "label": "Data Center Power Demand",
+      "value": null,
+      "displayValue": "—",
+      "status": "PENDING",
+      "source": "Not connected",
+      "frequency": "unknown",
+      "note": "IEA / grid operator data endpoint pending"
+    }
+  },
+  "l3MarketConfirmation": {
+    "soxxReflection": {
+      "id": "soxx_reflection",
+      "label": "SOXX Reflection Score",
+      "value": 0.92,
+      "displayValue": "0.92",
+      "status": "STATIC",
+      "source": "Manual calculation",
+      "asOf": "2026-05",
+      "updatedAt": "2026-05-07",
+      "frequency": "manual",
+      "note": "실물 대비 약간 선행. Endpoint pending — will replace with engine calculation"
+    },
+    "soxlDecay": {
+      "id": "soxl_decay",
+      "label": "SOXL Cumulative Decay",
+      "value": -4.7,
+      "unit": "%",
+      "displayValue": "-4.7%",
+      "status": "STATIC",
+      "source": "Manual calculation",
+      "asOf": "2026-05",
+      "updatedAt": "2026-05-07",
+      "frequency": "manual",
+      "note": "3x ETF decay vs 2x NAV benchmark. Live endpoint pending"
+    }
+  }
+}
