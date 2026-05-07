@@ -43,6 +43,7 @@ interface Props {
     summary?: string; interpretation?: string
   } | null
   history?: { rows: HistRow[] } | null
+  onViewDataLab?: () => void
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -861,8 +862,8 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
 }
 
 // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
-function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn }:
-  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string }) {
+function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab }:
+  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void }) {
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* ① AI vs Legacy */}
@@ -1002,6 +1003,33 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
           <span style={{color:V.teal}}>● CONNECTED</span>
         </div>
       </div>
+      {/* DATA LAB summary card */}
+      <div style={{padding:'12px 16px',borderTop:`1px solid ${V.border}`,marginTop:'auto'}}>
+        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>DATA LAB 연결 상태</div>
+        <div style={{display:'flex',flexDirection:'column',gap:5}}>
+          {[
+            { label: 'SOXX Structure', val: 'Broad',       vc: V.teal  },
+            { label: 'Bucket Coverage',val: '~48%',        vc: V.text2 },
+            { label: 'Contribution',   val: 'Unavailable', vc: V.text3 },
+          ].map(r => (
+            <div key={r.label} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+              <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>{r.label}</span>
+              <span style={{fontSize:11,fontWeight:500,color:r.vc,fontFamily:V.mono}}>{r.val}</span>
+            </div>
+          ))}
+          <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:2}}>
+            {[['4 LIVE','#22c55e'],['1 CACHE','#22d3ee'],['3 STATIC','#fbbf24'],['3 PENDING','#737880']].map(([l,c])=>(
+              <span key={l} style={{fontSize:10,padding:'1px 5px',border:`1px solid ${c}33`,color:c as string,borderRadius:2,fontFamily:'monospace'}}>{l}</span>
+            ))}
+          </div>
+        </div>
+        {onViewDataLab && (
+          <button onClick={onViewDataLab}
+            style={{marginTop:8,width:'100%',padding:'6px 0',background:'rgba(34,211,238,0.07)',border:'1px solid rgba(34,211,238,0.25)',color:V.teal,fontSize:11,borderRadius:3,cursor:'pointer',letterSpacing:'0.06em',fontWeight:600,fontFamily:V.mono}}>
+            전체 보기 → DATA LAB
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -1090,7 +1118,7 @@ function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:H
 }
 
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────────
-export default function AnalysisEngineCoreTab({ live, interpData, history }: Props) {
+export default function AnalysisEngineCoreTab({ live, interpData, history, onViewDataLab }: Props) {
   const [centerTab, setCenterTab] = useState<CenterTab>('map')
   const [histTab,   setHistTab]   = useState<HistTab>('event')
 
@@ -1157,7 +1185,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history }: Pro
             </div>
           </div>
 
-          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn}/>
+          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn} onViewDataLab={onViewDataLab}/>
         </div>
 
         {/* History Card */}

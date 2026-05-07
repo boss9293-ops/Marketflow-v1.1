@@ -328,7 +328,7 @@ const UI_FONT = "'Inter', 'Pretendard', sans-serif";
 const DATA_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 export default function TerminalXDashboard() {
-  const [mainTab,  setMainTab]  = useState<'MASTER' | 'ENGINE' | 'STRATEGY' | 'PLAYBACK'>('ENGINE')
+  const [mainTab,  setMainTab]  = useState<'ENGINE' | 'DATA_LAB' | 'STRATEGY' | 'PLAYBACK'>('ENGINE')
   const [centerTab,setCenterTab]= useState('PERFORMANCE')
   const [zoom,     setZoom]     = useState('6M')
   const [histTab,  setHistTab]  = useState('HISTORY TABLE')
@@ -925,11 +925,11 @@ export default function TerminalXDashboard() {
             <span className="text-[11px] font-semibold font-sans text-slate-400 tracking-[0.02em] uppercase tracking-[0.12em] hidden lg:block ml-1" style={{ fontFamily: UI_FONT }}>SEMICONDUCTOR ANALYSIS ENGINE</span>
           </div>
           <nav className="flex gap-[6px]">
-            {(['MASTER', 'ENGINE', 'STRATEGY', 'PLAYBACK'] as const).map(t => (
+            {(['ENGINE', 'DATA_LAB', 'STRATEGY', 'PLAYBACK'] as const).map(t => (
               <button key={t} onClick={() => setMainTab(t)}
                 className={`px-4 h-[40px] text-[14px] font-medium leading-[1.6] font-bold tracking-widest border-b-2 transition-all ${
                   mainTab === t ? 'border-blue-500 text-white bg-blue-500/5' : 'border-transparent text-slate-400 tracking-[0.02em] hover:text-slate-300 tracking-[0.02em]'
-                }`}>{t}</button>
+                }`}>{t === 'DATA_LAB' ? 'DATA LAB' : t}</button>
             ))}
           </nav>
         </div>
@@ -989,18 +989,29 @@ export default function TerminalXDashboard() {
 
       {/* ???? TAB: ENGINE ???? */}
       {mainTab === 'ENGINE' && (
-        <AnalysisEngineCoreTab live={live} interpData={interpData} history={history} />
+        <AnalysisEngineCoreTab live={live} interpData={interpData} history={history} onViewDataLab={() => setMainTab('DATA_LAB')} />
       )}
 
-      {/* ???? MAIN 3-COLUMN (MASTER tab only) ???? */}
-      <div className={`flex px-4 md:px-6 xl:px-10 2xl:px-14 gap-[10px] bg-[#020408] py-3 flex-1 ${mainTab === 'MASTER' ? '' : 'hidden'}`}>
+      {/* DATA LAB header strip */}
+      {mainTab === 'DATA_LAB' && (
+        <div className="px-4 md:px-6 xl:px-10 2xl:px-14 py-2.5 border-b border-slate-800/60 bg-[#04070d] shrink-0 flex items-baseline gap-[14px]">
+          <span className="text-[14px] font-black text-white tracking-[0.04em]" style={{ fontFamily: UI_FONT }}>DATA LAB</span>
+          <span className="text-[11px] text-slate-500 tracking-[0.02em]" style={{ fontFamily: UI_FONT }}>
+            Advanced data audit · contribution · residual · correlation
+          </span>
+          <span className="text-[10px] text-slate-600 ml-auto italic" style={{ fontFamily: UI_FONT }}>
+            ENGINE 판단의 근거가 되는 원자료 및 데이터 신뢰도 검증 화면
+          </span>
+        </div>
+      )}
+
+      {/* DATA LAB 3-column layout */}
+      <div className={`flex px-4 md:px-6 xl:px-10 2xl:px-14 gap-[10px] bg-[#020408] py-3 flex-1 ${mainTab === 'DATA_LAB' ? '' : 'hidden'}`}>
 
         {/* LEFT 25% */}
         <aside className="w-1/4 shrink-0 flex flex-col gap-[10px] h-fit">
 
-          {/* ???? Block 1: Cycle Position ?????????????????????????????????????????????????????????? */}
 
-          {/* ???? Block 2: Cycle Timeline ?????????????????????????????????????????????????????????? */}
 
           {/* ???? Block 3: Bucket Power Ranking ???????????????????????????????????????????? */}
           {(() => {
@@ -1136,7 +1147,7 @@ export default function TerminalXDashboard() {
         <section className="w-1/2 flex flex-col gap-[10px]">
 
           {/* DATA STATUS PANEL */}
-          {mainTab === 'MASTER' && (() => {
+          {mainTab === 'DATA_LAB' && (() => {
             const STATUS_CLS: Record<string, string> = {
               LIVE:        'bg-emerald-500/10 border-emerald-500/40 text-emerald-400',
               CACHE:       'bg-cyan-500/10 border-cyan-500/40 text-cyan-400',
