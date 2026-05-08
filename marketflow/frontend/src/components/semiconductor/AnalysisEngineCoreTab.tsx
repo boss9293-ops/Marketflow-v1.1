@@ -530,6 +530,101 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
   )
 }
 
+// ── RELATIVE ROTATION MAP CARD ───────────────────────────────────────────────
+type RRGBench = 'SOXX' | 'QQQ' | 'SPY'
+const SEMI_RRG_POINTS = [
+  { name:'AI Compute',    short:'AI',  rs:106.2, mom:103.4, color:'#3FB6A8' },
+  { name:'Memory / HBM', short:'MEM', rs:104.1, mom:102.3, color:'#F2A93B' },
+  { name:'SOXX',          short:'SOX', rs:102.8, mom:101.6, color:'#4A9EE0' },
+  { name:'Equipment',     short:'EQP', rs:101.2, mom:100.8, color:'#D4B36A' },
+  { name:'Foundry / Pkg', short:'FND', rs: 99.4, mom:100.5, color:'#E55A5A' },
+]
+function SemiconductorRRGCard() {
+  const [bench, setBench] = useState<RRGBench>('SOXX')
+  const W=520, H=256, L=40, R=20, T=24, B=36
+  const CW=W-L-R, CH=H-T-B
+  const xMin=95, xMax=110, yMin=96, yMax=106
+  const toSvg = (rs:number, mom:number) => ({
+    x: L+(rs-xMin)/(xMax-xMin)*CW,
+    y: T+(1-(mom-yMin)/(yMax-yMin))*CH,
+  })
+  const cx = L+(100-xMin)/(xMax-xMin)*CW
+  const cy = T+(1-(100-yMin)/(yMax-yMin))*CH
+  const isPending = bench !== 'SOXX'
+  return (
+    <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:16,minHeight:320}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+        <div>
+          <div style={{fontSize:11,letterSpacing:'0.16em',color:V.teal,fontWeight:500,fontFamily:V.ui,marginBottom:2}}>RELATIVE ROTATION MAP</div>
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Bucket rotation versus {bench}</div>
+        </div>
+        <div style={{display:'flex',gap:4}}>
+          {(['SOXX','QQQ','SPY'] as RRGBench[]).map(b=>(
+            <button key={b} onClick={()=>setBench(b)} style={{
+              fontSize:10,padding:'2px 8px',borderRadius:2,cursor:'pointer',
+              border:`1px solid ${bench===b?'rgba(63,182,168,0.4)':V.border}`,
+              background:bench===b?'rgba(63,182,168,0.12)':V.bg3,
+              color:bench===b?V.teal:V.text3,fontFamily:'monospace',letterSpacing:'0.05em',
+            }}>{b}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginBottom:10,padding:'4px 8px',background:V.bg3,borderRadius:3}}>
+        RRG는 기준지수 대비 상대강도와 상대 모멘텀이 함께 개선되는지 보는 회전 지도입니다.
+      </div>
+      {isPending ? (
+        <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8,background:V.bg3,borderRadius:4}}>
+          <div style={{fontSize:12,color:V.text3,fontFamily:V.ui}}>PENDING</div>
+          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>{bench} benchmark endpoint not yet connected</div>
+        </div>
+      ) : (
+        <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',display:'block'}}>
+          <rect x={cx}  y={T}  width={W-cx-R} height={cy-T}   fill="rgba(63,182,168,0.08)"/>
+          <rect x={cx}  y={cy} width={W-cx-R} height={H-cy-B} fill="rgba(251,191,36,0.08)"/>
+          <rect x={L}   y={cy} width={cx-L}   height={H-cy-B} fill="rgba(229,90,90,0.08)"/>
+          <rect x={L}   y={T}  width={cx-L}   height={cy-T}   fill="rgba(74,158,224,0.06)"/>
+          <text x={cx+6}  y={T+14}  fill="#3FB6A8" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LEADING</text>
+          <text x={W-R-6} y={H-B-8} fill="#6B7B95" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">WEAKENING</text>
+          <text x={L+6}   y={H-B-8} fill="#6B7B95" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LAGGING</text>
+          <text x={cx-6}  y={T+14}  fill="#4A9EE0" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">IMPROVING</text>
+          {[97,99,101,103,105,107,109].map(v=>{
+            const px=L+(v-xMin)/(xMax-xMin)*CW
+            return <g key={`gx${v}`}><line x1={px} y1={T} x2={px} y2={H-B} stroke={V.brd2} strokeWidth={0.5}/><text x={px} y={H-B+12} textAnchor="middle" fill={V.text3} fontSize={8} fontFamily="'IBM Plex Mono',monospace">{v}</text></g>
+          })}
+          {[97,99,101,103,105].map(v=>{
+            const py=T+(1-(v-yMin)/(yMax-yMin))*CH
+            return <line key={`gy${v}`} x1={L} y1={py} x2={W-R} y2={py} stroke={V.brd2} strokeWidth={0.5}/>
+          })}
+          <line x1={cx} y1={T}   x2={cx} y2={H-B} stroke={V.border} strokeWidth={1} strokeDasharray="4,3"/>
+          <line x1={L}  y1={cy}  x2={W-R} y2={cy}  stroke={V.border} strokeWidth={1} strokeDasharray="4,3"/>
+          <text x={W/2} y={H-4}  textAnchor="middle" fill={V.text3} fontSize={9} fontFamily="'IBM Plex Mono',monospace">RS Ratio →</text>
+          <text x={10}  y={H/2}  textAnchor="middle" fill={V.text3} fontSize={9} fontFamily="'IBM Plex Mono',monospace" transform={`rotate(-90,10,${H/2})`}>RS Mom ↑</text>
+          {SEMI_RRG_POINTS.map(p=>{
+            const {x,y}=toSvg(p.rs,p.mom)
+            return (
+              <g key={p.name}>
+                <circle cx={x} cy={y} r={9} fill={p.color} opacity={0.85}/>
+                <text x={x} y={y+3.5} textAnchor="middle" fill="#0C1628" fontSize={8} fontWeight="700" fontFamily="'IBM Plex Mono',monospace">{p.short}</text>
+              </g>
+            )
+          })}
+        </svg>
+      )}
+      <div style={{display:'flex',gap:14,flexWrap:'wrap',marginTop:8}}>
+        {SEMI_RRG_POINTS.map(p=>(
+          <div key={p.name} style={{display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+            <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>{p.name}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'4px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${V.border}`}}>
+        Path pending — current point only · 궤적 데이터 미연결
+      </div>
+    </div>
+  )
+}
+
 // ── TAB: PERFORMANCE ─────────────────────────────────────────────────────────
 function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegime?: InterpAIRegime }) {
   const perfRows = [
@@ -593,6 +688,8 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
         <RegimeBars aiRegime={aiRegime}/>
         <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:8,padding:'6px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>{'Participation is broad across all semiconductor segments with no dominant concentration, consistent with an early recovery structure.'}</div>
       </Card>
+      <SecTitle style={{marginTop:10}}>RELATIVE ROTATION MAP</SecTitle>
+      <SemiconductorRRGCard />
     </div>
   )
 }
