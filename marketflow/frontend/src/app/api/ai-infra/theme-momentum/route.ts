@@ -19,6 +19,8 @@ import {
   type AIInfraMultiPeriodReturn,
   type AIInfraBenchmarkReturns,
 } from '@/lib/semiconductor/aiInfraBucketRS'
+import { computeBucketState } from '@/lib/ai-infra/aiInfraStateLabels'
+import type { RrgPathPayload } from '@/lib/semiconductor/rrgPathData'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -41,6 +43,26 @@ const DB_CANDIDATES = [
   path.resolve(process.cwd(), '..', 'backend', 'data', 'marketflow.db'),
   path.resolve(process.cwd(), 'backend', 'data', 'marketflow.db'),
 ]
+
+// D-4: load bottleneck RRG cache (optional — does not crash if missing)
+const RRG_CACHE_CANDIDATES = [
+  path.resolve(process.cwd(), '..', 'backend', 'output', 'cache', 'bottleneck_rrg_latest.json'),
+  path.resolve(process.cwd(), 'backend', 'output', 'cache', 'bottleneck_rrg_latest.json'),
+]
+
+function loadRRGCache(): RrgPathPayload | null {
+  for (const candidate of RRG_CACHE_CANDIDATES) {
+    try {
+      if (fs.existsSync(candidate)) {
+        const raw = fs.readFileSync(candidate, 'utf-8')
+        return JSON.parse(raw) as RrgPathPayload
+      }
+    } catch {
+      // continue
+    }
+  }
+  return null
+}
 
 function uniqueRequiredTickers(): string[] {
   const tickers = new Set<string>()
@@ -280,6 +302,17 @@ export async function GET() {
         dataNotes.push(`Missing DB rows: ${missingTickers.slice(0, 8).join(', ')}${missingTickers.length > 8 ? '…' : ''}.`)
       // ──────────────────────────────────────────────────────────────────────
 
+      // ── D-4: State Label Engine ────────────────────────────────────────────
+      const rrgCache = loadRRGCache()
+      const rrgSeriesMap = new Map(
+        (rrgCache?.series ?? []).map(s => [s.id, s])
+      )
+      const bucket_states = buckets.map(b =>
+        computeBucketState(b, rrgSeriesMap.get(b.bucket_id) ?? null)
+      )
+      dataNotes.push('State labels are rule-based and price/RRG-driven. They do not include earnings confirmation or investment recommendations.')
+      // ──────────────────────────────────────────────────────────────────────
+
       return NextResponse.json({
         source: 'local_price_db:ohlcv_daily',
         asOf,
@@ -289,6 +322,8 @@ export async function GET() {
         // D-2 extensions (additive — backward compatible)
         buckets,
         benchmarks,
+        // D-4 extension (additive — backward compatible)
+        bucket_states,
         generated_at: new Date().toISOString(),
         data_notes: dataNotes,
         warnings: missingTickers.length > 0
