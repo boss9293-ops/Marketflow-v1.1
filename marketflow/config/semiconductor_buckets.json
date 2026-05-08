@@ -1,0 +1,35 @@
+{
+  "aiCompute": {
+    "label": "AI Compute",
+    "tickers": ["NVDA", "AVGO", "AMD"],
+    "weights": {
+      "NVDA": 0.5,
+      "AVGO": 0.3,
+      "AMD": 0.2
+    }
+  },
+  "memoryHbm": {
+    "label": "Memory / HBM",
+    "tickers": ["MU"],
+    "weights": {
+      "MU": 1.0
+    }
+  },
+  "foundryPackaging": {
+    "label": "Foundry / Packaging",
+    "tickers": ["TSM"],
+    "weights": {
+      "TSM": 1.0
+    }
+  },
+  "equipment": {
+    "label": "Equipment",
+    "tickers": ["ASML", "AMAT", "LRCX", "KLAC"],
+    "weights": {
+      "ASML": 0.25,
+      "AMAT": 0.25,
+      "LRCX": 0.25,
+      "KLAC": 0.25
+    }
+  }
+}

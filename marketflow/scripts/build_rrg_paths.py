@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / 'marketflow/backend/scripts'))
 from rrg_candidate_d import calc_rrg_candidate_d, quadrant  # type: ignore
 
-DB_PATH  = ROOT / 'marketflow/backend/data/cache.db'
-OUT_PATH = ROOT / 'marketflow/backend/output/cache/rrg_paths_latest.json'
+DB_PATH         = ROOT / 'marketflow/backend/data/cache.db'
+OUT_PATH        = ROOT / 'marketflow/backend/output/cache/rrg_paths_latest.json'
+BUCKET_PRICES   = ROOT / 'marketflow/backend/output/cache/semiconductor_bucket_prices_latest.json'
 
 LOOKBACK_WEEKS = 24
 
@@ -95,17 +96,42 @@ def main():
     else:
         print('  QQQ or SPY series too short — skipping QQQ vs SPY')
 
-    # ── Semiconductor buckets — all PENDING (no bucket price series yet) ─
-    BUCKET_PENDING = [
-        ('ai_compute',       'AI Compute',        'SOXX', 'No AI Compute bucket price series in local DB'),
-        ('memory_hbm',       'Memory / HBM',       'SOXX', 'No Memory/HBM bucket price series in local DB'),
-        ('foundry_pkg',      'Foundry / Pkg',      'SOXX', 'No Foundry/Pkg bucket price series in local DB'),
-        ('equipment',        'Equipment',          'SOXX', 'No Equipment bucket price series in local DB'),
-        ('soxx_vs_qqq',      'SOXX vs QQQ',        'QQQ',  'SMH/SOXX not in series_data — adding to series_data is next step'),
-        ('soxx_vs_spy',      'SOXX vs SPY',        'SPY',  'SMH/SOXX not in series_data — adding to series_data is next step'),
+    # ── Semiconductor buckets — load from bucket price cache if available ─
+    has_bucket_path = False
+    bucket_map: dict[str, dict] = {}
+    if BUCKET_PRICES.exists():
+        with open(BUCKET_PRICES, 'r', encoding='utf-8') as f:
+            bp_cache = json.load(f)
+        for b in bp_cache.get('buckets', []):
+            bucket_map[b['id']] = b
+
+    BUCKET_DEFS = [
+        ('aiCompute',       'ai_compute',   'AI Compute',          'SOXX'),
+        ('memoryHbm',       'memory_hbm',   'Memory / HBM',        'SOXX'),
+        ('foundryPackaging','foundry_pkg',  'Foundry / Pkg',       'SOXX'),
+        ('equipment',       'equipment',    'Equipment',           'SOXX'),
     ]
-    for id_, label, bm, note in BUCKET_PENDING:
-        series_list.append(pending_series(id_, label, bm, note))
+    for cfg_id, series_id, label, bm in BUCKET_DEFS:
+        b = bucket_map.get(cfg_id)
+        if b and b.get('status') in ('CACHE', 'PARTIAL') and len(b.get('series', [])) >= 252:
+            # Build pd.Series from bucket prices, then run Candidate-D vs benchmark
+            raw = b['series']
+            idx  = pd.to_datetime([r['date'] for r in raw])
+            vals = [r['value'] for r in raw]
+            bucket_s = pd.Series(vals, index=idx, name=series_id, dtype=float)
+            # Need SOXX benchmark series — not yet available
+            # When SOXX series_data is added, replace this block
+            note_str = f'{b.get("status")} bucket price available but SOXX benchmark missing — RRG pending'
+            series_list.append(pending_series(series_id, label, bm, note_str))
+        else:
+            note_str = (b.get('note') or 'Bucket price series pending') if b else 'Bucket price cache missing'
+            series_list.append(pending_series(series_id, label, bm, note_str))
+
+    # SOXX vs QQQ/SPY — pending until SOXX/SMH added to series_data
+    series_list.append(pending_series('soxx_vs_qqq', 'SOXX vs QQQ', 'QQQ',
+                                      'SMH/SOXX not in series_data — C-5D'))
+    series_list.append(pending_series('soxx_vs_spy', 'SOXX vs SPY', 'SPY',
+                                      'SMH/SOXX not in series_data — C-5D'))
 
     payload = {
         'generatedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'),
@@ -114,7 +140,7 @@ def main():
         'series':      series_list,
         'dataStatus': {
             'hasBenchmarkPath': has_benchmark_path,
-            'hasBucketPath':    False,
+            'hasBucketPath':    has_bucket_path,
             'pendingReason':    (
                 None if has_benchmark_path
                 else 'No usable symbol pairs in series_data for benchmark path'
