@@ -531,63 +531,147 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
 }
 
 // ── RELATIVE ROTATION MAP CARD ───────────────────────────────────────────────
-type RRGBench = 'SOXX' | 'QQQ' | 'SPY'
-const SEMI_RRG_POINTS = [
-  { name:'AI Compute',    short:'AI',  rs:106.2, mom:103.4, color:'#3FB6A8' },
-  { name:'Memory / HBM', short:'MEM', rs:104.1, mom:102.3, color:'#F2A93B' },
-  { name:'SOXX',          short:'SOX', rs:102.8, mom:101.6, color:'#4A9EE0' },
-  { name:'Equipment',     short:'EQP', rs:101.2, mom:100.8, color:'#D4B36A' },
-  { name:'Foundry / Pkg', short:'FND', rs: 99.4, mom:100.5, color:'#E55A5A' },
+type RRGBench    = 'SOXX' | 'QQQ' | 'SPY'
+type RRGLookback = 4 | 8 | 12 | 24
+interface RRGBucket {
+  name: string; short: string; color: string
+  path: number[][]   // 24 weekly pts, index 0=oldest, 23=current
+  note: string       // shown after [quad] label in interpretation strip
+  isBm?: boolean
+}
+// 24-week fixture paths — EXPANSION cycle, AI Compute leading
+const SEMI_RRG_BUCKETS: RRGBucket[] = [
+  {
+    name:'AI Compute', short:'AI', color:'#3FB6A8',
+    note:'RS & momentum sustained · cycle driver',
+    path:[
+      [98.1,98.2],[98.3,98.3],[98.6,98.5],[99.0,98.7],[99.4,99.0],[99.8,99.3],
+      [100.2,99.7],[100.6,100.1],[101.0,100.4],[101.4,100.7],[101.8,101.0],[102.2,101.3],
+      [102.6,101.6],[103.0,101.9],[103.4,102.1],[103.8,102.3],[104.2,102.5],[104.6,102.7],
+      [105.0,102.9],[105.3,103.0],[105.6,103.1],[105.8,103.2],[106.0,103.3],[106.2,103.4],
+    ],
+  },
+  {
+    name:'Memory / HBM', short:'MEM', color:'#F2A93B',
+    note:'AI Compute 3W 후행 · 모멘텀 고점 접근',
+    path:[
+      [97.2,97.1],[97.5,97.3],[97.8,97.5],[98.2,97.8],[98.6,98.1],[99.0,98.5],
+      [99.4,98.9],[99.8,99.3],[100.1,99.7],[100.4,100.0],[100.7,100.3],[101.0,100.6],
+      [101.3,100.9],[101.6,101.1],[101.9,101.3],[102.2,101.5],[102.5,101.7],[102.8,101.9],
+      [103.1,102.0],[103.3,102.1],[103.6,102.2],[103.8,102.3],[104.0,102.3],[104.1,102.3],
+    ],
+  },
+  {
+    name:'Equipment', short:'EQP', color:'#D4B36A',
+    note:'Leading 진입 직전 · Lagging에서 회복 중',
+    path:[
+      [97.8,98.0],[97.9,98.1],[98.0,98.2],[98.1,98.3],[98.3,98.4],[98.5,98.6],
+      [98.7,98.8],[99.0,99.0],[99.2,99.2],[99.4,99.4],[99.6,99.6],[99.8,99.8],
+      [100.0,100.0],[100.1,100.1],[100.2,100.2],[100.4,100.3],[100.5,100.4],[100.7,100.5],
+      [100.8,100.6],[100.9,100.7],[101.0,100.7],[101.1,100.8],[101.2,100.8],[101.2,100.8],
+    ],
+  },
+  {
+    name:'Foundry / Pkg', short:'FND', color:'#E55A5A',
+    note:'RS 기준선 미달 · 가장 느린 회복',
+    path:[
+      [97.0,97.5],[97.1,97.6],[97.2,97.7],[97.3,97.8],[97.5,97.9],[97.7,98.0],
+      [97.9,98.2],[98.1,98.4],[98.2,98.6],[98.4,98.8],[98.5,99.0],[98.6,99.2],
+      [98.7,99.4],[98.8,99.5],[98.9,99.6],[99.0,99.7],[99.1,99.8],[99.1,99.9],
+      [99.2,100.0],[99.2,100.1],[99.3,100.2],[99.3,100.3],[99.4,100.4],[99.4,100.5],
+    ],
+  },
+  {
+    name:'SOXX', short:'SOX', color:'#4A9EE0', isBm: true,
+    note:'기준지수 참조점 (100, 100)',
+    path: Array.from({length:24}, ()=>[100.0,100.0]),
+  },
 ]
+const BENCH_CONTEXT: Record<RRGBench, string> = {
+  SOXX: '내부 반도체 섹터 순환',
+  QQQ:  '반도체 vs 기술시장 상대강도',
+  SPY:  '반도체 vs 전체시장 상대강도',
+}
 function SemiconductorRRGCard() {
-  const [bench, setBench] = useState<RRGBench>('SOXX')
-  const W=520, H=256, L=40, R=20, T=24, B=36
+  const [bench,    setBench]    = useState<RRGBench>('SOXX')
+  const [lookback, setLookback] = useState<RRGLookback>(8)
+
+  const W=520, H=272, L=44, R=20, T=24, B=38
   const CW=W-L-R, CH=H-T-B
-  const xMin=95, xMax=110, yMin=96, yMax=106
+  const xMin=95, xMax=108, yMin=96, yMax=106
+
   const toSvg = (rs:number, mom:number) => ({
     x: L+(rs-xMin)/(xMax-xMin)*CW,
     y: T+(1-(mom-yMin)/(yMax-yMin))*CH,
   })
-  const cx = L+(100-xMin)/(xMax-xMin)*CW
-  const cy = T+(1-(100-yMin)/(yMax-yMin))*CH
+  const {x:cx, y:cy} = toSvg(100, 100)
   const isPending = bench !== 'SOXX'
+
+  const quadLabel = (rs:number, mom:number) =>
+    rs>=100&&mom>=100 ? 'Leading' : rs>=100&&mom<100 ? 'Weakening'
+    : rs<100&&mom>=100 ? 'Improving' : 'Lagging'
+
+  const quadColor = (q:string) =>
+    q==='Leading' ? V.teal : q==='Improving' ? V.blue : q==='Weakening' ? V.amber : V.red
+
   return (
-    <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:16,minHeight:320}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+    <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:16,minHeight:340}}>
+      {/* ── Header ── */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
         <div>
           <div style={{fontSize:11,letterSpacing:'0.16em',color:V.teal,fontWeight:500,fontFamily:V.ui,marginBottom:2}}>RELATIVE ROTATION MAP</div>
-          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Bucket rotation versus {bench}</div>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>vs {bench}</span>
+            <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,opacity:0.7}}>· {BENCH_CONTEXT[bench]}</span>
+          </div>
         </div>
-        <div style={{display:'flex',gap:4}}>
-          {(['SOXX','QQQ','SPY'] as RRGBench[]).map(b=>(
-            <button key={b} onClick={()=>setBench(b)} style={{
-              fontSize:10,padding:'2px 8px',borderRadius:2,cursor:'pointer',
-              border:`1px solid ${bench===b?'rgba(63,182,168,0.4)':V.border}`,
-              background:bench===b?'rgba(63,182,168,0.12)':V.bg3,
-              color:bench===b?V.teal:V.text3,fontFamily:'monospace',letterSpacing:'0.05em',
-            }}>{b}</button>
-          ))}
+        <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
+          <div style={{display:'flex',gap:3}}>
+            {(['SOXX','QQQ','SPY'] as RRGBench[]).map(b=>(
+              <button key={b} onClick={()=>setBench(b)} style={{
+                fontSize:10,padding:'2px 8px',borderRadius:2,cursor:'pointer',
+                border:`1px solid ${bench===b?'rgba(63,182,168,0.4)':V.border}`,
+                background:bench===b?'rgba(63,182,168,0.12)':V.bg3,
+                color:bench===b?V.teal:V.text3,fontFamily:'monospace',letterSpacing:'0.05em',
+              }}>{b}</button>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:3}}>
+            {([4,8,12,24] as RRGLookback[]).map(n=>(
+              <button key={n} onClick={()=>setLookback(n)} style={{
+                fontSize:10,padding:'1px 6px',borderRadius:2,cursor:'pointer',
+                border:`1px solid ${lookback===n?'rgba(107,123,149,0.5)':V.border}`,
+                background:lookback===n?'rgba(107,123,149,0.12)':V.bg3,
+                color:lookback===n?V.text2:V.text3,fontFamily:'monospace',letterSpacing:'0.05em',
+              }}>{n}W</button>
+            ))}
+          </div>
         </div>
       </div>
+      {/* ── Korean helper ── */}
       <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginBottom:10,padding:'4px 8px',background:V.bg3,borderRadius:3}}>
-        RRG는 기준지수 대비 상대강도와 상대 모멘텀이 함께 개선되는지 보는 회전 지도입니다.
+        RS Ratio (가로) · RS Momentum (세로) 이동 경로로 섹터 순환 단계를 읽는 회전 지도입니다.
       </div>
+
       {isPending ? (
         <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8,background:V.bg3,borderRadius:4}}>
           <div style={{fontSize:12,color:V.text3,fontFamily:V.ui}}>PENDING</div>
-          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>{bench} benchmark endpoint not yet connected</div>
+          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>{bench} 기준 상대강도 데이터 미연결</div>
         </div>
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',display:'block'}}>
-          <rect x={cx}  y={T}  width={W-cx-R} height={cy-T}   fill="rgba(63,182,168,0.08)"/>
-          <rect x={cx}  y={cy} width={W-cx-R} height={H-cy-B} fill="rgba(251,191,36,0.08)"/>
-          <rect x={L}   y={cy} width={cx-L}   height={H-cy-B} fill="rgba(229,90,90,0.08)"/>
-          <rect x={L}   y={T}  width={cx-L}   height={cy-T}   fill="rgba(74,158,224,0.06)"/>
+          {/* Quadrant backgrounds */}
+          <rect x={cx} y={T}  width={W-cx-R} height={cy-T}   fill="rgba(63,182,168,0.10)"/>
+          <rect x={cx} y={cy} width={W-cx-R} height={H-cy-B} fill="rgba(251,191,36,0.10)"/>
+          <rect x={L}  y={cy} width={cx-L}   height={H-cy-B} fill="rgba(229,90,90,0.10)"/>
+          <rect x={L}  y={T}  width={cx-L}   height={cy-T}   fill="rgba(74,158,224,0.07)"/>
+          {/* Quadrant labels */}
           <text x={cx+6}  y={T+14}  fill="#3FB6A8" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LEADING</text>
           <text x={W-R-6} y={H-B-8} fill="#6B7B95" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">WEAKENING</text>
           <text x={L+6}   y={H-B-8} fill="#6B7B95" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LAGGING</text>
           <text x={cx-6}  y={T+14}  fill="#4A9EE0" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">IMPROVING</text>
-          {[97,99,101,103,105,107,109].map(v=>{
+          {/* Subtle grid */}
+          {[96,98,100,102,104,106,108].map(v=>{
             const px=L+(v-xMin)/(xMax-xMin)*CW
             return <g key={`gx${v}`}><line x1={px} y1={T} x2={px} y2={H-B} stroke={V.brd2} strokeWidth={0.5}/><text x={px} y={H-B+12} textAnchor="middle" fill={V.text3} fontSize={8} fontFamily="'IBM Plex Mono',monospace">{v}</text></g>
           })}
@@ -595,32 +679,83 @@ function SemiconductorRRGCard() {
             const py=T+(1-(v-yMin)/(yMax-yMin))*CH
             return <line key={`gy${v}`} x1={L} y1={py} x2={W-R} y2={py} stroke={V.brd2} strokeWidth={0.5}/>
           })}
-          <line x1={cx} y1={T}   x2={cx} y2={H-B} stroke={V.border} strokeWidth={1} strokeDasharray="4,3"/>
-          <line x1={L}  y1={cy}  x2={W-R} y2={cy}  stroke={V.border} strokeWidth={1} strokeDasharray="4,3"/>
+          {/* 100/100 center axis — emphasized */}
+          <line x1={cx} y1={T}  x2={cx}  y2={H-B} stroke="rgba(107,123,149,0.55)" strokeWidth={1.5} strokeDasharray="5,3"/>
+          <line x1={L}  y1={cy} x2={W-R} y2={cy}  stroke="rgba(107,123,149,0.55)" strokeWidth={1.5} strokeDasharray="5,3"/>
+          {/* Axis labels */}
           <text x={W/2} y={H-4}  textAnchor="middle" fill={V.text3} fontSize={9} fontFamily="'IBM Plex Mono',monospace">RS Ratio →</text>
           <text x={10}  y={H/2}  textAnchor="middle" fill={V.text3} fontSize={9} fontFamily="'IBM Plex Mono',monospace" transform={`rotate(-90,10,${H/2})`}>RS Mom ↑</text>
-          {SEMI_RRG_POINTS.map(p=>{
-            const {x,y}=toSvg(p.rs,p.mom)
+          {/* Trails + current points */}
+          {SEMI_RRG_BUCKETS.map(bucket => {
+            if (bucket.isBm) {
+              return (
+                <g key={bucket.name}>
+                  <circle cx={cx} cy={cy} r={5} fill={bucket.color} opacity={0.22}/>
+                  <text x={cx+8} y={cy-3} fill={bucket.color} fontSize={8} fontFamily="'IBM Plex Mono',monospace" opacity={0.35}>BM</text>
+                </g>
+              )
+            }
+            const slice = bucket.path.slice(-(lookback+1))
+            const n = slice.length
+            const cur = slice[n-1]
+            const {x:curX, y:curY} = toSvg(cur[0], cur[1])
+            const trailPts = slice.slice(0, n-1)
+            const polyPts = slice.map(pt=>{ const p=toSvg(pt[0],pt[1]); return `${p.x},${p.y}` }).join(' ')
             return (
-              <g key={p.name}>
-                <circle cx={x} cy={y} r={9} fill={p.color} opacity={0.85}/>
-                <text x={x} y={y+3.5} textAnchor="middle" fill="#0C1628" fontSize={8} fontWeight="700" fontFamily="'IBM Plex Mono',monospace">{p.short}</text>
+              <g key={bucket.name}>
+                <polyline points={polyPts} fill="none" stroke={bucket.color} strokeWidth={1.4} opacity={0.38} strokeLinejoin="round" strokeLinecap="round"/>
+                {trailPts.map((pt,i)=>{
+                  const {x,y}=toSvg(pt[0],pt[1])
+                  const op=0.10+(i/(n-1))*0.42
+                  return <circle key={i} cx={x} cy={y} r={3} fill={bucket.color} opacity={op}/>
+                })}
+                <circle cx={curX} cy={curY} r={10} fill={bucket.color} opacity={0.88}/>
+                <text x={curX} y={curY+3.5} textAnchor="middle" fill="#0C1628" fontSize={8} fontWeight="700" fontFamily="'IBM Plex Mono',monospace">{bucket.short}</text>
               </g>
             )
           })}
         </svg>
       )}
-      <div style={{display:'flex',gap:14,flexWrap:'wrap',marginTop:8}}>
-        {SEMI_RRG_POINTS.map(p=>(
-          <div key={p.name} style={{display:'flex',alignItems:'center',gap:4}}>
-            <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
-            <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>{p.name}</span>
+
+      {/* ── Legend ── */}
+      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:8}}>
+        {SEMI_RRG_BUCKETS.map(b=>(
+          <div key={b.name} style={{display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:b.color,flexShrink:0,opacity:b.isBm?0.3:1}}/>
+            <span style={{fontSize:10,color:b.isBm?V.text3:V.text2,fontFamily:V.ui}}>{b.name}{b.isBm?' (BM)':''}</span>
           </div>
         ))}
       </div>
-      <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'4px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${V.border}`}}>
-        Path pending — current point only · 궤적 데이터 미연결
-      </div>
+
+      {/* ── Interpretation strip ── */}
+      {!isPending && (
+        <div style={{marginTop:10,borderTop:`1px solid ${V.border}`,paddingTop:8}}>
+          <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>ROTATION INTERPRETATION</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 16px'}}>
+            {SEMI_RRG_BUCKETS.filter(b=>!b.isBm).map(b=>{
+              const cur = b.path[b.path.length-1]
+              const quad = quadLabel(cur[0], cur[1])
+              const qc   = quadColor(quad)
+              const prev = b.path[b.path.length-1-4] ?? b.path[0]
+              const drs  = cur[0]-prev[0], dmom = cur[1]-prev[1]
+              const dir  = drs>0.3&&dmom>0.2 ? '가속' : drs<-0.3||dmom<-0.2 ? '둔화' : '유지'
+              return (
+                <div key={b.name} style={{display:'flex',alignItems:'flex-start',gap:6}}>
+                  <div style={{width:6,height:6,borderRadius:'50%',background:b.color,flexShrink:0,marginTop:3}}/>
+                  <div>
+                    <span style={{fontSize:10,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.name} </span>
+                    <span style={{fontSize:10,color:qc,fontFamily:V.mono}}>[{quad}]</span>
+                    <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}> · {dir} · {b.note}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${V.border}`}}>
+            24W fixture · 실시간 API 연동 시 자동 교체
+          </div>
+        </div>
+      )}
     </div>
   )
 }
