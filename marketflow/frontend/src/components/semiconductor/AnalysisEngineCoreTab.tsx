@@ -597,6 +597,15 @@ const BENCH_CONTEXT: Record<RRGBench, string> = {
 function SemiconductorRRGCard() {
   const [bench,    setBench]    = useState<RRGBench>('SOXX')
   const [lookback, setLookback] = useState<RRGLookback>(8)
+  const [pathStatus, setPathStatus] = useState<{hasBucketPath:boolean; hasBenchmarkPath:boolean}>({hasBucketPath:false,hasBenchmarkPath:false})
+  useEffect(() => {
+    fetch('/api/semiconductor-rrg-paths')
+      .then(r => r.json())
+      .then((d: {dataStatus?: {hasBucketPath:boolean; hasBenchmarkPath:boolean}}) => {
+        if (d.dataStatus) setPathStatus(d.dataStatus)
+      })
+      .catch(() => {})
+  }, [])
 
   const W=520, H=272, L=44, R=20, T=24, B=38
   const CW=W-L-R, CH=H-T-B
@@ -789,8 +798,12 @@ function SemiconductorRRGCard() {
               )
             })}
           </div>
-          <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${V.border}`}}>
-            24W fixture · 실시간 API 연동 시 자동 교체
+          <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${pathStatus.hasBucketPath?V.teal:V.border}`}}>
+            {pathStatus.hasBucketPath
+              ? 'Bucket path connected — real RS data'
+              : pathStatus.hasBenchmarkPath
+                ? 'Benchmark path connected · Bucket path pending (C-5C)'
+                : 'Fixture data · Bucket path pending (C-5C)'}
           </div>
         </div>
       )}
