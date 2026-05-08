@@ -1491,6 +1491,30 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
   )
 }
 
+// ── ENGINE READ STRIP ─────────────────────────────────────────────────────────
+function EngineReadStrip({ stage, breadthPct, decayStatus, leadershipMode, leadBuckets, recoveringBuckets, flowStatus }:
+  { stage?: string; breadthPct: number | null; decayStatus: SoxlDecayStatus; leadershipMode: string; leadBuckets: string[]; recoveringBuckets: string[]; flowStatus: string }) {
+  const parts: string[] = []
+  if (stage) parts.push(`사이클 ${stage}`)
+  if (leadBuckets.length > 0) parts.push(`${leadBuckets.join(' / ')} 주도`)
+  else if (leadershipMode !== 'Pending') parts.push(leadershipMode)
+  if (recoveringBuckets.length > 0) parts.push(`${recoveringBuckets.join(' / ')} 회복 중`)
+  if (breadthPct != null) {
+    const bl = breadthPct >= 60 ? '우호적' : breadthPct >= 45 ? '혼재' : '약세'
+    parts.push(`Breadth ${breadthPct.toFixed(0)}% ${bl}`)
+  }
+  const flowLabel = flowStatus === 'Confirming' ? '거래량 확인' : flowStatus === 'Thin Participation' ? '참여도 약함' : flowStatus === 'Distribution Pressure' ? '분산 압력' : flowStatus === 'Pending' ? null : '거래량 혼재'
+  if (flowLabel) parts.push(flowLabel)
+  if (decayStatus !== 'PENDING') parts.push(`SOXL ${DECAY_STATUS_LABEL[decayStatus]}`)
+  if (parts.length === 0) return null
+  return (
+    <div style={{padding:'5px 18px',borderBottom:`1px solid ${V.border}`,background:'rgba(63,182,168,0.03)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+      <div style={{fontSize:10,letterSpacing:'0.12em',color:V.teal,fontWeight:600,fontFamily:V.ui,flexShrink:0}}>ENGINE READ</div>
+      <div style={{fontSize:11,color:V.text2,fontFamily:V.ui,lineHeight:1.4,flex:1}}>{parts.join(' · ')}</div>
+    </div>
+  )
+}
+
 // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
 function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab, dataStatusCounts, liveKpis }:
   { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void; dataStatusCounts?: { live: number; cache: number; static: number; pending: number }; liveKpis?: LiveKpis }) {
@@ -1544,161 +1568,66 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
   })
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-      {/* ① AI vs Legacy */}
-      <div style={{padding:'12px 16px',borderBottom:'2px solid rgba(242,169,59,0.2)'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>★ AI vs LEGACY LAYER</div>
-          <span style={{fontSize:11,color:V.amber,letterSpacing:'0.08em',fontWeight:500,fontFamily:V.mono}}>BRIDGE 3</span>
-        </div>
-        {/* AI Compute */}
-        <div style={{marginBottom:8}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-            <span style={{fontSize:11,fontWeight:500,color:V.amber,fontFamily:V.ui}}>AI Compute</span>
-            <span style={{fontSize:13,fontWeight:500,color:V.amber,fontFamily:V.mono}}>{aiBucketReturn ?? '+18.4%'}</span>
-          </div>
-          <div style={{height:7,background:V.bg3,borderRadius:3,overflow:'hidden'}}>
-            <div style={{height:'100%',width:'75%',background:`linear-gradient(90deg,${V.amber},${V.gold})`,borderRadius:3}}/>
-          </div>
-          <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>NVDA · AVGO · AMD · ASML · TSM</div>
-        </div>
-        {/* Legacy */}
-        <div style={{marginBottom:10}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-            <span style={{fontSize:11,fontWeight:500,color:V.text2,fontFamily:V.ui}}>Legacy</span>
-            <span style={{fontSize:13,fontWeight:500,color:V.red,fontFamily:V.mono}}>−3.8%</span>
-          </div>
-          <div style={{height:7,background:V.bg3,borderRadius:3,overflow:'hidden'}}>
-            <div style={{height:'100%',width:'18%',background:V.red,borderRadius:3,opacity:0.7}}/>
-          </div>
-          <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>INTC · ON · NXP · MCHP · TXN</div>
-        </div>
-        {/* Spread */}
-        <div style={{background:'rgba(242,169,59,0.08)',border:'1px solid rgba(242,169,59,0.2)',borderRadius:4,padding:8}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Layer Spread</div>
-              <div style={{fontSize:11,color:V.text3,marginTop:1,fontFamily:V.ui}}>AI 단독 랠리 · 폭 좁음</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontSize:20,fontWeight:500,color:V.amber,fontFamily:V.mono}}>{aiRegime ? `${Math.round(Math.abs(aiRegime.ai_infra.spread))}pp` : '22pp'}</div>
-              <div style={{fontSize:11,color:V.gold,fontFamily:V.mono}}>↑ 전주 +4pp</div>
-            </div>
-          </div>
-          <svg viewBox="0 0 160 28" style={{width:'100%',height:'auto',display:'block',marginTop:6}}>
-            <line x1="0" y1="14" x2="160" y2="14" stroke="#223048" strokeWidth="0.5"/>
-            <path d="M 0 20 C 20 19 40 18 60 17 C 80 16 100 14 120 11 C 135 9 148 7 160 6" stroke="#F2A93B" strokeWidth="1.5" fill="none"/>
-            <circle cx="160" cy="6" r="2.5" fill="#F2A93B"/>
-            <text x="2" y="26" fill="#6B7B95" fontSize="10" fontFamily="monospace">6W ago</text>
-            <text x="158" y="26" fill="#F2A93B" fontSize="10" textAnchor="end" fontFamily="monospace">Now</text>
-          </svg>
-        </div>
-        {/* Risk Pulse */}
-        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:8,padding:'6px 8px',background:'rgba(212,179,106,0.08)',borderRadius:4,borderLeft:`2px solid ${V.gold}`}}>
-          <div style={{width:7,height:7,borderRadius:'50%',background:V.gold,flexShrink:0}}/>
-          <span style={{fontSize:10,fontWeight:500,color:V.gold,fontFamily:V.mono}}>Caution</span>
-          <span style={{fontSize:11,color:V.text3,marginLeft:'auto',fontFamily:V.ui}}>변동성 elevated</span>
-        </div>
-      </div>
-      {/* ② Concentration */}
-      <div style={{padding:'12px 16px',borderBottom:`1px solid ${V.border}`}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>SOXX 집중도</div>
-        </div>
-        <svg viewBox="0 0 240 100" style={{width:'100%',height:'auto',display:'block'}}>
-          <path d="M 30 88 A 80 80 0 0 1 210 88" stroke="#162238" strokeWidth="12" fill="none" strokeLinecap="round"/>
-          <path d="M 30 88 A 80 80 0 0 1 120 12" stroke="#D4B36A" strokeWidth="12" fill="none" strokeLinecap="round"/>
-          <line x1="120" y1="88" x2="120" y2="18" stroke="#D4B36A" strokeWidth="2.5" strokeLinecap="round"/>
-          <circle cx="120" cy="88" r="5" fill="#D4B36A"/>
-          <text x="120" y="70" textAnchor="middle" fill="#D4B36A" fontSize="22" fontWeight="500" fontFamily="monospace">{concentrationTop5!=null?`${Math.round(concentrationTop5)}%`:'36%'}</text>
-          <text x="120" y="84" textAnchor="middle" fill="#6B7B95" fontSize="10" fontFamily="'IBM Plex Sans',sans-serif">Top 5 집중도</text>
-          <text x="22" y="98" fill="#3FB6A8" fontSize="10" fontFamily="'IBM Plex Sans',sans-serif">분산</text>
-          <text x="218" y="98" fill="#E55A5A" fontSize="10" textAnchor="end" fontFamily="'IBM Plex Sans',sans-serif">집중</text>
-          <text x="40" y="35" fill="#3FB6A8" fontSize="10" fontFamily="monospace" opacity="0.7">20%</text>
-          <text x="186" y="35" fill="#E55A5A" fontSize="10" textAnchor="end" fontFamily="monospace" opacity="0.7">55%</text>
-        </svg>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:V.bg3,borderRadius:4,fontSize:10,fontFamily:V.ui}}>
-          <span style={{color:V.text3}}>EW vs Cap-Weight</span>
-          <span style={{color:V.text2,fontFamily:V.mono,fontWeight:500}}>{ewSpread!=null?`${ewSpread>0?'+':''}${Math.round(ewSpread)}pt`:'−58pt'}</span>
-          <span style={{color:V.text3}}>Cap 쏠림</span>
-        </div>
-      </div>
-      {/* ③ SOXL mini */}
-      <div style={{padding:'12px 16px',borderTop:'1px solid rgba(229,90,90,0.2)',borderBottom:`1px solid ${V.border}`}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.red,fontWeight:600,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
-          <button onClick={()=>onTab('soxl')} style={{background:'transparent',border:'1px solid rgba(229,90,90,0.3)',color:V.red,fontSize:11,padding:'3px 8px',borderRadius:3,cursor:'pointer',letterSpacing:'0.06em',fontFamily:V.mono}}>상세 →</button>
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-          <svg viewBox="0 0 80 52" style={{width:85,height:'auto'}}>
-            <path d="M 6 46 A 34 34 0 0 1 74 46" stroke="#162238" strokeWidth="9" fill="none" strokeLinecap="round"/>
-            <path d="M 6 46 A 34 34 0 0 1 40 14" stroke="#D4B36A" strokeWidth="9" fill="none" strokeLinecap="round"/>
-            <line x1="40" y1="46" x2="40" y2="18" stroke="#D4B36A" strokeWidth="2.5"/>
-            <circle cx="40" cy="46" r="4" fill="#D4B36A"/>
-            <text x="40" y="42" textAnchor="middle" fill="#D4B36A" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">CAU</text>
-          </svg>
-          <div>
-            <div style={{fontSize:12,fontWeight:500,color:V.gold,fontFamily:V.ui}}>CAUTION</div>
-            <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>무한매수 주의 구간</div>
-          </div>
-        </div>
-        <div style={{marginBottom:8}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-            <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>90D 누적 감쇠</span>
-            <div style={{display:'flex',alignItems:'center',gap:4}}>
-              <span style={{fontSize:13,fontWeight:500,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.mono}}>
-                {rpDecay.decayPct !== null ? fmtDecay(rpDecay.decayPct) : '—'}
-              </span>
-              <span style={{fontSize:11,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.ui}}>
-                {DECAY_STATUS_LABEL[rpDecay.status]}
-              </span>
-            </div>
-          </div>
-          <svg viewBox="0 0 160 36" style={{width:'100%',height:'auto',display:'block'}}>
-            <line x1="0" y1="18" x2="160" y2="18" stroke="#223048" strokeWidth="0.5"/>
-            <path d="M 0 28 C 30 26 60 22 90 17 C 115 13 140 9 160 7" stroke="#3FB6A8" strokeWidth="1.2" fill="none" strokeDasharray="4,2" opacity="0.6"/>
-            <path d="M 0 28 C 30 27 60 24 90 20 C 115 17 140 14 160 12" stroke="#E55A5A" strokeWidth="1.8" fill="none"/>
-            <path d="M 0 28 C 30 26 60 22 90 17 C 115 13 140 9 160 7 L 160 12 C 140 14 115 17 90 20 C 60 24 30 27 0 28Z" fill="rgba(229,90,90,0.1)"/>
-            <text x="2" y="35" fill="#6B7B95" fontSize="10" fontFamily="monospace">D-90</text>
-            <text x="158" y="35" fill="#E55A5A" fontSize="10" textAnchor="end" fontFamily="monospace">Today</text>
-          </svg>
-        </div>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:10,padding:'5px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>
-          <span style={{color:V.text3}}>Layer Spread</span>
-          <span style={{color:V.amber,fontWeight:500,fontFamily:V.mono}}>22pp</span>
-          <span style={{color:V.text3}}>폭 좁음</span>
-        </div>
-      </div>
-      {/* ④ Signal Quality */}
-      <div style={{padding:'10px 16px',borderTop:`1px solid ${V.border}`,background:SQ_BG[sq.label]}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+      {/* ① Signal Quality */}
+      <div style={{padding:'10px 16px',background:SQ_BG[sq.label],borderBottom:`1px solid ${V.border}`}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:5}}>
           <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>SIGNAL QUALITY</div>
           <div style={{display:'flex',alignItems:'baseline',gap:4}}>
-            <span style={{fontSize:16,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.mono}}>{sq.score}</span>
-            <span style={{fontSize:11,color:V.text3,fontFamily:V.mono}}>/ {sq.maxScore}</span>
+            <span style={{fontSize:18,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.mono}}>{sq.score}</span>
+            <span style={{fontSize:10,color:V.text3,fontFamily:V.mono}}>/ {sq.maxScore}</span>
             <span style={{fontSize:11,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.ui,marginLeft:4}}>{sq.label}</span>
           </div>
         </div>
-        {sq.confirmingFactors.length > 0 && (
-          <div style={{marginBottom:3}}>
-            <div style={{fontSize:10,color:V.teal,letterSpacing:'0.06em',fontFamily:V.ui,marginBottom:2}}>Confirming</div>
-            {sq.confirmingFactors.slice(0,2).map((f,i)=>(
-              <div key={i} style={{fontSize:10,color:V.text2,fontFamily:V.ui,paddingLeft:6}}>· {f}</div>
-            ))}
-          </div>
-        )}
-        {sq.cautionFactors.length > 0 && (
-          <div style={{marginBottom:3}}>
-            <div style={{fontSize:10,color:V.amber,letterSpacing:'0.06em',fontFamily:V.ui,marginBottom:2}}>Caution</div>
-            {sq.cautionFactors.slice(0,2).map((f,i)=>(
-              <div key={i} style={{fontSize:10,color:V.text2,fontFamily:V.ui,paddingLeft:6}}>· {f}</div>
-            ))}
-          </div>
-        )}
+        {sq.confirmingFactors.slice(0,2).map((f,i)=>(
+          <div key={i} style={{fontSize:10,color:V.teal,fontFamily:V.ui,marginBottom:1}}>● {f}</div>
+        ))}
+        {sq.cautionFactors.slice(0,2).map((f,i)=>(
+          <div key={i} style={{fontSize:10,color:V.amber,fontFamily:V.ui,marginBottom:1}}>▲ {f}</div>
+        ))}
         {sq.pendingFactors.length > 0 && (
           <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginTop:2}}>
-            {sq.pendingFactors.join(' · ')}
+            {sq.pendingFactors.length}개 항목 대기
           </div>
         )}
+      </div>
+      {/* ② Rotation Read */}
+      <div style={{padding:'8px 16px',borderBottom:`1px solid ${V.border}`}}>
+        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:4}}>ROTATION</div>
+        {(()=>{
+          const mc=rpRotation.leadershipMode==='Broad Leadership'||rpRotation.leadershipMode==='Rotation Broadening'?V.teal:rpRotation.leadershipMode==='Narrow Leadership'?V.blue:rpRotation.leadershipMode==='Rotation Weakening'?V.red:rpRotation.leadershipMode==='High Dispersion'?V.amber:V.text3
+          return(<><div style={{fontSize:11,fontWeight:600,color:mc,fontFamily:V.mono,marginBottom:3}}>{rpRotation.leadershipMode}</div><div style={{display:'flex',flexDirection:'column',gap:2}}>{rpRotation.leadBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>주도 <span style={{color:V.teal}}>{rpRotation.leadBuckets.join(' · ')}</span></div>}{rpRotation.recoveringBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>회복 <span style={{color:V.blue}}>{rpRotation.recoveringBuckets.join(' · ')}</span></div>}{rpRotation.weakeningBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>둔화 <span style={{color:V.amber}}>{rpRotation.weakeningBuckets.join(' · ')}</span></div>}{rpRotation.laggingBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>약세 <span style={{color:V.red}}>{rpRotation.laggingBuckets.join(' · ')}</span></div>}</div></>)
+        })()}
+      </div>
+      {/* ③ AI vs Legacy — compact */}
+      <div style={{padding:'8px 16px',borderBottom:`1px solid ${V.border}`}}>
+        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:5}}>AI vs LEGACY</div>
+        <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+          <span style={{fontSize:13,fontWeight:600,color:V.amber,fontFamily:V.mono}}>{aiBucketReturn ?? '+18.4%'}</span>
+          <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>AI Compute</span>
+          <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>vs</span>
+          <span style={{fontSize:13,fontWeight:600,color:V.red,fontFamily:V.mono}}>−3.8%</span>
+          <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Legacy</span>
+          <span style={{fontSize:13,fontWeight:600,color:V.amber,fontFamily:V.mono,marginLeft:'auto'}}>
+            {aiRegime ? `${Math.round(Math.abs(aiRegime.ai_infra.spread))}pp` : '22pp'}
+          </span>
+          <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>spread</span>
+        </div>
+      </div>
+      {/* ④ SOXL Environment — compact */}
+      <div style={{padding:'10px 16px',borderTop:'1px solid rgba(229,90,90,0.15)',borderBottom:`1px solid ${V.border}`}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.red,fontWeight:600,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
+          <button onClick={()=>onTab('soxl')} style={{background:'transparent',border:'1px solid rgba(229,90,90,0.3)',color:V.red,fontSize:10,padding:'2px 6px',borderRadius:3,cursor:'pointer',letterSpacing:'0.06em',fontFamily:V.mono}}>상세 →</button>
+        </div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.ui}}>{DECAY_STATUS_LABEL[rpDecay.status]}</div>
+            <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>90D 누적 감쇠 · {rpDecay.bm} 기준</div>
+          </div>
+          <span style={{fontSize:20,fontWeight:500,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.mono}}>
+            {rpDecay.decayPct !== null ? fmtDecay(rpDecay.decayPct) : '—'}
+          </span>
+        </div>
       </div>
 
       {/* ⑤ Quick Nav */}
@@ -1854,6 +1783,8 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
   const [centerTab, setCenterTab] = useState<CenterTab>('map')
   const [histTab,   setHistTab]   = useState<HistTab>('event')
   const [kpiDecay,  setKpiDecay]  = useState<{decayPct: number|null; status: SoxlDecayStatus; bm: string}>({decayPct: null, status: 'PENDING', bm: 'SOXX'})
+  const [narRRG,    setNarRRG]    = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
+  const [narFlow,   setNarFlow]   = useState<SemiconductorFlowProxyPayload>(PENDING_FLOW_PROXY)
   useEffect(() => {
     fetch('/api/soxl-decay')
       .then(r => r.json())
@@ -1863,7 +1794,11 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
         bm:       d.benchmark === 'PENDING' ? 'SOXX' : d.benchmark,
       }))
       .catch(() => {})
+    fetch('/api/semiconductor-rrg-paths').then(r=>r.json()).then((d: RrgPathPayload)=>setNarRRG(d)).catch(()=>{})
+    fetch('/api/semiconductor-flow-proxy').then(r=>r.json()).then((d: SemiconductorFlowProxyPayload)=>setNarFlow(d)).catch(()=>{})
   }, [])
+  const narLive     = narRRG.series.filter(s => s.source !== 'PENDING' && s.points.length > 0 && ['ai_compute','memory_hbm','foundry_pkg','equipment'].includes(s.id))
+  const narRotation = classifyRrgRotation(narLive)
 
   const kpis      = live?.kpis
   const ar        = interpData?.ai_regime
@@ -1902,6 +1837,16 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
           </div>
         ))}
       </div>
+
+      <EngineReadStrip
+        stage={stage}
+        breadthPct={kpis?.breadth_pct ?? null}
+        decayStatus={kpiDecay.status}
+        leadershipMode={narRotation.leadershipMode}
+        leadBuckets={narRotation.leadBuckets}
+        recoveringBuckets={narRotation.recoveringBuckets}
+        flowStatus={narFlow.summary.overallStatus}
+      />
 
       {/* Main 3-column layout */}
       <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
