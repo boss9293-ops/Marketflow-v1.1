@@ -167,11 +167,7 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
   ]
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
-      <EduBox title="MAP 탭 — 지금 SOXX의 전체 상태를 한눈에">
-        <strong>4개 버킷(AI Compute · Memory · Foundry · Equipment)</strong>이 SOXX 지수를 구성합니다.
-        각 버킷이 SOXX 대비 얼마나 강하게 움직이는지, AI 자본이 밸류체인 어디까지 흘렀는지를 이 화면에서 즉시 파악합니다.
-        Capital Flow Stage의 방향(<strong>PARTIAL → WEAK → LAGGING</strong>)은 자본이 아직 AI Compute에만 머물고 있음을 의미합니다.
-      </EduBox>
+      <EduBox title="MAP">SOXX 4개 버킷(AI Compute · Memory · Foundry · Equipment) 상대강도와 자본 흐름 단계를 한눈에 확인합니다.</EduBox>
       <SecTitle>BUCKET MAP
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>equal-size</span>
@@ -269,11 +265,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
   const soxxRefSt = getMetricStatus(f3?.soxxReflection, 'STATIC')
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
-      <EduBox title="CYCLE VIEW — 실물이 기준, SOXX는 반영도">
-        기관 애널리스트는 주가를 먼저 보지 않습니다. <strong>TSMC 매출 → Book-to-Bill → Hyperscaler CapEx → SOXX</strong> 순으로 읽습니다.
-        실물이 강한데 SOXX가 덜 올랐으면 <strong>매수 근거</strong>, 실물이 꺾이는데 SOXX가 아직 고점이면 <strong>SOXL 위험 신호</strong>입니다.
-        Reflection Score는 실물 대비 시장이 얼마나 선행 또는 후행하는지를 0~2 사이로 표현합니다 (1.0 = 완전 동행).
-      </EduBox>
+      <EduBox title="CYCLE VIEW">실물(TSMC 매출 → Book-to-Bill → Hyperscaler CapEx) → 시장(SOXX) 순서로 읽으면 반영도와 사이클 위치를 파악할 수 있습니다.</EduBox>
       {/* Score header */}
       <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:12,alignItems:'stretch',marginBottom:12}}>
         <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'14px 20px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',minWidth:130}}>
@@ -995,12 +987,7 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
         </div>
       </div>
 
-      <EduBox title="PERFORMANCE — 멀티 타임프레임 성과 비교">
-        같은 버킷도 시간 단위에 따라 해석이 다릅니다. <strong>1D · 5D는 노이즈</strong>에 가깝고,
-        <strong>1M · 3M · 6M</strong>이 실제 추세를 보여줍니다.
-        VS SOXX 컬럼의 음수(−)는 해당 버킷이 SOXX 전체보다 약하다는 뜻입니다.
-        Direction이 <strong>Fading</strong>이면 모멘텀이 꺾이고 있는 것, <strong>Sustaining</strong>이면 지속 중입니다.
-      </EduBox>
+      <EduBox title="PERFORMANCE">멀티 타임프레임 성과 비교 — 1M·3M·6M이 실제 추세, VS SOXX 음수는 해당 버킷이 지수보다 약함을 의미합니다.</EduBox>
 
       {/* Matrix with benchmark selector */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
@@ -1103,12 +1090,7 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
   const conflictC = kpis ? (kpis.breadth_pct < 40 ? V.red : V.teal) : V.teal
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
-      <EduBox title="HEALTH — SOXX 내부가 건강한가">
-        <strong>Breadth(폭)</strong>는 SOXX 안에서 오르는 종목이 얼마나 많은지입니다. 100%면 전원 상승 — 최고 건강 상태.
-        <strong>Momentum(모멘텀)</strong>은 현재 추세의 강도입니다. +31 Sustaining은 상승세가 유지되고 있다는 뜻.
-        <strong>Leadership Signal +14</strong>는 시장 전반의 참여도가 넓다는 신호입니다.
-        세 지표가 모두 긍정적이면 <strong>SOXL 무한매수 환경에 우호적</strong>입니다.
-      </EduBox>
+      <EduBox title="HEALTH">Breadth(폭) · Momentum(강도) · Leadership(참여도) — 세 지표가 모두 우호적일 때 반도체 사이클 신호의 신뢰도가 높아집니다.</EduBox>
       <SecTitle>HEALTH COMPOSITE — BREADTH · MOMENTUM · PARTICIPATION</SecTitle>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
         {[
@@ -1233,13 +1215,7 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
 
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
-      <EduBox title="SOXL ENV — 무한매수 환경 진단 (추천 아님 · 환경 인식)">
-        <strong>SOXL은 SOXX의 3배 레버리지</strong>이지만, 실제 수익은 이론치(×3)보다 항상 작습니다.
-        이 차이를 <strong>변동성 감쇠(Volatility Decay)</strong>라고 합니다.
-        변동성이 높을수록 감쇠가 커지고, 무한매수의 비용이 증가합니다.
-        <strong>AI vs Legacy Layer Spread가 클수록</strong>(AI 단독 랠리) SOXX 폭이 좁아져 SOXL의 변동성이 높아집니다.
-        이 탭은 &quot;사라&quot;가 아니라 <strong>&quot;지금 환경이 어떤 상태인가&quot;</strong>를 알려줍니다.
-      </EduBox>
+      <EduBox title="SOXL ENV">SOXL 레버리지 효율과 변동성 감쇠 — 환경 인식 지표이며 투자 권고가 아닙니다.</EduBox>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
         <SecTitle style={{margin:0}}>★ SOXL ENVIRONMENT — 무한매수 환경 진단</SecTitle>
         <span style={{fontSize:10,background:'rgba(229,90,90,0.15)',color:V.red,border:'1px solid rgba(229,90,90,0.25)',padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>NOT INVESTMENT ADVICE · CONTEXT ONLY</span>
