@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react'
 import type { SemiconductorFundamentalsPayload, FundamentalMetric, DataStatus } from '@/lib/semiconductor/fundamentalDataContract'
 import type { BenchmarkId, BenchmarkRSPayload, RelativeStatus } from '@/lib/semiconductor/benchmarkRelativeStrength'
 import { formatReturn, formatRelative, PENDING_RS_PAYLOAD } from '@/lib/semiconductor/benchmarkRelativeStrength'
+import type { RrgPathPayload } from '@/lib/semiconductor/rrgPathData'
+import { PENDING_RRG_PAYLOAD } from '@/lib/semiconductor/rrgPathData'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -597,15 +599,14 @@ const BENCH_CONTEXT: Record<RRGBench, string> = {
 function SemiconductorRRGCard() {
   const [bench,    setBench]    = useState<RRGBench>('SOXX')
   const [lookback, setLookback] = useState<RRGLookback>(8)
-  const [pathStatus, setPathStatus] = useState<{hasBucketPath:boolean; hasBenchmarkPath:boolean}>({hasBucketPath:false,hasBenchmarkPath:false})
+  const [rrgPayload, setRrgPayload] = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
   useEffect(() => {
     fetch('/api/semiconductor-rrg-paths')
       .then(r => r.json())
-      .then((d: {dataStatus?: {hasBucketPath:boolean; hasBenchmarkPath:boolean}}) => {
-        if (d.dataStatus) setPathStatus(d.dataStatus)
-      })
+      .then((d: RrgPathPayload) => { setRrgPayload(d) })
       .catch(() => {})
   }, [])
+  const pathStatus = rrgPayload.dataStatus
 
   const W=520, H=272, L=44, R=20, T=24, B=38
   const CW=W-L-R, CH=H-T-B
@@ -616,8 +617,6 @@ function SemiconductorRRGCard() {
     y: T+(1-(mom-yMin)/(yMax-yMin))*CH,
   })
   const {x:cx, y:cy} = toSvg(100, 100)
-  const isPending = bench !== 'SOXX'
-
   const quadLabel = (rs:number, mom:number) =>
     rs>=100&&mom>=100 ? 'Leading' : rs>=100&&mom<100 ? 'Weakening'
     : rs<100&&mom>=100 ? 'Improving' : 'Lagging'
@@ -651,6 +650,55 @@ function SemiconductorRRGCard() {
     if (drs4>0||dmom4>0) return 'Sustaining'
     return 'Flattening'
   }
+
+  // ── Live payload → RenderBuckets ────────────────────────────────────────
+  interface RenderBucket {
+    id: string; name: string; short: string; color: string
+    isBm?: boolean; note: string; path: number[][]
+    quadrant: string; direction: string
+  }
+  const SERIES_META: Record<string, {color: string; short: string}> = {
+    ai_compute:  { color: '#3FB6A8', short: 'AI'  },
+    memory_hbm:  { color: '#F2A93B', short: 'MEM' },
+    foundry_pkg: { color: '#E55A5A', short: 'FND' },
+    equipment:   { color: '#D4B36A', short: 'EQP' },
+    soxx_vs_qqq: { color: '#4A9EE0', short: 'SOX' },
+    soxx_vs_spy: { color: '#4A9EE0', short: 'SOX' },
+    qqq_vs_spy:  { color: '#4A9EE0', short: 'Q/S' },
+  }
+  const seriesForBench = rrgPayload.series.filter(s => {
+    if (bench === 'SOXX') return ['ai_compute','memory_hbm','foundry_pkg','equipment'].includes(s.id)
+    if (bench === 'QQQ')  return s.id === 'soxx_vs_qqq'
+    return s.id === 'soxx_vs_spy'
+  })
+  const hasLive = seriesForBench.some(s => s.source !== 'PENDING' && s.points.length > 0)
+
+  const renderBuckets: RenderBucket[] = hasLive
+    ? [
+        ...seriesForBench.map(s => {
+          const meta = SERIES_META[s.id] ?? { color: V.text3, short: s.id.slice(0,3).toUpperCase() }
+          const path = s.points
+            .filter(p => p.rsRatio !== null && p.rsMomentum !== null)
+            .map(p => [p.rsRatio as number, p.rsMomentum as number])
+          return { id: s.id, name: s.label, short: meta.short, color: meta.color,
+                   note: s.note ?? '', path, quadrant: s.quadrant, direction: s.direction }
+        }),
+        ...(bench === 'SOXX' ? [{
+          id: 'bm_soxx', name: 'SOXX', short: 'SOX', color: '#4A9EE0', isBm: true,
+          note: '기준지수 참조점 (100, 100)',
+          path: [[100.0, 100.0]], quadrant: 'Leading', direction: 'Pending',
+        }] : []),
+      ]
+    : (bench === 'SOXX'
+        ? SEMI_RRG_BUCKETS.map(b => ({
+            id: b.name, name: b.name, short: b.short, color: b.color,
+            isBm: b.isBm, note: b.note, path: b.path,
+            quadrant: b.path.length > 0 ? quadLabel(b.path[b.path.length-1][0], b.path[b.path.length-1][1]) : 'Pending',
+            direction: (b.isBm ? 'Pending' : inferDirection(b)) as string,
+          }))
+        : [])
+
+  const isPending = renderBuckets.filter(r => !r.isBm).length === 0
 
   return (
     <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:16,minHeight:340}}>
@@ -724,10 +772,10 @@ function SemiconductorRRGCard() {
           <text x={W/2} y={H-4}  textAnchor="middle" fill={V.text3} fontSize={9} fontFamily="'IBM Plex Mono',monospace">RS Ratio →</text>
           <text x={10}  y={H/2}  textAnchor="middle" fill={V.text3} fontSize={9} fontFamily="'IBM Plex Mono',monospace" transform={`rotate(-90,10,${H/2})`}>RS Mom ↑</text>
           {/* Trails + current points */}
-          {SEMI_RRG_BUCKETS.map(bucket => {
+          {renderBuckets.map(bucket => {
             if (bucket.isBm) {
               return (
-                <g key={bucket.name}>
+                <g key={bucket.id}>
                   <circle cx={cx} cy={cy} r={5} fill={bucket.color} opacity={0.22}/>
                   <text x={cx+8} y={cy-3} fill={bucket.color} fontSize={8} fontFamily="'IBM Plex Mono',monospace" opacity={0.35}>BM</text>
                 </g>
@@ -741,7 +789,7 @@ function SemiconductorRRGCard() {
             const trailPts = slice.slice(0, n-1)
             const polyPts = slice.map(pt=>{ const p=toSvg(pt[0],pt[1]); return `${p.x},${p.y}` }).join(' ')
             return (
-              <g key={bucket.name}>
+              <g key={bucket.id}>
                 {trailPts.length > 0 && <>
                   <polyline points={polyPts} fill="none" stroke={bucket.color} strokeWidth={1.4} opacity={0.38} strokeLinejoin="round" strokeLinecap="round"/>
                   {trailPts.map((pt,i)=>{
@@ -750,10 +798,8 @@ function SemiconductorRRGCard() {
                     return <circle key={i} cx={x} cy={y} r={3} fill={bucket.color} opacity={op}/>
                   })}
                 </>}
-                {/* outer ring — emphasis border */}
                 <circle cx={curX} cy={curY} r={13} fill="none" stroke={bucket.color} strokeWidth={1.2} opacity={0.4}/>
                 <circle cx={curX} cy={curY} r={10} fill={bucket.color} opacity={0.9}/>
-                {/* label above current point */}
                 <text x={curX} y={curY-17} textAnchor="middle" fill={bucket.color} fontSize={9} fontWeight="700" fontFamily="'IBM Plex Mono',monospace">{bucket.short}</text>
                 {trailPts.length === 0 && (
                   <text x={curX} y={curY+22} textAnchor="middle" fill={bucket.color} fontSize={7} fontFamily="'IBM Plex Mono',monospace" opacity={0.45}>path pending</text>
@@ -766,8 +812,8 @@ function SemiconductorRRGCard() {
 
       {/* ── Legend ── */}
       <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:8}}>
-        {SEMI_RRG_BUCKETS.map(b=>(
-          <div key={b.name} style={{display:'flex',alignItems:'center',gap:4}}>
+        {renderBuckets.map(b=>(
+          <div key={b.id} style={{display:'flex',alignItems:'center',gap:4}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:b.color,flexShrink:0,opacity:b.isBm?0.3:1}}/>
             <span style={{fontSize:10,color:b.isBm?V.text3:V.text2,fontFamily:V.ui}}>{b.name}{b.isBm?' (BM)':''}</span>
           </div>
@@ -779,31 +825,30 @@ function SemiconductorRRGCard() {
         <div style={{marginTop:10,borderTop:`1px solid ${V.border}`,paddingTop:8}}>
           <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>ROTATION INTERPRETATION</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 16px'}}>
-            {SEMI_RRG_BUCKETS.filter(b=>!b.isBm).map(b=>{
-              const cur = b.path[b.path.length-1]
-              const quad = quadLabel(cur[0], cur[1])
-              const qc   = quadColor(quad)
-              const dir  = inferDirection(b)
-              const dc   = dirColor(dir)
+            {renderBuckets.filter(b=>!b.isBm).map(b=>{
+              const qc = quadColor(b.quadrant)
+              const dc = dirColor(b.direction as Direction)
               return (
-                <div key={b.name} style={{display:'flex',alignItems:'flex-start',gap:6}}>
+                <div key={b.id} style={{display:'flex',alignItems:'flex-start',gap:6}}>
                   <div style={{width:6,height:6,borderRadius:'50%',background:b.color,flexShrink:0,marginTop:3}}/>
                   <div>
                     <span style={{fontSize:10,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.name} </span>
-                    <span style={{fontSize:10,color:qc,fontFamily:V.mono}}>[{quad}]</span>
-                    <span style={{fontSize:10,color:dc,fontFamily:V.mono}}> {dir}</span>
+                    <span style={{fontSize:10,color:qc,fontFamily:V.mono}}>[{b.quadrant}]</span>
+                    <span style={{fontSize:10,color:dc,fontFamily:V.mono}}> {b.direction}</span>
                     <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}> · {b.note}</span>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${pathStatus.hasBucketPath?V.teal:V.border}`}}>
-            {pathStatus.hasBucketPath
-              ? 'Bucket path connected — real RS data'
-              : pathStatus.hasBenchmarkPath
-                ? 'Benchmark path connected · Bucket path pending (C-5C)'
-                : 'Fixture data · Bucket path pending (C-5C)'}
+          <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${hasLive?V.teal:V.border}`}}>
+            {hasLive
+              ? `Live data · generated ${rrgPayload.generatedAt ? new Date(rrgPayload.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}`
+              : pathStatus.hasBucketPath
+                ? 'Bucket path connected — real RS data'
+                : pathStatus.hasBenchmarkPath
+                  ? 'Benchmark path connected · Bucket path pending'
+                  : 'Fixture data · pipeline not yet run'}
           </div>
         </div>
       )}
