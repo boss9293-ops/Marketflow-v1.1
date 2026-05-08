@@ -614,6 +614,33 @@ function SemiconductorRRGCard() {
   const quadColor = (q:string) =>
     q==='Leading' ? V.teal : q==='Improving' ? V.blue : q==='Weakening' ? V.amber : V.red
 
+  type Direction = 'Accelerating' | 'Sustaining' | 'Flattening' | 'Rolling Over' | 'Recovering' | 'Pending'
+  const dirColor = (d:Direction): string => {
+    if (d==='Accelerating'||d==='Sustaining') return V.teal
+    if (d==='Recovering') return V.blue
+    if (d==='Flattening') return V.amber
+    if (d==='Rolling Over') return V.red
+    return V.text3
+  }
+  const inferDirection = (b: RRGBucket): Direction => {
+    const path = b.path
+    if (path.length < 2) return 'Pending'
+    const cur  = path[path.length-1]
+    const prev4 = path[path.length-1-4] ?? path[0]
+    const prev1 = path[path.length-2]
+    const old12 = path[path.length-1-12] ?? path[0]
+    const drs4  = cur[0]-prev4[0], dmom4 = cur[1]-prev4[1]
+    const dmom1 = cur[1]-prev1[1]
+    const oldQ  = quadLabel(old12[0], old12[1])
+    const curQ  = quadLabel(cur[0], cur[1])
+    if ((oldQ==='Lagging'||oldQ==='Weakening') && (curQ==='Improving'||curQ==='Leading')) return 'Recovering'
+    if (curQ==='Leading' && dmom1 < -0.1) return 'Rolling Over'
+    if (drs4>0.8 && dmom4>0.25 && dmom1>=0) return 'Accelerating'
+    if (curQ==='Leading' && Math.abs(dmom1)<0.08) return 'Flattening'
+    if (drs4>0||dmom4>0) return 'Sustaining'
+    return 'Flattening'
+  }
+
   return (
     <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:16,minHeight:340}}>
       {/* ── Header ── */}
@@ -736,16 +763,16 @@ function SemiconductorRRGCard() {
               const cur = b.path[b.path.length-1]
               const quad = quadLabel(cur[0], cur[1])
               const qc   = quadColor(quad)
-              const prev = b.path[b.path.length-1-4] ?? b.path[0]
-              const drs  = cur[0]-prev[0], dmom = cur[1]-prev[1]
-              const dir  = drs>0.3&&dmom>0.2 ? '가속' : drs<-0.3||dmom<-0.2 ? '둔화' : '유지'
+              const dir  = inferDirection(b)
+              const dc   = dirColor(dir)
               return (
                 <div key={b.name} style={{display:'flex',alignItems:'flex-start',gap:6}}>
                   <div style={{width:6,height:6,borderRadius:'50%',background:b.color,flexShrink:0,marginTop:3}}/>
                   <div>
                     <span style={{fontSize:10,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.name} </span>
                     <span style={{fontSize:10,color:qc,fontFamily:V.mono}}>[{quad}]</span>
-                    <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}> · {dir} · {b.note}</span>
+                    <span style={{fontSize:10,color:dc,fontFamily:V.mono}}> {dir}</span>
+                    <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}> · {b.note}</span>
                   </div>
                 </div>
               )
