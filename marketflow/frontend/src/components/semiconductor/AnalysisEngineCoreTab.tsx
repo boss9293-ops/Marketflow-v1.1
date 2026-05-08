@@ -9,6 +9,8 @@ import type { RrgPathPayload } from '@/lib/semiconductor/rrgPathData'
 import { PENDING_RRG_PAYLOAD } from '@/lib/semiconductor/rrgPathData'
 import type { BucketSeverity, LeadershipMode } from '@/lib/semiconductor/rrgInterpretation'
 import { classifyBucketRotation, classifyRrgRotation } from '@/lib/semiconductor/rrgInterpretation'
+import type { SoxlDecayPayload, SoxlDecayWindow, SoxlDecayStatus } from '@/lib/semiconductor/soxlDecay'
+import { PENDING_SOXL_DECAY, DECAY_STATUS_COLOR, DECAY_STATUS_LABEL, fmtDecay, fmtReturn } from '@/lib/semiconductor/soxlDecay'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -1163,6 +1165,19 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
 
 // ── TAB: SOXL ENV ────────────────────────────────────────────────────────────
 function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
+  const [decay,       setDecay]       = useState<SoxlDecayPayload>(PENDING_SOXL_DECAY)
+  const [decayWindow, setDecayWindow] = useState<SoxlDecayWindow>('3M')
+  useEffect(() => {
+    fetch('/api/soxl-decay')
+      .then(r => r.json())
+      .then((d: SoxlDecayPayload) => { setDecay(d); setDecayWindow(d.defaultWindow ?? '3M') })
+      .catch(() => {})
+  }, [])
+  const curMetric  = decay.metrics.find(m => m.window === decayWindow) ?? null
+  const bm         = decay.benchmark === 'PENDING' ? 'SOXX' : decay.benchmark
+  const curStatus  = (curMetric?.status ?? 'PENDING') as SoxlDecayStatus
+  const statusColor = DECAY_STATUS_COLOR[curStatus]
+
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="SOXL ENV — 무한매수 환경 진단 (추천 아님 · 환경 인식)">
@@ -1221,26 +1236,65 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
           </div>
         </div>
       </div>
-      {/* Bridge 5 */}
+      {/* Bridge 5 — SOXL decay tracker (live data) */}
       <Card style={{border:'1px solid rgba(229,90,90,0.3)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
           <SecTitle style={{margin:0}}>★ BRIDGE 5 — SOXL 변동성 감쇠 추적기</SecTitle>
-          <span style={{fontSize:10,background:'rgba(229,90,90,0.12)',color:V.red,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>90D누적</span>
+          <span style={{fontSize:10,background:`${statusColor}1A`,color:statusColor,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>
+            {decayWindow} · {DECAY_STATUS_LABEL[curStatus]}
+          </span>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
-          {[
-            {label:'이론 SOXL (SOXX×3)',val:'+54.0%',vc:V.teal, sub:'90D 기준',bc:''},
-            {label:'실제 SOXL',          val:'+49.3%',vc:V.red,  sub:'감쇠 발생',bc:'rgba(229,90,90,0.3)'},
-            {label:'누적 감쇠',           val:'−4.7%', vc:V.red,  sub:'변동성 비용',bc:'rgba(229,90,90,0.25)',bg:'rgba(229,90,90,0.06)'},
-          ].map(s=>(
-            <div key={s.label} style={{background:s.bg||V.bg3,border:`1px solid ${s.bc||V.border}`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
-              <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>{s.label}</div>
-              <div style={{fontSize:22,fontWeight:500,color:s.vc,fontFamily:V.mono}}>{s.val}</div>
-              <div style={{fontSize:11,color:s.vc,marginTop:2,fontFamily:V.ui}}>{s.sub}</div>
-            </div>
+        {/* Window selector */}
+        <div style={{display:'flex',gap:4,marginBottom:10}}>
+          {(['5D','1M','3M','6M','1Y'] as SoxlDecayWindow[]).map(w=>(
+            <button key={w} onClick={()=>setDecayWindow(w)} style={{
+              fontSize:10,padding:'2px 8px',borderRadius:2,cursor:'pointer',
+              border:`1px solid ${decayWindow===w?`${statusColor}66`:V.border}`,
+              background:decayWindow===w?`${statusColor}1A`:V.bg3,
+              color:decayWindow===w?statusColor:V.text3,fontFamily:V.mono,letterSpacing:'0.05em',
+            }}>{w}</button>
           ))}
+          {decay.benchmark !== 'PENDING' && (
+            <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,alignSelf:'center',marginLeft:4}}>
+              vs ideal 3x {bm}
+            </span>
+          )}
         </div>
-        <div style={{fontSize:11,color:V.text3,marginBottom:6,fontFamily:V.ui}}>이론치 vs 실제 SOXL 90D 비교</div>
+        {/* Stat boxes */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
+          {curMetric && curMetric.status !== 'PENDING' ? (
+            <>
+              <div style={{background:V.bg3,border:`1px solid ${V.border}`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
+                <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>이론 SOXL ({bm}×3)</div>
+                <div style={{fontSize:22,fontWeight:500,color:V.teal,fontFamily:V.mono}}>{fmtReturn(curMetric.ideal3xReturnPct)}</div>
+                <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>{decayWindow} 기준 (단순계산)</div>
+              </div>
+              <div style={{background:V.bg3,border:`1px solid ${statusColor}44`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
+                <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>실제 SOXL</div>
+                <div style={{fontSize:22,fontWeight:500,color:statusColor,fontFamily:V.mono}}>{fmtReturn(curMetric.actualSoxlReturnPct)}</div>
+                <div style={{fontSize:11,color:statusColor,marginTop:2,fontFamily:V.ui}}>
+                  {curStatus === 'FAVORABLE' ? '이론치 초과' : curStatus === 'NEUTRAL' ? '이론치 근접' : '감쇠 발생'}
+                </div>
+              </div>
+              <div style={{background:`${statusColor}0D`,border:`1px solid ${statusColor}33`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
+                <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>누적 감쇠</div>
+                <div style={{fontSize:22,fontWeight:500,color:statusColor,fontFamily:V.mono}}>{fmtDecay(curMetric.decayPct)}</div>
+                <div style={{fontSize:11,color:statusColor,marginTop:2,fontFamily:V.ui}}>변동성 비용 프록시</div>
+              </div>
+            </>
+          ) : (
+            <div style={{gridColumn:'1/-1',padding:20,textAlign:'center',background:V.bg3,borderRadius:5}}>
+              <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>
+                {decay.benchmark === 'PENDING'
+                  ? 'SOXL 감쇠 데이터 대기 중 — SOXX/SMH 데이터 없음'
+                  : `${decayWindow} 구간 데이터 부족 · 다른 구간을 선택하세요`}
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{fontSize:11,color:V.text3,marginBottom:6,fontFamily:V.ui}}>
+          이론치 vs 실제 SOXL {decayWindow} 비교 (단순 점대점 비교 · JdK 공식 아님)
+        </div>
         <svg viewBox="0 0 640 120" style={{width:'100%',height:'auto',display:'block'}}>
           <line x1="40" y1="60" x2="630" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
           <line x1="40" y1="30" x2="630" y2="30" stroke="#1A2740" strokeWidth="0.5"/>
@@ -1249,16 +1303,23 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
           <text x="36" y="63" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">+30%</text>
           <text x="36" y="93" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">0%</text>
           <path d="M40,90 C120,82 200,70 280,58 C360,46 440,36 530,26 C570,22 605,18 630,15" stroke="#3FB6A8" strokeWidth="1.8" fill="none" strokeDasharray="5,3"/>
-          <path d="M40,90 C120,83 200,72 280,62 C360,52 440,44 530,35 C570,32 605,29 630,27" stroke="#E55A5A" strokeWidth="2.2" fill="none"/>
-          <path d="M40,90 C120,82 200,70 280,58 C360,46 440,36 530,26 C570,22 605,18 630,15 L630,27 C605,29 570,32 530,35 C440,44 360,52 280,62 C200,72 120,83 40,90Z" fill="rgba(229,90,90,0.08)"/>
+          <path d="M40,90 C120,83 200,72 280,62 C360,52 440,44 530,35 C570,32 605,29 630,27" stroke={statusColor} strokeWidth="2.2" fill="none"/>
+          <path d="M40,90 C120,82 200,70 280,58 C360,46 440,36 530,26 C570,22 605,18 630,15 L630,27 C605,29 570,32 530,35 C440,44 360,52 280,62 C200,72 120,83 40,90Z" fill={`${statusColor}14`}/>
           <text x="634" y="17" fill="#3FB6A8" fontSize="10" fontFamily="monospace">이론</text>
-          <text x="634" y="29" fill="#E55A5A" fontSize="10" fontWeight="500" fontFamily="monospace">실제</text>
-          <text x="42" y="112" fill="#B8C8DC" fontSize="10" fontFamily="monospace">D-90</text>
+          <text x="634" y="29" fill={statusColor} fontSize="10" fontWeight="500" fontFamily="monospace">실제</text>
+          <text x="42" y="112" fill="#B8C8DC" fontSize="10" fontFamily="monospace">D-{decayWindow}</text>
           <text x="630" y="112" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">Today</text>
         </svg>
-        <div style={{marginTop:8,fontSize:10,color:V.text3,lineHeight:1.6,background:V.bg3,padding:'8px 10px',borderRadius:4,fontFamily:V.ui}}>
-          <span style={{color:V.gold,fontWeight:500}}>해석:</span> 고변동성 구간에서 레버리지 감쇠가 누적됩니다. 현재 −4.7% 감쇠는 <span style={{color:V.gold}}>주의 수준</span>. 무한매수 시 포지션 크기 조절 권고. 추세가 지속될 경우 이론치 대비 실제 수익 격차는 더 확대됩니다.
+        <div style={{marginTop:8,fontSize:10,color:V.text3,lineHeight:1.6,background:V.bg3,padding:'8px 10px',borderRadius:4,fontFamily:V.ui,borderLeft:`2px solid ${statusColor}`}}>
+          <span style={{color:statusColor,fontWeight:500}}>해석 ({DECAY_STATUS_LABEL[curStatus]}):</span>{' '}
+          {decay.summary.koreanSummary}
+          {bm === 'SMH' && <span style={{color:V.text3}}> · SOXX 데이터 없어 SMH 기준 적용</span>}
         </div>
+        {curMetric && curMetric.startDate && (
+          <div style={{marginTop:4,fontSize:10,color:V.text3,fontFamily:V.ui}}>
+            {curMetric.startDate} → {curMetric.endDate} · {curMetric.observations}거래일 · source: {curMetric.source}
+          </div>
+        )}
       </Card>
       {/* Env Summary */}
       <Card style={{border:'1px solid rgba(212,179,106,0.3)',marginBottom:0}}>
@@ -1380,6 +1441,17 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
 // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
 function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab, dataStatusCounts }:
   { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void; dataStatusCounts?: { live: number; cache: number; static: number; pending: number } }) {
+  const [rpDecay, setRpDecay] = useState<{decayPct: number|null; status: SoxlDecayStatus; bm: string}>({decayPct: null, status: 'PENDING', bm: 'SOXX'})
+  useEffect(() => {
+    fetch('/api/soxl-decay')
+      .then(r => r.json())
+      .then((d: SoxlDecayPayload) => setRpDecay({
+        decayPct: d.summary?.currentDecayPct ?? null,
+        status:   (d.summary?.status ?? 'PENDING') as SoxlDecayStatus,
+        bm:       d.benchmark === 'PENDING' ? 'SOXX' : d.benchmark,
+      }))
+      .catch(() => {})
+  }, [])
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* ① AI vs Legacy */}
@@ -1483,8 +1555,12 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
             <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>90D 누적 감쇠</span>
             <div style={{display:'flex',alignItems:'center',gap:4}}>
-              <span style={{fontSize:13,fontWeight:500,color:V.red,fontFamily:V.mono}}>−4.7%</span>
-              <span style={{fontSize:11,color:V.red,fontFamily:V.ui}}>▲ 악화 중</span>
+              <span style={{fontSize:13,fontWeight:500,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.mono}}>
+                {rpDecay.decayPct !== null ? fmtDecay(rpDecay.decayPct) : '—'}
+              </span>
+              <span style={{fontSize:11,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.ui}}>
+                {DECAY_STATUS_LABEL[rpDecay.status]}
+              </span>
             </div>
           </div>
           <svg viewBox="0 0 160 36" style={{width:'100%',height:'auto',display:'block'}}>
@@ -1642,6 +1718,17 @@ function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:H
 export default function AnalysisEngineCoreTab({ live, interpData, history, onViewDataLab, dataStatusCounts, fundamentals }: Props) {
   const [centerTab, setCenterTab] = useState<CenterTab>('map')
   const [histTab,   setHistTab]   = useState<HistTab>('event')
+  const [kpiDecay,  setKpiDecay]  = useState<{decayPct: number|null; status: SoxlDecayStatus; bm: string}>({decayPct: null, status: 'PENDING', bm: 'SOXX'})
+  useEffect(() => {
+    fetch('/api/soxl-decay')
+      .then(r => r.json())
+      .then((d: SoxlDecayPayload) => setKpiDecay({
+        decayPct: d.summary?.currentDecayPct ?? null,
+        status:   (d.summary?.status ?? 'PENDING') as SoxlDecayStatus,
+        bm:       d.benchmark === 'PENDING' ? 'SOXX' : d.benchmark,
+      }))
+      .catch(() => {})
+  }, [])
 
   const kpis      = live?.kpis
   const ar        = interpData?.ai_regime
@@ -1671,7 +1758,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
           {label:'TSMC YoY',          val:kpiTsmcYoy,         sub:'2026.04 · 실물 선행 신호',                    vc:V.teal},
           {label:'HYPERSCALER CAPEX', val:kpiCapex,           sub:"Q1'26 합산 · YoY +68%",                      vc:V.amber},
           {label:'SOXX 반영도',        val:kpiReflection,     sub:'실물 대비 약간 선행',                        vc:V.gold},
-          {label:'SOXL ENVIRONMENT',  val:ar ? regimeDisplay(ar.regime_label).split(' ')[0] : 'Caution', sub:ar?`${ar.ai_infra.spread.toFixed(1)}pp spread`:'−4.7% decay · Layer spread 22pp', vc:V.gold},
+          {label:'SOXL ENVIRONMENT',  val:ar ? regimeDisplay(ar.regime_label).split(' ')[0] : DECAY_STATUS_LABEL[kpiDecay.status], sub:ar?`${ar.ai_infra.spread.toFixed(1)}pp spread`:`${kpiDecay.decayPct !== null ? fmtDecay(kpiDecay.decayPct) : '—'} 3M decay · ${kpiDecay.bm} 기준`, vc:DECAY_STATUS_COLOR[kpiDecay.status]},
         ].map(k=>(
           <div key={k.label} style={{flex:1,padding:'10px 18px',borderRight:`1px solid ${V.border}`}}>
             <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:4,fontWeight:600,fontFamily:V.ui}}>{k.label}</div>
