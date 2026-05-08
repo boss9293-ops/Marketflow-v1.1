@@ -2,7 +2,7 @@
 // 반도체 사이클 엔진 — 3-Layer Pyramid 기반 분석 탭 (레퍼런스 HTML 직접 포팅)
 
 import { useState } from 'react'
-import type { SemiconductorFundamentalsPayload } from '@/lib/semiconductor/fundamentalDataContract'
+import type { SemiconductorFundamentalsPayload, FundamentalMetric, DataStatus } from '@/lib/semiconductor/fundamentalDataContract'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -214,9 +214,47 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
 }
 
 // ── TAB: CYCLE VIEW ──────────────────────────────────────────────────────────
+// ── Metric safe-access helpers ────────────────────────────────────────────────
+function getMetricDisplay(metric: FundamentalMetric | undefined | null, fallback: string): string {
+  if (!metric) return fallback
+  if (typeof metric.displayValue === 'string' && metric.displayValue.trim()) return metric.displayValue
+  if (metric.value !== null && metric.value !== undefined) return String(metric.value)
+  return fallback
+}
+function getMetricStatus(metric: FundamentalMetric | undefined | null, fallback: DataStatus = 'STATIC'): DataStatus {
+  return metric?.status ?? fallback
+}
+function statusBadgeStyle(status: DataStatus): React.CSSProperties {
+  const c: Record<DataStatus, string> = {
+    LIVE: '#22c55e', CACHE: '#22d3ee', STATIC: '#fbbf24',
+    MANUAL: '#fbbf24', PENDING: '#737880', UNAVAILABLE: '#ef4444',
+  }
+  const col = c[status] ?? '#fbbf24'
+  return { fontSize:10, padding:'1px 5px', border:`1px solid ${col}33`, color:col, borderRadius:2, fontFamily:'monospace', letterSpacing:'0.05em' }
+}
+
 function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: number; stage?: string; confidenceLabel?: string; fundamentals?: SemiconductorFundamentalsPayload | null }) {
   const f1 = fundamentals?.l1Fundamentals
   const f2 = fundamentals?.l2CapitalFlow
+  const f3 = fundamentals?.l3MarketConfirmation
+  // pre-computed display values with fallback
+  const tsmcYoyDisp  = getMetricDisplay(f1?.tsmcRevenueYoY, '+39%')
+  const b2bDisp      = getMetricDisplay(f1?.bookToBill, '1.18')
+  const siaDisp      = getMetricDisplay(f1?.siaSemiSales, '$56.1B')
+  const nvdaDisp     = getMetricDisplay(f1?.nvdaDataCenterRevenue, '$35.6B')
+  const capexDisp    = getMetricDisplay(f2?.hyperscalerCapex, '$78.4B')
+  const msftDisp     = getMetricDisplay(f2?.microsoftCapex, '$21.4B')
+  const amznDisp     = getMetricDisplay(f2?.amazonCapex, '$24.3B')
+  const googDisp     = getMetricDisplay(f2?.googleCapex, '$17.2B')
+  const metaDisp     = getMetricDisplay(f2?.metaCapex, '$15.5B')
+  const soxxRefDisp  = getMetricDisplay(f3?.soxxReflection, '0.92')
+  // pre-computed statuses for badges
+  const tsmcSt   = getMetricStatus(f1?.tsmcRevenueYoY, 'MANUAL')
+  const b2bSt    = getMetricStatus(f1?.bookToBill, 'MANUAL')
+  const siaSt    = getMetricStatus(f1?.siaSemiSales, 'MANUAL')
+  const nvdaSt   = getMetricStatus(f1?.nvdaDataCenterRevenue, 'STATIC')
+  const capexSt  = getMetricStatus(f2?.hyperscalerCapex, 'STATIC')
+  const soxxRefSt = getMetricStatus(f3?.soxxReflection, 'STATIC')
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       <EduBox title="CYCLE VIEW — 실물이 기준, SOXX는 반영도">
@@ -265,13 +303,13 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>TSMC MONTHLY REVENUE</div>
               <div style={{display:'flex',alignItems:'center',gap:5}}>
-                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>MANUAL</span>
+                <span style={statusBadgeStyle(tsmcSt)}>{tsmcSt}</span>
                 <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>매월 10일</span>
               </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
               <span style={{fontSize:28,fontWeight:500,color:V.teal,fontFamily:V.mono}}>NT$260B</span>
-              <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>YoY +39%</span>
+              <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>YoY {tsmcYoyDisp}</span>
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="tsmc-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3FB6A8" stopOpacity="0.35"/><stop offset="100%" stopColor="#3FB6A8" stopOpacity="0.02"/></linearGradient></defs>
@@ -290,12 +328,12 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>BOOK-TO-BILL RATIO</div>
               <div style={{display:'flex',alignItems:'center',gap:5}}>
-                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>MANUAL</span>
+                <span style={statusBadgeStyle(b2bSt)}>{b2bSt}</span>
                 <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SEMI.org · 월 1회</span>
               </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>1.18</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>{b2bDisp}</span>
               <span style={{fontSize:14,color:V.teal,fontFamily:V.ui}}>수주 증가 중</span>
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
@@ -317,12 +355,12 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>SIA GLOBAL SEMI SALES</div>
               <div style={{display:'flex',alignItems:'center',gap:5}}>
-                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>MANUAL</span>
+                <span style={statusBadgeStyle(siaSt)}>{siaSt}</span>
                 <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>SIA · 월 1회</span>
               </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:28,fontWeight:500,color:V.mint,fontFamily:V.mono}}>$56.1B</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.mint,fontFamily:V.mono}}>{siaDisp}</span>
               <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>YoY +28%</span>
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
@@ -342,12 +380,12 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>NVDA DATA CENTER REVENUE</div>
               <div style={{display:'flex',alignItems:'center',gap:5}}>
-                <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>STATIC</span>
+                <span style={statusBadgeStyle(nvdaSt)}>{nvdaSt}</span>
                 <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>분기 실적</span>
               </div>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:28,fontWeight:500,color:V.gold,fontFamily:V.mono}}>$35.6B</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.gold,fontFamily:V.mono}}>{nvdaDisp}</span>
               <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>QoQ +12%</span>
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
@@ -383,14 +421,14 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
               <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>HYPERSCALER CAPEX (합산)</div>
-              <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>STATIC</span>
+              <span style={statusBadgeStyle(capexSt)}>{capexSt}</span>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:8}}>
-              <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>$78.4B</span>
+              <span style={{fontSize:28,fontWeight:500,color:V.amber,fontFamily:V.mono}}>{capexDisp}</span>
               <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>Q1&apos;26 · YoY +68%</span>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:4}}>
-              {[{co:'MSFT',w:'82%',c:V.teal,v:'$21.4B'},{co:'AMZN',w:'90%',c:V.amber,v:'$24.3B'},{co:'GOOG',w:'68%',c:V.gold,v:'$17.2B'},{co:'META',w:'59%',c:V.mint,v:'$15.5B'}].map(x=>(
+              {[{co:'MSFT',w:'82%',c:V.teal,v:msftDisp},{co:'AMZN',w:'90%',c:V.amber,v:amznDisp},{co:'GOOG',w:'68%',c:V.gold,v:googDisp},{co:'META',w:'59%',c:V.mint,v:metaDisp}].map(x=>(
                 <div key={x.co} style={{display:'grid',gridTemplateColumns:'40px 1fr 44px',alignItems:'center',gap:6}}>
                   <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>{x.co}</div>
                   <div style={{height:5,background:V.bg3,borderRadius:2,overflow:'hidden'}}><div style={{height:'100%',width:x.w,background:x.c,borderRadius:2}}/></div>
@@ -425,9 +463,9 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <span style={{fontSize:11,letterSpacing:'0.16em',color:V.text3,fontWeight:500,fontFamily:V.ui}}>LAYER 3 · MARKET PRICING — SOXX/SOXL 반영도</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:13,fontWeight:500,color:V.gold,fontFamily:V.mono}}>0.92</span>
+            <span style={{fontSize:13,fontWeight:500,color:V.gold,fontFamily:V.mono}}>{soxxRefDisp}</span>
             <span style={{fontSize:11,color:V.text3,padding:'2px 6px',border:'1px solid rgba(107,123,149,0.3)',borderRadius:2,fontFamily:V.ui}}>실물 대비 약간 선행</span>
-            <span style={{fontSize:10,padding:'1px 5px',border:'1px solid rgba(251,191,36,0.3)',color:'#fbbf24',borderRadius:2,fontFamily:'monospace',letterSpacing:'0.05em'}}>STATIC</span>
+            <span style={statusBadgeStyle(soxxRefSt)}>{soxxRefSt}</span>
           </div>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
@@ -464,7 +502,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
                   <div style={{position:'absolute',top:-3,left:'71%',width:12,height:12,background:V.gold,borderRadius:'50%',transform:'translateX(-50%)',border:`2px solid ${V.bg2}`}}/>
                 </div>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:V.text3,marginTop:4,fontFamily:V.ui}}>
-                  <span>저평가<br/>0.5↓</span><span style={{textAlign:'center',color:V.gold}}>현재 0.92<br/>약간 선행</span><span style={{textAlign:'right'}}>과열<br/>1.5↑</span>
+                  <span>저평가<br/>0.5↓</span><span style={{textAlign:'center',color:V.gold}}>현재 {soxxRefDisp}<br/>약간 선행</span><span style={{textAlign:'right'}}>과열<br/>1.5↑</span>
                 </div>
               </div>
               <div style={{padding:8,background:V.bg3,borderRadius:4}}>
@@ -1145,6 +1183,9 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
   const progress  = kpis?.cycle_position
   const aiBucket  = live?.buckets?.find(b => b.name.toLowerCase().includes('ai'))
   const aiBucketReturn = aiBucket ? (aiBucket.up ? `+${aiBucket.m6}` : aiBucket.m6) : undefined
+  const kpiTsmcYoy    = getMetricDisplay(fundamentals?.l1Fundamentals?.tsmcRevenueYoY, '+39%')
+  const kpiCapex      = getMetricDisplay(fundamentals?.l2CapitalFlow?.hyperscalerCapex, '$78.4B')
+  const kpiReflection = getMetricDisplay(fundamentals?.l3MarketConfirmation?.soxxReflection, '0.92')
 
   const tabDesc: Record<CenterTab,string> = {
     map:     '버킷 현황 한눈에 · 사이클 단계 · 자본 흐름 · AI Regime',
@@ -1160,9 +1201,9 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
       <div style={{display:'flex',borderBottom:`1px solid ${V.border}`,flexShrink:0}}>
         {[
           {label:'CYCLE SCORE',       val:String(score??68),  sub:`${stage??'Expansion'} · Fundamental 기반`,    vc:V.teal},
-          {label:'TSMC YoY',          val:'+39%',             sub:'2026.04 · 실물 선행 신호',                    vc:V.teal},
-          {label:'HYPERSCALER CAPEX', val:'$78.4B',           sub:"Q1'26 합산 · YoY +68%",                      vc:V.amber},
-          {label:'SOXX 반영도',        val:'0.92',             sub:'실물 대비 약간 선행',                        vc:V.gold},
+          {label:'TSMC YoY',          val:kpiTsmcYoy,         sub:'2026.04 · 실물 선행 신호',                    vc:V.teal},
+          {label:'HYPERSCALER CAPEX', val:kpiCapex,           sub:"Q1'26 합산 · YoY +68%",                      vc:V.amber},
+          {label:'SOXX 반영도',        val:kpiReflection,     sub:'실물 대비 약간 선행',                        vc:V.gold},
           {label:'SOXL ENVIRONMENT',  val:ar ? regimeDisplay(ar.regime_label).split(' ')[0] : 'Caution', sub:ar?`${ar.ai_infra.spread.toFixed(1)}pp spread`:'−4.7% decay · Layer spread 22pp', vc:V.gold},
         ].map(k=>(
           <div key={k.label} style={{flex:1,padding:'10px 18px',borderRight:`1px solid ${V.border}`}}>
