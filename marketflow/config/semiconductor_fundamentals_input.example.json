@@ -1,0 +1,133 @@
+{
+  "asOf": "2026-05",
+  "updatedAt": "2026-05-07T00:00:00Z",
+  "l1Fundamentals": {
+    "tsmcRevenueYoY": {
+      "id": "tsmc_yoy",
+      "label": "TSMC Revenue YoY",
+      "displayValue": "+39%",
+      "value": 39,
+      "unit": "%",
+      "status": "MANUAL",
+      "source": "TSMC monthly revenue",
+      "asOf": "2026-04",
+      "frequency": "monthly",
+      "note": "Manual monthly update"
+    },
+    "bookToBill": {
+      "id": "book_to_bill",
+      "label": "Book-to-Bill Ratio",
+      "displayValue": "1.18",
+      "value": 1.18,
+      "status": "MANUAL",
+      "source": "SEMI.org",
+      "asOf": "2026-03",
+      "frequency": "monthly",
+      "note": "Manual update"
+    },
+    "siaSemiSales": {
+      "id": "sia_sales",
+      "label": "SIA Global Semi Sales",
+      "displayValue": "$56.1B",
+      "value": 56.1,
+      "unit": "USD_B",
+      "status": "MANUAL",
+      "source": "SIA monthly sales",
+      "asOf": "2026-03",
+      "frequency": "monthly",
+      "note": "Manual monthly update"
+    },
+    "nvdaDataCenterRevenue": {
+      "id": "nvda_dc",
+      "label": "NVDA Data Center Revenue",
+      "displayValue": "$35.6B",
+      "value": 35.6,
+      "unit": "USD_B",
+      "status": "STATIC",
+      "source": "NVIDIA quarterly earnings",
+      "asOf": "2026-Q1",
+      "frequency": "quarterly",
+      "note": "Quarterly update"
+    }
+  },
+  "l2CapitalFlow": {
+    "hyperscalerCapex": {
+      "id": "hyp_capex",
+      "label": "Hyperscaler CapEx",
+      "displayValue": "$78.4B",
+      "value": 78.4,
+      "unit": "USD_B",
+      "status": "STATIC",
+      "source": "Hyperscaler quarterly capex aggregate",
+      "asOf": "2026-Q1",
+      "frequency": "quarterly"
+    },
+    "microsoftCapex": {
+      "id": "msft_capex",
+      "label": "Microsoft CapEx",
+      "displayValue": "$21.4B",
+      "value": 21.4,
+      "unit": "USD_B",
+      "status": "STATIC",
+      "source": "Microsoft quarterly filing",
+      "asOf": "2026-Q1",
+      "frequency": "quarterly"
+    },
+    "amazonCapex": {
+      "id": "amzn_capex",
+      "label": "Amazon CapEx",
+      "displayValue": "$24.8B",
+      "value": 24.8,
+      "unit": "USD_B",
+      "status": "STATIC",
+      "source": "Amazon quarterly filing",
+      "asOf": "2026-Q1",
+      "frequency": "quarterly"
+    },
+    "googleCapex": {
+      "id": "goog_capex",
+      "label": "Google CapEx",
+      "displayValue": "$17.2B",
+      "value": 17.2,
+      "unit": "USD_B",
+      "status": "STATIC",
+      "source": "Alphabet quarterly filing",
+      "asOf": "2026-Q1",
+      "frequency": "quarterly"
+    },
+    "metaCapex": {
+      "id": "meta_capex",
+      "label": "Meta CapEx",
+      "displayValue": "$15.0B",
+      "value": 15.0,
+      "unit": "USD_B",
+      "status": "STATIC",
+      "source": "Meta quarterly filing",
+      "asOf": "2026-Q1",
+      "frequency": "quarterly"
+    }
+  },
+  "l3MarketConfirmation": {
+    "soxxReflection": {
+      "id": "soxx_ref",
+      "label": "SOXX Reflection",
+      "displayValue": "0.92",
+      "value": 0.92,
+      "status": "STATIC",
+      "source": "internal reflection score",
+      "asOf": "2026-05-07",
+      "frequency": "weekly"
+    },
+    "soxlDecay": {
+      "id": "soxl_decay",
+      "label": "SOXL Decay",
+      "displayValue": "-4.7%",
+      "value": -4.7,
+      "unit": "%",
+      "status": "STATIC",
+      "source": "internal SOXL decay estimate",
+      "asOf": "2026-05-07",
+      "frequency": "daily"
+    }
+  }
+}
