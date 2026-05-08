@@ -13,6 +13,8 @@ import type { SoxlDecayPayload, SoxlDecayWindow, SoxlDecayStatus } from '@/lib/s
 import { PENDING_SOXL_DECAY, DECAY_STATUS_COLOR, DECAY_STATUS_LABEL, fmtDecay, fmtReturn } from '@/lib/semiconductor/soxlDecay'
 import type { SemiconductorFlowProxyPayload } from '@/lib/semiconductor/flowProxy'
 import { PENDING_FLOW_PROXY, FLOW_STATUS_COLOR, FLOW_STATUS_DOT } from '@/lib/semiconductor/flowProxy'
+import { computeSignalQuality, SQ_COLOR, SQ_BG, COMP_LABEL_COLOR } from '@/lib/semiconductor/signalQuality'
+import type { SemiconductorSignalQuality } from '@/lib/semiconductor/signalQuality'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -1490,10 +1492,12 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
 }
 
 // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
-function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab, dataStatusCounts }:
-  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void; dataStatusCounts?: { live: number; cache: number; static: number; pending: number } }) {
+function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab, dataStatusCounts, liveKpis }:
+  { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void; dataStatusCounts?: { live: number; cache: number; static: number; pending: number }; liveKpis?: LiveKpis }) {
   const [rpDecay, setRpDecay] = useState<{decayPct: number|null; status: SoxlDecayStatus; bm: string}>({decayPct: null, status: 'PENDING', bm: 'SOXX'})
-  const [rpFlow,  setRpFlow]  = useState<{status: string; generatedAt: string}>({status: 'Pending', generatedAt: ''})
+  const [rpFlow,  setRpFlow]  = useState<SemiconductorFlowProxyPayload>(PENDING_FLOW_PROXY)
+  const [rpRS,    setRpRS]    = useState<BenchmarkRSPayload>(PENDING_RS_PAYLOAD)
+  const [rpRRG,   setRpRRG]   = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
   useEffect(() => {
     fetch('/api/soxl-decay')
       .then(r => r.json())
@@ -1505,12 +1509,39 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
       .catch(() => {})
     fetch('/api/semiconductor-flow-proxy')
       .then(r => r.json())
-      .then((d: SemiconductorFlowProxyPayload) => setRpFlow({
-        status:      d.summary?.overallStatus ?? 'Pending',
-        generatedAt: d.generatedAt ?? '',
-      }))
+      .then((d: SemiconductorFlowProxyPayload) => setRpFlow(d))
+      .catch(() => {})
+    fetch('/api/semiconductor-benchmark-rs')
+      .then(r => r.json())
+      .then((d: BenchmarkRSPayload) => setRpRS(d))
+      .catch(() => {})
+    fetch('/api/semiconductor-rrg-paths')
+      .then(r => r.json())
+      .then((d: RrgPathPayload) => setRpRRG(d))
       .catch(() => {})
   }, [])
+
+  const rpRRGLive  = rpRRG.series.filter(s =>
+    s.source !== 'PENDING' && s.points.length > 0 &&
+    ['ai_compute','memory_hbm','foundry_pkg','equipment'].includes(s.id)
+  )
+  const rpRotation = classifyRrgRotation(rpRRGLive)
+  const dsTotal    = (dataStatusCounts?.live ?? 0) + (dataStatusCounts?.cache ?? 0) + (dataStatusCounts?.static ?? 0) + (dataStatusCounts?.pending ?? 0)
+  const sq: SemiconductorSignalQuality = computeSignalQuality({
+    soxxVsQQQ:          rpRS.summary.SOXX_vs_QQQ,
+    soxxVsSPY:          rpRS.summary.SOXX_vs_SPY,
+    rrgMode:            rpRotation.leadershipMode,
+    rrgDataReady:       rpRRG.dataStatus.hasBucketPath,
+    flowOverallStatus:  rpFlow.summary.overallStatus,
+    flowConfirmingCount:     rpFlow.summary.confirmingBuckets.length,
+    flowDistributionCount:   rpFlow.summary.distributionPressureBuckets.length,
+    breadthPct:         liveKpis?.breadth_pct ?? null,
+    advancingPct:       liveKpis?.advancing_pct ?? null,
+    soxlDecayStatus:    rpDecay.status,
+    dataLive:           dataStatusCounts?.live  ?? 0,
+    dataCache:          dataStatusCounts?.cache ?? 0,
+    dataTotal:          dsTotal,
+  })
   return (
     <div style={{background:V.bg2,borderLeft:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* ① AI vs Legacy */}
@@ -1637,7 +1668,40 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
           <span style={{color:V.text3}}>폭 좁음</span>
         </div>
       </div>
-      {/* ④ Quick Nav */}
+      {/* ④ Signal Quality */}
+      <div style={{padding:'10px 16px',borderTop:`1px solid ${V.border}`,background:SQ_BG[sq.label]}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>SIGNAL QUALITY</div>
+          <div style={{display:'flex',alignItems:'baseline',gap:4}}>
+            <span style={{fontSize:16,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.mono}}>{sq.score}</span>
+            <span style={{fontSize:11,color:V.text3,fontFamily:V.mono}}>/ {sq.maxScore}</span>
+            <span style={{fontSize:11,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.ui,marginLeft:4}}>{sq.label}</span>
+          </div>
+        </div>
+        {sq.confirmingFactors.length > 0 && (
+          <div style={{marginBottom:3}}>
+            <div style={{fontSize:10,color:V.teal,letterSpacing:'0.06em',fontFamily:V.ui,marginBottom:2}}>Confirming</div>
+            {sq.confirmingFactors.slice(0,2).map((f,i)=>(
+              <div key={i} style={{fontSize:10,color:V.text2,fontFamily:V.ui,paddingLeft:6}}>· {f}</div>
+            ))}
+          </div>
+        )}
+        {sq.cautionFactors.length > 0 && (
+          <div style={{marginBottom:3}}>
+            <div style={{fontSize:10,color:V.amber,letterSpacing:'0.06em',fontFamily:V.ui,marginBottom:2}}>Caution</div>
+            {sq.cautionFactors.slice(0,2).map((f,i)=>(
+              <div key={i} style={{fontSize:10,color:V.text2,fontFamily:V.ui,paddingLeft:6}}>· {f}</div>
+            ))}
+          </div>
+        )}
+        {sq.pendingFactors.length > 0 && (
+          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginTop:2}}>
+            {sq.pendingFactors.join(' · ')}
+          </div>
+        )}
+      </div>
+
+      {/* ⑤ Quick Nav */}
       <div style={{padding:'12px 16px',flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
         <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>빠른 이동</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}}>
@@ -1661,7 +1725,7 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
           {[
             { label: 'SOXX Structure', val: 'Broad',       vc: V.teal  },
             { label: 'Bucket Coverage',val: '~48%',        vc: V.text2 },
-            { label: 'Flow Proxy',     val: rpFlow.status, vc: FLOW_STATUS_COLOR[rpFlow.status as keyof typeof FLOW_STATUS_COLOR] ?? V.text3 },
+            { label: 'Flow Proxy',     val: rpFlow.summary.overallStatus, vc: FLOW_STATUS_COLOR[rpFlow.summary.overallStatus] ?? V.text3 },
             { label: 'Contribution',   val: 'Unavailable', vc: V.text3 },
           ].map(r => (
             <div key={r.label} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
@@ -1677,6 +1741,17 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
               [`${dataStatusCounts?.pending ?? 3} PENDING`, '#737880'],
             ] as [string, string][]).map(([l,c])=>(
               <span key={l} style={{fontSize:10,padding:'1px 5px',border:`1px solid ${c}33`,color:c,borderRadius:2,fontFamily:'monospace'}}>{l}</span>
+            ))}
+          </div>
+          {/* Signal Quality component breakdown */}
+          <div style={{marginTop:8,borderTop:`1px solid ${V.border}`,paddingTop:6}}>
+            <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:5}}>SIGNAL QUALITY BREAKDOWN</div>
+            {sq.components.map(comp=>(
+              <div key={comp.component} style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:'2px 8px',alignItems:'baseline',marginBottom:3}}>
+                <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{comp.component}</span>
+                <span style={{fontSize:10,color:COMP_LABEL_COLOR[comp.label],fontFamily:V.mono,textAlign:'right'}}>{comp.label !== 'Pending' ? `${comp.score}/${comp.maxScore}` : '—'}</span>
+                <span style={{fontSize:10,color:COMP_LABEL_COLOR[comp.label],fontFamily:V.ui,whiteSpace:'nowrap'}}>{comp.label}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -1856,7 +1931,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
             </div>
           </div>
 
-          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn} onViewDataLab={onViewDataLab} dataStatusCounts={dataStatusCounts}/>
+          <RightPanel onTab={setCenterTab} aiRegime={ar} concentrationTop5={kpis?.leader_concentration_top5} ewSpread={kpis?.equal_weight_vs_cap_spread} aiBucketReturn={aiBucketReturn} onViewDataLab={onViewDataLab} dataStatusCounts={dataStatusCounts} liveKpis={kpis}/>
         </div>
 
         {/* History Card */}

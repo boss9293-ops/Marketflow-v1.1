@@ -203,3 +203,15 @@ Flow Proxy adds a volume participation dimension that complements rotation data 
 | Flow Proxy | Volume (avgVol5D / avgVol20D) | Confirming / Neutral / Thin / Distribution |
 
 See: `marketflow/docs/SEMICONDUCTOR_FLOW_PROXY.md`
+
+---
+
+## Signal Quality — Interpretation Layer
+
+Signal Quality is a cross-layer agreement summary that reads from RS, RRG, Flow Proxy, Health, SOXL Decay, and Data Trust to answer:
+
+> **How reliable is the current semiconductor cycle signal?**
+
+It does not alter any of the underlying layers. It is read-only aggregation.
+
+See: `marketflow/docs/SEMICONDUCTOR_SIGNAL_QUALITY.md`
