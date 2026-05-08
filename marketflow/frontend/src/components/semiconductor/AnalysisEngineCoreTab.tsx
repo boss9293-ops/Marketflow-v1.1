@@ -1,8 +1,10 @@
 'use client'
 // 반도체 사이클 엔진 — 3-Layer Pyramid 기반 분석 탭 (레퍼런스 HTML 직접 포팅)
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { SemiconductorFundamentalsPayload, FundamentalMetric, DataStatus } from '@/lib/semiconductor/fundamentalDataContract'
+import type { BenchmarkId, BenchmarkRSPayload, RelativeStatus } from '@/lib/semiconductor/benchmarkRelativeStrength'
+import { formatReturn, formatRelative, PENDING_RS_PAYLOAD } from '@/lib/semiconductor/benchmarkRelativeStrength'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -797,52 +799,126 @@ function SemiconductorRRGCard() {
 }
 
 // ── TAB: PERFORMANCE ─────────────────────────────────────────────────────────
+const STATUS_COLOR: Record<RelativeStatus, string> = {
+  Leading: '#22c55e', Neutral: '#c9cdd4', Lagging: '#ef4444', Pending: '#737880',
+}
 function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegime?: InterpAIRegime }) {
+  const [benchRS,  setBenchRS]  = useState<BenchmarkRSPayload>(PENDING_RS_PAYLOAD)
+  const [selBench, setSelBench] = useState<BenchmarkId>('SOXX')
+  useEffect(() => {
+    fetch('/api/semiconductor-benchmark-rs')
+      .then(r => r.json())
+      .then(d => setBenchRS(d as BenchmarkRSPayload))
+      .catch(() => {})
+  }, [])
+
+  const bm   = benchRS.benchmarks
+  const rel  = benchRS.relative
+  const summ = benchRS.summary
+
   const perfRows = [
-    {dot:V.blue, name:'SOXX Index',        d1:'+1.0%',d5:'+1.2%',m1:'+3.6%',m3:'+8.2%',m6:'+17.0%',vs:'—',dir:'Benchmark',dirC:V.teal},
-    {dot:V.teal, name:'AI Infrastructure', d1:'+0.0%',d5:'+1.2%',m1:'+3.6%',m3:'+5.2%',m6:'+12.0%',vs:'+0.0%',dir:'Fading',dirC:V.amber},
-    {dot:V.amber,name:'Memory / HBM',      d1:'+1.0%',d5:'+1.2%',m1:'+2.6%',m3:'+8.2%',m6:'+16.0%',vs:'−1.0%',dir:'Fading',dirC:V.amber},
-    {dot:V.red,  name:'Foundry / Packaging',d1:'+1.0%',d5:'+0.2%',m1:'+1.6%',m3:'+3.2%',m6:'+10.0%',vs:'−2.0%',dir:'Fading',dirC:V.amber},
-    {dot:V.gold, name:'Equipment',          d1:'+1.0%',d5:'+2.2%',m1:'+1.6%',m3:'+4.2%',m6:'+11.0%',vs:'−2.0%',dir:'Fading',dirC:V.amber},
+    {dot:V.blue, name:'SOXX Index',         d1:formatReturn(bm.SOXX.returns['1D']), d5:formatReturn(bm.SOXX.returns['5D']), m1:formatReturn(bm.SOXX.returns['1M']), m3:formatReturn(bm.SOXX.returns['3M']), m6:formatReturn(bm.SOXX.returns['6M']), dir:'Benchmark',  dirC:V.teal},
+    {dot:V.teal, name:'AI Infrastructure',  d1:'+0.0%', d5:'+1.2%', m1:'+3.6%', m3:'+5.2%', m6:'+12.0%', dir:'Fading', dirC:V.amber},
+    {dot:V.amber,name:'Memory / HBM',       d1:'+1.0%', d5:'+1.2%', m1:'+2.6%', m3:'+8.2%', m6:'+16.0%', dir:'Fading', dirC:V.amber},
+    {dot:V.red,  name:'Foundry / Packaging',d1:'+1.0%', d5:'+0.2%', m1:'+1.6%', m3:'+3.2%', m6:'+10.0%', dir:'Fading', dirC:V.amber},
+    {dot:V.gold, name:'Equipment',          d1:'+1.0%', d5:'+2.2%', m1:'+1.6%', m3:'+4.2%', m6:'+11.0%', dir:'Fading', dirC:V.amber},
   ]
   const tdS = (c:string):React.CSSProperties => ({padding:'7px 8px',fontSize:11,color:c,fontFamily:V.mono,textAlign:'right'})
+
+  // VS column: SOXX row shows benchmark relative; bucket rows show PENDING until bucket RS wired
+  const vsVal = (rowName: string, selBm: BenchmarkId): string => {
+    if (rowName === 'SOXX Index') return '—'
+    if (selBm === 'SOXX') {
+      const vsSOXX: Record<string, string> = {
+        'AI Infrastructure': '+0.0%', 'Memory / HBM': '−1.0%', 'Foundry / Packaging': '−2.0%', 'Equipment': '−2.0%',
+      }
+      return vsSOXX[rowName] ?? '—'
+    }
+    return '—'
+  }
+  const vsColor = (v: string): string =>
+    v === '—' ? V.text3 : v.startsWith('+') ? V.teal : V.red
+
   return (
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
+      {/* Benchmark Context Card */}
+      <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'10px 14px',marginBottom:12}}>
+        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:8}}>BENCHMARK CONTEXT</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 20px'}}>
+          {(['SOXX_vs_QQQ','SOXX_vs_SPY'] as const).map(key => {
+            const label = key === 'SOXX_vs_QQQ' ? 'SOXX vs QQQ' : 'SOXX vs SPY'
+            const status: RelativeStatus = summ[key]
+            const relMap = key === 'SOXX_vs_QQQ' ? rel.SOXX_vs_QQQ : rel.SOXX_vs_SPY
+            const rel1d  = relMap['1D']
+            return (
+              <div key={key} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <span style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>{label}</span>
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <span style={{fontSize:10,color:V.text3,fontFamily:V.mono}}>{formatRelative(rel1d)} 1D</span>
+                  <span style={{fontSize:10,padding:'1px 6px',border:`1px solid ${STATUS_COLOR[status]}33`,color:STATUS_COLOR[status],borderRadius:2,fontFamily:V.mono,letterSpacing:'0.05em'}}>{status}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui}}>
+          SOXX proxy: SMH · 1M relative pending (snapshot history &lt;30d)
+        </div>
+      </div>
+
       <EduBox title="PERFORMANCE — 멀티 타임프레임 성과 비교">
         같은 버킷도 시간 단위에 따라 해석이 다릅니다. <strong>1D · 5D는 노이즈</strong>에 가깝고,
         <strong>1M · 3M · 6M</strong>이 실제 추세를 보여줍니다.
         VS SOXX 컬럼의 음수(−)는 해당 버킷이 SOXX 전체보다 약하다는 뜻입니다.
         Direction이 <strong>Fading</strong>이면 모멘텀이 꺾이고 있는 것, <strong>Sustaining</strong>이면 지속 중입니다.
       </EduBox>
-      <SecTitle>BUCKET PERFORMANCE MATRIX</SecTitle>
+
+      {/* Matrix with benchmark selector */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+        <SecTitle style={{marginBottom:0}}>BUCKET PERFORMANCE MATRIX</SecTitle>
+        <div style={{display:'flex',gap:3,alignItems:'center'}}>
+          <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginRight:4}}>vs</span>
+          {(['SOXX','QQQ','SPY'] as BenchmarkId[]).map(b=>(
+            <button key={b} onClick={()=>setSelBench(b)} style={{
+              fontSize:10,padding:'2px 7px',borderRadius:2,cursor:'pointer',
+              border:`1px solid ${selBench===b?'rgba(63,182,168,0.4)':V.border}`,
+              background:selBench===b?'rgba(63,182,168,0.12)':V.bg3,
+              color:selBench===b?V.teal:V.text3,fontFamily:V.mono,letterSpacing:'0.05em',
+            }}>{b}</button>
+          ))}
+        </div>
+      </div>
       <Card>
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontFamily:V.ui}}>
             <thead>
               <tr style={{borderBottom:`1px solid ${V.border}`}}>
-                {['BUCKET','1D','5D','1M','3M','6M','VS SOXX 1M','DIRECTION'].map(h=>(
+                {['BUCKET','1D','5D','1M','3M','6M',`VS ${selBench} 1M`,'DIRECTION'].map(h=>(
                   <th key={h} style={{padding:'6px 8px',fontSize:10,letterSpacing:'0.10em',color:V.text3,textAlign:h==='BUCKET'?'left':'right',fontWeight:600}}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {perfRows.map(r=>(
-                <tr key={r.name} style={{borderBottom:`1px solid ${V.brd2}`}}>
-                  <td style={{padding:'7px 8px',fontSize:11}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{width:8,height:8,borderRadius:'50%',background:r.dot,flexShrink:0,display:'inline-block'}}/>
-                      <span style={{color:V.text2,fontFamily:V.ui}}>{r.name}</span>
-                    </div>
-                  </td>
-                  <td style={tdS(r.d1.startsWith('+')?V.teal:V.red)}>{r.d1}</td>
-                  <td style={tdS(r.d5.startsWith('+')?V.teal:V.red)}>{r.d5}</td>
-                  <td style={tdS(r.m1.startsWith('+')?V.teal:V.red)}>{r.m1}</td>
-                  <td style={tdS(r.m3.startsWith('+')?V.teal:V.red)}>{r.m3}</td>
-                  <td style={tdS(r.m6.startsWith('+')?V.teal:V.red)}>{r.m6}</td>
-                  <td style={tdS(r.vs==='—'?V.text3:r.vs.startsWith('+')?V.teal:V.red)}>{r.vs}</td>
-                  <td style={{padding:'7px 8px',fontSize:11,color:r.dirC,fontFamily:V.mono,textAlign:'right'}}>{r.dir}</td>
-                </tr>
-              ))}
+              {perfRows.map(r=>{
+                const vs = vsVal(r.name, selBench)
+                return (
+                  <tr key={r.name} style={{borderBottom:`1px solid ${V.brd2}`}}>
+                    <td style={{padding:'7px 8px',fontSize:11}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <span style={{width:8,height:8,borderRadius:'50%',background:r.dot,flexShrink:0,display:'inline-block'}}/>
+                        <span style={{color:V.text2,fontFamily:V.ui}}>{r.name}</span>
+                      </div>
+                    </td>
+                    <td style={tdS(r.d1.startsWith('+')?V.teal:r.d1.startsWith('−')||r.d1.startsWith('-')?V.red:V.text3)}>{r.d1}</td>
+                    <td style={tdS(r.d5.startsWith('+')?V.teal:r.d5.startsWith('−')||r.d5.startsWith('-')?V.red:V.text3)}>{r.d5}</td>
+                    <td style={tdS(r.m1.startsWith('+')?V.teal:r.m1.startsWith('−')||r.m1.startsWith('-')?V.red:V.text3)}>{r.m1}</td>
+                    <td style={tdS(r.m3.startsWith('+')?V.teal:r.m3.startsWith('−')||r.m3.startsWith('-')?V.red:V.text3)}>{r.m3}</td>
+                    <td style={tdS(r.m6.startsWith('+')?V.teal:r.m6.startsWith('−')||r.m6.startsWith('-')?V.red:V.text3)}>{r.m6}</td>
+                    <td style={tdS(vsColor(vs))}>{vs}</td>
+                    <td style={{padding:'7px 8px',fontSize:11,color:r.dirC,fontFamily:V.mono,textAlign:'right'}}>{r.dir}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
