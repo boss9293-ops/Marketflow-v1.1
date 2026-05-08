@@ -11,6 +11,8 @@ import type { BucketSeverity, LeadershipMode } from '@/lib/semiconductor/rrgInte
 import { classifyBucketRotation, classifyRrgRotation } from '@/lib/semiconductor/rrgInterpretation'
 import type { SoxlDecayPayload, SoxlDecayWindow, SoxlDecayStatus } from '@/lib/semiconductor/soxlDecay'
 import { PENDING_SOXL_DECAY, DECAY_STATUS_COLOR, DECAY_STATUS_LABEL, fmtDecay, fmtReturn } from '@/lib/semiconductor/soxlDecay'
+import type { SemiconductorFlowProxyPayload } from '@/lib/semiconductor/flowProxy'
+import { PENDING_FLOW_PROXY, FLOW_STATUS_COLOR, FLOW_STATUS_DOT } from '@/lib/semiconductor/flowProxy'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -1070,6 +1072,13 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
 const BUCKET_DOT: Record<string,string> = {'AI Compute':V.teal,'Memory / HBM':V.amber,'Memory':V.amber,'Foundry / Packaging':V.red,'Foundry':V.red,'Equipment':V.gold,'SOXX':V.blue,'SOXX Index':V.blue}
 function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
   { rsTable?: RsRow[]; kpis?: LiveKpis; breadthDetail?: BreadthDetail | null; concentrationTop5?: number | null }) {
+  const [flowProxy, setFlowProxy] = useState<SemiconductorFlowProxyPayload>(PENDING_FLOW_PROXY)
+  useEffect(() => {
+    fetch('/api/semiconductor-flow-proxy')
+      .then(r => r.json())
+      .then((d: SemiconductorFlowProxyPayload) => setFlowProxy(d))
+      .catch(() => {})
+  }, [])
   const liveRows = rsTable?.map(r => ({
     dot: BUCKET_DOT[r.name] ?? V.blue,
     name: r.name, ret: r.rs, vs: r.vs,
@@ -1158,6 +1167,48 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
         </div>
         <div style={{marginTop:6,fontSize:10,fontWeight:600,letterSpacing:'0.10em',color:V.teal,padding:'4px 8px',background:'rgba(63,182,168,0.08)',border:'1px solid rgba(63,182,168,0.2)',borderRadius:4,display:'inline-block',fontFamily:V.mono}}>NO CONFLICT</div>
         <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:6,fontFamily:V.ui}}>Momentum is consistent with the current trend. No divergence detected across buckets.</div>
+      </Card>
+
+      {/* ── Flow / Volume Confirmation ── */}
+      <SecTitle style={{marginTop:10}}>FLOW / VOLUME CONFIRMATION <span style={{color:V.text3,fontSize:11,fontWeight:400,letterSpacing:0}}>20D vol proxy · local OHLCV</span></SecTitle>
+      <Card style={{marginBottom:0}}>
+        {flowProxy.buckets.length > 0 ? (
+          <>
+            <div style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'4px 16px',alignItems:'center',marginBottom:8}}>
+              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>BUCKET</span>
+              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>VOL 5D/20D</span>
+              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>RET 20D</span>
+              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>STATUS</span>
+              {flowProxy.buckets.map(b => {
+                const sc = FLOW_STATUS_COLOR[b.status as keyof typeof FLOW_STATUS_COLOR] ?? V.text3
+                const dot = FLOW_STATUS_DOT[b.status as keyof typeof FLOW_STATUS_DOT] ?? '—'
+                return (
+                  <><span key={`n-${b.id}`} style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>{b.label}</span>
+                  <span key={`v-${b.id}`} style={{fontSize:11,color:V.text2,fontFamily:V.mono,textAlign:'right'}}>
+                    {b.volumeRatio5D != null ? `×${b.volumeRatio5D.toFixed(2)}` : '—'}
+                  </span>
+                  <span key={`r-${b.id}`} style={{fontSize:11,fontFamily:V.mono,textAlign:'right',color:b.return20D != null ? (b.return20D >= 0 ? V.teal : V.red) : V.text3}}>
+                    {b.return20D != null ? `${b.return20D >= 0 ? '+' : ''}${b.return20D.toFixed(1)}%` : '—'}
+                  </span>
+                  <span key={`s-${b.id}`} style={{fontSize:11,color:sc,fontFamily:V.mono,textAlign:'right',fontWeight:500}}>
+                    {dot} {b.status}
+                  </span></>
+                )
+              })}
+            </div>
+            <div style={{marginTop:6,fontSize:10,color:V.text2,fontFamily:V.ui,padding:'6px 8px',background:V.bg3,borderRadius:3,
+              borderLeft:`2px solid ${FLOW_STATUS_COLOR[flowProxy.summary.overallStatus as keyof typeof FLOW_STATUS_COLOR]??V.border}`}}>
+              {flowProxy.summary.koreanSummary}
+            </div>
+            <div style={{marginTop:4,fontSize:10,color:V.text3,fontFamily:V.ui}}>
+              generated {flowProxy.generatedAt ? new Date(flowProxy.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'} · benchmark {flowProxy.benchmark} · vol 5D/20D ratio (local OHLCV, not fund flow data)
+            </div>
+          </>
+        ) : (
+          <div style={{padding:16,textAlign:'center'}}>
+            <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Flow / volume proxy pending — run build_semiconductor_flow_proxy.py</div>
+          </div>
+        )}
       </Card>
     </div>
   )
@@ -1442,6 +1493,7 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
 function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketReturn, onViewDataLab, dataStatusCounts }:
   { onTab:(t:CenterTab)=>void; aiRegime?: InterpAIRegime; concentrationTop5?: number | null; ewSpread?: number | null; aiBucketReturn?: string; onViewDataLab?: () => void; dataStatusCounts?: { live: number; cache: number; static: number; pending: number } }) {
   const [rpDecay, setRpDecay] = useState<{decayPct: number|null; status: SoxlDecayStatus; bm: string}>({decayPct: null, status: 'PENDING', bm: 'SOXX'})
+  const [rpFlow,  setRpFlow]  = useState<{status: string; generatedAt: string}>({status: 'Pending', generatedAt: ''})
   useEffect(() => {
     fetch('/api/soxl-decay')
       .then(r => r.json())
@@ -1449,6 +1501,13 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
         decayPct: d.summary?.currentDecayPct ?? null,
         status:   (d.summary?.status ?? 'PENDING') as SoxlDecayStatus,
         bm:       d.benchmark === 'PENDING' ? 'SOXX' : d.benchmark,
+      }))
+      .catch(() => {})
+    fetch('/api/semiconductor-flow-proxy')
+      .then(r => r.json())
+      .then((d: SemiconductorFlowProxyPayload) => setRpFlow({
+        status:      d.summary?.overallStatus ?? 'Pending',
+        generatedAt: d.generatedAt ?? '',
       }))
       .catch(() => {})
   }, [])
@@ -1602,6 +1661,7 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
           {[
             { label: 'SOXX Structure', val: 'Broad',       vc: V.teal  },
             { label: 'Bucket Coverage',val: '~48%',        vc: V.text2 },
+            { label: 'Flow Proxy',     val: rpFlow.status, vc: FLOW_STATUS_COLOR[rpFlow.status as keyof typeof FLOW_STATUS_COLOR] ?? V.text3 },
             { label: 'Contribution',   val: 'Unavailable', vc: V.text3 },
           ].map(r => (
             <div key={r.label} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
