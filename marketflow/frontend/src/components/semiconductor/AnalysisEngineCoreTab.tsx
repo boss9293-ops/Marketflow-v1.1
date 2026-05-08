@@ -599,12 +599,15 @@ const BENCH_CONTEXT: Record<RRGBench, string> = {
 function SemiconductorRRGCard() {
   const [bench,    setBench]    = useState<RRGBench>('SOXX')
   const [lookback, setLookback] = useState<RRGLookback>(8)
-  const [rrgPayload, setRrgPayload] = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
+  const [rrgPayload,   setRrgPayload]   = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
+  const [rrgLoading,   setRrgLoading]   = useState(false)
+  const [rrgError,     setRrgError]     = useState<string | null>(null)
   useEffect(() => {
+    setRrgLoading(true)
     fetch('/api/semiconductor-rrg-paths')
       .then(r => r.json())
-      .then((d: RrgPathPayload) => { setRrgPayload(d) })
-      .catch(() => {})
+      .then((d: RrgPathPayload) => { setRrgPayload(d); setRrgLoading(false) })
+      .catch((e: unknown) => { setRrgError(String(e)); setRrgLoading(false) })
   }, [])
   const pathStatus = rrgPayload.dataStatus
 
@@ -666,10 +669,10 @@ function SemiconductorRRGCard() {
     soxx_vs_spy: { color: '#4A9EE0', short: 'SOX' },
     qqq_vs_spy:  { color: '#4A9EE0', short: 'Q/S' },
   }
+  // QQQ/SPY bucket paths not yet available — soxx_vs_qqq/spy are benchmark context only, not bucket paths
   const seriesForBench = rrgPayload.series.filter(s => {
     if (bench === 'SOXX') return ['ai_compute','memory_hbm','foundry_pkg','equipment'].includes(s.id)
-    if (bench === 'QQQ')  return s.id === 'soxx_vs_qqq'
-    return s.id === 'soxx_vs_spy'
+    return false
   })
   const hasLive = seriesForBench.some(s => s.source !== 'PENDING' && s.points.length > 0)
 
@@ -739,10 +742,20 @@ function SemiconductorRRGCard() {
         RS Ratio (가로) · RS Momentum (세로) 이동 경로로 섹터 순환 단계를 읽는 회전 지도입니다.
       </div>
 
-      {isPending ? (
-        <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8,background:V.bg3,borderRadius:4}}>
-          <div style={{fontSize:12,color:V.text3,fontFamily:V.ui}}>PENDING</div>
-          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>{bench} 기준 상대강도 데이터 미연결</div>
+      {rrgError ? (
+        <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:6,background:V.bg3,borderRadius:4}}>
+          <div style={{fontSize:11,color:V.red,fontFamily:V.ui}}>DATA ERROR</div>
+          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>API fetch failed — showing fallback fixture</div>
+        </div>
+      ) : rrgLoading ? (
+        <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',background:V.bg3,borderRadius:4}}>
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Loading RRG paths…</div>
+        </div>
+      ) : isPending ? (
+        <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:6,background:V.bg3,borderRadius:4}}>
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>PENDING</div>
+          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>Bucket path pending for {bench} benchmark</div>
+          {bench !== 'SOXX' && <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,opacity:0.6}}>SOXX vs {bench} context available but bucket series not yet generated</div>}
         </div>
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',display:'block'}}>
@@ -843,7 +856,7 @@ function SemiconductorRRGCard() {
           </div>
           <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${hasLive?V.teal:V.border}`}}>
             {hasLive
-              ? `Live data · generated ${rrgPayload.generatedAt ? new Date(rrgPayload.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}`
+              ? `RRG path: ${rrgPayload.lookback} real data · benchmark ${rrgPayload.benchmark} · generated ${rrgPayload.generatedAt ? new Date(rrgPayload.generatedAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '—'}`
               : pathStatus.hasBucketPath
                 ? 'Bucket path connected — real RS data'
                 : pathStatus.hasBenchmarkPath
