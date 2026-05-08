@@ -7,17 +7,19 @@ export type FlowProxyStatus =
   | 'Partial'
   | 'Pending'
 
+export type FlowProxySource = 'LOCAL_DB' | 'CACHE' | 'PARTIAL' | 'PENDING'
+
 export interface FlowProxyMetric {
   id: string
   label: string
   status: FlowProxyStatus
+  volumeRatioCurrent: number | null
   volumeRatio5D: number | null
-  volumeRatio20D: number | null
   return5D: number | null
   return20D: number | null
   availableTickers: string[]
   missingTickers: string[]
-  source: 'LOCAL_DB' | 'CACHE' | 'PARTIAL' | 'PENDING'
+  source: FlowProxySource
   note?: string
 }
 

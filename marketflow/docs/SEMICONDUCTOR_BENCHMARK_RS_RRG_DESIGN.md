@@ -187,3 +187,19 @@ build_semiconductor_series_data.py   (ohlcv_daily → per-ticker series JSON)
 ```
 
 Run all three via: `python marketflow/scripts/build_semiconductor_rrg_pipeline.py`
+
+---
+
+## Flow / Volume Proxy — Relationship to RRG
+
+**Flow Proxy is a separate confirmation layer and is NOT part of the RRG calculation.**
+
+RRG paths are derived exclusively from price-based RS Ratio / RS Momentum (Candidate-D formula).  
+Flow Proxy adds a volume participation dimension that complements rotation data but does not feed into it.
+
+| Layer | Input | Output |
+|-------|-------|--------|
+| RRG | Price (RS Ratio, RS Momentum) | Quadrant, direction, trail |
+| Flow Proxy | Volume (avgVol5D / avgVol20D) | Confirming / Neutral / Thin / Distribution |
+
+See: `marketflow/docs/SEMICONDUCTOR_FLOW_PROXY.md`

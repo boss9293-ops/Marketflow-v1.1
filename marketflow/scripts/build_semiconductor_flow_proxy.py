@@ -154,7 +154,7 @@ def main():
             'label':            label,
             'status':           status,
             'volumeRatio5D':    round(vol5d,  3) if vol5d  is not None else None,
-            'volumeRatio20D':   round(vol20d, 3) if vol20d is not None else None,
+            'volumeRatioCurrent': round(vol20d, 3) if vol20d is not None else None,
             'return5D':         round(r5,  2) if r5  is not None else None,
             'return20D':        round(r20, 2) if r20 is not None else None,
             'availableTickers': available,
