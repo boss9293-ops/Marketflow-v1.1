@@ -7,6 +7,8 @@ import type { BenchmarkId, BenchmarkRSPayload, RelativeStatus } from '@/lib/semi
 import { formatReturn, formatRelative, PENDING_RS_PAYLOAD } from '@/lib/semiconductor/benchmarkRelativeStrength'
 import type { RrgPathPayload } from '@/lib/semiconductor/rrgPathData'
 import { PENDING_RRG_PAYLOAD } from '@/lib/semiconductor/rrgPathData'
+import type { BucketSeverity, LeadershipMode } from '@/lib/semiconductor/rrgInterpretation'
+import { classifyBucketRotation, classifyRrgRotation } from '@/lib/semiconductor/rrgInterpretation'
 
 const V = {
   bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
@@ -703,6 +705,23 @@ function SemiconductorRRGCard() {
 
   const isPending = renderBuckets.filter(r => !r.isBm).length === 0
 
+  // ── Interpretation layer ─────────────────────────────────────────────────
+  const liveSeriesForBench = seriesForBench.filter(s => s.source !== 'PENDING' && s.points.length > 0)
+  const bucketInterps = liveSeriesForBench.map(classifyBucketRotation)
+  const rotationSummary = classifyRrgRotation(liveSeriesForBench)
+
+  const sevColor = (s: BucketSeverity) =>
+    s === 'positive' ? V.teal : s === 'neutral' ? V.blue :
+    s === 'caution' ? V.amber : s === 'weak' ? V.red : V.text3
+  const sevBg = (s: BucketSeverity) =>
+    s === 'positive' ? 'rgba(63,182,168,0.09)' : s === 'neutral' ? 'rgba(74,158,224,0.09)' :
+    s === 'caution' ? 'rgba(242,169,59,0.09)' : s === 'weak' ? 'rgba(229,90,90,0.09)' : V.bg3
+  const modeColor = (m: LeadershipMode) =>
+    m === 'Rotation Broadening' || m === 'Broad Leadership' ? V.teal :
+    m === 'Narrow Leadership' ? V.amber :
+    m === 'Rotation Weakening' ? V.red :
+    m === 'High Dispersion' ? V.gold : V.text3
+
   return (
     <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:16,minHeight:340}}>
       {/* ── Header ── */}
@@ -836,25 +855,58 @@ function SemiconductorRRGCard() {
       {/* ── Interpretation strip ── */}
       {!isPending && (
         <div style={{marginTop:10,borderTop:`1px solid ${V.border}`,paddingTop:8}}>
+          {/* Compact phase chips */}
           <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>ROTATION INTERPRETATION</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 16px'}}>
-            {renderBuckets.filter(b=>!b.isBm).map(b=>{
-              const qc = quadColor(b.quadrant)
-              const dc = dirColor(b.direction as Direction)
-              return (
-                <div key={b.id} style={{display:'flex',alignItems:'flex-start',gap:6}}>
-                  <div style={{width:6,height:6,borderRadius:'50%',background:b.color,flexShrink:0,marginTop:3}}/>
-                  <div>
-                    <span style={{fontSize:10,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.name} </span>
-                    <span style={{fontSize:10,color:qc,fontFamily:V.mono}}>[{b.quadrant}]</span>
-                    <span style={{fontSize:10,color:dc,fontFamily:V.mono}}> {b.direction}</span>
-                    <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}> · {b.note}</span>
-                  </div>
+          {bucketInterps.length > 0 ? (
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
+              {bucketInterps.map(b=>(
+                <div key={b.id} style={{display:'flex',alignItems:'center',gap:5,padding:'3px 9px',
+                  background:sevBg(b.severity),borderRadius:3,
+                  border:`1px solid ${sevColor(b.severity)}33`}}>
+                  <div style={{width:6,height:6,borderRadius:'50%',background:sevColor(b.severity),flexShrink:0}}/>
+                  <span style={{fontSize:10,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.label}</span>
+                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>·</span>
+                  <span style={{fontSize:10,color:sevColor(b.severity),fontFamily:V.mono}}>{b.phase}</span>
                 </div>
-              )
-            })}
-          </div>
-          <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${hasLive?V.teal:V.border}`}}>
+              ))}
+            </div>
+          ) : (
+            <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginBottom:10}}>Live path data not yet available — chips pending</div>
+          )}
+
+          {/* Rotation Read panel */}
+          {bucketInterps.length > 0 && (
+            <div style={{background:V.bg3,borderRadius:4,padding:'8px 10px',marginBottom:8,
+              borderLeft:`2px solid ${modeColor(rotationSummary.leadershipMode)}`}}>
+              <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>회전 해석</div>
+              <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'4px 10px',alignItems:'baseline'}}>
+                <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>리더십 모드</span>
+                <span style={{fontSize:10,color:modeColor(rotationSummary.leadershipMode),fontFamily:V.mono,fontWeight:600}}>{rotationSummary.leadershipMode}</span>
+                {rotationSummary.leadBuckets.length > 0 && <>
+                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>주도 버킷</span>
+                  <span style={{fontSize:10,color:V.teal,fontFamily:V.ui}}>{rotationSummary.leadBuckets.join(', ')}</span>
+                </>}
+                {rotationSummary.recoveringBuckets.length > 0 && <>
+                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>회복 버킷</span>
+                  <span style={{fontSize:10,color:V.blue,fontFamily:V.ui}}>{rotationSummary.recoveringBuckets.join(', ')}</span>
+                </>}
+                {rotationSummary.weakeningBuckets.length > 0 && <>
+                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>둔화 버킷</span>
+                  <span style={{fontSize:10,color:V.amber,fontFamily:V.ui}}>{rotationSummary.weakeningBuckets.join(', ')}</span>
+                </>}
+                {rotationSummary.laggingBuckets.length > 0 && <>
+                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>약세 버킷</span>
+                  <span style={{fontSize:10,color:V.red,fontFamily:V.ui}}>{rotationSummary.laggingBuckets.join(', ')}</span>
+                </>}
+              </div>
+              <div style={{marginTop:6,fontSize:10,color:V.text2,fontFamily:V.ui,lineHeight:1.5}}>
+                {rotationSummary.koreanSummary}
+              </div>
+            </div>
+          )}
+
+          {/* Data source note */}
+          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${hasLive?V.teal:V.border}`}}>
             {hasLive
               ? `RRG path: ${rrgPayload.lookback} real data · benchmark ${rrgPayload.benchmark} · generated ${rrgPayload.generatedAt ? new Date(rrgPayload.generatedAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '—'}`
               : pathStatus.hasBucketPath

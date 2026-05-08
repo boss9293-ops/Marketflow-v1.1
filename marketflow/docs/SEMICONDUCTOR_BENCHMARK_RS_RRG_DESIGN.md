@@ -1,5 +1,66 @@
 # Semiconductor Benchmark RS / RRG Design
 
+## Phase C-5F — RRG Interpretation Layer
+
+**Helper file**: `marketflow/frontend/src/lib/semiconductor/rrgInterpretation.ts`
+
+### Bucket interpretation rules
+
+| Quadrant | Direction | Phase |
+|----------|-----------|-------|
+| Leading | Accelerating / Sustaining | Leadership |
+| Leading | Flattening / Rolling Over | Leadership Fading |
+| Weakening | any | Leadership Fading |
+| Improving | any | Recovery Attempt |
+| Lagging | Recovering | Early Recovery |
+| Lagging | any other | Weakness |
+| Pending | any | Pending |
+
+### Severity → color intent
+
+| Severity | Color | Phase |
+|----------|-------|-------|
+| positive | teal | Leadership |
+| neutral | blue | Recovery Attempt / Early Recovery |
+| caution | amber | Leadership Fading |
+| weak | red | Weakness |
+| pending | muted | Pending |
+
+### Leadership Mode rules (breadth summary)
+
+| Condition | Mode |
+|-----------|------|
+| All buckets Pending | Pending |
+| 2+ Leading AND 1+ Improving | Rotation Broadening |
+| 2+ Leading AND 0 Lagging | Broad Leadership |
+| 1 Leading AND 2+ Lagging | Narrow Leadership |
+| 2+ Leadership Fading / Weakening | Rotation Weakening |
+| Otherwise | High Dispersion |
+
+### Korean / English wording examples
+
+```
+Leadership:        "Memory / HBM이(가) 주도 구간에서 모멘텀을 유지하고 있습니다."
+Leadership Fading: "AI Compute의 주도권은 있으나 모멘텀이 둔화되고 있습니다."
+Recovery Attempt:  "Foundry / Pkg이(가) 개선 구간으로 진입하며 회복 시도가 보입니다."
+Early Recovery:    "Equipment이(가) 약세 구간에서 초기 회복 신호를 보이기 시작했습니다."
+Weakness:          "AI Compute이(가) 약세 구간에 머물며 아직 확인이 부족합니다."
+```
+
+### Forbidden language
+
+Do not use: buy / sell / entry / exit / target / stop / overweight / underweight.  
+These are context-only indicators of relative rotation position, not trade signals.
+
+### Limitations
+
+- Interpretation is purely quadrant + direction based — no price target or return implied.
+- Direction is derived from Candidate-D proxy formula (not official JdK RS-Ratio).
+- QQQ/SPY bucket paths not yet generated; those benches show Pending for all buckets.
+- Phase assignment uses deterministic rules; edge cases default to the most conservative bucket-level phase.
+
+---
+
 ## Phase C-5A — Benchmark Relative Strength Data Wiring
 
 **API route**: `/api/semiconductor-benchmark-rs`  
