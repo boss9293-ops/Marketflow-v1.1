@@ -722,6 +722,7 @@ function SemiconductorRRGCard() {
                 </g>
               )
             }
+            if (!bucket.path.length) return null
             const slice = bucket.path.slice(-(lookback+1))
             const n = slice.length
             const cur = slice[n-1]
@@ -730,14 +731,22 @@ function SemiconductorRRGCard() {
             const polyPts = slice.map(pt=>{ const p=toSvg(pt[0],pt[1]); return `${p.x},${p.y}` }).join(' ')
             return (
               <g key={bucket.name}>
-                <polyline points={polyPts} fill="none" stroke={bucket.color} strokeWidth={1.4} opacity={0.38} strokeLinejoin="round" strokeLinecap="round"/>
-                {trailPts.map((pt,i)=>{
-                  const {x,y}=toSvg(pt[0],pt[1])
-                  const op=0.10+(i/(n-1))*0.42
-                  return <circle key={i} cx={x} cy={y} r={3} fill={bucket.color} opacity={op}/>
-                })}
-                <circle cx={curX} cy={curY} r={10} fill={bucket.color} opacity={0.88}/>
-                <text x={curX} y={curY+3.5} textAnchor="middle" fill="#0C1628" fontSize={8} fontWeight="700" fontFamily="'IBM Plex Mono',monospace">{bucket.short}</text>
+                {trailPts.length > 0 && <>
+                  <polyline points={polyPts} fill="none" stroke={bucket.color} strokeWidth={1.4} opacity={0.38} strokeLinejoin="round" strokeLinecap="round"/>
+                  {trailPts.map((pt,i)=>{
+                    const {x,y}=toSvg(pt[0],pt[1])
+                    const op=0.10+(i/trailPts.length)*0.42
+                    return <circle key={i} cx={x} cy={y} r={3} fill={bucket.color} opacity={op}/>
+                  })}
+                </>}
+                {/* outer ring — emphasis border */}
+                <circle cx={curX} cy={curY} r={13} fill="none" stroke={bucket.color} strokeWidth={1.2} opacity={0.4}/>
+                <circle cx={curX} cy={curY} r={10} fill={bucket.color} opacity={0.9}/>
+                {/* label above current point */}
+                <text x={curX} y={curY-17} textAnchor="middle" fill={bucket.color} fontSize={9} fontWeight="700" fontFamily="'IBM Plex Mono',monospace">{bucket.short}</text>
+                {trailPts.length === 0 && (
+                  <text x={curX} y={curY+22} textAnchor="middle" fill={bucket.color} fontSize={7} fontFamily="'IBM Plex Mono',monospace" opacity={0.45}>path pending</text>
+                )}
               </g>
             )
           })}
