@@ -47,47 +47,89 @@ function momentumPhrase(r1m: number | null, r3m: number | null): string {
 
 // ── Per-layer narrative templates ─────────────────────────────────────────────
 
+function breadthSuffix(breadthLabel: string): string {
+  switch (breadthLabel) {
+    case 'BROAD':     return ' 버킷 내부 종목 전반이 함께 강해지고 있어 단일 종목 움직임보다 섹터 확산 신호에 가깝습니다.'
+    case 'IMPROVING': return ' 버킷 내 절반 이상 종목이 함께 회복 중입니다.'
+    case 'NARROW':    return ' 아직 일부 종목 중심의 움직임으로, 확산 여부를 추가 확인해야 합니다.'
+    case 'WEAK':      return ' 버킷 내 대부분 종목이 약한 상태로, 신중한 접근이 필요합니다.'
+    default:          return ''
+  }
+}
+
 function layerExplanation(layer: LayerReportInput, statusLabel: string): string {
-  const { id, koreanLabel, momentum1m, momentum3m, rrgState, riskLabel, trendLabel } = layer
-  const momStr = momentumPhrase(momentum1m, momentum3m)
+  const { id, koreanLabel, momentum1m, momentum1w, momentum3m, rrgState, riskLabel, trendLabel, breadthLabel } = layer
+  const momStr   = momentumPhrase(momentum1m, momentum3m)
+  const bSuffix  = breadthSuffix(breadthLabel)
   const riskNote = riskLabel === 'HIGH' || riskLabel === 'ELEVATED'
     ? ' 신규 진입보다는 비중 관리가 더 중요한 구간입니다.'
     : ''
 
-  // Specific templates for known layers
+  // 1W negative + 1M positive → explicit short-term deceleration note
+  const shortTermWeak = momentum1w !== null && momentum1w < 0 && momentum1m !== null && momentum1m > 0
+  const weeklyNote = shortTermWeak ? ' 다만 최근 일주일 모멘텀은 음전환해 단기 확인이 필요합니다.' : ''
+
   switch (id) {
     case 'AI_CHIP':
+    case 'AI_COMPUTE':
       return riskLabel === 'HIGH' || trendLabel === 'EXTENDED'
         ? `AI Compute는 아직 주도권을 유지하고 있지만 과열 부담이 있습니다. (${momStr}) 신규 진입보다는 비중 관리가 더 중요한 구간입니다.`
-        : `AI Compute(반도체)는 AI 사이클의 핵심 엔진입니다. ${momStr}으로 흐름이 이어지고 있습니다.${riskNote}`
+        : `AI Compute(반도체)는 AI 사이클의 핵심 엔진입니다. ${momStr}으로 흐름이 이어지고 있습니다.${weeklyNote}${bSuffix}${riskNote}`
 
     case 'HBM_MEMORY':
+    case 'MEMORY_HBM':
       if (rrgState === 'WEAKENING' || (momentum1m !== null && momentum1m < 0))
         return `메모리 / HBM은 최근 모멘텀이 약해졌습니다. ${momStr}으로 중기 구조는 남아 있지만 단기 둔화가 관찰됩니다. 추가 확인이 필요합니다.`
-      return `메모리 / HBM 계층이 AI 수요 확산 수혜를 받고 있습니다. ${momStr}으로 흐름이 유지되고 있습니다.${riskNote}`
+      return `메모리 / HBM 계층이 AI 수요 확산 수혜를 받고 있습니다. ${momStr}으로 흐름이 유지되고 있습니다.${weeklyNote}${bSuffix}${riskNote}`
 
     case 'DATA_CENTER_INFRA':
     case 'PCB_SUBSTRATE':
       if (rrgState === 'IMPROVING')
-        return `${koreanLabel}이(가) 새롭게 뜨고 있습니다. ${momStr}으로 AI 인프라 수요가 이 레이어까지 확산되는 신호입니다.`
-      return `${koreanLabel}은(는) ${statusLabel} 상태입니다. ${momStr}.${riskNote}`
+        return `${koreanLabel}이(가) 새롭게 뜨고 있습니다. ${momStr}으로 AI 인프라 수요가 이 레이어까지 확산되는 신호입니다.${bSuffix}`
+      return `${koreanLabel}은(는) ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
 
     case 'POWER_INFRA':
     case 'COOLING':
+    case 'POWER_COOLING':
       return rrgState === 'LEADING'
-        ? `전력 / 냉각 인프라는 여전히 잘나가고 있습니다. ${momStr}으로 AI 데이터센터 투자가 물리 인프라로 확산되는 신호입니다.${riskNote}`
-        : `전력 / 냉각 인프라의 흐름이 변화하고 있습니다. ${momStr}.${riskNote}`
+        ? `전력 / 냉각 인프라는 여전히 잘나가고 있습니다. ${momStr}으로 AI 데이터센터 투자가 물리 인프라로 확산되는 신호입니다.${bSuffix}${riskNote}`
+        : `전력 / 냉각 인프라의 흐름이 변화하고 있습니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
 
     case 'OPTICAL_NETWORK':
-      return `광 네트워크 / 네트워킹은 AI 클러스터 내 데이터 이동 수요와 연결됩니다. ${momStr}.${riskNote}`
+    case 'NETWORKING_OPTICAL':
+      return `광 네트워크 / 네트워킹은 AI 클러스터 내 데이터 이동 수요와 연결됩니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
 
     case 'RAW_MATERIAL':
+    case 'RAW_MATERIALS':
       return rrgState === 'IMPROVING'
-        ? `원자재(구리·우라늄 등)가 새롭게 뜨고 있습니다. ${momStr}으로 AI 인프라 투자 수요가 업스트림 소재까지 확산되는 신호입니다.`
-        : `원자재 계층은 ${statusLabel} 상태입니다. ${momStr}.${riskNote}`
+        ? `원자재(구리·우라늄 등)가 새롭게 뜨고 있습니다. ${momStr}으로 AI 인프라 투자 수요가 업스트림 소재까지 확산되는 신호입니다.${bSuffix}`
+        : `원자재 계층은 ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
+
+    case 'CLOUD_HYPERSCALERS':
+      return rrgState === 'LEADING'
+        ? `클라우드·하이퍼스케일러가 AI 인프라 투자를 주도하고 있습니다. ${momStr}. 빅테크 자본지출 확대가 반도체 사이클 전반을 견인하는 신호입니다.${bSuffix}${riskNote}`
+        : `클라우드·하이퍼스케일러는 ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
+
+    case 'AI_SOFTWARE':
+      return rrgState === 'LEADING' || rrgState === 'IMPROVING'
+        ? `AI 소프트웨어 계층이 강세를 보이고 있습니다. ${momStr}. 하드웨어 투자 이후 소프트웨어 수익화 단계로 넘어가는 신호일 수 있습니다.${bSuffix}${riskNote}`
+        : `AI 소프트웨어 계층은 ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
+
+    case 'ROBOTICS_PHYSICAL_AI':
+      return rrgState === 'IMPROVING'
+        ? `로보틱스·피지컬 AI가 새롭게 부각되고 있습니다. ${momStr}. AI가 현실 세계로 확산되는 초기 신호로 관심이 필요합니다.${bSuffix}`
+        : `로보틱스·피지컬 AI 계층은 ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
+
+    case 'CYBERSECURITY':
+      return `사이버보안은 AI 확산과 함께 위협도 커지는 방어적 계층입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
+
+    case 'STORAGE_DATA':
+      return rrgState === 'IMPROVING'
+        ? `스토리지·데이터 인프라가 새롭게 뜨고 있습니다. ${momStr}. AI 학습 데이터 폭증이 이 계층까지 확산되는 신호입니다.${bSuffix}`
+        : `스토리지·데이터 계층은 ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
 
     default:
-      return `${koreanLabel}은(는) ${statusLabel} 상태입니다. ${momStr}.${riskNote}`
+      return `${koreanLabel}은(는) ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
   }
 }
 

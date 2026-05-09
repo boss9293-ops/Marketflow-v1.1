@@ -10,6 +10,7 @@ import type { AIInfraBucketState, AIInfraStateLabel } from '@/lib/ai-infra/aiInf
 import { STATE_DISPLAY_LABELS, STATE_COLORS } from '@/lib/ai-infra/aiInfraStateLabels'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
 import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
+import { adaptTowerLayers } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
 import { generateBeginnerReport, generateBeginnerOverall } from '@/lib/ai-investment-tower/beginnerReportGenerator'
 import { generateProReport } from '@/lib/ai-investment-tower/proReportGenerator'
 import { BeginnerReport } from '@/components/ai-investment-tower/BeginnerReport'
@@ -637,60 +638,40 @@ export default function AIInfrastructureRadar() {
               </div>
             )}
 
-            {/* ── 쉽게 보기 (Beginner Report) ── */}
-            {reportMode === 'beginner' && (() => {
-              const layerInputs = (states.length > 0 && buckets.length > 0)
-                ? adaptAllLayers(buckets, states) : []
-              const beginnerReports  = generateBeginnerReport(layerInputs)
-              const overallNarrative = generateBeginnerOverall(beginnerReports)
-              return (
-                <BeginnerReport reports={beginnerReports} overallNarrative={overallNarrative} />
-              )
+            {/* ── 리포트 섹션 (10-레이어 기준, 모드에 따라 다른 뷰) ── */}
+            {(() => {
+              const towerInputs = (states.length > 0 && buckets.length > 0)
+                ? adaptTowerLayers(buckets, states) : []
+              if (reportMode === 'beginner') {
+                const beginnerReports  = generateBeginnerReport(towerInputs)
+                const overallNarrative = generateBeginnerOverall(beginnerReports)
+                return <BeginnerReport reports={beginnerReports} overallNarrative={overallNarrative} />
+              }
+              const proReports = generateProReport(towerInputs)
+              return proReports.length > 0
+                ? <ProReport reports={proReports} />
+                : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>No layer data available.</div>
             })()}
 
-            {/* ── 자세히 보기 (Pro Report + advanced tabs) ── */}
-            {reportMode === 'pro' && (() => {
-              const layerInputs = (states.length > 0 && buckets.length > 0)
-                ? adaptAllLayers(buckets, states) : []
-              const proReports = generateProReport(layerInputs)
-              return (
-                <>
-                  {proReports.length > 0
-                    ? <ProReport reports={proReports} />
-                    : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                        No layer data available.
-                      </div>
-                  }
-
-                  {/* Deep dive tabs */}
-                  <div style={{
-                    marginTop: 24,
-                    paddingTop: 16,
-                    borderTop: `1px solid ${V.border}`,
-                  }}>
-                    <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.12em', marginBottom: 10 }}>
-                      DEEP DIVE
+            {/* ── 기존 탭 (항상 표시) ── */}
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${V.border}` }}>
+              <TabBar active={tab} onChange={setTab} />
+              {tab === 'state' && (
+                states.length > 0
+                  ? <StateLabelsTable states={states} grouped={grouped} />
+                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                      State label data not available.
                     </div>
-                    <TabBar active={tab} onChange={setTab} />
-                    {tab === 'state' && (
-                      states.length > 0
-                        ? <StateLabelsTable states={states} grouped={grouped} />
-                        : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                            State label data not available.
-                          </div>
-                    )}
-                    {tab === 'rs' && (
-                      buckets.length > 0 && bms
-                        ? <RSTable buckets={buckets} benchmarks={bms} benchmark={benchmark} grouped={grouped} />
-                        : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                            Relative strength data not available.
-                          </div>
-                    )}
-                    {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
-                  </div>
-                </>
-              )
-            })()}
+              )}
+              {tab === 'rs' && (
+                buckets.length > 0 && bms
+                  ? <RSTable buckets={buckets} benchmarks={bms} benchmark={benchmark} grouped={grouped} />
+                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                      Relative strength data not available.
+                    </div>
+              )}
+              {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
+            </div>
           </>
         )}
 
