@@ -64,6 +64,9 @@ function loadRRGCache(): RrgPathPayload | null {
   return null
 }
 
+// Delisted / legacy symbols — inactive in DB; never report as "missing active row"
+const LEGACY_INACTIVE: ReadonlySet<string> = new Set(['CCMP'])
+
 function uniqueRequiredTickers(): string[] {
   const tickers = new Set<string>()
 
@@ -79,6 +82,9 @@ function uniqueRequiredTickers(): string[] {
   tickers.add('SOXX')
   tickers.add('QQQ')
   tickers.add('SPY')
+
+  // Exclude inactive / delisted symbols from required-ticker set
+  for (const sym of LEGACY_INACTIVE) tickers.delete(sym)
 
   return Array.from(tickers).sort()
 }
@@ -308,8 +314,12 @@ export async function GET(request: Request) {
         dataNotes.push(`Partial coverage: ${partialBuckets.map(b => b.display_name).join(', ')}.`)
       if (insufficientBuckets.length > 0)
         dataNotes.push(`No price data: ${insufficientBuckets.map(b => b.display_name).join(', ')}.`)
-      if (missingTickers.length > 0)
-        dataNotes.push(`Missing DB rows: ${missingTickers.slice(0, 8).join(', ')}${missingTickers.length > 8 ? '…' : ''}.`)
+      // Only report truly missing active tickers (legacy/inactive already excluded from required set)
+      const missingActive = missingTickers.filter(t => !LEGACY_INACTIVE.has(t))
+      if (missingActive.length > 0)
+        dataNotes.push(`Missing DB rows: ${missingActive.slice(0, 8).join(', ')}${missingActive.length > 8 ? '...' : ''}.`)
+      else if (missingTickers.length === 0)
+        dataNotes.push('Active coverage: all required DB rows present.')
       // ──────────────────────────────────────────────────────────────────────
 
       // ── D-4: State Label Engine ────────────────────────────────────────────

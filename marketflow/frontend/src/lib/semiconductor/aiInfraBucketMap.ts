@@ -135,7 +135,7 @@ export const AI_INFRA_BUCKETS: AIInfraBucket[] = [
       'US proxies (TTM, SANM) have limited pure-play AI server substrate exposure.',
     ],
     data_quality: 'PARTIAL',
-    symbols: ['TTM', 'SANM', 'CLS', 'FLEX'],
+    symbols: ['TTMI', 'SANM', 'CLS', 'FLEX'],
   },
   {
     bucket_id: 'TEST_EQUIPMENT',
@@ -221,7 +221,8 @@ export const AI_INFRA_BUCKETS: AIInfraBucket[] = [
       'ENTG and CCMP have stronger semiconductor materials purity.',
     ],
     data_quality: 'REAL',
-    symbols: ['LIN', 'APD', 'ENTG', 'CCMP'],
+    symbols: ['LIN', 'APD', 'ENTG'],
+    // CCMP (CMC Materials) acquired by Entegris 2022 — delisted, replaced by ENTG
   },
   {
     bucket_id: 'DATA_CENTER_INFRA',
