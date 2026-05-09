@@ -371,10 +371,10 @@ function RSTable({
   benchmark: Benchmark
   grouped: boolean
 }) {
-  const sortedFlat = [...buckets].sort((a, b) => (rsOf(b) ?? -Infinity) - (rsOf(a) ?? -Infinity))
-
   const bmKey = benchmark.toLowerCase() as 'soxx' | 'qqq' | 'spy'
   const rsOf  = (b: AIInfraBucketMomentum) => b.relative_strength[`vs_${bmKey}`].three_month
+
+  const sortedFlat = [...buckets].sort((a, b) => (rsOf(b) ?? -Infinity) - (rsOf(a) ?? -Infinity))
 
   const hlCol: React.CSSProperties = { color: V.teal }
 
