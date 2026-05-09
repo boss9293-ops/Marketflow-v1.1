@@ -114,7 +114,7 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
       {([['Improving', L + 4, T + 12], ['Leading', cx + 4, T + 12],
          ['Lagging', L + 4, H - B - 4], ['Weakening', cx + 4, H - B - 4]] as [string, number, number][])
         .map(([label, tx, ty]) => (
-          <text key={label} x={tx} y={ty} fontSize={10} fill={Q_COLOR[label as RrgQuadrant]}
+          <text key={label} x={tx} y={ty} fontSize={7} fill={Q_COLOR[label as RrgQuadrant]}
             fontFamily="'IBM Plex Sans', sans-serif" letterSpacing="0.08em">
             {label.toUpperCase()}
           </text>
@@ -135,7 +135,7 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
             <path d={pathD} fill="none" stroke={color} strokeWidth={1.2}
               strokeOpacity={0.45} strokeLinejoin="round" />
             <circle cx={last.x} cy={last.y} r={4} fill={color} fillOpacity={0.9} />
-            <text x={last.x + 5} y={last.y - 3} fontSize={10} fill={color}
+            <text x={last.x + 5} y={last.y - 3} fontSize={6} fill={color}
               fontFamily="'IBM Plex Mono', monospace">
               {s.id.replace(/_/g, ' ').split(' ').slice(0, 2).join(' ')}
             </text>
@@ -145,9 +145,9 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
       {/* Center dot */}
       <circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.3)" />
       {/* Axis labels */}
-      <text x={W - R} y={cy + 10} fontSize={10} fill="#8b9098" textAnchor="end"
+      <text x={W - R} y={cy + 10} fontSize={7} fill="#8b9098" textAnchor="end"
         fontFamily="'IBM Plex Mono', monospace">RS Ratio →</text>
-      <text x={cx - 2} y={T + 8} fontSize={10} fill="#8b9098" textAnchor="end"
+      <text x={cx - 2} y={T + 8} fontSize={7} fill="#8b9098" textAnchor="end"
         fontFamily="'IBM Plex Mono', monospace">Mom ↑</text>
     </svg>
   )
@@ -269,14 +269,14 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
           <span style={{ fontSize: 10, color: V.text3, fontFamily: V.ui, marginRight: 4 }}>Tail:</span>
-          {([4, 8, 12] as const).map(n => (
+          {([{ n: 1, label: 'No tail' }, { n: 4, label: '4W' }, { n: 8, label: '8W' }, { n: 12, label: '12W' }]).map(({ n, label }) => (
             <button key={n} onClick={() => setLookback(n)} style={{
               padding: '2px 6px', fontSize: 10, fontFamily: V.mono, cursor: 'pointer', borderRadius: 3,
               background: lookback === n ? 'rgba(63,182,168,0.15)' : 'transparent',
               border: `1px solid ${lookback === n ? V.teal : V.border}`,
               color: lookback === n ? V.teal : V.text3,
             }}>
-              {n}W
+              {label}
             </button>
           ))}
         </div>
@@ -287,35 +287,45 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
         <MiniRRGChart series={liveSeries} lookbackWeeks={lookback} />
       </div>
 
-      {/* Quadrant groups */}
+      {/* Quadrant groups — single table for aligned columns across all groups */}
       <div style={{ padding: '0 16px' }}>
-        {Q_ORDER.filter(q => grouped.get(q)!.length > 0).map(q => (
-          <div key={q} style={{ marginBottom: 10 }}>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: Q_COLOR[q],
-              fontFamily: V.ui, marginBottom: 4,
-            }}>
-              {q.toUpperCase()} ({grouped.get(q)!.length})
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${V.border}` }}>
-                  {(['Bucket', 'Stg', 'Quadrant', 'RS Ratio', 'RS Mom', 'Pts', ''] as const).map(h => (
-                    <th key={h} style={{
-                      padding: '3px 6px',
-                      textAlign: h === 'Bucket' ? 'left' : h === 'Quadrant' ? 'center' : 'right',
-                      fontSize: 10, color: '#8b9098', fontWeight: 600, fontFamily: V.ui,
-                      letterSpacing: '0.08em',
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {grouped.get(q)!.map(s => <BucketRow key={s.id} s={s} />)}
-              </tbody>
-            </table>
-          </div>
-        ))}
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '8%' }} />
+            <col />
+          </colgroup>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${V.border}` }}>
+              {(['Bucket', 'Stg', 'Quadrant', 'RS Ratio', 'RS Mom', 'Pts', ''] as const).map(h => (
+                <th key={h} style={{
+                  padding: '3px 6px',
+                  textAlign: h === 'Bucket' ? 'left' : h === 'Quadrant' ? 'center' : 'right',
+                  fontSize: 10, color: '#8b9098', fontWeight: 600, fontFamily: V.ui,
+                  letterSpacing: '0.08em',
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Q_ORDER.filter(q => grouped.get(q)!.length > 0).flatMap(q => [
+              <tr key={`hd-${q}`} style={{ borderTop: `1px solid ${V.border}22` }}>
+                <td colSpan={7} style={{
+                  padding: '10px 8px 4px',
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
+                  color: Q_COLOR[q], fontFamily: V.ui,
+                }}>
+                  {q.toUpperCase()} ({grouped.get(q)!.length})
+                </td>
+              </tr>,
+              ...grouped.get(q)!.map(s => <BucketRow key={s.id} s={s} />),
+            ])}
+          </tbody>
+        </table>
       </div>
 
       {/* Notes */}
