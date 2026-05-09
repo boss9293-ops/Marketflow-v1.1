@@ -101,7 +101,7 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
   const { x: cx, y: cy } = toSvg(100, 100)
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W, display: 'block' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W * 2, display: 'block' }}>
       {/* Quadrant backgrounds */}
       <rect x={L} y={T} width={cx - L} height={cy - T} fill="rgba(74,158,224,0.06)" />
       <rect x={cx} y={T} width={W - R - cx} height={cy - T} fill="rgba(63,182,168,0.06)" />
@@ -114,7 +114,7 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
       {([['Improving', L + 4, T + 12], ['Leading', cx + 4, T + 12],
          ['Lagging', L + 4, H - B - 4], ['Weakening', cx + 4, H - B - 4]] as [string, number, number][])
         .map(([label, tx, ty]) => (
-          <text key={label} x={tx} y={ty} fontSize={9} fill={Q_COLOR[label as RrgQuadrant]}
+          <text key={label} x={tx} y={ty} fontSize={10} fill={Q_COLOR[label as RrgQuadrant]}
             fontFamily="'IBM Plex Sans', sans-serif" letterSpacing="0.08em">
             {label.toUpperCase()}
           </text>
@@ -135,7 +135,7 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
             <path d={pathD} fill="none" stroke={color} strokeWidth={1.2}
               strokeOpacity={0.45} strokeLinejoin="round" />
             <circle cx={last.x} cy={last.y} r={4} fill={color} fillOpacity={0.9} />
-            <text x={last.x + 5} y={last.y - 3} fontSize={8} fill={color}
+            <text x={last.x + 5} y={last.y - 3} fontSize={10} fill={color}
               fontFamily="'IBM Plex Mono', monospace">
               {s.id.replace(/_/g, ' ').split(' ').slice(0, 2).join(' ')}
             </text>
@@ -145,9 +145,9 @@ function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookback
       {/* Center dot */}
       <circle cx={cx} cy={cy} r={2.5} fill="rgba(255,255,255,0.3)" />
       {/* Axis labels */}
-      <text x={W - R} y={cy + 10} fontSize={8} fill={V.text3} textAnchor="end"
+      <text x={W - R} y={cy + 10} fontSize={10} fill="#8b9098" textAnchor="end"
         fontFamily="'IBM Plex Mono', monospace">RS Ratio →</text>
-      <text x={cx - 2} y={T + 8} fontSize={8} fill={V.text3} textAnchor="end"
+      <text x={cx - 2} y={T + 8} fontSize={10} fill="#8b9098" textAnchor="end"
         fontFamily="'IBM Plex Mono', monospace">Mom ↑</text>
     </svg>
   )
@@ -164,32 +164,32 @@ function BucketRow({ s }: { s: RrgSeries }) {
     <tr style={{ borderBottom: `1px solid ${V.border}` }}>
       <td style={{ padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, color: V.text2, fontFamily: V.ui }}>{s.label}</span>
+        <span style={{ fontSize: 13, color: V.text, fontFamily: V.ui }}>{s.label}</span>
       </td>
-      <td style={{ padding: '5px 6px', fontSize: 10, color: V.text3, fontFamily: V.ui }}>
+      <td style={{ padding: '5px 6px', fontSize: 11, color: '#8b9098', fontFamily: V.ui }}>
         {stage ? STAGE_SHORT[stage] : '—'}
       </td>
-      <td style={{ padding: '5px 8px' }}>
+      <td style={{ padding: '5px 8px', textAlign: 'center' }}>
         <span style={{
-          fontSize: 10, fontWeight: 600, color: Q_COLOR[q],
-          background: Q_BG[q], borderRadius: 3, padding: '1px 6px',
+          fontSize: 11, fontWeight: 600, color: Q_COLOR[q],
+          background: Q_BG[q], borderRadius: 3, padding: '2px 8px',
           fontFamily: V.ui, letterSpacing: '0.06em',
         }}>
           {q}
         </span>
       </td>
-      <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: V.mono, fontSize: 11, color: V.text2 }}>
+      <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: V.mono, fontSize: 13, color: V.text }}>
         {last?.rsRatio?.toFixed(2) ?? '—'}
       </td>
-      <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: V.mono, fontSize: 11, color: V.text2 }}>
+      <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: V.mono, fontSize: 13, color: V.text }}>
         {last?.rsMomentum?.toFixed(2) ?? '—'}
       </td>
-      <td style={{ padding: '5px 6px', textAlign: 'right', fontSize: 10, color: V.text3, fontFamily: V.mono }}>
+      <td style={{ padding: '5px 6px', textAlign: 'right', fontSize: 11, color: '#8b9098', fontFamily: V.mono }}>
         {s.points.length > 0 ? `${s.points.length}W` : '—'}
       </td>
       <td style={{ padding: '5px 8px' }}>
         {s.source === 'PENDING' && (
-          <span style={{ fontSize: 9, color: V.text3, fontFamily: V.ui }}>{s.note ?? 'Pending'}</span>
+          <span style={{ fontSize: 10, color: '#8b9098', fontFamily: V.ui }}>{s.note ?? 'Pending'}</span>
         )}
       </td>
     </tr>
@@ -292,7 +292,7 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
         {Q_ORDER.filter(q => grouped.get(q)!.length > 0).map(q => (
           <div key={q} style={{ marginBottom: 10 }}>
             <div style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: Q_COLOR[q],
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: Q_COLOR[q],
               fontFamily: V.ui, marginBottom: 4,
             }}>
               {q.toUpperCase()} ({grouped.get(q)!.length})
@@ -302,8 +302,9 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
                 <tr style={{ borderBottom: `1px solid ${V.border}` }}>
                   {(['Bucket', 'Stg', 'Quadrant', 'RS Ratio', 'RS Mom', 'Pts', ''] as const).map(h => (
                     <th key={h} style={{
-                      padding: '3px 6px', textAlign: h === 'Bucket' ? 'left' : 'right',
-                      fontSize: 9, color: V.text3, fontWeight: 600, fontFamily: V.ui,
+                      padding: '3px 6px',
+                      textAlign: h === 'Bucket' ? 'left' : h === 'Quadrant' ? 'center' : 'right',
+                      fontSize: 10, color: '#8b9098', fontWeight: 600, fontFamily: V.ui,
                       letterSpacing: '0.08em',
                     }}>{h}</th>
                   ))}
@@ -323,7 +324,7 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
           {payload.dataStatus.pendingReason}
         </div>
       )}
-      <div style={{ padding: '6px 16px', fontSize: 10, color: V.text3, fontFamily: V.ui, lineHeight: 1.5 }}>
+      <div style={{ padding: '6px 16px', fontSize: 11, color: '#8b9098', fontFamily: V.ui, lineHeight: 1.5 }}>
         Candidate-D formula. Equal-weight basket index. {liveSeries.length}/13 buckets live.
         Quadrant labels (Leading / Weakening / Lagging / Improving) are rotational position only — not investment signals.
         Not investment advice.
