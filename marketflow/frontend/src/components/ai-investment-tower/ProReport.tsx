@@ -2,8 +2,7 @@
 // AI Investment Tower 중급/고급 리포트 UI — 자세히 보기 뷰
 
 import { useState } from 'react'
-import type { ProLayerReport } from '@/lib/ai-investment-tower/proReportGenerator'
-import type { RRGStateLabel, TrendLabel, RiskLabel } from '@/lib/ai-investment-tower/reportTypes'
+import type { ProLayerReport, RRGStateLabel, TrendLabel, RiskLabel } from '@/lib/ai-investment-tower/reportTypes'
 
 const V = {
   text:   '#E8F0F8',

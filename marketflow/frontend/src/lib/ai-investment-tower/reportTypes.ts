@@ -33,6 +33,7 @@ export type LayerReportInput = {
 
 export type BeginnerLayerReport = {
   layerId:      string
+  koreanLabel:  string           // display name for narrative text
   statusLabel:  string           // Korean simple label
   headline:     string           // one-line headline
   explanation:  string           // 2–4 sentence explanation

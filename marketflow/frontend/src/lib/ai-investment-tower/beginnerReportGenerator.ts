@@ -5,9 +5,11 @@ import type { LayerReportInput, BeginnerLayerReport, BeginnerGroup, RiskLabel } 
 // ── Status label mapping ──────────────────────────────────────────────────────
 
 function toStatusLabel(layer: LayerReportInput): string {
+  const highRisk = layer.riskLabel === 'HIGH' || layer.riskLabel === 'EXTREME'
+  if (layer.trendLabel === 'DOWNTREND' && highRisk) return '위험 회피'
   if (layer.trendLabel === 'EXTENDED') return '강하지만 과열'
   switch (layer.rrgState) {
-    case 'LEADING':   return layer.riskLabel === 'HIGH' ? '강하지만 과열' : '요즘 잘나감'
+    case 'LEADING':   return highRisk ? '강하지만 과열' : '요즘 잘나감'
     case 'IMPROVING': return '새로 뜨는 중'
     case 'WEAKENING': return '힘 빠지는 중'
     case 'LAGGING':   return '아직 관망'
@@ -19,8 +21,9 @@ function toStatusLabel(layer: LayerReportInput): string {
 // ── Group mapping ─────────────────────────────────────────────────────────────
 
 function toGroup(layer: LayerReportInput): BeginnerGroup {
-  const extended = layer.trendLabel === 'EXTENDED' || layer.riskLabel === 'HIGH' || layer.riskLabel === 'EXTREME'
-  if (extended && layer.rrgState === 'LEADING') return 'caution'
+  const highRisk = layer.riskLabel === 'HIGH' || layer.riskLabel === 'EXTREME'
+  if (layer.trendLabel === 'DOWNTREND' && highRisk) return 'caution'
+  if ((layer.trendLabel === 'EXTENDED' || highRisk) && layer.rrgState === 'LEADING') return 'caution'
   switch (layer.rrgState) {
     case 'LEADING':   return 'working'
     case 'IMPROVING': return 'emerging'
@@ -112,6 +115,7 @@ export function generateBeginnerReport(layers: LayerReportInput[]): BeginnerLaye
       const group       = toGroup(layer)
       return {
         layerId:     layer.id,
+        koreanLabel: layer.koreanLabel,
         statusLabel,
         headline:    layerHeadline(layer, statusLabel),
         explanation: layerExplanation(layer, statusLabel),
@@ -124,6 +128,8 @@ export function generateBeginnerReport(layers: LayerReportInput[]): BeginnerLaye
 // ── Overall narrative summary ─────────────────────────────────────────────────
 
 export function generateBeginnerOverall(reports: BeginnerLayerReport[]): string {
+  if (reports.length === 0) return ''
+
   const working  = reports.filter(r => r.group === 'working')
   const emerging = reports.filter(r => r.group === 'emerging')
   const losing   = reports.filter(r => r.group === 'losing')
@@ -132,26 +138,29 @@ export function generateBeginnerOverall(reports: BeginnerLayerReport[]): string 
   const parts: string[] = []
 
   if (working.length > 0) {
-    const names = working.map(r => r.layerId).slice(0, 2).join(', ')
+    const names = working.map(r => r.koreanLabel).slice(0, 2).join(', ')
     parts.push(`현재 ${names} 계층이 AI 인프라 사이클을 주도하고 있습니다.`)
   }
   if (emerging.length > 0) {
-    const names = emerging.map(r => r.layerId).slice(0, 2).join(', ')
-    parts.push(`${names}은(는) 새롭게 부각되는 단계로, 관심이 필요합니다.`)
+    const names = emerging.map(r => r.koreanLabel).slice(0, 2).join(', ')
+    parts.push(`${names}이(가) 새롭게 부각되는 단계로 관심이 필요합니다.`)
   }
   if (caution.length > 0) {
-    const names = caution.map(r => r.layerId).slice(0, 2).join(', ')
-    parts.push(`${names}은(는) 강하지만 단기 과열 부담이 있어 비중 관리가 필요합니다.`)
+    const names = caution.map(r => r.koreanLabel).slice(0, 2).join(', ')
+    parts.push(`${names}은(는) 과열 또는 리스크 부담이 있어 비중 관리가 필요합니다.`)
   }
   if (losing.length > 0) {
     parts.push(`일부 계층은 단기 모멘텀이 약화되고 있어 추가 확인이 필요합니다.`)
   }
 
-  const isNarrowing = working.length <= 2 && emerging.length === 0
+  const hasData = working.length + emerging.length > 0
+  if (!hasData) return '현재 충분한 데이터가 없어 전체 판단을 보류합니다.'
+
   const isBroadening = emerging.length >= 2 || (working.length + emerging.length) >= 4
+  const isNarrowing  = working.length <= 2 && emerging.length === 0 && working.length > 0
 
   if (isBroadening) parts.push('전체적으로 AI 강세가 여러 계층으로 확산되는 흐름입니다.')
-  if (isNarrowing)  parts.push('AI 강세가 일부 계층에 집중된 상태로, 선택적 접근이 유효합니다.')
+  else if (isNarrowing) parts.push('AI 강세가 일부 계층에 집중된 상태로, 선택적 접근이 유효합니다.')
 
   return parts.join(' ')
 }
