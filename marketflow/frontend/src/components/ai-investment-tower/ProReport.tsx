@@ -2,7 +2,7 @@
 // AI Investment Tower 중급/고급 리포트 UI — 자세히 보기 뷰
 
 import { useState } from 'react'
-import type { ProLayerReport, RRGStateLabel, TrendLabel, RiskLabel } from '@/lib/ai-investment-tower/reportTypes'
+import type { ProLayerReport, RRGStateLabel, TrendLabel, RiskLabel, BreadthLabel } from '@/lib/ai-investment-tower/reportTypes'
 
 const V = {
   text:   '#E8F0F8',
@@ -78,6 +78,22 @@ const RISK_KR: Record<RiskLabel, string> = {
   UNKNOWN:  '—',
 }
 
+const BREADTH_KR: Record<BreadthLabel, string> = {
+  BROAD:     '넓음',
+  IMPROVING: '개선',
+  NARROW:    '좁음',
+  WEAK:      '약함',
+  UNKNOWN:   '—',
+}
+
+const BREADTH_COLORS: Record<BreadthLabel, string> = {
+  BROAD:     V.green,
+  IMPROVING: V.teal,
+  NARROW:    V.amber,
+  WEAK:      V.red,
+  UNKNOWN:   V.text3,
+}
+
 function fmtPct(v: number | null): string {
   if (v === null) return '—'
   return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
@@ -128,6 +144,12 @@ function DetailDrawer({ report }: { report: ProLayerReport }) {
             {report.nextCheckpoint}
           </span>
         </div>
+        {report.coveragePct !== undefined && report.coveragePct < 1 && (
+          <div style={{ marginTop: 8, fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.06em' }}>
+            COVERAGE {Math.round(report.coveragePct * 100)}%
+            {report.coveragePct < 0.80 ? ' — 일부 종목 기준' : ''}
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -211,6 +233,12 @@ function ProTableRow({
             {RISK_KR[report.riskLabel]}
           </span>
         </td>
+        {/* Breadth */}
+        <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+          <span style={{ fontFamily: V.mono, fontSize: 11, color: BREADTH_COLORS[report.breadthLabel] }}>
+            {BREADTH_KR[report.breadthLabel]}
+          </span>
+        </td>
         {/* Signal */}
         <td style={{ padding: '8px 10px', fontFamily: V.ui, fontSize: 12, color: V.teal, whiteSpace: 'nowrap' }}>
           {report.towerSignal}
@@ -248,7 +276,7 @@ export function ProReport({ reports }: { reports: ProLayerReport[] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            {['Layer', 'ETF', 'RRG', '1W', '1M', '3M', 'Trend', 'Risk', 'Signal'].map(h => (
+            {['Layer', 'ETF', 'RRG', '1W', '1M', '3M', 'Trend', 'Risk', 'Breadth', 'Signal'].map(h => (
               <th key={h} style={thStyle(h)}>{h.toUpperCase()}</th>
             ))}
           </tr>

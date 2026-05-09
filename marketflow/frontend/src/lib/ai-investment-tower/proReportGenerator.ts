@@ -54,13 +54,19 @@ function trendComment(trend: TrendLabel, r1m: number | null, r3m: number | null)
 }
 
 function riskComment(riskLabel: RiskLabel, layer: LayerReportInput): string {
+  const cov = layer.coveragePct ?? 1
+  const covSuffix = cov < 0.50
+    ? ' (데이터 부족 — 신호 신뢰도 낮음)'
+    : cov < 0.80
+      ? ` (커버리지 ${Math.round(cov * 100)}% — 일부 종목 기준)`
+      : ''
   switch (riskLabel) {
-    case 'LOW':      return `현재 주요 리스크 플래그 없음. 데이터 커버리지도 적절합니다.`
-    case 'MODERATE': return `경미한 리스크 요인이 있습니다. 상대강도 약화 또는 RRG 이동 방향을 주기적으로 확인하세요.`
-    case 'ELEVATED': return `과열 또는 단기 확장 신호가 감지됩니다. 비중 유지 수준에서 관리하는 것이 적절합니다.`
-    case 'HIGH':     return `과열 + 모멘텀 확장이 동시에 발생했습니다. 포지션 리스크 관리 우선. 신규 진입 자제를 권고합니다.`
-    case 'EXTREME':  return `극단적 리스크 신호 발생. 기존 포지션 축소 검토 및 트리거 설정이 필요합니다.`
-    default:         return `리스크 분류에 충분한 데이터가 없습니다.`
+    case 'LOW':      return `현재 주요 리스크 플래그 없음. 데이터 커버리지도 적절합니다.${covSuffix}`
+    case 'MODERATE': return `경미한 리스크 요인이 있습니다. 상대강도 약화 또는 RRG 이동 방향을 주기적으로 확인하세요.${covSuffix}`
+    case 'ELEVATED': return `과열 또는 단기 확장 신호가 감지됩니다. 비중 유지 수준에서 관리하는 것이 적절합니다.${covSuffix}`
+    case 'HIGH':     return `과열 + 모멘텀 확장이 동시에 발생했습니다. 포지션 리스크 관리 우선. 신규 진입 자제를 권고합니다.${covSuffix}`
+    case 'EXTREME':  return `극단적 리스크 신호 발생. 기존 포지션 축소 검토 및 트리거 설정이 필요합니다.${covSuffix}`
+    default:         return `리스크 분류에 충분한 데이터가 없습니다.${covSuffix}`
   }
 }
 
@@ -98,5 +104,6 @@ export function generateProReport(layers: LayerReportInput[]): ProLayerReport[] 
     trendComment:     trendComment(layer.trendLabel, layer.momentum1m, layer.momentum3m),
     riskComment:      riskComment(layer.riskLabel, layer),
     nextCheckpoint:   nextCheckpoint(layer),
+    coveragePct:      layer.coveragePct,
   }))
 }

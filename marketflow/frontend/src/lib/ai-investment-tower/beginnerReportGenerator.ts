@@ -21,6 +21,7 @@ function toStatusLabel(layer: LayerReportInput): string {
 // ── Group mapping ─────────────────────────────────────────────────────────────
 
 function toGroup(layer: LayerReportInput): BeginnerGroup {
+  if ((layer.coveragePct ?? 1) < 0.50) return 'neutral'
   const highRisk = layer.riskLabel === 'HIGH' || layer.riskLabel === 'EXTREME'
   if (layer.trendLabel === 'DOWNTREND' && highRisk) return 'caution'
   if ((layer.trendLabel === 'EXTENDED' || highRisk) && layer.rrgState === 'LEADING') return 'caution'
@@ -59,11 +60,20 @@ function breadthSuffix(breadthLabel: string): string {
 
 function layerExplanation(layer: LayerReportInput, statusLabel: string): string {
   const { id, koreanLabel, momentum1m, momentum1w, momentum3m, rrgState, riskLabel, trendLabel, breadthLabel } = layer
+  const cov = layer.coveragePct ?? 1
+
+  // Low coverage — avoid signaling
+  if (cov < 0.50) {
+    return `${koreanLabel}은(는) 아직 데이터가 충분하지 않아 추세 판단을 보류합니다.`
+  }
+
   const momStr   = momentumPhrase(momentum1m, momentum3m)
   const bSuffix  = breadthSuffix(breadthLabel)
   const riskNote = riskLabel === 'HIGH' || riskLabel === 'ELEVATED'
     ? ' 신규 진입보다는 비중 관리가 더 중요한 구간입니다.'
     : ''
+  // Partial coverage note (50–80%)
+  const covNote  = cov < 0.80 ? ' 일부 종목 기준이므로 추가 확인이 필요합니다.' : ''
 
   // 1W negative + 1M positive → explicit short-term deceleration note
   const shortTermWeak = momentum1w !== null && momentum1w < 0 && momentum1m !== null && momentum1m > 0
@@ -129,7 +139,7 @@ function layerExplanation(layer: LayerReportInput, statusLabel: string): string 
         : `스토리지·데이터 계층은 ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
 
     default:
-      return `${koreanLabel}은(는) ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}`
+      return `${koreanLabel}은(는) ${statusLabel} 상태입니다. ${momStr}.${weeklyNote}${bSuffix}${riskNote}${covNote}`
   }
 }
 

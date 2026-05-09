@@ -205,6 +205,7 @@ export function adaptTowerLayers(
         breadthLabel: 'UNKNOWN',
         riskLabel:    'UNKNOWN',
         towerSignal:  '확인 필요',
+        coveragePct:  0,
       }
     }
 
@@ -212,6 +213,7 @@ export function adaptTowerLayers(
       // Single source — return as-is with tower layer identity
       const m = matched[0]
       return { ...m, id: layer.id, label: layer.label, koreanLabel: layer.koreanLabel, primaryEtf: layer.primaryEtf }
+      // coveragePct inherited from m
     }
 
     // Multiple sources — aggregate
@@ -242,6 +244,10 @@ export function adaptTowerLayers(
       UNKNOWN:   '확인 필요',
     }
 
+    const coveragePcts = matched.map(m => m.coveragePct ?? null).filter((v): v is number => v !== null)
+    const coveragePct  = coveragePcts.length > 0
+      ? coveragePcts.reduce((a, b) => a + b, 0) / coveragePcts.length : 0
+
     return {
       id:           layer.id,
       label:        layer.label,
@@ -255,6 +261,7 @@ export function adaptTowerLayers(
       breadthLabel,
       riskLabel,
       towerSignal:  towerSignalMap[rrgState],
+      coveragePct,
     }
   })
 }

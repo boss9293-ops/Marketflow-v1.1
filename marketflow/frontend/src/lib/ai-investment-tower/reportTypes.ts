@@ -1,13 +1,13 @@
 // AI Investment Tower 리포트 공유 타입 및 어댑터 계약
 
-import type { AIInfraBucketMomentum } from '@/lib/semiconductor/aiInfraBucketRS'
+import type { AIInfraBucketMomentum, BreadthLabel } from '@/lib/semiconductor/aiInfraBucketRS'
 import type { AIInfraBucketState, AIInfraRiskFlag } from '@/lib/ai-infra/aiInfraStateLabels'
 
 // ── Enum types ────────────────────────────────────────────────────────────────
 
 export type RRGStateLabel   = 'LEADING' | 'IMPROVING' | 'WEAKENING' | 'LAGGING' | 'MIXED' | 'UNKNOWN'
 export type TrendLabel      = 'UPTREND' | 'RECOVERING' | 'SIDEWAYS' | 'DOWNTREND' | 'EXTENDED' | 'UNKNOWN'
-export type BreadthLabel    = 'BROAD' | 'IMPROVING' | 'NARROW' | 'WEAK' | 'UNKNOWN'
+export type { BreadthLabel }
 export type RiskLabel       = 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH' | 'EXTREME' | 'UNKNOWN'
 export type BeginnerGroup   = 'working' | 'emerging' | 'losing' | 'caution' | 'neutral'
 
@@ -27,6 +27,7 @@ export type LayerReportInput = {
   breadthLabel:  BreadthLabel
   riskLabel:     RiskLabel
   towerSignal:   string          // Korean user-facing action label
+  coveragePct?:  number          // 0–1: ratio of symbols with sufficient price data
 }
 
 // ── Output types ──────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ export type ProLayerReport = {
   trendComment:     string
   riskComment:      string
   nextCheckpoint:   string
+  coveragePct?:     number
 }
 
 // ── Korean label map per bucket_id ────────────────────────────────────────────
@@ -139,13 +141,14 @@ export function adaptToBucketReport(
     koreanLabel:  KOREAN_LAYER_LABELS[momentum.bucket_id] ?? momentum.display_name,
     primaryEtf:   momentum.benchmark,
     rrgState:     stateToRRG(state.state_label),
-    momentum1w:   null,
+    momentum1w:   momentum.one_week ?? null,
     momentum1m:   momentum.returns.one_month,
     momentum3m:   momentum.returns.three_month,
     trendLabel:   deriveTrend(momentum, state.risk_flags),
-    breadthLabel: 'UNKNOWN',
+    breadthLabel: momentum.breadth?.label ?? 'UNKNOWN',
     riskLabel:    deriveRisk(state.risk_flags),
     towerSignal:  stateTowerSignal(state.state_label),
+    coveragePct:  momentum.coverage.coverage_ratio,
   }
 }
 
