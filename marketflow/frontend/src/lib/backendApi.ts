@@ -1,4 +1,5 @@
-const LOCAL_BACKEND_URL = 'http://localhost:5001'
+// Use 127.0.0.1 to avoid occasional localhost DNS/IPv6 resolution issues in server-side fetch.
+const LOCAL_BACKEND_URL = 'http://127.0.0.1:5001'
 // /api/flask/* is proxied via next.config.js rewrites → Railway backend
 // Use clientApiUrl() for all client-side fetch calls to avoid hardcoding localhost
 const PROXY_PREFIX = '/api/flask'

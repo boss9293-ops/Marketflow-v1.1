@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 
 # ?? 寃쎈줈 遺?몄뒪?몃옪 ????????????????????????????????????????????????????????
@@ -44,6 +51,7 @@ except ImportError:
 BRIEFS_DIR = BACKEND_DIR / "output" / "cache" / "ticker_briefs"
 BRIEFS_DIR.mkdir(parents=True, exist_ok=True)
 ROOT = str(BACKEND_DIR.parent.parent)  # us_market_complete root
+TERMINAL_TICKER_NEWS_HISTORY_PATH = BACKEND_DIR / "output" / "cache" / "ticker-news-history-v6-watchlist-direct.json"
 
 ET_ZONE     = ZoneInfo("America/New_York")
 KEEP_DAYS   = 90
@@ -57,9 +65,96 @@ os.environ.setdefault("CLAUDE_MODEL", TICKER_BRIEF_CLAUDE_MODEL)
 os.environ.setdefault("GPT_MODEL", TICKER_BRIEF_GPT_MODEL)
 
 DEFAULT_WATCHLIST = [
-    "NVDA", "GOOGL", "AMZN", "INTC", "CAT",
-    "XOM",  "AAPL",  "TSLA", "QQQ",  "SPY",
+    "NFLX", "AAPL", "GOOGL", "TSLA", "NVDA",
+    "IBM",  "INTC", "XOM",   "MSFT", "AMZN",
+    "QQQ",  "SPY",
 ]
+
+
+def _strip_company_suffix(value: str) -> str:
+    return re.sub(
+        r'\b(incorporated|inc|corporation|corp|company|co|limited|ltd|llc|plc|class\s+[a-z])\.?\b',
+        ' ',
+        value,
+        flags=re.I,
+    ).strip()
+
+
+@lru_cache(maxsize=1)
+def _load_watchlist_label_aliases() -> dict[str, list[str]]:
+    db_path = Path(ROOT) / "marketflow" / "data" / "marketflow.db"
+    if not db_path.exists():
+        return {}
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            rows = conn.execute(
+                "SELECT symbol, label FROM watchlist_symbols WHERE symbol IS NOT NULL AND TRIM(symbol) <> ''"
+            ).fetchall()
+    except Exception:
+        return {}
+    aliases: dict[str, list[str]] = {}
+    for symbol, label in rows:
+        sym = str(symbol or "").strip().upper()
+        text = str(label or "").strip()
+        if not sym or not text:
+            continue
+        variants = [text, _strip_company_suffix(text)]
+        aliases[sym] = [v.lower() for v in variants if v and len(v.strip()) >= 2]
+    return aliases
+
+
+def _parse_terminal_news_dt(value: str, fallback_date: str):
+    try:
+        if value.endswith(" ET"):
+            date_part, time_part = value.split("T", 1)
+            time_part = time_part.replace(" ET", "")
+            dt = datetime.fromisoformat(f"{date_part}T{time_part}-04:00")
+        else:
+            dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ET_ZONE)
+        return dt.astimezone(ET_ZONE)
+    except Exception:
+        return datetime.strptime(fallback_date, "%Y-%m-%d").replace(tzinfo=ET_ZONE)
+
+
+def _load_terminal_ticker_news_cache(symbol: str, date_et: str, window_start: float, window_end: float) -> list[dict]:
+    try:
+        data = json.loads(TERMINAL_TICKER_NEWS_HISTORY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    symbol_payload = ((data.get("symbols") or {}).get(symbol.upper()) or {}) if isinstance(data, dict) else {}
+    timeline = symbol_payload.get("timeline") or []
+    details = {
+        str(item.get("id") or ""): item
+        for item in (symbol_payload.get("details") or [])
+        if isinstance(item, dict)
+    }
+    items: list[dict] = []
+    seen: set[str] = set()
+    for row in timeline if isinstance(timeline, list) else []:
+        if not isinstance(row, dict):
+            continue
+        row_date = str(row.get("dateET") or date_et)
+        dt = _parse_terminal_news_dt(str(row.get("publishedAtET") or ""), row_date)
+        pub_ts = dt.timestamp()
+        if pub_ts and not (window_start <= pub_ts <= window_end):
+            continue
+        row_id = str(row.get("id") or row.get("url") or row.get("headline") or "")
+        if row_id in seen:
+            continue
+        seen.add(row_id)
+        detail = details.get(row_id) or {}
+        items.append({
+            "id":          row_id or str(pub_ts),
+            "headline":    str(row.get("headline") or detail.get("headline") or ""),
+            "summary":     str(row.get("summary") or detail.get("summary") or ""),
+            "source":      str(row.get("source") or detail.get("source") or "Terminal ticker cache"),
+            "url":         str(row.get("url") or detail.get("url") or ""),
+            "publishedAt": dt.isoformat(),
+            "timeET":      str(row.get("timeET") or dt.strftime("%H:%M")),
+        })
+    return items
 
 # ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??
 # 1. ?댁뒪 ?섏쭛 ??湲곗〈 CompositeNewsProvider
@@ -118,6 +213,11 @@ def fetch_news(symbol: str, date_et: str) -> list[dict]:
             "publishedAt": dt.isoformat(),
             "timeET":      dt.astimezone(ET_ZONE).strftime("%H:%M"),
         })
+
+    if not items:
+        items = _load_terminal_ticker_news_cache(symbol, date_et, window_start, window_end)
+        if items:
+            print(f"  [{symbol}] terminal ticker cache fallback: {len(items)} items")
 
     print(f"  [{symbol}] {len(items)} news items fetched")
     return items
@@ -191,6 +291,33 @@ OPINION_RE = re.compile(r'\b(analysts? say|according to|sources familiar|reporte
 REUTERS_RE = re.compile(r'reuters|associated press|\bap\b', re.I)
 TICKER_RE  = re.compile(r'\b([A-Z]{2,5})\b')
 
+TARGET_ALIASES = {
+    "TSLA": ["tesla", "elon musk", "musk", "robotaxi", "fsd", "optimus", "spacex", "terafab"],
+    "AAPL": ["apple", "iphone", "mac", "ipad"],
+    "GOOGL": ["alphabet", "google", "waymo", "youtube"],
+    "GOOG": ["alphabet", "google", "waymo", "youtube"],
+    "NVDA": ["nvidia", "blackwell", "cuda"],
+    "AMD": ["amd", "advanced micro devices", "instinct"],
+    "MSFT": ["microsoft", "azure", "openai"],
+    "AMZN": ["amazon", "aws"],
+    "META": ["meta", "facebook", "instagram", "whatsapp"],
+    "NFLX": ["netflix"],
+    "IBM": ["ibm", "international business machines", "big blue"],
+    "INTC": ["intel"],
+    "CAT": ["caterpillar"],
+    "XOM": ["exxon", "exxonmobil", "exxon mobil"],
+    "QQQ": ["qqq", "nasdaq", "nasdaq 100", "nasdaq-100", "invesco qqq"],
+    "SPY": ["spy", "s&p 500", "s&p500", "sp500", "spdr s&p 500"],
+}
+
+OTHER_COMPANY_HEADLINE_ALIASES = [
+    "apple", "alphabet", "google", "amazon", "microsoft", "meta", "facebook",
+    "nvidia", "amd", "intel", "tesla", "netflix", "disney", "ibm",
+    "international business machines", "exxon", "exxonmobil", "exxon mobil",
+    "ford", "general motors", "nio", "rivian", "lucid", "caterpillar",
+    "doordash", "uber", "visa", "mastercard", "jpmorgan", "bank of america",
+]
+
 CLUSTER_RULES = [
     ("fed",         ["fed","powell","fomc","rate hike","rate cut","federal reserve","monetary policy"]),
     ("macro",       ["cpi","ppi","gdp","inflation","unemployment","yield","treasury","recession","tariff","trade","blockade","hormuz","iran"]),
@@ -243,6 +370,61 @@ def _assets(h: str, s: str) -> list[str]:
             seen.add(t); out.append(t)
     return out[:5]
 
+def _target_aliases(target: str) -> list[str]:
+    target = (target or "").upper()
+    aliases = [target.lower()] if target else []
+    aliases.extend(TARGET_ALIASES.get(target, []))
+    aliases.extend(_load_watchlist_label_aliases().get(target, []))
+    seen, out = set(), []
+    for alias in aliases:
+        alias = alias.strip().lower()
+        if alias and alias not in seen:
+            seen.add(alias); out.append(alias)
+    return out
+
+def _contains_alias(text: str, alias: str) -> bool:
+    return re.search(rf'(^|[^a-z0-9]){re.escape(alias)}([^a-z0-9]|$)', text.lower()) is not None
+
+def _target_relevance_score(headline: str, summary: str, target: str) -> int:
+    target = (target or "").upper()
+    if not target:
+        return 3
+    headline_l = headline.lower()
+    summary_l = summary.lower()
+    text = headline + " " + summary
+    score = 0
+    headline_tickers = [t for t in TICKER_RE.findall(headline) if t not in NON_TICKERS]
+    if target in headline_tickers:
+        score += 7
+    elif re.search(rf'(^|[^A-Z0-9])\$?{re.escape(target)}([^A-Z0-9]|$)', text.upper()):
+        score += 5
+    aliases = _target_aliases(target)
+    starts_with_alias = any(headline_l.startswith(alias) for alias in aliases)
+    alias_in_headline = any(_contains_alias(headline_l, alias) for alias in aliases)
+    if starts_with_alias:
+        score += 5
+    elif alias_in_headline:
+        score += 4
+    if any(_contains_alias(summary_l, alias) for alias in aliases):
+        score += 1
+    if any(t != target for t in headline_tickers) and target not in headline_tickers and not starts_with_alias:
+        score -= 5
+    other_company_in_headline = any(
+        alias not in aliases and _contains_alias(headline_l, alias)
+        for alias in OTHER_COMPANY_HEADLINE_ALIASES
+    )
+    other_company_starts_headline = any(
+        alias not in aliases and headline_l.startswith(alias)
+        for alias in OTHER_COMPANY_HEADLINE_ALIASES
+    )
+    if other_company_starts_headline and target not in headline_tickers and not starts_with_alias:
+        score -= 7
+    if other_company_in_headline and target not in headline_tickers and not starts_with_alias and not alias_in_headline:
+        score -= 5
+    if score == 0:
+        score -= 3
+    return score
+
 def _hours_ago(pub: str) -> float:
     try:
         dt = datetime.fromisoformat(pub)
@@ -252,7 +434,12 @@ def _hours_ago(pub: str) -> float:
 
 def _score(headline: str, summary: str, source: str, published_at: str, target: str = "") -> int:
     text = headline + " " + summary
+    target_relevance = _target_relevance_score(headline, summary, target) if target else 3
+    if target and target_relevance < 4:
+        return 0
     s = 0
+    if target:
+        s += min(4, max(0, target_relevance))
     if CONCRETE_RE.search(text):                                s += 3
     if _verb(headline):                                         s += 2
     # ticker-in-headline: bigger bonus if it's the target ticker
@@ -384,11 +571,11 @@ def fallback_brief(symbol: str, price: dict, events: list[dict]) -> str:
     lead  = events[0]
     bulls = [e["headline"][:70] for e in events[1:] if e["sentiment"] == "bullish"][:2]
     bears = [e["headline"][:70] for e in events   if e["sentiment"] == "bearish"][:1]
-    parts = [s1 + ",", lead["headline"] + "."]
+    parts = [s1 + ".", "Same-day symbol news led with " + lead["headline"] + "."]
     if bulls:
-        parts.append("Price action further supported by " + "; ".join(bulls) + ".")
+        parts.append("Additional bullish or constructive items included " + "; ".join(bulls) + ".")
     if bears:
-        parts.append("These catalysts offset " + bears[0] + ".")
+        parts.append("The main negative item was " + bears[0] + ".")
     return " ".join(parts)
 
 

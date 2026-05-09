@@ -17,7 +17,7 @@ const TICKER_NEWS_RETRY_DELAY_MS = 150
 const TICKER_NEWS_HTTP_TIMEOUT_MS = 4500
 const TICKER_NEWS_GOOGLE_TIMEOUT_MS = 5500
 const TICKER_NEWS_CRUMB_TIMEOUT_MS = 2000
-const TICKER_NEWS_HISTORY_PATH = resolveNewsHistoryPath('ticker-news-history-v2-1630.json')
+const TICKER_NEWS_HISTORY_PATH = resolveNewsHistoryPath('ticker-news-history-v6-watchlist-direct.json')
 const TICKER_NEWS_HISTORY_TRADING_DAYS = 5
 const MARKET_OPEN_MINUTES_ET = 9 * 60 + 30
 const MARKET_CLOSE_MINUTES_ET = 16 * 60 + 30
@@ -47,6 +47,14 @@ function getLastTradingDaysSet(fromDateET: string, count = TICKER_NEWS_HISTORY_T
   return new Set(result)
 }
 const TICKER_COMPANY_NAMES: Record<string, string> = {
+  TSLA: 'Tesla',
+  AAPL: 'Apple',
+  GOOGL: 'Alphabet',
+  GOOG: 'Alphabet',
+  NVDA: 'NVIDIA',
+  MSFT: 'Microsoft',
+  AMZN: 'Amazon',
+  META: 'Meta',
   INTC: 'Intel',
   AMD: 'AMD',
   QCOM: 'Qualcomm',
@@ -70,7 +78,7 @@ const TICKER_COMPANY_NAMES: Record<string, string> = {
   HPQ: 'HP',
   HPE: 'Hewlett Packard Enterprise',
   DELL: 'Dell',
-  IBM: 'IBM',
+  IBM: 'International Business Machines',
   ORCL: 'Oracle',
   CRM: 'Salesforce',
   ADBE: 'Adobe',
@@ -133,6 +141,150 @@ const TICKER_COMPANY_NAMES: Record<string, string> = {
   DIS: 'Disney',
   NFLX: 'Netflix',
   SPOT: 'Spotify',
+}
+
+const TICKER_NEWS_ALIASES: Record<string, string[]> = {
+  TSLA: ['Tesla', 'Elon Musk', 'Musk', 'robotaxi', 'FSD', 'Optimus', 'SpaceX', 'Terafab'],
+  AAPL: ['Apple', 'iPhone', 'Mac', 'iPad'],
+  GOOGL: ['Alphabet', 'Google', 'Waymo', 'YouTube'],
+  GOOG: ['Alphabet', 'Google', 'Waymo', 'YouTube'],
+  NVDA: ['NVIDIA', 'Nvidia', 'Blackwell', 'CUDA'],
+  AMD: ['AMD', 'Advanced Micro Devices', 'Instinct'],
+  MSFT: ['Microsoft', 'Azure', 'OpenAI'],
+  AMZN: ['Amazon', 'AWS'],
+  META: ['Meta', 'Facebook', 'Instagram', 'WhatsApp'],
+  NFLX: ['Netflix'],
+  INTC: ['Intel'],
+  IBM: ['IBM', 'Big Blue'],
+  XOM: ['Exxon', 'ExxonMobil', 'Exxon Mobil'],
+  QQQ: ['QQQ', 'Nasdaq', 'Nasdaq 100', 'Nasdaq-100'],
+  SPY: ['SPY', 'S&P 500', 'S&P500', 'SP500'],
+}
+
+const TICKER_MENTION_STOPWORDS = new Set([
+  'AI', 'CEO', 'CFO', 'COO', 'CTO', 'IPO', 'ETF', 'SEC', 'DOJ', 'FDA', 'FOMC',
+  'GDP', 'CPI', 'PPI', 'PCE', 'EPS', 'PT', 'EV', 'SUV', 'DST', 'ET', 'AM', 'PM',
+  'US', 'USA', 'UK', 'EU', 'AP', 'PR', 'LLC', 'INC', 'CO', 'ADR',
+])
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const normalizeMatchText = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^a-z0-9$&.\-\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const getCompanyAliasTerms = (companyName?: string): string[] => {
+  const cleaned = (companyName ?? '').trim()
+  if (!cleaned) return []
+  const withoutCorporateSuffix = cleaned
+    .replace(/\b(incorporated|inc|corporation|corp|company|co|limited|ltd|llc|plc|class\s+[a-z])\.?\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return [cleaned, withoutCorporateSuffix].filter((term, index, arr) => term.length >= 2 && arr.indexOf(term) === index)
+}
+
+const getTickerAliasTerms = (symbol: string, companyName?: string): string[] => {
+  const upper = symbol.toUpperCase()
+  const values = new Set<string>([upper])
+  const staticCompanyName = TICKER_COMPANY_NAMES[upper]
+  if (staticCompanyName) values.add(staticCompanyName)
+  getCompanyAliasTerms(companyName).forEach((term) => values.add(term))
+  ;(TICKER_NEWS_ALIASES[upper] ?? []).forEach((term) => values.add(term))
+  return Array.from(values).filter((term) => term.trim().length >= 2)
+}
+
+const containsAliasTerm = (text: string, term: string): boolean => {
+  const normalizedText = normalizeMatchText(text)
+  const normalizedTerm = normalizeMatchText(term)
+  if (!normalizedText || !normalizedTerm) return false
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedTerm)}([^a-z0-9]|$)`, 'i').test(normalizedText)
+}
+
+const extractTickerMentions = (headline: string): string[] => {
+  const mentions = new Set<string>()
+  const patterns = [
+    /\b(?:NASDAQ|NYSE|AMEX|NYSEARCA)\s*:\s*([A-Z.]{1,6})\b/g,
+    /\$([A-Z.]{1,6})\b/g,
+    /\(([A-Z.]{1,6})\)/g,
+    /\b([A-Z]{2,5})\b/g,
+  ]
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = pattern.exec(headline)) !== null) {
+      const ticker = match[1].replace(/\./g, '').toUpperCase()
+      if (ticker.length >= 2 && !TICKER_MENTION_STOPWORDS.has(ticker)) {
+        mentions.add(ticker)
+      }
+    }
+  }
+  return Array.from(mentions)
+}
+
+const headlineMentionsOtherCompanyAlias = (symbol: string, headline: string): boolean => {
+  const upper = symbol.toUpperCase()
+  for (const [candidate, staticCompanyName] of Object.entries(TICKER_COMPANY_NAMES)) {
+    if (candidate === upper) continue
+    const terms = new Set<string>([staticCompanyName, ...(TICKER_NEWS_ALIASES[candidate] ?? [])])
+    for (const term of terms) {
+      const normalized = normalizeMatchText(term)
+      if ((normalized.length >= 4 || normalized.includes(' ')) && containsAliasTerm(headline, term)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+const headlineStartsWithOtherCompanyAlias = (symbol: string, headline: string): boolean => {
+  const upper = symbol.toUpperCase()
+  const normalizedHeadline = normalizeMatchText(headline)
+  for (const [candidate, staticCompanyName] of Object.entries(TICKER_COMPANY_NAMES)) {
+    if (candidate === upper) continue
+    const terms = new Set<string>([staticCompanyName, ...(TICKER_NEWS_ALIASES[candidate] ?? [])])
+    for (const term of terms) {
+      const normalized = normalizeMatchText(term)
+      if ((normalized.length >= 4 || normalized.includes(' ')) && normalizedHeadline.startsWith(normalized)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+const inferTickerRelevanceScore = (symbol: string, headline: string, summary: string, companyName?: string): number => {
+  const upper = symbol.toUpperCase()
+  const headlineText = headline || ''
+  const bodyText = `${headline} ${summary || ''}`
+  const aliases = getTickerAliasTerms(upper, companyName)
+  const headlineMentions = extractTickerMentions(headlineText)
+  const hasTargetTickerInHeadline = headlineMentions.includes(upper)
+  const hasTargetTickerAnywhere = new RegExp(`(^|[^A-Z0-9])\\$?${escapeRegExp(upper)}([^A-Z0-9]|$)`).test(bodyText.toUpperCase())
+  const startsWithAlias = aliases.some((term) => {
+    const normalizedHeadline = normalizeMatchText(headlineText)
+    const normalizedTerm = normalizeMatchText(term)
+    return normalizedTerm && normalizedHeadline.startsWith(normalizedTerm)
+  })
+  const aliasInHeadline = aliases.some((term) => containsAliasTerm(headlineText, term))
+  const aliasInBody = aliases.some((term) => containsAliasTerm(summary || '', term))
+  const otherTickerInHeadline = headlineMentions.some((ticker) => ticker !== upper)
+  const otherCompanyInHeadline = headlineMentionsOtherCompanyAlias(upper, headlineText)
+  const otherCompanyStartsHeadline = headlineStartsWithOtherCompanyAlias(upper, headlineText)
+
+  let score = 0
+  if (hasTargetTickerInHeadline) score += 7
+  else if (hasTargetTickerAnywhere) score += 5
+  if (startsWithAlias) score += 5
+  else if (aliasInHeadline) score += 3
+  if (aliasInBody) score += 1
+  if (otherTickerInHeadline && !hasTargetTickerInHeadline && !startsWithAlias) score -= 5
+  if (otherCompanyStartsHeadline && !hasTargetTickerInHeadline && !startsWithAlias) score -= 7
+  if (otherCompanyInHeadline && !hasTargetTickerInHeadline && !startsWithAlias && !aliasInHeadline) score -= 5
+  if (!hasTargetTickerAnywhere && !aliasInHeadline && !aliasInBody) score -= 2
+  return score
 }
 
 // ─── FMP ticker news ─────────────────────────────────────────────────────────
@@ -362,13 +514,13 @@ const inferTags = (headline: string, source: string): string[] => {
   return [...tags]
 }
 
-const inferRelevanceScore = (symbol: string, headline: string, summary: string): number => {
+const inferRelevanceScore = (symbol: string, headline: string, summary: string, companyName?: string): number => {
   const text = `${headline} ${summary}`.toUpperCase()
-  const directMentionBoost = text.includes(symbol.toUpperCase()) ? 0.2 : 0
+  const tickerRelevance = inferTickerRelevanceScore(symbol, headline, summary, companyName)
   const topicalBoost = scoreNewsText(text) * 0.03
   const sourceBoost = scoreNewsSource(headline) > 0 ? 0.05 : 0
-  const base = 0.48 + directMentionBoost + topicalBoost + sourceBoost
-  return Math.max(0.35, Math.min(0.98, Number(base.toFixed(2))))
+  const base = 0.4 + Math.max(0, Math.min(8, tickerRelevance)) * 0.06 + topicalBoost + sourceBoost
+  return Math.max(0.15, Math.min(0.98, Number(base.toFixed(2))))
 }
 
 const sortNewsItems = <T extends { publishedAtET: string; dateET: ETDateString }>(items: T[]): T[] =>
@@ -631,8 +783,9 @@ async function fetchYahooFinanceNews(symbol: string): Promise<YahooRssItem[]> {
 const buildPayloadFromYahoo = (
   symbol: string,
   parsedItems: YahooRssItem[],
+  companyName?: string,
 ): { timeline: TickerNewsItem[]; details: NewsDetail[] } => {
-  type BucketSlot = { item: YahooRssItem; minuteGap: number; qualityScore: number } | null
+  type BucketSlot = { item: YahooRssItem; minuteGap: number; qualityScore: number; timeET: string; publishedAtET: string } | null
   const buckets: Record<string, { am: BucketSlot; pm: BucketSlot }> = {}
 
   for (const item of parsedItems) {
@@ -644,13 +797,15 @@ const buildPayloadFromYahoo = (
 
     const text = `${item.title} ${item.description}`
     if (!isFreeNewsSource(item.source) || hasPromoSignals(text)) continue
+    const tickerRelevance = inferTickerRelevanceScore(symbol, item.title, item.description, companyName)
+    if (tickerRelevance < 4) continue
 
     const hhmm = new Intl.DateTimeFormat('en-US', {
       timeZone: ET_TIMEZONE,
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',
-    }).format(published)
+    }).format(published).replace(/^24:/, '00:')
     const [hourRaw, minuteRaw] = hhmm.split(':')
     const hour = Number(hourRaw)
     const minute = Number(minuteRaw)
@@ -660,11 +815,13 @@ const buildPayloadFromYahoo = (
     const minutesSinceMidnight = hour * 60 + minute
     const targetMinutes = slot === 'am' ? 9 * 60 + 30 : 16 * 60 + 30
     const minuteGap = Math.abs(minutesSinceMidnight - targetMinutes)
-    const qualityScore = scoreNewsText(text) * 2 + scoreNewsSource(item.source)
+    const qualityScore = tickerRelevance * 5 + scoreNewsText(text) * 2 + scoreNewsSource(item.source)
+    const timeET = `${hhmm} ET`
+    const publishedAtET = `${publishedDateET}T${hhmm}:00${getETOffset(publishedDateET)}`
 
     const current = buckets[publishedDateET][slot]
     if (!current || qualityScore > current.qualityScore || (qualityScore === current.qualityScore && minuteGap < current.minuteGap)) {
-      buckets[publishedDateET][slot] = { item, minuteGap, qualityScore }
+      buckets[publishedDateET][slot] = { item, minuteGap, qualityScore, timeET, publishedAtET }
     }
   }
 
@@ -673,31 +830,30 @@ const buildPayloadFromYahoo = (
 
   Object.keys(buckets).sort((a, b) => b.localeCompare(a)).forEach((d) => {
     const b = buckets[d]
-    const processSlot = (slotEntry: BucketSlot, isAm: boolean) => {
+    const processSlot = (slotEntry: BucketSlot) => {
       if (!slotEntry) return
       const item = slotEntry.item
       const id = buildIdFromYahoo(symbol, item)
       const summary = item.description || 'Summary unavailable from source metadata.'
       const tags = inferTags(item.title, item.source)
-      const relevanceScore = inferRelevanceScore(symbol, item.title, summary)
-      const timeSlot = isAm ? '09:30' : '16:30'
-      const timeET = `${timeSlot} ET`
-      const publishedAtET = `${d}T${timeSlot}:00 ET`
+      const relevanceScore = inferRelevanceScore(symbol, item.title, summary, companyName)
+      const timeET = slotEntry.timeET
+      const publishedAtET = slotEntry.publishedAtET
 
       timeline.push({ id, symbol, dateET: d, publishedAtET, timeET, headline: item.title, source: item.source, summary, url: item.link })
       details.push({ id, symbol, dateET: d, publishedAtET, headline: item.title, source: item.source, summary, url: item.link, tags, relevanceScore })
     }
-    processSlot(b.pm, false)
-    processSlot(b.am, true)
+    processSlot(b.pm)
+    processSlot(b.am)
   })
 
   return { timeline, details }
 }
 
-const fetchYahooFreeNews = async (symbol: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
+const fetchYahooFreeNews = async (symbol: string, companyName?: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
   const financeItems = await fetchYahooFinanceNews(symbol)
   if (financeItems.length) {
-    const built = buildPayloadFromYahoo(symbol, financeItems)
+    const built = buildPayloadFromYahoo(symbol, financeItems, companyName)
     if (built.timeline.length || built.details.length) return built
   }
 
@@ -705,14 +861,14 @@ const fetchYahooFreeNews = async (symbol: string): Promise<{ timeline: TickerNew
   const res = await fetchWithRetry(rssUrl, { cache: 'no-store' }, TICKER_NEWS_HTTP_TIMEOUT_MS, 1)
   if (!res) throw new Error('Yahoo Finance request failed after retries')
   const xml = await res.text()
-  return buildPayloadFromYahoo(symbol, parseYahooRss(xml))
+  return buildPayloadFromYahoo(symbol, parseYahooRss(xml), companyName)
 }
 
-const fetchGoogleFreeNews = async (symbol: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
-  const companyName = TICKER_COMPANY_NAMES[symbol.toUpperCase()]
-  const primaryQuery = companyName ? `${companyName} stock` : `${symbol} stock`
-  const symbolQuery = companyName ? `${symbol} stock` : null
-  const krTerm = companyName ?? symbol
+const fetchGoogleFreeNews = async (symbol: string, companyName?: string): Promise<{ timeline: TickerNewsItem[]; details: NewsDetail[] }> => {
+  const resolvedCompanyName = companyName || TICKER_COMPANY_NAMES[symbol.toUpperCase()]
+  const primaryQuery = resolvedCompanyName ? `${resolvedCompanyName} stock` : `${symbol} stock`
+  const symbolQuery = resolvedCompanyName ? `${symbol} stock` : null
+  const krTerm = resolvedCompanyName ?? symbol
   const krQueries = GOOGLE_KR_QUERIES.map((query) => `${krTerm} ${query}`)
   const usQueryList = symbolQuery
     ? [primaryQuery, symbolQuery]
@@ -728,7 +884,7 @@ const fetchGoogleFreeNews = async (symbol: string): Promise<{ timeline: TickerNe
   if (!combined.length) {
     throw new Error('Google News RSS request failed after retries')
   }
-  return buildPayloadFromYahoo(symbol, combined)
+  return buildPayloadFromYahoo(symbol, combined, resolvedCompanyName)
 }
 
 const clonePayload = (payload: BuiltTickerNewsPayload): BuiltTickerNewsPayload => ({
@@ -736,11 +892,16 @@ const clonePayload = (payload: BuiltTickerNewsPayload): BuiltTickerNewsPayload =
   details: payload.details.map((item) => ({ ...item })),
 })
 
-export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateString): Promise<BuiltTickerNewsPayload> {
+export async function fetchTickerNewsFromYahoo(
+  symbol: string,
+  dateET: ETDateString,
+  companyName?: string,
+): Promise<BuiltTickerNewsPayload> {
   await loadTickerHistoryFromDisk()
   const anchorDateET = dateET || toDateET(new Date())
 
-  const cacheKey = `v4-session:${symbol}:${anchorDateET}:${getNewsCheckpointKey()}`
+  const companyKey = (companyName ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 64)
+  const cacheKey = `v8-watchlist-direct:${symbol}:${anchorDateET}:${companyKey}:${getNewsCheckpointKey()}`
   const now = Date.now()
   const cached = tickerNewsCache.get(cacheKey)
   if (cached && cached.expiresAt > now) return clonePayload(cached.payload)
@@ -752,14 +913,14 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
   try {
     const allItems = await fetchAllTickerNewsSources(symbol, anchorDateET)
     if (allItems.length) {
-      const built = buildPayloadFromYahoo(symbol, allItems)
+      const built = buildPayloadFromYahoo(symbol, allItems, companyName)
       if (built.timeline.length || built.details.length) {
         freshTimeline = built.timeline
         freshDetails = built.details
       }
     }
     if (!freshTimeline.length) {
-      const fallback = await fetchGoogleFreeNews(symbol)
+      const fallback = await fetchGoogleFreeNews(symbol, companyName)
       if (fallback.timeline.length || fallback.details.length) {
         freshTimeline = fallback.timeline
         freshDetails = fallback.details
@@ -767,7 +928,7 @@ export async function fetchTickerNewsFromYahoo(symbol: string, dateET: ETDateStr
     }
   } catch (error) {
     try {
-      const fallback = await fetchGoogleFreeNews(symbol)
+      const fallback = await fetchGoogleFreeNews(symbol, companyName)
       freshTimeline = fallback.timeline
       freshDetails = fallback.details
     } catch {

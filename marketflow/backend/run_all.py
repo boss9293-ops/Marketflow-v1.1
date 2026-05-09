@@ -49,6 +49,9 @@ SCRIPT_TIMEOUTS["build_ai_briefings.py"] = 300
 SCRIPT_TIMEOUTS["build_daily_briefing_v3.py"] = 120
 SCRIPT_TIMEOUTS["build_daily_briefing_v4.py"] = 120
 SCRIPT_TIMEOUTS["build_daily_briefing_v5.py"] = 180
+SCRIPT_TIMEOUTS["build_daily_briefing_v6.py"] = 180
+SCRIPT_TIMEOUTS["build_daily_briefing_deepseek_v3.py"] = 240
+SCRIPT_TIMEOUTS["build_daily_briefing_deepseek_v6.py"] = 240
 SCRIPT_TIMEOUTS["build_account_ticker_briefs.py"] = 900
 SCRIPT_TIMEOUTS["build_vr_pattern_dashboard.py"] = 180
 SCRIPT_TIMEOUTS["build_data_manifest.py"] = 60
@@ -103,6 +106,9 @@ SCRIPTS = [
     ("build_daily_briefing_v3.py", "Build Daily Briefing V3 Narrative"),
     ("build_daily_briefing_v4.py", "Build Daily Briefing V4 Narrative"),
     ("build_daily_briefing_v5.py", "Build Daily Briefing V5 Narrative"),
+    ("build_daily_briefing_v6.py", "Build Daily Briefing V6 Narrative"),
+    ("build_daily_briefing_deepseek_v3.py", "Build Daily Briefing DeepSeek V3 Narrative"),
+    ("build_daily_briefing_deepseek_v6.py", "Build Daily Briefing DeepSeek V6 Narrative"),
     ("build_market_health.py", "Build Market Health 4-Score"),
     ("risk_engine.py",       "Compute Risk Engine Metrics"),
     ("build_risk_v1.py",     "Build Risk v1 (Standard Risk System)"),

@@ -9,9 +9,19 @@ export default async function BriefingPage() {
   const uiLang = normalizeUiLang(cookies().get(UI_LANG_COOKIE)?.value)
   const rawContentLang = cookies().get(CONTENT_LANG_COOKIE)?.value
   const initialContentLang = rawContentLang === 'ko' || rawContentLang === 'en' ? rawContentLang : uiLang
-  const [data, dataV6] = await Promise.all([
+  const [data, dataV6, dataDeepSeekV3, dataDeepSeekV6] = await Promise.all([
     readCacheJsonOrNull<DailyBriefingV3Data>('daily_briefing_v3.json'),
     readCacheJsonOrNull<DailyBriefingV3Data>('daily_briefing_v6.json'),
+    readCacheJsonOrNull<DailyBriefingV3Data>('daily_briefing_deepseek_v3.json'),
+    readCacheJsonOrNull<DailyBriefingV3Data>('daily_briefing_deepseek_v6.json'),
   ])
-  return <DailyBriefingV3 data={data} dataV6={dataV6} initialContentLang={initialContentLang} />
+  return (
+    <DailyBriefingV3
+      data={data}
+      dataV6={dataV6}
+      dataDeepSeekV3={dataDeepSeekV3}
+      dataDeepSeekV6={dataDeepSeekV6}
+      initialContentLang={initialContentLang}
+    />
+  )
 }

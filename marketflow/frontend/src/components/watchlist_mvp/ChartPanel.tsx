@@ -101,9 +101,6 @@ export default function ChartPanel({
   isLoading,
   errorMessage,
 }: ChartPanelProps) {
-  const currentSymbol = selectedSymbol || selectedItem?.symbol || '---'
-  const changePct = selectedItem?.changePercent ?? '--'
-  const isDown = changePct.trim().startsWith('-')
   const containerRef = useRef<HTMLDivElement | null>(null)
   const containerId = useMemo(
     () => `tv-widget-${Math.random().toString(36).slice(2, 10)}`,
@@ -191,14 +188,7 @@ export default function ChartPanel({
   return (
     <article className={styles.chartPanel}>
       <div className={styles.chartHeader}>
-        <div>
-          <p className={styles.panelLabel}>Price Console</p>
-          <h3 className={styles.panelTitle}>{currentSymbol}</h3>
-        </div>
-        <div className={styles.chartPriceBox}>
-          <p className={styles.chartPrice}>{selectedItem?.lastPrice ?? '--'}</p>
-          <p className={isDown ? styles.chartChangeDown : styles.chartChangeUp}>{changePct}</p>
-        </div>
+        <p className={styles.panelLabel}>Price Console</p>
       </div>
 
       {isLoading && (

@@ -4,6 +4,9 @@ import fsSync from 'fs';
 import path from 'path';
 import { GET as getSystemStatus } from '../../system-status/route';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const REPORTS_DIR = path.resolve(process.cwd(), '..', 'backend', 'services', 'admin_reports');
 
 if (!fsSync.existsSync(REPORTS_DIR)) {

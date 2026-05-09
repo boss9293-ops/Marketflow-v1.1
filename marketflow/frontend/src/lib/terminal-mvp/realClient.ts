@@ -61,8 +61,10 @@ export function createRealClient(): TerminalMvpApiClient {
       return notSupported()
     },
 
-    async getTickerNews(symbol: string, dateET: ETDateString) {
-      return fetchJson(`/api/terminal/ticker/${encodeURIComponent(symbol)}/news?date=${encodeURIComponent(dateET)}`)
+    async getTickerNews(symbol: string, dateET: ETDateString, companyName?: string) {
+      const params = new URLSearchParams({ date: dateET })
+      if (companyName?.trim()) params.set('companyName', companyName.trim())
+      return fetchJson(`/api/terminal/ticker/${encodeURIComponent(symbol)}/news?${params.toString()}`)
     },
 
     async getMarketHeadlines(_dateET: ETDateString) {

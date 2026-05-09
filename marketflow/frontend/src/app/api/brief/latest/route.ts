@@ -5,6 +5,9 @@
 import { NextResponse } from 'next/server'
 import { getLatestBrief } from '@/lib/briefStore'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const brief = await getLatestBrief()
   if (!brief) {

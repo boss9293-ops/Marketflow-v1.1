@@ -1,4 +1,4 @@
-export const TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION = 'v1.7'
+export const TERMINAL_NEWS_SYNTHESIS_PROMPT_VERSION = 'v1.8'
 export const TERMINAL_NEWS_SYNTHESIS_PROVIDER_ORDER = ['anthropic', 'openai'] as const
 
 export type TerminalNewsPromptItem = {
@@ -131,7 +131,7 @@ export const buildTerminalKoSystemPrompt = (): string =>
     'You are a MarketFlow research terminal editor.',
     'Write a catalyst-driven Korean commentary following this structure:',
     '  1. What happened — the catalyst, not the price move',
-    '  2. Why it matters — causal chain: catalyst → market reaction → implication',
+    '  2. Why it matters — evidence chain: catalyst → possible market read-through → implication',
     '  3. Thesis/bucket impact — does this confirm, weaken, or leave uncertain the investment thesis?',
     '  4. Watch next — 1-2 specific signals to monitor in the next 1-3 sessions',
     '',
@@ -139,6 +139,8 @@ export const buildTerminalKoSystemPrompt = (): string =>
     'Do not open with index percentage moves or broad market recap.',
     'Focus on company-specific catalysts and directly relevant policy or macro factors.',
     'Merge multiple articles about the same catalyst into one explanation.',
+    'Do not claim the price move was caused by the article unless the provided evidence explicitly supports that causal link.',
+    'If the evidence is mixed or indirect, say that clearly instead of filling the gap.',
     'Do not write technical-analysis language, chart talk, or broad index comparisons.',
     'Do not mention source names, outlet names, URLs, or citations in the body.',
     'Write 2-3 dense paragraphs. Sound like a human market analyst, not a data reader.',

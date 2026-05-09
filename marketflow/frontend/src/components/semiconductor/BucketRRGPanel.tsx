@@ -11,7 +11,7 @@ import type { AIInfraStage } from '@/lib/semiconductor/aiInfraBucketMap'
 const V = {
   teal: '#3FB6A8', red: '#E55A5A', amber: '#F2A93B', blue: '#4A9EE0',
   gold: '#D4B36A', mint: '#5DCFB0',
-  text: '#E8F0F8', text2: '#B8C8DC', text3: '#6B7B95',
+  text: '#E8F0F8', text2: '#B8C8DC', text3: '#8b9098',
   bg: '#0F1117', bg2: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
   ui: "'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
 } as const
@@ -166,12 +166,12 @@ function BucketRow({ s }: { s: RrgSeries }) {
         <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <span style={{ fontSize: 13, color: V.text, fontFamily: V.ui }}>{s.label}</span>
       </td>
-      <td style={{ padding: '5px 6px', fontSize: 11, color: '#8b9098', fontFamily: V.ui }}>
+      <td style={{ padding: '5px 6px', fontSize: 12, color: V.text2, fontFamily: V.ui }}>
         {stage ? STAGE_SHORT[stage] : '—'}
       </td>
       <td style={{ padding: '5px 8px', textAlign: 'center' }}>
         <span style={{
-          fontSize: 11, fontWeight: 600, color: Q_COLOR[q],
+          fontSize: 12, fontWeight: 600, color: Q_COLOR[q],
           background: Q_BG[q], borderRadius: 3, padding: '2px 8px',
           fontFamily: V.ui, letterSpacing: '0.06em',
         }}>
@@ -184,12 +184,12 @@ function BucketRow({ s }: { s: RrgSeries }) {
       <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: V.mono, fontSize: 13, color: V.text }}>
         {last?.rsMomentum?.toFixed(2) ?? '—'}
       </td>
-      <td style={{ padding: '5px 6px', textAlign: 'right', fontSize: 11, color: '#8b9098', fontFamily: V.mono }}>
+      <td style={{ padding: '5px 6px', textAlign: 'right', fontSize: 12, color: V.text2, fontFamily: V.mono }}>
         {s.points.length > 0 ? `${s.points.length}W` : '—'}
       </td>
       <td style={{ padding: '5px 8px' }}>
         {s.source === 'PENDING' && (
-          <span style={{ fontSize: 10, color: '#8b9098', fontFamily: V.ui }}>{s.note ?? 'Pending'}</span>
+          <span style={{ fontSize: 12, color: V.text2, fontFamily: V.ui }}>{s.note ?? 'Pending'}</span>
         )}
       </td>
     </tr>
@@ -212,31 +212,70 @@ function groupByQuadrant(series: RrgSeries[]): Map<RrgQuadrant, RrgSeries[]> {
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'QQQ' | 'SPY' }) {
-  const [payload,  setPayload]  = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState<string | null>(null)
-  const [lookback, setLookback] = useState(8)
+  const [payload,          setPayload]          = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
+  const [loading,          setLoading]          = useState(true)
+  const [error,            setError]            = useState<string | null>(null)
+  const [retryKey,         setRetryKey]         = useState(0)
+  const [lookback,         setLookback]         = useState(8)
+  const [analysis,         setAnalysis]         = useState<string | null>(null)
+  const [analysisLoading,  setAnalysisLoading]  = useState(false)
+  const [analysisError,    setAnalysisError]    = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 15000)
     setLoading(true)
-    fetch(`/api/ai-infra/bucket-rrg?benchmark=${benchmark}`, { cache: 'no-store' })
-      .then(r => r.json())
+    setError(null)
+    setAnalysis(null)
+    setAnalysisError(null)
+    fetch(`/api/ai-infra/bucket-rrg?benchmark=${benchmark}`, { cache: 'no-store', signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`) ; return r.json() })
       .then((d: RrgPathPayload) => { if (!cancelled) { setPayload(d); setLoading(false) } })
-      .catch((e: unknown) => { if (!cancelled) { setError(String(e)); setLoading(false) } })
-    return () => { cancelled = true }
-  }, [benchmark])
+      .catch((e: unknown) => { if (!cancelled) { setError(e instanceof Error ? e.message : String(e)); setLoading(false) } })
+      .finally(() => clearTimeout(timer))
+    return () => { cancelled = true; controller.abort(); clearTimeout(timer) }
+  }, [benchmark, retryKey])
 
-  const grouped   = useMemo(() => groupByQuadrant(payload.series), [payload.series])
+  const grouped    = useMemo(() => groupByQuadrant(payload.series), [payload.series])
   const liveSeries = payload.series.filter(s => s.source !== 'PENDING' && s.points.length > 0)
-  const hasLive   = liveSeries.length > 0
+  const hasLive    = liveSeries.length > 0
+
+  function requestAnalysis() {
+    if (analysisLoading || liveSeries.length < 3) return
+    setAnalysisLoading(true)
+    setAnalysisError(null)
+    fetch('/api/ai-infra/rrg-analysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        series:    payload.series,
+        benchmark,
+        date:      payload.generatedAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+        lookback,
+      }),
+    })
+      .then(r => r.json())
+      .then((d: { analysis?: string; error?: string }) => {
+        if (d.error) { setAnalysisError(d.error); return }
+        setAnalysis(d.analysis ?? null)
+      })
+      .catch(() => setAnalysisError('분석을 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'))
+      .finally(() => setAnalysisLoading(false))
+  }
 
   if (loading) return (
     <div style={{ padding: 16, color: V.text3, fontSize: 12, fontFamily: V.ui }}>Loading Bottleneck RRG…</div>
   )
 
   if (error) return (
-    <div style={{ padding: 16, color: V.gold, fontSize: 12, fontFamily: V.ui }}>{error}</div>
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ color: V.gold, fontSize: 12, fontFamily: V.ui }}>{error}</div>
+      <button onClick={() => setRetryKey(k => k + 1)}
+        style={{ alignSelf: 'flex-start', padding: '4px 12px', fontSize: 12, fontFamily: V.ui, cursor: 'pointer', borderRadius: 3, background: 'transparent', border: `1px solid ${V.border}`, color: V.text2 }}>
+        재시도
+      </button>
+    </div>
   )
 
   if (!hasLive) return (
@@ -261,20 +300,20 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: V.teal, fontFamily: V.ui }}>
           BOTTLENECK RRG
         </div>
-        <div style={{ fontSize: 10, color: V.teal, fontFamily: V.mono, opacity: 0.75 }}>
+        <div style={{ fontSize: 12, color: V.teal, fontFamily: V.mono }}>
           vs {benchmark}
         </div>
-        <div style={{ fontSize: 10, color: V.text3, fontFamily: V.mono }}>
+        <div style={{ fontSize: 12, color: V.text2, fontFamily: V.mono }}>
           {payload.generatedAt ? `as of ${payload.generatedAt.slice(0, 10)}` : ''}
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
-          <span style={{ fontSize: 10, color: V.text3, fontFamily: V.ui, marginRight: 4 }}>Tail:</span>
+          <span style={{ fontSize: 12, color: V.text2, fontFamily: V.ui, marginRight: 4 }}>Tail:</span>
           {([{ n: 1, label: 'No tail' }, { n: 4, label: '4W' }, { n: 8, label: '8W' }, { n: 12, label: '12W' }]).map(({ n, label }) => (
             <button key={n} onClick={() => setLookback(n)} style={{
-              padding: '2px 6px', fontSize: 10, fontFamily: V.mono, cursor: 'pointer', borderRadius: 3,
+              padding: '3px 8px', fontSize: 12, fontFamily: V.mono, cursor: 'pointer', borderRadius: 3,
               background: lookback === n ? 'rgba(63,182,168,0.15)' : 'transparent',
               border: `1px solid ${lookback === n ? V.teal : V.border}`,
-              color: lookback === n ? V.teal : V.text3,
+              color: lookback === n ? V.teal : V.text2,
             }}>
               {label}
             </button>
@@ -282,9 +321,99 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
         </div>
       </div>
 
-      {/* Chart */}
-      <div style={{ padding: '0 8px', marginBottom: 12 }}>
-        <MiniRRGChart series={liveSeries} lookbackWeeks={lookback} />
+      {/* Chart + AI Analysis — side by side */}
+      <div style={{ display: 'flex', gap: 0, padding: '0 8px', marginBottom: 12, alignItems: 'flex-start' }}>
+        {/* Left: RRG chart — 988px = W*2, SVG가 2x 스케일로 렌더링 */}
+        <div style={{ flex: '0 0 988px', width: 988 }}>
+          <MiniRRGChart series={liveSeries} lookbackWeeks={lookback} />
+        </div>
+
+        {/* Right: AI rotation analysis panel — fills remaining width */}
+        <div style={{
+          flex: '1 1 0', minWidth: 280,
+          padding: '0 16px',
+          borderLeft: `1px solid ${V.border}`,
+          marginLeft: 12,
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          {/* Panel header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', color: V.teal, fontFamily: V.ui }}>
+              AI 로테이션 분석
+            </span>
+            {analysis && (
+              <span style={{ fontSize: 12, color: V.text2, fontFamily: V.mono, marginLeft: 'auto' }}>
+                {benchmark}
+              </span>
+            )}
+          </div>
+
+          {/* States */}
+          {!analysis && !analysisLoading && !analysisError && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p style={{ fontSize: 12, color: V.text2, fontFamily: V.ui, lineHeight: 1.6, margin: 0 }}>
+                현재 RRG 데이터를 기반으로 AI가 로테이션 국면을 분석합니다.
+              </p>
+              <button
+                onClick={requestAnalysis}
+                disabled={liveSeries.length < 3}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '5px 14px', fontSize: 12, fontFamily: V.ui, cursor: 'pointer', borderRadius: 4,
+                  background: 'rgba(63,182,168,0.10)',
+                  border: `1px solid ${V.teal}`,
+                  color: V.teal,
+                  opacity: liveSeries.length < 3 ? 0.4 : 1,
+                }}
+              >
+                분석 보기
+              </button>
+            </div>
+          )}
+
+          {analysisLoading && (
+            <div style={{ fontSize: 12, color: V.text3, fontFamily: V.ui, lineHeight: 1.6 }}>
+              분석 중…
+            </div>
+          )}
+
+          {analysisError && !analysisLoading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, color: V.gold, fontFamily: V.ui, lineHeight: 1.6 }}>
+                {analysisError}
+              </div>
+              <button
+                onClick={requestAnalysis}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '4px 12px', fontSize: 12, fontFamily: V.ui, cursor: 'pointer', borderRadius: 4,
+                  background: 'transparent', border: `1px solid ${V.border}`, color: V.text2,
+                }}
+              >
+                재시도
+              </button>
+            </div>
+          )}
+
+          {analysis && !analysisLoading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 13, color: V.text2, fontFamily: V.ui, lineHeight: 1.75, whiteSpace: 'pre-line' }}>
+                {analysis}
+              </div>
+              <button
+                onClick={requestAnalysis}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '3px 10px', fontSize: 12, fontFamily: V.ui, cursor: 'pointer', borderRadius: 3,
+                  background: 'transparent', border: `1px solid ${V.border}`, color: V.text2,
+                  letterSpacing: '0.06em',
+                }}
+              >
+                새로고침
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quadrant groups — single table for aligned columns across all groups */}
@@ -305,7 +434,7 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
                 <th key={h} style={{
                   padding: '3px 6px',
                   textAlign: h === 'Bucket' ? 'left' : h === 'Quadrant' ? 'center' : 'right',
-                  fontSize: 10, color: '#8b9098', fontWeight: 600, fontFamily: V.ui,
+                  fontSize: 12, color: V.text2, fontWeight: 600, fontFamily: V.ui,
                   letterSpacing: '0.08em',
                 }}>{h}</th>
               ))}
@@ -316,7 +445,7 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
               <tr key={`hd-${q}`} style={{ borderTop: `1px solid ${V.border}22` }}>
                 <td colSpan={7} style={{
                   padding: '10px 8px 4px',
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
+                  fontSize: 12, fontWeight: 700, letterSpacing: '0.14em',
                   color: Q_COLOR[q], fontFamily: V.ui,
                 }}>
                   {q.toUpperCase()} ({grouped.get(q)!.length})
@@ -334,7 +463,7 @@ export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'Q
           {payload.dataStatus.pendingReason}
         </div>
       )}
-      <div style={{ padding: '6px 16px', fontSize: 11, color: '#8b9098', fontFamily: V.ui, lineHeight: 1.5 }}>
+      <div style={{ padding: '6px 16px', fontSize: 12, color: V.text2, fontFamily: V.ui, lineHeight: 1.5 }}>
         Candidate-D formula. Equal-weight basket index. {liveSeries.length}/13 buckets live.
         Quadrant labels (Leading / Weakening / Lagging / Improving) are rotational position only — not investment signals.
         Not investment advice.

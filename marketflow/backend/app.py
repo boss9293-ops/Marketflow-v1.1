@@ -435,6 +435,8 @@ def _run_builds_if_needed():
             ('build_daily_briefing_v4.py', os.path.join(_out, 'cache', 'daily_briefing_v4.json')),
             ('build_daily_briefing_v5.py', os.path.join(_out, 'cache', 'daily_briefing_v5.json')),
             ('build_daily_briefing_v6.py', os.path.join(_out, 'cache', 'daily_briefing_v6.json')),
+            ('build_daily_briefing_deepseek_v3.py', os.path.join(_out, 'cache', 'daily_briefing_deepseek_v3.json')),
+            ('build_daily_briefing_deepseek_v6.py', os.path.join(_out, 'cache', 'daily_briefing_deepseek_v6.json')),
             ('build_vr_pattern_dashboard.py', os.path.join(_out, 'vr_pattern_dashboard.json')),
             ('build_data_manifest.py', os.path.join(_out, 'cache', 'data_manifest.json')),
         ]
@@ -796,6 +798,8 @@ _DATA_BUILD_SPECS: dict[str, tuple[str, int]] = {
     'daily_briefing_v4.json': ('build_daily_briefing_v4.py', 300),
     'daily_briefing_v5.json': ('build_daily_briefing_v5.py', 300),
     'daily_briefing_v6.json': ('build_daily_briefing_v6.py', 300),
+    'daily_briefing_deepseek_v3.json': ('build_daily_briefing_deepseek_v3.py', 420),
+    'daily_briefing_deepseek_v6.json': ('build_daily_briefing_deepseek_v6.py', 420),
     'vr_pattern_dashboard.json': ('build_vr_pattern_dashboard.py', 180),
     'vr_survival.json': ('build_vr_survival.py', 600),
     'vr_survival_playback.json': ('build_vr_survival.py', 600),
@@ -8292,6 +8296,16 @@ def my_holdings_import_tabs():
 
         return jsonify({'error': 'sheet_url or sheet_id is required'}), 400
 
+    if not _get_sa_json() and os.environ.get('SHEETS_ALLOW_STUB', '').strip().lower() not in {'1', 'true', 'yes'}:
+        return jsonify({
+            'ok': False,
+            'error': 'Google Sheets credentials are not configured. Save the service account JSON first, then import again.',
+            'tabs': tabs,
+            'ts': load_json_or_none('my_holdings_ts.json'),
+            'sheet_tabs': load_json_or_none('sheet_tabs.json'),
+            'holdings': load_json_or_none('my_holdings_cache.json') or load_json_or_none('my_holdings.json'),
+        }), 400
+
 
     # Expand to all selectable when the client sends nothing OR sends only
     # "Goal" (fresh-session quirk: the client may submit just the active tab
@@ -8337,6 +8351,21 @@ def my_holdings_import_tabs():
     if result_import.returncode != 0:
         print(f"[import-tabs] import stderr: {(result_import.stderr or '')[-800:]}", flush=True)
         print(f"[import-tabs] import stdout: {(result_import.stdout or '')[-800:]}", flush=True)
+        err_msg = (result_import.stderr or result_import.stdout or '').strip()[-500:] or 'Google Sheets import failed.'
+        return jsonify({
+            'ok': False,
+            'stdout_import': (result_import.stdout or '').strip()[-500:],
+            'stderr_import': (result_import.stderr or '').strip()[-500:],
+            'stdout_ts': '',
+            'stderr_ts': '',
+            'stdout_snapshot': '',
+            'stderr_snapshot': '',
+            'error': err_msg,
+            'tabs': tabs,
+            'ts': load_json_or_none('my_holdings_ts.json'),
+            'sheet_tabs': load_json_or_none('sheet_tabs.json'),
+            'holdings': load_json_or_none('my_holdings_cache.json') or load_json_or_none('my_holdings.json'),
+        }), 400
 
 
     result_ts = _run_backend_script('build_holdings_ts_cache.py', extra_args=[], timeout=120)
@@ -10104,6 +10133,164 @@ def briefing_v5_generate():
         return jsonify({'ok': False, 'elapsed': timeout_sec, 'error': 'timeout'}), 504
     except Exception as e:
         return jsonify({'ok': False, 'elapsed': 0, 'error': str(e)}), 500
+
+
+@app.route('/api/briefing/v6/generate', methods=['POST'])
+def briefing_v6_generate():
+    import time as _time
+    import subprocess, sys
+
+    t0 = _time.time()
+    timeout_sec = 360
+
+    try:
+        _run_backend_script('build_context_news.py', extra_args=['--region', 'us', '--limit', '5'], timeout=180)
+    except Exception:
+        pass
+
+    script = os.path.join(os.path.dirname(__file__), 'scripts', 'build_daily_briefing_v6.py')
+    req_body = request.json if request.is_json else {}
+    force = req_body.get('force', False)
+    lang = req_body.get('lang', 'ko')
+    slot = req_body.get('slot')
+
+    args = [sys.executable, '-X', 'utf8', script]
+    if force:
+        args.append('--force')
+    if slot:
+        args.append(f'--slot={slot}')
+    args.append(f'--lang={lang}')
+
+    env = build_script_env()
+    try:
+        result = subprocess.run(
+            args, capture_output=True, timeout=timeout_sec, env=env,
+            cwd=os.path.dirname(__file__),
+        )
+        elapsed = round(_time.time() - t0, 1)
+        ok = result.returncode == 0
+        if not ok:
+            err = result.stderr.decode('utf-8', errors='replace').strip()[-400:]
+            return jsonify({'ok': False, 'elapsed': elapsed, 'error': err}), 500
+
+        out_path = os.path.join(OUTPUT_DIR, 'cache', 'daily_briefing_v6.json')
+        if os.path.exists(out_path):
+            with open(out_path, encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {}
+        return jsonify({'ok': True, 'elapsed': elapsed, 'data': data})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'elapsed': timeout_sec, 'error': 'timeout'}), 504
+    except Exception as e:
+        return jsonify({'ok': False, 'elapsed': 0, 'error': str(e)}), 500
+
+
+def _deepseek_cache_name(version: str) -> str:
+    return f'daily_briefing_deepseek_{version}.json'
+
+
+def _deepseek_builder_script(version: str) -> str:
+    return f'build_daily_briefing_deepseek_{version}.py'
+
+
+def _deepseek_base_hint(version: str) -> str:
+    return (
+        'python backend/scripts/build_daily_briefing_v3.py'
+        if version == 'v3'
+        else 'python backend/scripts/build_daily_briefing_v6.py'
+    )
+
+
+def _briefing_deepseek_read(version: str):
+    cache_name = _deepseek_cache_name(version)
+    out_path = os.path.join(OUTPUT_DIR, 'cache', cache_name)
+    if not os.path.exists(out_path):
+        return jsonify({
+            'error': f'{cache_name} not generated yet.',
+            'rerun_hint': f'python backend/scripts/{_deepseek_builder_script(version)}',
+            'fallback_hint': _deepseek_base_hint(version),
+        }), 404
+    with open(out_path, encoding='utf-8') as f:
+        return jsonify(json.load(f))
+
+
+def _briefing_deepseek_generate(version: str):
+    import time as _time
+    import subprocess, sys
+
+    t0 = _time.time()
+    timeout_sec = 420
+
+    script = os.path.join(os.path.dirname(__file__), 'scripts', _deepseek_builder_script(version))
+    req_body = request.json if request.is_json else {}
+    force = req_body.get('force', False)
+    lang = req_body.get('lang', 'ko')
+    slot = req_body.get('slot')
+
+    args = [sys.executable, '-X', 'utf8', script]
+    if force:
+        args.append('--force')
+    if slot:
+        args.append(f'--slot={slot}')
+    args.append(f'--lang={lang}')
+
+    env = build_script_env()
+    try:
+        result = subprocess.run(
+            args, capture_output=True, timeout=timeout_sec, env=env,
+            cwd=os.path.dirname(__file__),
+        )
+        elapsed = round(_time.time() - t0, 1)
+        ok = result.returncode == 0
+        if not ok:
+            err = result.stderr.decode('utf-8', errors='replace').strip()[-400:]
+            return jsonify({'ok': False, 'elapsed': elapsed, 'error': err}), 500
+
+        out_path = os.path.join(OUTPUT_DIR, 'cache', _deepseek_cache_name(version))
+        if os.path.exists(out_path):
+            with open(out_path, encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {}
+        return jsonify({'ok': True, 'elapsed': elapsed, 'data': data})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'elapsed': timeout_sec, 'error': 'timeout'}), 504
+    except Exception as e:
+        return jsonify({'ok': False, 'elapsed': 0, 'error': str(e)}), 500
+
+
+@app.route('/api/briefing/deepseek/v3', methods=['GET'])
+def briefing_deepseek_v3_read():
+    return _briefing_deepseek_read('v3')
+
+
+@app.route('/api/briefing/deepseek/v3/generate', methods=['POST'])
+def briefing_deepseek_v3_generate():
+    return _briefing_deepseek_generate('v3')
+
+
+@app.route('/api/briefing/deepseek/v6', methods=['GET'])
+def briefing_deepseek_v6_read():
+    return _briefing_deepseek_read('v6')
+
+
+@app.route('/api/briefing/deepseek/v6/generate', methods=['POST'])
+def briefing_deepseek_v6_generate():
+    return _briefing_deepseek_generate('v6')
+
+
+# Backward compatibility aliases -> v6.
+@app.route('/api/briefing/deepseek', methods=['GET'])
+def briefing_deepseek_read():
+    return _briefing_deepseek_read('v6')
+
+
+@app.route('/api/briefing/deepseek/generate', methods=['POST'])
+def briefing_deepseek_generate():
+    return _briefing_deepseek_generate('v6')
 
 
 @app.route('/api/briefing/v2/tavily-health', methods=['GET'])

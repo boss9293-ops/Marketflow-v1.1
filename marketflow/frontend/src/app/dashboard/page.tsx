@@ -126,6 +126,26 @@ type MarketHeadlineHistoryCache = {
   headlines?: MarketHeadlineHistoryItem[] | null
 }
 
+type DailyBriefingCheckpointCache = {
+  data_date?: string | null
+  next_checkpoints?: string[] | null
+  next_session_playbook?: {
+    watchpoints?: string[] | null
+  } | null
+}
+
+type EarningsCalendarItem = {
+  ticker?: string | null
+  name?: string | null
+  date?: string | null
+}
+
+type EarningsCalendarCache = {
+  generated_at?: string | null
+  source?: string | null
+  earnings?: EarningsCalendarItem[] | null
+}
+
 type LadderRow = {
   symbol: string
   label: string
@@ -458,6 +478,67 @@ const toLabelKey = (value: string | null | undefined): string =>
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
 
+const deriveRegimeKey = (
+  snapshotRegime: string | null | undefined,
+  mssScore: number | null,
+  gateScore: number | null,
+): string => {
+  const raw = toLabelKey(snapshotRegime)
+  if (raw && raw in REGIME_LABELS) return raw
+  if (mssScore != null) {
+    if (mssScore >= 110) return 'BULL'
+    if (mssScore >= 100) return 'RISK_ON'
+    if (mssScore >= 92) return 'NEUTRAL'
+    if (mssScore >= 84) return 'RISK_OFF'
+    return 'BEAR'
+  }
+  if (gateScore != null) {
+    if (gateScore >= 70) return 'RISK_ON'
+    if (gateScore >= 40) return 'NEUTRAL'
+    return 'RISK_OFF'
+  }
+  return 'NEUTRAL'
+}
+
+const deriveRiskLevelKey = (
+  snapshotRisk: string | null | undefined,
+  finalRisk: string | null | undefined,
+  engineLevel: number | null,
+  gateScore: number | null,
+): string => {
+  const snapshotKey = toLabelKey(snapshotRisk)
+  if (snapshotKey && snapshotKey in RISK_LABELS) return snapshotKey
+
+  const finalRiskKey = toLabelKey(finalRisk)
+  if (finalRiskKey === 'NORMAL' || finalRiskKey === 'LOW') return 'LOW'
+  if (finalRiskKey === 'MEDIUM' || finalRiskKey === 'CAUTION' || finalRiskKey === 'WARNING') return 'MEDIUM'
+  if (finalRiskKey === 'HIGH' || finalRiskKey === 'HIGH_RISK') return 'HIGH'
+  if (finalRiskKey === 'EXTREME' || finalRiskKey === 'CRISIS') return 'EXTREME'
+
+  if (engineLevel != null) {
+    if (engineLevel <= 0) return 'LOW'
+    if (engineLevel <= 2) return 'MEDIUM'
+    if (engineLevel === 3) return 'HIGH'
+    return 'EXTREME'
+  }
+
+  if (gateScore != null) {
+    if (gateScore >= 70) return 'LOW'
+    if (gateScore >= 40) return 'MEDIUM'
+    return 'HIGH'
+  }
+
+  return 'MEDIUM'
+}
+
+const addDaysKey = (dateKey: string, days: number): string => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return ''
+  const dt = new Date(`${dateKey}T00:00:00Z`)
+  if (Number.isNaN(dt.valueOf())) return ''
+  dt.setUTCDate(dt.getUTCDate() + days)
+  return dt.toISOString().slice(0, 10)
+}
+
 const localizeByMap = (
   value: string | null | undefined,
   lang: UiLang,
@@ -625,14 +706,28 @@ export default async function DashboardPage() {
   const uiLang = normalizeUiLang(cookies().get(UI_LANG_COOKIE)?.value)
   const contentLang: UiLang = normalizeContentLang(cookies().get(CONTENT_LANG_COOKIE)?.value)
 
-  const [coreSnapshot, dailyBriefing, snapshots, riskV1, vrPattern, current90d, marketHeadlineHistory] = await Promise.all([
+  const [
+    coreSnapshot,
+    dailyBriefing,
+    dailyBriefingV6,
+    dailyBriefingV4,
+    snapshots,
+    riskV1,
+    vrPattern,
+    current90d,
+    marketHeadlineHistory,
+    earningsCalendar,
+  ] = await Promise.all([
     readCacheJson<CorePriceSnapshotCache>('cache/core_price_snapshot_latest.json', {}),
     readCacheJson<DailyBriefing>('daily_briefing_v3.json', {}),
+    readCacheJson<DailyBriefingCheckpointCache>('daily_briefing_v6.json', {}),
+    readCacheJson<DailyBriefingCheckpointCache>('daily_briefing_v4.json', {}),
     readCacheJson<SnapshotsCache>('snapshots_120d.json', { snapshots: [] }),
     readCacheJson<RiskV1Cache>('risk_v1.json', {}),
     readCacheJson<VrPatternDashboard>('vr_pattern_dashboard.json', {}),
     readCacheJson<Current90dCache>('current_90d.json', {}),
     readCacheJson<MarketHeadlineHistoryCache>('cache/market-headlines-history.json', {}),
+    readCacheJson<EarningsCalendarCache>('earnings_calendar.json', {}),
   ])
 
   const coreRecords = Array.isArray(coreSnapshot.records) ? coreSnapshot.records : []
@@ -643,15 +738,24 @@ export default async function DashboardPage() {
   }
 
   const latestSnapshot = (snapshots.snapshots || []).at(-1) || null
-  const regime = (latestSnapshot?.market_phase || 'TRANSITION').toUpperCase()
-  const riskLevel = (latestSnapshot?.risk_level || 'MEDIUM').toUpperCase()
+  const rawGateScore = typeof latestSnapshot?.gate_score === 'number' ? latestSnapshot.gate_score : null
+  const mssScore = typeof riskV1.current?.score === 'number' ? riskV1.current.score : null
+  const fallbackGate = mssScore != null ? clamp(Math.round(((mssScore - 60) / 60) * 100), 0, 100) : null
+  const computedGate = rawGateScore ?? fallbackGate
+  const gateIsEstimated = rawGateScore == null && computedGate != null
+  const regime = deriveRegimeKey(latestSnapshot?.market_phase, mssScore, computedGate)
+  const riskLevel = deriveRiskLevelKey(
+    latestSnapshot?.risk_level,
+    riskV1.current?.context?.final_risk,
+    typeof riskV1.current?.level === 'number' ? riskV1.current.level : null,
+    computedGate,
+  )
   const regimeLabel = localizeByMap(regime, contentLang, REGIME_LABELS)
   const riskLevelLabel = localizeByMap(riskLevel, contentLang, RISK_LABELS)
-  const gateScore = typeof latestSnapshot?.gate_score === 'number' ? latestSnapshot.gate_score : null
+  const gateScore = rawGateScore
   const exposureBand =
     typeof riskV1.current?.context?.final_exposure === 'number' ? `${riskV1.current.context.final_exposure}%` : '40~60%'
 
-  const mssScore = typeof riskV1.current?.score === 'number' ? riskV1.current.score : null
   const mssWindowDays = 45
   const riskHistory = Array.isArray(riskV1.history) ? riskV1.history : []
   const mssSeries: MssSeriesPoint[] = riskHistory
@@ -662,10 +766,7 @@ export default async function DashboardPage() {
     }))
     .filter((row) => row.date && Number.isFinite(row.score))
     .slice(-mssWindowDays)
-  const fallbackGate = mssScore != null ? clamp(Math.round(((mssScore - 60) / 60) * 100), 0, 100) : null
-  const computedGate = gateScore ?? fallbackGate
   const regimeGauge = computedGate != null ? clamp(Math.round(computedGate), 0, 100) : null
-  const gateIsEstimated = gateScore == null && computedGate != null
   const gateZoneLabel =
     regimeGauge == null
       ? engineText(contentLang, DASHBOARD_ENGINE.gateZoneUnavailable)
@@ -728,17 +829,18 @@ export default async function DashboardPage() {
       return String(b?.dateET || '').localeCompare(String(a?.dateET || ''))
     })
   const tapeHeadlines = (() => {
-    const recentDates = new Set<string>()
+    const seenHeadlines = new Set<string>()
     const items: Array<{ time: string; text: string; source: string }> = []
 
     for (const row of sortedMarketHeadlineRows) {
       const dateET = String(row?.dateET || '').trim()
       const headlineText = String(row?.headline || '').trim()
-      if (!dateET || !headlineText || recentDates.has(dateET)) {
+      const headlineKey = headlineText.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim()
+      if (!dateET || !headlineText || !headlineKey || seenHeadlines.has(headlineKey)) {
         continue
       }
 
-      recentDates.add(dateET)
+      seenHeadlines.add(headlineKey)
       items.push({
         time: formatTapePublishedLabel(row?.publishedAtET, dateET, row?.timeET),
         text: toTeaser(headlineText, 120),
@@ -793,20 +895,52 @@ export default async function DashboardPage() {
 
   const queueRows = [
     engineText(contentLang, DASHBOARD_ENGINE.queueCore, { exposureBand, regime: regimeLabel }),
-    gateScore != null
-      ? engineText(contentLang, DASHBOARD_ENGINE.queueGateAvailable, { gate: gateScore.toFixed(1) })
+    computedGate != null
+      ? engineText(contentLang, DASHBOARD_ENGINE.queueGateAvailable, {
+          gate: `${computedGate.toFixed(1)}${gateIsEstimated ? ` ${uiText(contentLang, DASHBOARD_UI.gateEstimated)}` : ''}`,
+        })
       : engineText(contentLang, DASHBOARD_ENGINE.queueGateUnavailable),
-    riskLevel === 'HIGH'
+    riskLevel === 'HIGH' || riskLevel === 'EXTREME'
       ? engineText(contentLang, DASHBOARD_ENGINE.queueHighRisk)
       : engineText(contentLang, DASHBOARD_ENGINE.queueDefaultRisk),
   ]
 
-  const eventRows = [
-    engineText(contentLang, DASHBOARD_ENGINE.event0830),
-    engineText(contentLang, DASHBOARD_ENGINE.event1000),
-    engineText(contentLang, DASHBOARD_ENGINE.event1400),
-    engineText(contentLang, DASHBOARD_ENGINE.event1630),
+  const checkpointRows = [
+    ...(Array.isArray(dailyBriefingV6.next_checkpoints) ? dailyBriefingV6.next_checkpoints : []),
+    ...(Array.isArray(dailyBriefingV4.next_session_playbook?.watchpoints) ? dailyBriefingV4.next_session_playbook.watchpoints : []),
   ]
+    .map((row) => String(row || '').trim())
+    .filter((row, index, rows) => Boolean(row) && rows.indexOf(row) === index)
+
+  const baseEventDate = dailyBriefingV6.data_date || dailyBriefing.data_date || latestSnapshot?.date || ''
+  const nextEventDate = addDaysKey(baseEventDate, 1)
+  const checkpointText = checkpointRows.join(' ').toUpperCase()
+  const earningsRows = (Array.isArray(earningsCalendar.earnings) ? earningsCalendar.earnings : [])
+    .filter((row) => {
+      const date = String(row?.date || '').trim()
+      return Boolean(date && (date === baseEventDate || date === nextEventDate))
+    })
+    .map((row) => String(row?.ticker || row?.name || '').trim())
+    .filter((value, index, rows) => Boolean(value) && rows.indexOf(value) === index && !checkpointText.includes(value.toUpperCase()))
+
+  const earningsEventRow =
+    earningsRows.length && nextEventDate
+      ? contentLang === 'ko'
+        ? `${nextEventDate} — 실적 체크: ${earningsRows.slice(0, 4).join(', ')}`
+        : `${nextEventDate} - Earnings watch: ${earningsRows.slice(0, 4).join(', ')}`
+      : ''
+
+  const eventRows = [...checkpointRows.slice(0, 3), earningsEventRow]
+    .filter((row) => Boolean(row))
+    .slice(0, 4)
+  const displayEventRows = eventRows.length
+    ? eventRows
+    : [
+        engineText(contentLang, DASHBOARD_ENGINE.event0830),
+        engineText(contentLang, DASHBOARD_ENGINE.event1000),
+        engineText(contentLang, DASHBOARD_ENGINE.event1400),
+        engineText(contentLang, DASHBOARD_ENGINE.event1630),
+      ]
 
   const tqqqPlayback = (current90d.risk_v1?.playback || [])
     .map((row) => ({
@@ -1073,7 +1207,7 @@ export default async function DashboardPage() {
             <article className={styles.card}>
               <p className={styles.kicker}>{uiText(uiLang, DASHBOARD_UI.cardEvent)}</p>
               <ul className={styles.list}>
-                {eventRows.map((row, idx) => (
+                {displayEventRows.map((row, idx) => (
                   <li className={styles.listItem} key={`event-${idx}`}>
                     <span className={styles.dot} />
                     <span className={styles.teaser}>{row}</span>

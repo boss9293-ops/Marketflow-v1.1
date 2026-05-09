@@ -291,7 +291,7 @@ export function createMockClient(): TerminalMvpApiClient {
       return envelope({ symbol, briefs: buildBriefs(symbol, dateET) }, dateET)
     },
 
-    async getTickerNews(symbol: string, dateET: ETDateString) {
+    async getTickerNews(symbol: string, dateET: ETDateString, _companyName?: string) {
       await delay()
       return envelope({ symbol, news: buildTickerNews(symbol, dateET) }, dateET)
     },

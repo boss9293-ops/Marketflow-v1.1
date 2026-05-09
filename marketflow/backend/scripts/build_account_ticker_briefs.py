@@ -41,14 +41,16 @@ try:
     from build_ticker_brief import DEFAULT_WATCHLIST, TICKER_BRIEF_PROMPT_VERSION  # type: ignore
 except Exception:
     DEFAULT_WATCHLIST = [
-        "NVDA",
-        "GOOGL",
-        "AMZN",
-        "INTC",
-        "CAT",
-        "XOM",
+        "NFLX",
         "AAPL",
+        "GOOGL",
         "TSLA",
+        "NVDA",
+        "IBM",
+        "INTC",
+        "XOM",
+        "MSFT",
+        "AMZN",
         "QQQ",
         "SPY",
     ]

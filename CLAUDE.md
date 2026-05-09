@@ -15,6 +15,18 @@ All behavior must prioritize:
 
 ---
 
+## 1. ABSOLUTE PATH LOCK (CRITICAL — OVERRIDE ALL OTHER RULES)
+
+**The ONLY valid working directory is:**
+```
+D:\MyWork_ai\ProjectAgent\Marketflow\v1.1-20260419\
+```
+
+All reads, writes, edits, and script execution must target this path only.
+Any path outside this directory → **STOP and ask the user to correct the path.**
+
+---
+
 ## 1. Highest Priority Rule (CRITICAL)
 
 Your primary goal is **token saving during execution**.
@@ -255,20 +267,17 @@ UI/Code:
 
 ---
 
-## 16. Path Handling (CRITICAL — Windows Korean path)
+## 16. Script Execution Root
 
 ```python
-dirname = b'\xec\xa3\xbc\xec\x8b\x9d\xeb\xb6\x84\xec\x84\x9d'.decode('utf-8')
-root = f'd:/Youtube_pro/000-Code_develop/{dirname}/us_market_complete'
+ROOT = 'D:/MyWork_ai/ProjectAgent/Marketflow/v1.1-20260419'
 ```
 
-Write tool writes to wrong Unicode path → always write to C:/Temp first, then copy:
 ```python
-import shutil
-shutil.copy2('C:/Temp/filename', f'{root}/marketflow/...')
+import subprocess
+r = subprocess.run(['python', 'marketflow/backend/scripts/SCRIPT.py'],
+                  cwd=ROOT, capture_output=True)
 ```
-
-All script execution via Python subprocess (bash cannot traverse Korean path).
 
 ---
 
@@ -362,6 +371,59 @@ Banned color values (never use in new code):
 rgba(255,255,255,0.20) through rgba(255,255,255,0.40)
 → replace all with tokens above
 ```
+
+---
+
+## 20. Korean Output Rules
+
+When the user writes in Korean, respond in Korean.
+
+- Never end a Korean sentence with `:` — use `.`, `?`, or `!` only.
+- Colons are allowed inside code, key-value pairs, and labels. Not as sentence terminators.
+
+---
+
+## 21. New File Header Comment (Korean)
+
+First line of every new source file must be a one-line Korean comment stating its role.
+
+```
+TypeScript/JS:  // 사용자 인증 상태를 관리하는 Context Provider
+Python:         # KIS API 호출을 비동기로 처리하는 클라이언트
+```
+
+- Place directly under required directives (`'use client'`, `'use server'`, shebang).
+- Skip config files (`*.config.ts`, `package.json`, etc.).
+
+---
+
+## 22. Run Tests Before Marking Complete
+
+If you touched code, run tests before saying "done".
+
+- Run `npm run build` or TypeScript check at minimum.
+- If tests pass, report results. If they fail, fix and re-run.
+- Do not report completion until verified.
+
+---
+
+## 23. Semantic Commits
+
+Commit when one logical change is complete. Do not wait for the user to ask.
+
+- One sentence description = one commit. Mixed changes = split into multiple.
+- Good: "RRG tail curve Bezier 렌더링 추가"
+- Bad: "차트 수정하고 버그 고치고 UI 개선" (3개로 분리)
+
+---
+
+## 24. Read Errors Before Fixing
+
+When something fails, read the full error message and stack trace first.
+
+- Do not apply a "common fix" before confirming the cause.
+- Do not pattern-match from memory — read the actual log.
+- If unclear, add a print/log to verify state before fixing.
 
 ---
 

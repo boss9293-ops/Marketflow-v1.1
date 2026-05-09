@@ -222,6 +222,14 @@ DAILY_BRIEFING_EN_USER_TEMPLATE_SOURCE = "engine_narrative/daily_briefing_v6_en_
 MODEL_ID   = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip() or "claude-sonnet-4-6"
 PRICE_IN   = 3.00  / 1_000_000   # per token
 PRICE_OUT  = 15.00 / 1_000_000
+BRIEFING_TEMPERATURE = float(os.getenv("DAILY_BRIEFING_TEMPERATURE", "0.4"))
+BRIEFING_MAX_TOKENS_KO = int(os.getenv("DAILY_BRIEFING_MAX_TOKENS_KO", "6144"))
+BRIEFING_MAX_TOKENS_EN = int(os.getenv("DAILY_BRIEFING_MAX_TOKENS_EN", "8192"))
+
+
+def prompt_hash(system_prompt: str, user_content: str) -> str:
+    payload = f"{system_prompt}\n---USER---\n{user_content}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 SIGNAL_COLOR = {
     "bull":    "#22c55e",
@@ -1769,6 +1777,7 @@ def _call_llm_json_with_retry(
     system_prompt: str,
     user_content: str,
     max_tokens: int,
+    temperature: float = BRIEFING_TEMPERATURE,
     retries: int = 1,
 ) -> tuple[dict[str, Any], int, int, str]:
     """
@@ -1792,6 +1801,7 @@ def _call_llm_json_with_retry(
         resp = client.messages.create(
             model=MODEL_ID,
             max_tokens=max_tokens,
+            temperature=temperature,
             system=system_prompt,
             messages=[{"role": "user", "content": user_content + strict_suffix}],
         )
@@ -2122,10 +2132,13 @@ def main() -> None:
                 pass
 
         user_msg = briefing_en_user_template.format(**ctx)
+        briefing_prompt_meta["prompt_hash"] = prompt_hash(briefing_en_system_prompt, user_msg)
+        briefing_prompt_meta["temperature"] = BRIEFING_TEMPERATURE
+        briefing_prompt_meta["max_tokens"] = BRIEFING_MAX_TOKENS_EN
         print(f"[build_daily_briefing_v6] lang=en  model={MODEL_ID}  context={len(user_msg)} chars")
         parsed, in_tok, out_tok, _ = _call_llm_json_with_retry(
             client, system_prompt=briefing_en_system_prompt,
-            user_content=user_msg, max_tokens=8192, retries=1,
+            user_content=user_msg, max_tokens=BRIEFING_MAX_TOKENS_EN, retries=1,
         )
         cost = in_tok * PRICE_IN + out_tok * PRICE_OUT
         print(f"[build_daily_briefing_v6] tokens: in={in_tok} out={out_tok} cost=${cost:.5f}")
@@ -2194,10 +2207,13 @@ def main() -> None:
     else:
         # KO mode (default): single-pass Korean-only, cheaper + faster
         user_msg = KO_ONLY_USER_TEMPLATE.format(**ctx)
+        briefing_prompt_meta["prompt_hash"] = prompt_hash(briefing_system_prompt, user_msg)
+        briefing_prompt_meta["temperature"] = BRIEFING_TEMPERATURE
+        briefing_prompt_meta["max_tokens"] = BRIEFING_MAX_TOKENS_KO
         print(f"[build_daily_briefing_v6] lang=ko  model={MODEL_ID}  context={len(user_msg)} chars")
         parsed, in_tok, out_tok, _ = _call_llm_json_with_retry(
             client, system_prompt=briefing_system_prompt,
-            user_content=user_msg, max_tokens=6144, retries=1,
+            user_content=user_msg, max_tokens=BRIEFING_MAX_TOKENS_KO, retries=1,
         )
         cost = in_tok * PRICE_IN + out_tok * PRICE_OUT
         print(f"[build_daily_briefing_v6] tokens: in={in_tok} out={out_tok} cost=${cost:.5f}")

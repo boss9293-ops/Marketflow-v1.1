@@ -5,6 +5,9 @@
 import { NextResponse } from 'next/server'
 import { getBriefHistory } from '@/lib/briefStore'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const history = await getBriefHistory()
   return NextResponse.json({ history })

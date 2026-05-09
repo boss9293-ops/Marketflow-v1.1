@@ -1,0 +1,42 @@
+# Local-only / generated folders that should never be uploaded.
+.chrome-profile/
+.claude/
+.gstack/
+.sixth/
+.venv/
+.venv_ascii/
+_backup/
+docs/
+marketflow_data/
+node_modules/
+vr_backtest/
+
+# Large generated artifacts.
+marketflow.db
+MARKETFLOW_COMPLETE.md
+ARCHITECT.md
+BUILDER.md
+check_db.py
+cloudbuild.yaml
+dev_safety_backup.ps1
+risk-v1-overview.png
+standard_engine_input_audit.csv
+standard_engine_input_audit.md
+standard_engine_signal_map.json
+watchlist-dom.err
+watchlist-dom.html
+백업실행.me
+
+# Backend runtime data and secrets.
+marketflow/backend/.env
+marketflow/backend/.env.*
+marketflow/backend/storage/
+marketflow/backend/data/snapshots/
+
+# Frontend generated output and local env files.
+marketflow/frontend/.cache/
+marketflow/frontend/.env
+marketflow/frontend/.env.*
+marketflow/frontend/.next/
+marketflow/frontend/data/
+marketflow/frontend/node_modules/

@@ -240,7 +240,7 @@ export interface TerminalMvpApiClient {
   getWatchlists(): Promise<GetWatchlistsResponse>
   getWatchlistItems(watchlistId: string): Promise<GetWatchlistItemsResponse>
   getTickerBriefs(symbol: string, dateET: ETDateString): Promise<GetTickerBriefsResponse>
-  getTickerNews(symbol: string, dateET: ETDateString): Promise<GetTickerNewsResponse>
+  getTickerNews(symbol: string, dateET: ETDateString, companyName?: string): Promise<GetTickerNewsResponse>
   getMarketHeadlines(dateET: ETDateString): Promise<GetMarketHeadlinesResponse>
   getNewsDetail(newsId: string): Promise<GetNewsDetailResponse>
   getEvidence(sessionId: string): Promise<GetEvidenceResponse>

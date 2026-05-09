@@ -564,12 +564,18 @@ export default function AppShell() {
     }
   }, [initStatus, selectedWatchlistId, service])
 
+  const selectedItem = useMemo(
+    () => watchlistItems.find((item) => item.symbol === selectedSymbol) ?? null,
+    [watchlistItems, selectedSymbol],
+  )
+
   useEffect(() => {
     if (!selectedSymbol || initStatus === 'error' || initStatus === 'empty') return
 
     let cancelled = false
     const requestSymbol = selectedSymbol
-    const cacheKey = `${selectedDateET}|${selectedSymbol}`
+    const requestCompanyName = selectedItem?.companyName ?? ''
+    const cacheKey = `${selectedDateET}|${selectedSymbol}|${requestCompanyName}`
 
     const hydrateSnapshot = (snapshot: SymbolSnapshotCacheEntry) => {
       setTickerBriefs(snapshot.briefs)
@@ -637,7 +643,7 @@ export default function AppShell() {
 
       const [briefsResult, newsResult, ohlcvResult] = await Promise.allSettled([
         service.getTickerBriefs(selectedSymbol, selectedDateET),
-        service.getTickerNews(selectedSymbol, selectedDateET),
+        service.getTickerNews(selectedSymbol, selectedDateET, requestCompanyName),
         fetch(`/api/vr-ohlcv/${encodeURIComponent(selectedSymbol)}`, { cache: 'no-store' })
           .then(r => r.ok ? r.json() : null)
           .catch(() => null),
@@ -743,7 +749,7 @@ export default function AppShell() {
     return () => {
       cancelled = true
     }
-  }, [selectedDateET, initStatus, selectedSymbol, service, newsRefreshTick])
+  }, [selectedDateET, initStatus, selectedSymbol, selectedItem?.companyName, service, newsRefreshTick])
 
   useEffect(() => {
     if (!selectedSymbol || initStatus !== 'ready') return
@@ -806,11 +812,6 @@ export default function AppShell() {
       cancelled = true
     }
   }, [activeSessionId, service])
-
-  const selectedItem = useMemo(
-    () => watchlistItems.find((item) => item.symbol === selectedSymbol) ?? null,
-    [watchlistItems, selectedSymbol],
-  )
 
   const openNewsDetail = (newsItem: TickerNewsItem) => {
     setSelectedNewsId(newsItem.id)

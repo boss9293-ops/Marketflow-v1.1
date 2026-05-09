@@ -547,8 +547,15 @@ export default function CenterPanel({
           if (!groupPending.length) return
           groupPending.forEach(item => synthENRequested.current.add(item.id))
           const groupOhlcv = ohlcvByDate?.get(group.dateKey)
-          const digestPrice = groupOhlcv?.close ?? parseLooseNumber(selectedItem?.lastPrice) ?? todayClose
-          const digestChangePct = groupOhlcv?.changePct ?? parseLooseNumber(selectedItem?.changePercent) ?? null
+          const displayedPrice = parseLooseNumber(selectedItem?.lastPrice)
+          const displayedChangePct = parseLooseNumber(selectedItem?.changePercent)
+          const useDisplayedQuote = group.dateKey === currentEtDate
+          const digestPrice = useDisplayedQuote
+            ? displayedPrice ?? groupOhlcv?.close ?? todayClose
+            : groupOhlcv?.close ?? displayedPrice ?? todayClose
+          const digestChangePct = useDisplayedQuote
+            ? displayedChangePct ?? groupOhlcv?.changePct ?? null
+            : groupOhlcv?.changePct ?? displayedChangePct ?? null
           const payload = groupPending.map(item => ({
             id: item.id,
             dateET: item.dateET,
@@ -622,7 +629,7 @@ export default function CenterPanel({
 }
 
     void runAll()
-  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol])
+  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol, currentEtDate])
 
   // KR 踰꾪듉 ?대┃ ???쒓뎅???⑹꽦
   // KO synthesis — one call per date group (triggered on langMode=KR)
@@ -643,8 +650,15 @@ export default function CenterPanel({
           if (!groupPending.length) return
           groupPending.forEach(item => synthKORequested.current.add(item.id))
           const groupOhlcv = ohlcvByDate?.get(group.dateKey)
-          const digestPrice = groupOhlcv?.close ?? parseLooseNumber(selectedItem?.lastPrice) ?? todayClose
-          const digestChangePct = groupOhlcv?.changePct ?? parseLooseNumber(selectedItem?.changePercent) ?? null
+          const displayedPrice = parseLooseNumber(selectedItem?.lastPrice)
+          const displayedChangePct = parseLooseNumber(selectedItem?.changePercent)
+          const useDisplayedQuote = group.dateKey === currentEtDate
+          const digestPrice = useDisplayedQuote
+            ? displayedPrice ?? groupOhlcv?.close ?? todayClose
+            : groupOhlcv?.close ?? displayedPrice ?? todayClose
+          const digestChangePct = useDisplayedQuote
+            ? displayedChangePct ?? groupOhlcv?.changePct ?? null
+            : groupOhlcv?.changePct ?? displayedChangePct ?? null
           const payload = groupPending.map(item => ({
             id: item.id,
             dateET: item.dateET,
@@ -717,7 +731,7 @@ export default function CenterPanel({
       }
     }
     void runAll()
-  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol])
+  }, [langMode, groupedTimeline, selectedItem?.companyName, selectedItem?.changePercent, selectedItem?.lastPrice, selectedSymbol, dateET, todayClose, todayCloseSymbol, currentEtDate])
 
   useEffect(() => {
     setExportStatus('idle')

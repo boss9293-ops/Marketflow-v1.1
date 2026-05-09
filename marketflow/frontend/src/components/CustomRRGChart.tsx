@@ -726,6 +726,81 @@ export default function CustomRRGChart() {
               cursor: 'crosshair',
             }} />
           )}
+
+          {/* Data table — directly below the chart canvas */}
+          {symbolDataList.length > 0 && (
+            <div style={{ marginTop: '0.5rem', overflowX: 'auto', width: '90%' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 32 }} />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'center', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem' }}></th>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'left', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>Symbol</th>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'left', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>MF RS-Ratio</th>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'left', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>MF RS-Momentum</th>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'left', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>Quadrant</th>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'left', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>Price</th>
+                    <th style={{ padding: '0.35rem 0.45rem', textAlign: 'left', color: '#D1DDF0', fontWeight: 700, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>% Chg</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {symbolDataList.map(s => {
+                    const checked = visible.has(s.symbol)
+                    const quad    = getQuadrant(s.current.ratio, s.current.momentum)
+                    const qStyle  = QUADS[quad]
+                    return (
+                      <tr key={s.symbol}
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
+                        onClick={() => toggle(s.symbol)}>
+                        <td style={{ padding: '0.35rem 0.45rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={checked}
+                            onChange={() => toggle(s.symbol)}
+                            onClick={e => e.stopPropagation()}
+                            style={{ accentColor: s.color, cursor: 'pointer' }} />
+                        </td>
+                        <td style={{ padding: '0.35rem 0.45rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
+                            <span style={{ color: s.color, fontWeight: 700 }}>{s.symbol}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.35rem 0.45rem', fontWeight: 600,
+                          color: s.current.ratio >= 100 ? '#22c55e' : '#ef4444' }}>
+                          {s.current.ratio.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '0.35rem 0.45rem', fontWeight: 600,
+                          color: s.current.momentum >= 100 ? '#22c55e' : '#ef4444' }}>
+                          {s.current.momentum.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '0.35rem 0.45rem' }}>
+                          <span style={{
+                            fontSize: '0.68rem', fontWeight: 600,
+                            color: qStyle.color, background: qStyle.bg,
+                            padding: '2px 7px', borderRadius: 9999,
+                          }}>{quad}</span>
+                        </td>
+                        <td style={{ padding: '0.35rem 0.45rem', color: '#d1d5db', fontWeight: 600 }}>
+                          {s.price != null ? `$${s.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A'}
+                        </td>
+                        <td style={{ padding: '0.35rem 0.45rem', fontWeight: 600,
+                          color: s.change == null ? '#737880' : s.change >= 0 ? '#22c55e' : '#ef4444' }}>
+                          {s.change == null ? 'N/A' : `${s.change >= 0 ? '+' : ''}${s.change.toFixed(2)}%`}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Settings panel */}
@@ -945,8 +1020,25 @@ export default function CustomRRGChart() {
 
           {/* Symbol list */}
           <div>
-            <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
-              Symbols ({symbols.length}/25)
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ color: '#6b7280', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                Symbols ({symbols.length}/25)
+              </div>
+              <button
+                onClick={() => {
+                  const allVisible = symbols.every(s => visible.has(s))
+                  setVisible(allVisible ? new Set() : new Set(symbols))
+                }}
+                style={{
+                  padding: '2px 7px',
+                  background: symbols.every(s => visible.has(s)) ? 'rgba(0,217,255,0.12)' : 'rgba(255,255,255,0.04)',
+                  border: symbols.every(s => visible.has(s)) ? '1px solid rgba(0,217,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 5, color: symbols.every(s => visible.has(s)) ? '#67EEFF' : '#6b7280',
+                  cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700,
+                }}
+              >
+                {symbols.every(s => visible.has(s)) ? 'ALL OFF' : 'ALL ON'}
+              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {symbols.map((sym, i) => {
@@ -1002,71 +1094,7 @@ export default function CustomRRGChart() {
         </div>
       </div>
 
-      {/* Data table */}
-      {symbolDataList.length > 0 && (
-        <div style={{ marginTop: '1.25rem', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                {['', 'Symbol', 'MF RS-Ratio', 'MF RS-Momentum', 'Quadrant', 'Price', '% Chg'].map(h => (
-                  <th key={h} style={{
-                    padding: '0.5rem 0.75rem',
-                    textAlign: h === '' ? 'center' : 'left',
-                    color: '#D1DDF0', fontWeight: 700, fontSize: '0.84rem', whiteSpace: 'nowrap',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {symbolDataList.map(s => {
-                const checked = visible.has(s.symbol)
-                const quad    = getQuadrant(s.current.ratio, s.current.momentum)
-                const qStyle  = QUADS[quad]
-                return (
-                  <tr key={s.symbol}
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
-                    onClick={() => toggle(s.symbol)}>
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                      <input type="checkbox" checked={checked}
-                        onChange={() => toggle(s.symbol)}
-                        onClick={e => e.stopPropagation()}
-                        style={{ accentColor: s.color, cursor: 'pointer' }} />
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
-                        <span style={{ color: s.color, fontWeight: 700 }}>{s.symbol}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600,
-                      color: s.current.ratio >= 100 ? '#22c55e' : '#ef4444' }}>
-                      {s.current.ratio.toFixed(2)}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600,
-                      color: s.current.momentum >= 100 ? '#22c55e' : '#ef4444' }}>
-                      {s.current.momentum.toFixed(2)}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <span style={{
-                        fontSize: '0.7rem', fontWeight: 600,
-                        color: qStyle.color, background: qStyle.bg,
-                        padding: '2px 8px', borderRadius: 9999,
-                      }}>{quad}</span>
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#d1d5db', fontWeight: 600 }}>
-                      {s.price != null ? `$${s.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'N/A'}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600,
-                      color: s.change == null ? '#737880' : s.change >= 0 ? '#22c55e' : '#ef4444' }}>
-                      {s.change == null ? 'N/A' : `${s.change >= 0 ? '+' : ''}${s.change.toFixed(2)}%`}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+
     </div>
   )
 }

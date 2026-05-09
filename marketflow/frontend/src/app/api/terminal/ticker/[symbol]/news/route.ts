@@ -26,9 +26,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const dateET = resolveDateET(req.nextUrl.searchParams.get('date'))
+  const companyName = (req.nextUrl.searchParams.get('companyName') ?? '').trim()
 
   try {
-    const payload = await fetchTickerNewsFromYahoo(symbol, dateET)
+    const payload = await fetchTickerNewsFromYahoo(symbol, dateET, companyName || undefined)
     upsertNewsDetails(payload.details)
 
     return NextResponse.json({

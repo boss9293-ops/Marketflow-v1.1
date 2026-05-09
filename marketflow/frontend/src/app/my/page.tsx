@@ -570,7 +570,9 @@ export default function MyPage() {
       const res = await fetch(`${API_BASE}/api/my/holdings/credentials`, { cache: 'no-store' })
       const json = await res.json().catch(() => ({}))
       if (res.ok) setCredsStatus(json)
+      return res.ok ? json : null
     } catch {}
+    return null
   }
 
   async function fetchMarketIndices() {
@@ -609,7 +611,8 @@ export default function MyPage() {
         json = JSON.parse(rawBody)
       } catch { /* non-json body */ }
       if (res.ok) {
-        setCredsMessage('저장 완료. 서버 DB와 브라우저에 보관합니다.')
+        setCredsMessage('저장 완료. 이제 Refresh를 눌러 최신 시트 데이터를 가져오세요.')
+        setMessage('Google Sheets 인증 정보가 저장되었습니다. Refresh를 눌러 최신 시트 데이터를 가져오세요.')
         setSaJsonInput(saJsonInput.trim())
         setCredsOpen(false)
         await fetchCredsStatus()
@@ -635,6 +638,16 @@ export default function MyPage() {
     } finally {
       setCredsLoading(false)
     }
+  }
+
+  async function ensureSheetCredentials() {
+    const latest = await fetchCredsStatus()
+    const configured = Boolean(latest?.configured ?? credsStatus?.configured)
+    if (configured) return true
+
+    setCredsOpen(true)
+    setMessage('Google Sheets 인증 정보가 없습니다. Step 2에 서비스 계정 JSON을 붙여넣고 Save SA JSON을 누른 뒤 다시 Refresh하세요.')
+    return false
   }
 
   async function importTabs(sheetId: string, tabsCsv: string, successMessage?: string) {
@@ -723,8 +736,30 @@ export default function MyPage() {
       setMessage('Invalid Google Sheets link or ID.')
       return
     }
+    if (!(await ensureSheetCredentials())) return
     const tabsCsv = selectedTabs.join(',')
     await importTabs(sheetId, tabsCsv)
+  }
+
+  async function handleRefreshFromSheet() {
+    const sheetId = extractSheetId(sheetUrl)
+    if (!sheetId) {
+      setMessage('Invalid Google Sheets link or ID.')
+      return
+    }
+    if (!(await ensureSheetCredentials())) return
+
+    const tabsCsv = selectedTabs.length > 0
+      ? selectedTabs.join(',')
+      : defaultSelectedTabs(tabsMeta || undefined).join(',')
+
+    setMessage('Refreshing from Google Sheet...')
+    const ok = await importTabs(sheetId, tabsCsv)
+    if (!ok) return
+
+    await refreshTabs(true)
+    await refreshTs()
+    await fetchHoldings()
   }
 
   // localStorage + 백엔드에 sheetUrl 저장
@@ -2051,7 +2086,8 @@ export default function MyPage() {
               Import
             </button>
             <button
-              onClick={refreshTs}
+              onClick={handleRefreshFromSheet}
+              disabled={tabsLoading}
               style={{
                 border: '1px solid #3a3f47',
                 background: 'rgba(255,255,255,0.06)',
@@ -2059,11 +2095,12 @@ export default function MyPage() {
                 borderRadius: 8,
                 padding: '0.25rem 0.45rem',
                 fontSize: '0.7rem',
-                cursor: 'pointer',
+                cursor: tabsLoading ? 'not-allowed' : 'pointer',
+                opacity: tabsLoading ? 0.62 : 1,
                 whiteSpace: 'nowrap',
               }}
             >
-              Refresh
+              {tabsLoading ? 'Refreshing...' : 'Refresh'}
             </button>
             <a
               href={`${API_BASE}/api/my/holdings/ts/export?format=csv`}
@@ -2148,7 +2185,7 @@ export default function MyPage() {
                       opacity: saJsonInput.trim() ? 1 : 0.5,
                     }}
                   >
-                    {credsLoading ? '저장 중...' : 'Save SA JSON'}
+                    {credsLoading ? 'Saving...' : 'Save SA JSON'}
                   </button>
                   {credsStatus?.configured && (
                     <button
@@ -2166,8 +2203,14 @@ export default function MyPage() {
                       Delete
                     </button>
                   )}
-                  <span style={{ color: '#6b7280', fontSize: '0.65rem' }}>
-                    {credsStatus == null ? '' : credsStatus.configured ? `✓ configured (${credsStatus!.source})` : 'not configured'}
+                  <span
+                    style={{
+                      color: credsStatus == null ? '#6b7280' : credsStatus.configured ? '#6ee7b7' : '#f87171',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {credsStatus == null ? '' : credsStatus.configured ? `configured (${credsStatus!.source})` : 'not configured - Step 2 required'}
                   </span>
                 </div>
                 {credsMessage && (

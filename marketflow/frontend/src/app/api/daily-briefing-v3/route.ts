@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readCacheJsonOrNull } from '@/lib/readCacheJson'
+import { backendApiUrl } from '@/lib/backendApi'
 
 export const dynamic = 'force-dynamic'
+
+async function parseUpstreamJson(res: Response): Promise<Record<string, unknown>> {
+  const raw = await res.text()
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : { value: parsed }
+  } catch {
+    return {
+      ok: false,
+      error: `Upstream returned non-JSON (status ${res.status}).`,
+      raw: raw.slice(0, 500),
+    }
+  }
+}
 
 export async function GET() {
   const data = await readCacheJsonOrNull<Record<string, unknown>>('daily_briefing_v3.json')
@@ -22,14 +38,14 @@ export async function POST(req: NextRequest) {
   const { force = false, lang = 'ko' } = body as { force?: boolean; lang?: string }
 
   try {
-    const proxyUrl = new URL('/api/flask/api/briefing/v3/generate', req.nextUrl.origin)
-    const res = await fetch(proxyUrl, {
+    const res = await fetch(backendApiUrl('/api/briefing/v3/generate'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ force, lang }),
       signal: AbortSignal.timeout(320_000),
+      cache: 'no-store',
     })
-    const data = await res.json()
+    const data = await parseUpstreamJson(res)
     return NextResponse.json(data, { status: res.status })
   } catch (err) {
     return NextResponse.json(

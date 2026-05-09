@@ -3,6 +3,9 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const REPORTS_DIR = path.resolve(process.cwd(), '..', 'backend', 'services', 'admin_reports');
 
 if (!fsSync.existsSync(REPORTS_DIR)) {

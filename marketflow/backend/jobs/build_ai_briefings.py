@@ -50,6 +50,9 @@ def build_ai_briefings(run_label: str = "manual", refresh_inputs: bool = False) 
             ("build_daily_briefing_v3.py", ["--force", "--slot", run_label], 300),
             ("build_daily_briefing_v4.py", ["--force", "--slot", run_label], 300),
             ("build_daily_briefing_v5.py", ["--force", "--slot", run_label], 360),
+            ("build_daily_briefing_v6.py", ["--force", "--slot", run_label], 360),
+            ("build_daily_briefing_deepseek_v3.py", ["--force", "--slot", run_label], 420),
+            ("build_daily_briefing_deepseek_v6.py", ["--force", "--slot", run_label], 420),
         ]
 
         for script_name, extra_args, timeout in refresh_steps:

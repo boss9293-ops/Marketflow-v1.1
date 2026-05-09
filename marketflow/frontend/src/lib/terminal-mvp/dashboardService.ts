@@ -35,7 +35,7 @@ export type DashboardService = {
   getWatchlistItems(watchlistId: string): Promise<GetWatchlistItemsResponse>
   getMarketHeadlines(dateET: ETDateString): Promise<GetMarketHeadlinesResponse>
   getTickerBriefs(symbol: string, dateET: ETDateString): Promise<GetTickerBriefsResponse>
-  getTickerNews(symbol: string, dateET: ETDateString): Promise<GetTickerNewsResponse>
+  getTickerNews(symbol: string, dateET: ETDateString, companyName?: string): Promise<GetTickerNewsResponse>
   getNewsDetail(newsId: string): Promise<GetNewsDetailResponse>
   getEvidence(sessionId: string): Promise<GetEvidenceResponse>
   logNewsClick(newsId: string, payload: NewsClickLogRequest): Promise<PostNewsClickResponse>
@@ -105,11 +105,11 @@ export function createDashboardService(
       return singleClient.getMarketHeadlines(dateET)
     },
 
-    async getTickerNews(symbol: string, dateET: ETDateString) {
+    async getTickerNews(symbol: string, dateET: ETDateString, companyName?: string) {
       if (useRealNewsMethods) {
-        return realClient.getTickerNews(symbol, dateET)
+        return realClient.getTickerNews(symbol, dateET, companyName)
       }
-      return singleClient.getTickerNews(symbol, dateET)
+      return singleClient.getTickerNews(symbol, dateET, companyName)
     },
 
     async getNewsDetail(newsId: string) {

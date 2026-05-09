@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 // 반도체 사이클 엔진 — 3-Layer Pyramid 기반 분석 탭 (레퍼런스 HTML 직접 포팅)
 
 import { useState, useEffect } from 'react'
@@ -17,9 +17,9 @@ import { computeSignalQuality, SQ_COLOR, SQ_BG, COMP_LABEL_COLOR } from '@/lib/s
 import type { SemiconductorSignalQuality } from '@/lib/semiconductor/signalQuality'
 
 const V = {
-  bg:'#0C1628', bg2:'#111E32', bg3:'#162238', border:'#223048', brd2:'#1A2740',
+  bg:'#000000', bg2:'#0d0d0d', bg3:'#111111', border:'#222222', brd2:'#1a1a1a',
   teal:'#3FB6A8', amber:'#F2A93B', mint:'#5DCFB0', red:'#E55A5A', gold:'#D4B36A',
-  blue:'#4A9EE0', text:'#E8F0F8', text2:'#B8C8DC', text3:'#6B7B95',
+  blue:'#4A9EE0', text:'#E8F0F8', text2:'#B8C8DC', text3:'#8b9098',
   ui:"'IBM Plex Sans', sans-serif", mono:"'IBM Plex Mono', monospace",
 }
 
@@ -317,7 +317,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="tsmc-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3FB6A8" stopOpacity="0.35"/><stop offset="100%" stopColor="#3FB6A8" stopOpacity="0.02"/></linearGradient></defs>
-              <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
+              <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
               <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">+50%</text><text x="16" y="38" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">+25%</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">0%</text>
               <path d="M20,55 C45,52 65,48 85,42 C105,36 125,28 150,22 C170,17 200,13 225,11 C245,10 262,10 275,9 L275,60 L20,60Z" fill="url(#tsmc-g)"/>
               <path d="M20,55 C45,52 65,48 85,42 C105,36 125,28 150,22 C170,17 200,13 225,11 C245,10 262,10 275,9" stroke="#3FB6A8" strokeWidth="1.8" fill="none"/>
@@ -344,7 +344,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
               <defs><linearGradient id="btb-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F2A93B" stopOpacity="0.3"/><stop offset="100%" stopColor="#F2A93B" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="42" x2="275" y2="42" stroke="#3FB6A8" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.7"/>
               <text x="16" y="45" fill="#3FB6A8" fontSize="10" textAnchor="end" fontFamily="monospace">1.0</text>
-              <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
+              <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
               <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">1.3</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">0.8</text>
               <path d="M20,50 C45,47 65,44 85,40 C105,36 125,32 150,28 C170,24 200,20 225,17 C245,15 262,14 275,13 L275,42 C262,42 245,42 225,42 C200,42 170,42 150,42 C125,42 105,42 85,42 C65,42 45,42 20,42Z" fill="url(#btb-g)"/>
               <path d="M20,50 C45,47 65,44 85,40 C105,36 125,32 150,28 C170,24 200,20 225,17 C245,15 262,14 275,13" stroke="#F2A93B" strokeWidth="1.8" fill="none"/>
@@ -369,7 +369,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="sia-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5DCFB0" stopOpacity="0.3"/><stop offset="100%" stopColor="#5DCFB0" stopOpacity="0.02"/></linearGradient></defs>
-              <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
+              <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
               <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$60B</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$35B</text>
               <path d="M20,52 C45,50 65,46 85,42 C105,38 125,30 150,24 C170,19 200,14 225,12 C245,11 262,11 275,10 L275,60 L20,60Z" fill="url(#sia-g)"/>
               <path d="M20,52 C45,50 65,46 85,42 C105,38 125,30 150,24 C170,19 200,14 225,12 C245,11 262,11 275,10" stroke="#5DCFB0" strokeWidth="1.8" fill="none"/>
@@ -393,7 +393,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
               <span style={{fontSize:14,color:V.teal,fontFamily:V.mono}}>QoQ +12%</span>
             </div>
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
-              <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
+              <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
               <rect x="24" y="58" width="22" height="2" fill="#D4B36A" opacity="0.4" rx="1"/>
               <rect x="56" y="54" width="22" height="6" fill="#D4B36A" opacity="0.5" rx="1"/>
               <rect x="88" y="48" width="22" height="12" fill="#D4B36A" opacity="0.6" rx="1"/>
@@ -486,7 +486,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             </div>
             <svg viewBox="0 0 280 80" style={{width:'100%',height:'auto',display:'block'}}>
               <defs><linearGradient id="soxx-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4A9EE0" stopOpacity="0.25"/><stop offset="100%" stopColor="#4A9EE0" stopOpacity="0.02"/></linearGradient></defs>
-              <line x1="20" y1="10" x2="275" y2="10" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="40" x2="275" y2="40" stroke="#1A2740" strokeWidth="0.5"/><line x1="20" y1="70" x2="275" y2="70" stroke="#1A2740" strokeWidth="0.5"/>
+              <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="40" x2="275" y2="40" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="70" x2="275" y2="70" stroke="#2a2a2a" strokeWidth="0.5"/>
               <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$620</text><text x="16" y="43" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$480</text><text x="16" y="73" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$340</text>
               <path d="M20,60 C60,56 100,50 140,44 C180,38 220,34 275,30" stroke="#A0B0C8" strokeWidth="1" fill="none" strokeDasharray="3,2"/>
               <path d="M20,58 C60,52 100,44 140,36 C180,28 220,22 275,18" stroke="#F2A93B" strokeWidth="1.2" fill="none" strokeDasharray="4,2"/>
@@ -783,8 +783,8 @@ function SemiconductorRRGCard() {
           <rect x={L}  y={T}  width={cx-L}   height={cy-T}   fill="rgba(74,158,224,0.07)"/>
           {/* Quadrant labels */}
           <text x={cx+6}  y={T+14}  fill="#3FB6A8" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LEADING</text>
-          <text x={W-R-6} y={H-B-8} fill="#6B7B95" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">WEAKENING</text>
-          <text x={L+6}   y={H-B-8} fill="#6B7B95" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LAGGING</text>
+          <text x={W-R-6} y={H-B-8} fill="#8b9098" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">WEAKENING</text>
+          <text x={L+6}   y={H-B-8} fill="#8b9098" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600">LAGGING</text>
           <text x={cx-6}  y={T+14}  fill="#4A9EE0" fontSize={9} fontFamily="'IBM Plex Sans',sans-serif" letterSpacing=".10em" fontWeight="600" textAnchor="end">IMPROVING</text>
           {/* Subtle grid */}
           {[96,98,100,102,104,106,108].map(v=>{
@@ -1226,7 +1226,7 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
         <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'12px 16px',display:'flex',flexDirection:'column',alignItems:'center',minWidth:150}}>
           <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:8,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
           <svg width="120" height="80" viewBox="0 0 120 80">
-            <path d="M 10 72 A 50 50 0 0 1 110 72" stroke="#1A2740" strokeWidth="10" fill="none" strokeLinecap="round"/>
+            <path d="M 10 72 A 50 50 0 0 1 110 72" stroke="#2a2a2a" strokeWidth="10" fill="none" strokeLinecap="round"/>
             <path d="M 10 72 A 50 50 0 0 1 60 22" stroke="#D4B36A" strokeWidth="10" fill="none" strokeLinecap="round"/>
             <line x1="60" y1="72" x2="60" y2="28" stroke="#D4B36A" strokeWidth="2.5" strokeLinecap="round"/>
             <circle cx="60" cy="72" r="4" fill="#D4B36A"/>
@@ -1325,9 +1325,9 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
           이론치 vs 실제 SOXL {decayWindow} 비교 (단순 점대점 비교 · JdK 공식 아님)
         </div>
         <svg viewBox="0 0 640 120" style={{width:'100%',height:'auto',display:'block'}}>
-          <line x1="40" y1="60" x2="630" y2="60" stroke="#1A2740" strokeWidth="0.5"/>
-          <line x1="40" y1="30" x2="630" y2="30" stroke="#1A2740" strokeWidth="0.5"/>
-          <line x1="40" y1="90" x2="630" y2="90" stroke="#1A2740" strokeWidth="0.5"/>
+          <line x1="40" y1="60" x2="630" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
+          <line x1="40" y1="30" x2="630" y2="30" stroke="#2a2a2a" strokeWidth="0.5"/>
+          <line x1="40" y1="90" x2="630" y2="90" stroke="#2a2a2a" strokeWidth="0.5"/>
           <text x="36" y="33" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">+60%</text>
           <text x="36" y="63" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">+30%</text>
           <text x="36" y="93" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">0%</text>
@@ -1386,7 +1386,7 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
           return (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
               <svg width="120" height="70" viewBox="0 0 120 70">
-                <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="#1A2740" strokeWidth="8" fill="none" strokeLinecap="round"/>
+                <path d="M 10 65 A 50 50 0 0 1 110 65" stroke="#2a2a2a" strokeWidth="8" fill="none" strokeLinecap="round"/>
                 <path d={path} stroke={sc} strokeWidth="8" fill="none" strokeLinecap="round"/>
                 <text x="60" y="58" textAnchor="middle" fill={sc} fontSize="18" fontWeight="500" fontFamily="monospace">{Math.round(pct)}%</text>
                 <circle cx={ex.toFixed(1)} cy={ey.toFixed(1)} r="5" fill="#F2A93B"/>
@@ -1398,7 +1398,7 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
         })()}
         <div style={{height:8,background:V.bg3,borderRadius:4,overflow:'hidden',marginTop:8}}>
           <div style={{height:'100%',width:`${progress ?? 71}%`,background:`linear-gradient(90deg,${V.teal},${V.mint})`,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:4}}>
-            <span style={{fontSize:9,color:V.bg,fontWeight:600,fontFamily:V.mono}}>{stage?.replace('MID ','').replace('EARLY ','') ?? 'Expansion'} 100%</span>
+            <span style={{fontSize:10,color:V.bg,fontWeight:600,fontFamily:V.mono}}>{stage?.replace('MID ','').replace('EARLY ','') ?? 'Expansion'} 100%</span>
           </div>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,fontSize:11,color:V.text3,fontFamily:V.ui}}>
@@ -1409,40 +1409,40 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
       <div style={{padding:'12px 16px',flex:1,overflowY:'auto'}}>
         <div style={{fontSize:10,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>5Y CYCLE HISTORY</div>
         <svg viewBox="0 0 220 310" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'auto',display:'block',marginBottom:8}}>
-          <line x1="30" y1="8" x2="30" y2="298" stroke="#1A2740" strokeWidth="1"/>
-          <text x="26" y="14" fill="#6B7B95" fontSize="9" textAnchor="end" fontFamily="monospace">2022</text>
-          <text x="26" y="90" fill="#6B7B95" fontSize="9" textAnchor="end" fontFamily="monospace">2023</text>
-          <text x="26" y="168" fill="#6B7B95" fontSize="9" textAnchor="end" fontFamily="monospace">2024</text>
-          <text x="26" y="235" fill="#6B7B95" fontSize="9" textAnchor="end" fontFamily="monospace">2025</text>
-          <text x="26" y="300" fill="#6B7B95" fontSize="9" textAnchor="end" fontFamily="monospace">Now</text>
-          <line x1="28" y1="10" x2="33" y2="10" stroke="#1A2740" strokeWidth="1"/>
-          <line x1="28" y1="88" x2="33" y2="88" stroke="#1A2740" strokeWidth="1"/>
-          <line x1="28" y1="166" x2="33" y2="166" stroke="#1A2740" strokeWidth="1"/>
-          <line x1="28" y1="233" x2="33" y2="233" stroke="#1A2740" strokeWidth="1"/>
+          <line x1="30" y1="8" x2="30" y2="298" stroke="#2a2a2a" strokeWidth="1"/>
+          <text x="26" y="14" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2022</text>
+          <text x="26" y="90" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2023</text>
+          <text x="26" y="168" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2024</text>
+          <text x="26" y="235" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2025</text>
+          <text x="26" y="300" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">Now</text>
+          <line x1="28" y1="10" x2="33" y2="10" stroke="#2a2a2a" strokeWidth="1"/>
+          <line x1="28" y1="88" x2="33" y2="88" stroke="#2a2a2a" strokeWidth="1"/>
+          <line x1="28" y1="166" x2="33" y2="166" stroke="#2a2a2a" strokeWidth="1"/>
+          <line x1="28" y1="233" x2="33" y2="233" stroke="#2a2a2a" strokeWidth="1"/>
           <rect x="35" y="10" width="178" height="28" fill="rgba(242,169,59,0.18)" stroke="rgba(242,169,59,0.4)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="22" fill="#F2A93B" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Contraction</text>
-          <text x="42" y="34" fill="#6B7B95" fontSize="9" fontFamily="monospace">2022.07 ~ 2022.12</text>
+          <text x="42" y="34" fill="#8b9098" fontSize="10" fontFamily="monospace">2022.07 ~ 2022.12</text>
           <rect x="35" y="42" width="178" height="28" fill="rgba(93,207,176,0.12)" stroke="rgba(93,207,176,0.3)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="54" fill="#5DCFB0" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Cycle</text>
-          <text x="42" y="66" fill="#6B7B95" fontSize="9" fontFamily="monospace">2022.12 ~ 2023.05</text>
+          <text x="42" y="66" fill="#8b9098" fontSize="10" fontFamily="monospace">2022.12 ~ 2023.05</text>
           <rect x="35" y="74" width="178" height="28" fill="rgba(229,90,90,0.15)" stroke="rgba(229,90,90,0.35)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="86" fill="#E55A5A" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Peak</text>
-          <text x="100" y="86" fill="#6B7B95" fontSize="9" fontFamily="monospace">2023.01 ~ 05</text>
+          <text x="100" y="86" fill="#8b9098" fontSize="10" fontFamily="monospace">2023.01 ~ 05</text>
           <rect x="35" y="106" width="178" height="28" fill="rgba(63,182,168,0.15)" stroke="rgba(63,182,168,0.35)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="118" fill="#3FB6A8" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Expansion</text>
-          <text x="130" y="118" fill="#6B7B95" fontSize="9" fontFamily="monospace">2023.06~10</text>
+          <text x="130" y="118" fill="#8b9098" fontSize="10" fontFamily="monospace">2023.06~10</text>
           <rect x="35" y="138" width="178" height="28" fill="rgba(93,207,176,0.12)" stroke="rgba(93,207,176,0.3)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="150" fill="#5DCFB0" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Cycle</text>
-          <text x="42" y="162" fill="#6B7B95" fontSize="9" fontFamily="monospace">2023.11 ~ 2024.04</text>
+          <text x="42" y="162" fill="#8b9098" fontSize="10" fontFamily="monospace">2023.11 ~ 2024.04</text>
           <rect x="35" y="170" width="178" height="26" fill="rgba(242,169,59,0.18)" stroke="rgba(242,169,59,0.4)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="182" fill="#F2A93B" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Contraction</text>
-          <text x="140" y="182" fill="#6B7B95" fontSize="9" fontFamily="monospace">2024.04~07</text>
+          <text x="140" y="182" fill="#8b9098" fontSize="10" fontFamily="monospace">2024.04~07</text>
           <rect x="35" y="200" width="178" height="26" fill="rgba(63,182,168,0.12)" stroke="rgba(63,182,168,0.28)" strokeWidth="0.8" rx="3"/>
           <text x="42" y="212" fill="#3FB6A8" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Expansion</text>
-          <text x="42" y="222" fill="#6B7B95" fontSize="9" fontFamily="monospace">2024.08 ~ 10</text>
+          <text x="42" y="222" fill="#8b9098" fontSize="10" fontFamily="monospace">2024.08 ~ 10</text>
           <rect x="35" y="230" width="178" height="60" fill="rgba(63,182,168,0.22)" stroke="#3FB6A8" strokeWidth="1.5" rx="4"/>
           <text x="42" y="247" fill="#3FB6A8" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Expansion</text>
-          <text x="42" y="262" fill="#6B7B95" fontSize="9" fontFamily="monospace">2024.11 ~ Now</text>
+          <text x="42" y="262" fill="#8b9098" fontSize="10" fontFamily="monospace">2024.11 ~ Now</text>
           <rect x="128" y="240" width="76" height="22" fill="rgba(63,182,168,0.35)" rx="3"/>
           <text x="166" y="255" fill="#3FB6A8" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="'IBM Plex Sans',sans-serif">▶ NOW  68%</text>
           <line x1="30" y1="290" x2="213" y2="290" stroke="#3FB6A8" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
@@ -1861,3 +1861,4 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
     </div>
   )
 }
+

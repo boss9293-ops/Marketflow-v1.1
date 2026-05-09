@@ -872,6 +872,44 @@ def _build_sector_summary(positions: List[Dict[str, Any]], symbol_meta: Dict[str
     }
 
 
+PORTFOLIO_SYMBOL_ALIASES = {
+    "TSLA": ["tesla", "elon musk", "musk", "robotaxi", "fsd", "optimus", "spacex", "terafab"],
+    "AAPL": ["apple", "iphone", "mac", "ipad"],
+    "GOOGL": ["alphabet", "google", "waymo", "youtube"],
+    "GOOG": ["alphabet", "google", "waymo", "youtube"],
+    "NVDA": ["nvidia", "blackwell", "cuda"],
+    "AMD": ["amd", "advanced micro devices", "instinct"],
+    "MSFT": ["microsoft", "azure", "openai"],
+    "AMZN": ["amazon", "aws"],
+    "META": ["meta", "facebook", "instagram", "whatsapp"],
+    "NFLX": ["netflix"],
+    "INTC": ["intel"],
+    "XOM": ["exxon", "exxonmobil"],
+}
+
+
+def _text_mentions_symbol(symbol: str, text: str) -> bool:
+    symbol = _safe_str(symbol).upper()
+    if not symbol:
+        return False
+    text_l = _safe_str(text).lower()
+    if re.search(rf'(^|[^a-z0-9])\$?{re.escape(symbol.lower())}([^a-z0-9]|$)', text_l):
+        return True
+    for alias in PORTFOLIO_SYMBOL_ALIASES.get(symbol, []):
+        if re.search(rf'(^|[^a-z0-9]){re.escape(alias.lower())}([^a-z0-9]|$)', text_l):
+            return True
+    return False
+
+
+def _event_mentions_symbol(symbol: str, evt: Dict[str, Any]) -> bool:
+    symbol = _safe_str(symbol).upper()
+    assets = {str(asset).upper() for asset in _coerce_list(evt.get("assets"), "event.assets") if _safe_str(asset)}
+    if symbol and symbol in assets:
+        return True
+    text = f"{_safe_str(evt.get('headline'))} {_safe_str(evt.get('summary'))} {_safe_str(evt.get('subject'))}"
+    return _text_mentions_symbol(symbol, text)
+
+
 def _build_symbol_news(portfolio_symbols: set[str], watchlist_symbols: set[str], sector_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
     today = datetime.now().strftime("%Y-%m-%d")
     direct_news: List[Dict[str, Any]] = []
@@ -881,6 +919,8 @@ def _build_symbol_news(portfolio_symbols: set[str], watchlist_symbols: set[str],
         for evt in events[:3]:
             hl = _safe_str(evt.get("headline"))
             if not hl:
+                continue
+            if not _event_mentions_symbol(symbol, evt):
                 continue
             direct_news.append({
                 "symbol": symbol,

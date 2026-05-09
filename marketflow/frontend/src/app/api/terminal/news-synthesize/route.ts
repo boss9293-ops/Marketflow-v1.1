@@ -172,13 +172,41 @@ const normalizeForMatch = (value: string): string =>
     .replace(/\s+/g, ' ')
     .trim()
 
+const HEADLINE_TICKER_STOPWORDS = new Set([
+  'AI', 'CEO', 'CFO', 'COO', 'CTO', 'IPO', 'ETF', 'SEC', 'DOJ', 'FDA', 'FOMC',
+  'GDP', 'CPI', 'PPI', 'PCE', 'EPS', 'PT', 'EV', 'SUV', 'DST', 'ET', 'AM', 'PM',
+  'US', 'USA', 'UK', 'EU', 'AP', 'PR', 'LLC', 'INC', 'CO', 'ADR',
+])
+
+const extractHeadlineTickers = (headline: string): string[] => {
+  const mentions = new Set<string>()
+  const patterns = [
+    /\b(?:NASDAQ|NYSE|AMEX|NYSEARCA)\s*:\s*([A-Z.]{1,6})\b/g,
+    /\$([A-Z.]{1,6})\b/g,
+    /\(([A-Z.]{1,6})\)/g,
+    /\b([A-Z]{2,5})\b/g,
+  ]
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = pattern.exec(headline)) !== null) {
+      const ticker = match[1].replace(/\./g, '').toUpperCase()
+      if (ticker.length >= 2 && !HEADLINE_TICKER_STOPWORDS.has(ticker)) {
+        mentions.add(ticker)
+      }
+    }
+  }
+  return Array.from(mentions)
+}
+
 const scoreNewsItem = (
   item: NewsInputItem,
   symbol: string,
   companyName?: string,
 ): number => {
   const text = normalizeForMatch(`${item.headline || ''} ${item.summary || ''}`)
+  const headlineText = normalizeForMatch(item.headline || '')
   const normalizedSymbol = normalizeForMatch(symbol)
+  const upperSymbol = symbol.toUpperCase()
   let score = 0
 
   if (normalizedSymbol && text.includes(normalizedSymbol)) {
@@ -191,6 +219,14 @@ const scoreNewsItem = (
 
   if (companyTokens.some((token) => text.includes(token))) {
     score += 4
+  }
+
+  const headlineTickers = extractHeadlineTickers(item.headline || '')
+  const hasOtherHeadlineTicker = headlineTickers.some((ticker) => ticker !== upperSymbol)
+  const hasTargetHeadlineTicker = headlineTickers.includes(upperSymbol)
+  const startsWithCompany = companyTokens.some((token) => headlineText.startsWith(token))
+  if (hasOtherHeadlineTicker && !hasTargetHeadlineTicker && !startsWithCompany) {
+    score -= 8
   }
 
   if (containsAny(text, NEWS_CATALYST_KEYWORDS)) {

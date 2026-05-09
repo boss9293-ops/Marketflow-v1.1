@@ -9,6 +9,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateBrief, detectSessionType } from '@/lib/briefScheduler'
 import type { SessionType } from '@/types/brief'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 const VALID_SESSIONS: SessionType[] = ['PREMARKET', 'INTRADAY', 'POSTMARKET', 'DAILY_CLOSE']
 
 export async function GET(req: NextRequest) {

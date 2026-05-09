@@ -190,10 +190,40 @@ function getSourceBonus(source?: string): number {
   return 0
 }
 
+function getEtOffset(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00Z`)
+  const y = d.getUTCFullYear()
+  const dstStart = new Date(Date.UTC(y, 2, 1))
+  dstStart.setUTCDate(1 + ((7 - dstStart.getUTCDay()) % 7) + 7)
+  const dstEnd = new Date(Date.UTC(y, 10, 1))
+  dstEnd.setUTCDate(1 + ((7 - dstEnd.getUTCDay()) % 7))
+  return d >= dstStart && d < dstEnd ? '-04:00' : '-05:00'
+}
+
+function parseEventTimestampMs(value?: string): number {
+  if (!value) return 0
+  const trimmed = value.trim()
+  const legacyEt = trimmed.match(/^(\d{4}-\d{2}-\d{2})T? ?(\d{2}:\d{2})(?::(\d{2}))?\s*ET$/)
+  if (legacyEt) {
+    const [, date, hhmm, ss = '00'] = legacyEt
+    const parsed = Date.parse(`${date}T${hhmm}:${ss}${getEtOffset(date)}`)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const dateOnly = trimmed.match(/^(\d{4}-\d{2}-\d{2})$/)
+  if (dateOnly) {
+    const parsed = Date.parse(`${dateOnly[1]}T16:30:00${getEtOffset(dateOnly[1])}`)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const parsed = Date.parse(trimmed)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 function getRecencyBonus(publishedAtET?: string, dateET?: string): number {
   const ts = publishedAtET || dateET
   if (!ts) return 0
-  const ageH = (Date.now() - new Date(ts).getTime()) / 3_600_000
+  const parsedTs = parseEventTimestampMs(ts)
+  if (!parsedTs) return 0
+  const ageH = (Date.now() - parsedTs) / 3_600_000
   if (isNaN(ageH) || ageH < 0) return 0
   if (ageH < 6) return 5
   if (ageH < 24) return 3

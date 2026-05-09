@@ -9,13 +9,18 @@ import type { AIInfraStage } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketState, AIInfraStateLabel } from '@/lib/ai-infra/aiInfraStateLabels'
 import { STATE_DISPLAY_LABELS, STATE_COLORS } from '@/lib/ai-infra/aiInfraStateLabels'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
+import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
+import { generateBeginnerReport, generateBeginnerOverall } from '@/lib/ai-investment-tower/beginnerReportGenerator'
+import { generateProReport } from '@/lib/ai-investment-tower/proReportGenerator'
+import { BeginnerReport } from '@/components/ai-investment-tower/BeginnerReport'
+import { ProReport } from '@/components/ai-investment-tower/ProReport'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 
 const V = {
   teal: '#3FB6A8', red: '#E55A5A', amber: '#F2A93B', gold: '#D4B36A', mint: '#5DCFB0',
   blue: '#4A9EE0',
-  text: '#E8F0F8', text2: '#B8C8DC', text3: '#6B7B95',
+  text: '#E8F0F8', text2: '#B8C8DC', text3: '#8b9098',
   bg: '#0F1117', bg2: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
   ui: "'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
 } as const
@@ -74,7 +79,7 @@ function StateBadge({ label }: { label: AIInfraStateLabel }) {
   return (
     <span style={{
       display: 'inline-block', padding: '2px 7px', borderRadius: 3,
-      fontSize: 10, fontFamily: V.ui, fontWeight: 700, letterSpacing: '0.07em',
+      fontSize: 11, fontFamily: V.ui, fontWeight: 700, letterSpacing: '0.07em',
       color: '#0f1117', backgroundColor: STATE_COLORS[label],
     }}>
       {STATE_DISPLAY_LABELS[label]}
@@ -84,7 +89,7 @@ function StateBadge({ label }: { label: AIInfraStateLabel }) {
 
 function ConfidenceDot({ c }: { c: string }) {
   const col = c === 'HIGH' ? V.teal : c === 'MEDIUM' ? V.gold : V.text3
-  return <span style={{ fontFamily: V.mono, fontSize: 10, color: col }}>{c}</span>
+  return <span style={{ fontFamily: V.mono, fontSize: 12, color: col }}>{c}</span>
 }
 
 function StageHeader({ stage }: { stage: AIInfraStage }) {
@@ -117,9 +122,9 @@ function ControlBar({
   serverBenchmark?: string
 }) {
   const btnBase: React.CSSProperties = {
-    padding: '3px 10px', borderRadius: 3, border: '1px solid',
+    padding: '4px 12px', borderRadius: 3, border: '1px solid',
     background: 'transparent', cursor: 'pointer',
-    fontFamily: V.mono, fontSize: 10, letterSpacing: '0.08em',
+    fontFamily: V.mono, fontSize: 12, letterSpacing: '0.08em',
   }
   return (
     <div style={{
@@ -129,7 +134,7 @@ function ControlBar({
     }}>
       {/* Benchmark */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2, letterSpacing: '0.08em' }}>
           BENCHMARK
         </span>
         {(['SOXX', 'QQQ', 'SPY'] as Benchmark[]).map(b => (
@@ -139,7 +144,7 @@ function ControlBar({
             style={{
               ...btnBase,
               borderColor: benchmark === b ? V.teal : V.border,
-              color: benchmark === b ? V.teal : V.text3,
+              color: benchmark === b ? V.teal : V.text2,
             }}
           >
             {BM_LABELS[b]}
@@ -152,7 +157,7 @@ function ControlBar({
 
       {/* Stage grouping */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2, letterSpacing: '0.08em' }}>
           GROUP BY STAGE
         </span>
         <button
@@ -160,7 +165,7 @@ function ControlBar({
           style={{
             ...btnBase,
             borderColor: grouped ? V.teal : V.border,
-            color: grouped ? V.teal : V.text3,
+            color: grouped ? V.teal : V.text2,
           }}
         >
           {grouped ? 'ON' : 'OFF'}
@@ -213,10 +218,10 @@ function DataQualityBadges({
           padding: '2px 8px', borderRadius: 3,
           border: `1px solid ${V.border}`, background: V.bg2,
         }}>
-          <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em' }}>
+          <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2, letterSpacing: '0.08em' }}>
             {label}
           </span>
-          <span style={{ fontFamily: V.ui, fontSize: 11, color: V.text2 }}>
+          <span style={{ fontFamily: V.ui, fontSize: 12, color: V.text }}>
             {value}
           </span>
         </span>
@@ -263,15 +268,15 @@ function SummaryStrip({
             borderRight: i < items.length - 1 ? `1px solid ${V.border}` : undefined,
           }}
         >
-          <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em' }}>
+          <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2, letterSpacing: '0.08em' }}>
             {label.toUpperCase()}
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-            <span style={{ fontFamily: V.ui, fontSize: 13, fontWeight: 700, color: name ? color : V.text3 }}>
+            <span style={{ fontFamily: V.ui, fontSize: 13, fontWeight: 700, color: name ? color : V.text2 }}>
               {name ?? 'None'}
             </span>
             {score != null && (
-              <span style={{ fontFamily: V.mono, fontSize: 11, color: V.text3 }}>· {score}</span>
+              <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2 }}>· {score}</span>
             )}
           </div>
         </div>
@@ -282,12 +287,12 @@ function SummaryStrip({
         padding: '10px 16px', minWidth: 160, flex: '1 1 160px',
         borderLeft: `1px solid ${V.border}`,
       }}>
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em' }}>COVERAGE</span>
-        <span style={{ fontFamily: V.ui, fontSize: 12, fontWeight: 600, color: V.text2 }}>
+        <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2, letterSpacing: '0.08em' }}>COVERAGE</span>
+        <span style={{ fontFamily: V.ui, fontSize: 13, fontWeight: 700, color: V.text }}>
           {usable} / {total} buckets
         </span>
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.teal }}>{benchmark}</span>
-        {asOf && <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>{asOf}</span>}
+        <span style={{ fontFamily: V.mono, fontSize: 11, color: V.teal }}>{benchmark}</span>
+        {asOf && <span style={{ fontFamily: V.mono, fontSize: 11, color: V.text3 }}>{asOf}</span>}
       </div>
     </div>
   )
@@ -310,8 +315,8 @@ function StateLabelsTable({
     })
 
   const colStyle: React.CSSProperties = {
-    padding: '5px 8px', fontFamily: V.mono, fontSize: 10, fontWeight: 700,
-    color: V.text3, letterSpacing: '0.10em', textAlign: 'left',
+    padding: '5px 8px', fontFamily: V.mono, fontSize: 12, fontWeight: 700,
+    color: V.text2, letterSpacing: '0.10em', textAlign: 'left',
   }
 
   const renderRows = (rows: AIInfraBucketState[]) =>
@@ -329,7 +334,7 @@ function StateLabelsTable({
         <td style={{ padding: '7px 8px', textAlign: 'center' }}>
           <ConfidenceDot c={s.confidence} />
         </td>
-        <td style={{ padding: '7px 8px', fontFamily: V.ui, fontSize: 11, color: V.text3, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <td style={{ padding: '7px 8px', fontFamily: V.ui, fontSize: 12, color: V.text2, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {s.state_reason}
         </td>
       </tr>
@@ -379,39 +384,34 @@ function RSTable({
   const hlCol: React.CSSProperties = { color: V.teal }
 
   const renderRow = (b: AIInfraBucketMomentum) => {
-    const rs3  = b.relative_strength.vs_soxx.three_month
-    const rsq3 = b.relative_strength.vs_qqq.three_month
-    const rss3 = b.relative_strength.vs_spy.three_month
-    const rsSel = rsOf(b)
+    const rs    = b.relative_strength[`vs_${bmKey}`]
+    const rs3   = b.relative_strength.vs_soxx.three_month
+    const rsq3  = b.relative_strength.vs_qqq.three_month
+    const rss3  = b.relative_strength.vs_spy.three_month
     return (
       <tr key={b.bucket_id} style={{ borderBottom: `1px solid ${V.border}` }}>
         <td style={{ padding: '7px 8px', fontFamily: V.ui, fontSize: 12, color: V.text2, whiteSpace: 'nowrap' }}>
           {b.display_name}
         </td>
-        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(b.returns.one_month), textAlign: 'right' }}>
-          {fmtPct(b.returns.one_month)}
+        {/* Relative returns vs selected benchmark — change when benchmark switches */}
+        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rs.one_month), textAlign: 'right' }}>
+          {fmtRS(rs.one_month)}
         </td>
-        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(b.returns.three_month), textAlign: 'right' }}>
-          {fmtPct(b.returns.three_month)}
+        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rs.three_month), textAlign: 'right' }}>
+          {fmtRS(rs.three_month)}
         </td>
-        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(b.returns.six_month), textAlign: 'right' }}>
-          {fmtPct(b.returns.six_month)}
+        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rs.six_month), textAlign: 'right' }}>
+          {fmtRS(rs.six_month)}
         </td>
-        {/* SOXX */}
+        {/* 3M RS vs each benchmark — reference columns */}
         <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rs3), textAlign: 'right', ...(benchmark === 'SOXX' ? hlCol : {}) }}>
           {fmtRS(rs3)}
         </td>
-        {/* QQQ */}
         <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rsq3), textAlign: 'right', ...(benchmark === 'QQQ' ? hlCol : {}) }}>
           {fmtRS(rsq3)}
         </td>
-        {/* SPY */}
         <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rss3), textAlign: 'right', ...(benchmark === 'SPY' ? hlCol : {}) }}>
           {fmtRS(rss3)}
-        </td>
-        {/* Selected RS (main sort key) */}
-        <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 12, color: rsColor(rsSel), textAlign: 'right', fontWeight: 700 }}>
-          {fmtRS(rsSel)}
         </td>
         <td style={{ padding: '7px 8px', fontFamily: V.mono, fontSize: 10, color: b.coverage.data_quality === 'REAL' ? V.teal : V.gold, textAlign: 'right' }}>
           {b.coverage.priced_symbol_count}/{b.coverage.symbol_count}
@@ -422,22 +422,21 @@ function RSTable({
 
   const thStyle = (h: string, isSel: boolean): React.CSSProperties => ({
     padding: '5px 8px',
-    fontFamily: V.mono, fontSize: 10, fontWeight: 700,
-    color: isSel ? V.teal : V.text3, letterSpacing: '0.10em',
+    fontFamily: V.mono, fontSize: 12, fontWeight: 700,
+    color: isSel ? V.teal : V.text2, letterSpacing: '0.10em',
     textAlign: h === 'Bucket' ? 'left' : 'right', whiteSpace: 'nowrap',
     borderBottom: isSel ? `2px solid ${V.teal}` : `1px solid ${V.border}`,
   })
 
   const colHeaders = [
-    { h: 'Bucket', sel: false },
-    { h: '1M',     sel: false },
-    { h: '3M',     sel: false },
-    { h: '6M',     sel: false },
-    { h: 'RS SOXX', sel: benchmark === 'SOXX' },
-    { h: 'RS QQQ',  sel: benchmark === 'QQQ' },
-    { h: 'RS SPY',  sel: benchmark === 'SPY' },
-    { h: `RS ${benchmark} (sel)`, sel: true },
-    { h: 'Cov',    sel: false },
+    { h: 'Bucket',              sel: false },
+    { h: `1M vs ${benchmark}`,  sel: true },
+    { h: `3M vs ${benchmark}`,  sel: true },
+    { h: `6M vs ${benchmark}`,  sel: true },
+    { h: 'RS SOXX',             sel: benchmark === 'SOXX' },
+    { h: 'RS QQQ',              sel: benchmark === 'QQQ' },
+    { h: 'RS SPY',              sel: benchmark === 'SPY' },
+    { h: 'Cov',                 sel: false },
   ]
 
   const bmReturns = benchmarks[benchmark]
@@ -473,7 +472,7 @@ function RSTable({
             <td style={{ padding: '6px 8px', fontFamily: V.mono, fontSize: 11, color: V.text3, textAlign: 'right' }}>{fmtBm(bmReturns.one_month)}</td>
             <td style={{ padding: '6px 8px', fontFamily: V.mono, fontSize: 11, color: V.text3, textAlign: 'right' }}>{fmtBm(bmReturns.three_month)}</td>
             <td style={{ padding: '6px 8px', fontFamily: V.mono, fontSize: 11, color: V.text3, textAlign: 'right' }}>{fmtBm(bmReturns.six_month)}</td>
-            <td colSpan={5} />
+            <td colSpan={4} />
           </tr>
         </tbody>
       </table>
@@ -499,8 +498,8 @@ function TabBar({ active, onChange }: { active: ActiveTab; onChange: (t: ActiveT
             padding: '6px 14px', border: 'none',
             borderBottom: active === t.id ? `2px solid ${V.teal}` : '2px solid transparent',
             background: 'transparent',
-            color: active === t.id ? V.teal : V.text3,
-            fontFamily: V.mono, fontSize: 10, fontWeight: 700,
+            color: active === t.id ? V.teal : V.text2,
+            fontFamily: V.mono, fontSize: 12, fontWeight: 700,
             letterSpacing: '0.10em', cursor: 'pointer', marginBottom: -1,
           }}
         >
@@ -520,6 +519,7 @@ export default function AIInfrastructureRadar() {
   const [tab, setTab]           = useState<ActiveTab>('state')
   const [benchmark, setBenchmark] = useState<Benchmark>('SOXX')
   const [grouped, setGrouped]   = useState(false)
+  const [reportMode, setReportMode] = useState<'beginner' | 'pro'>('beginner')
 
   useEffect(() => {
     setLoading(true)
@@ -553,7 +553,7 @@ export default function AIInfrastructureRadar() {
             <div style={{ fontFamily: V.ui, fontSize: 20, fontWeight: 900, color: V.text, marginBottom: 4 }}>
               AI Infrastructure Rotation
             </div>
-            <div style={{ fontFamily: V.ui, fontSize: 12, color: V.text3 }}>
+            <div style={{ fontFamily: V.ui, fontSize: 12, color: V.text2 }}>
               Price-based rotation signals across 13 AI infrastructure buckets. Rule-based. Not investment advice.
             </div>
           </div>
@@ -581,6 +581,34 @@ export default function AIInfrastructureRadar() {
 
         {!loading && !error && (
           <>
+            {/* Report mode toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14 }}>
+              {(['beginner', 'pro'] as const).map((mode) => {
+                const label = mode === 'beginner' ? '쉽게 보기' : '자세히 보기'
+                const active = reportMode === mode
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setReportMode(mode)}
+                    style={{
+                      padding:       '5px 16px',
+                      border:        `1px solid ${active ? V.teal : V.border}`,
+                      borderRadius:  20,
+                      background:    active ? `${V.teal}18` : 'transparent',
+                      color:         active ? V.teal : V.text3,
+                      fontFamily:    V.ui,
+                      fontSize:      13,
+                      fontWeight:    active ? 700 : 400,
+                      cursor:        'pointer',
+                      transition:    'all 0.1s',
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+
             {/* Controls */}
             <ControlBar
               benchmark={benchmark} setBenchmark={setBenchmark}
@@ -603,42 +631,73 @@ export default function AIInfrastructureRadar() {
               <div style={{
                 marginBottom: 12, padding: '6px 12px',
                 background: V.bg2, border: `1px solid ${V.border}`, borderRadius: 4,
-                fontFamily: V.ui, fontSize: 11, color: V.text3, lineHeight: 1.5,
+                fontFamily: V.ui, fontSize: 12, color: V.text2, lineHeight: 1.5,
               }}>
                 {dataNotes.map((n, i) => <div key={i}>{n}</div>)}
               </div>
             )}
 
-            {/* Tabs */}
-            <TabBar active={tab} onChange={setTab} />
+            {/* ── 쉽게 보기 (Beginner Report) ── */}
+            {reportMode === 'beginner' && (() => {
+              const layerInputs = (states.length > 0 && buckets.length > 0)
+                ? adaptAllLayers(buckets, states) : []
+              const beginnerReports  = generateBeginnerReport(layerInputs)
+              const overallNarrative = generateBeginnerOverall(beginnerReports)
+              return (
+                <BeginnerReport reports={beginnerReports} overallNarrative={overallNarrative} />
+              )
+            })()}
 
-            {/* STATE LABELS */}
-            {tab === 'state' && (
-              states.length > 0
-                ? <StateLabelsTable states={states} grouped={grouped} />
-                : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                    State label data not available.
+            {/* ── 자세히 보기 (Pro Report + advanced tabs) ── */}
+            {reportMode === 'pro' && (() => {
+              const layerInputs = (states.length > 0 && buckets.length > 0)
+                ? adaptAllLayers(buckets, states) : []
+              const proReports = generateProReport(layerInputs)
+              return (
+                <>
+                  {proReports.length > 0
+                    ? <ProReport reports={proReports} />
+                    : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                        No layer data available.
+                      </div>
+                  }
+
+                  {/* Deep dive tabs */}
+                  <div style={{
+                    marginTop: 24,
+                    paddingTop: 16,
+                    borderTop: `1px solid ${V.border}`,
+                  }}>
+                    <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.12em', marginBottom: 10 }}>
+                      DEEP DIVE
+                    </div>
+                    <TabBar active={tab} onChange={setTab} />
+                    {tab === 'state' && (
+                      states.length > 0
+                        ? <StateLabelsTable states={states} grouped={grouped} />
+                        : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                            State label data not available.
+                          </div>
+                    )}
+                    {tab === 'rs' && (
+                      buckets.length > 0 && bms
+                        ? <RSTable buckets={buckets} benchmarks={bms} benchmark={benchmark} grouped={grouped} />
+                        : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                            Relative strength data not available.
+                          </div>
+                    )}
+                    {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
                   </div>
-            )}
-
-            {/* RELATIVE STRENGTH */}
-            {tab === 'rs' && (
-              buckets.length > 0 && bms
-                ? <RSTable buckets={buckets} benchmarks={bms} benchmark={benchmark} grouped={grouped} />
-                : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                    Relative strength data not available.
-                  </div>
-            )}
-
-            {/* RRG — has built-in lookback selector; benchmark-aware since D-8 */}
-            {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
+                </>
+              )
+            })()}
           </>
         )}
 
         {/* Disclaimer */}
         <div style={{
           marginTop: 16, fontFamily: V.ui, fontSize: 10,
-          color: '#555a62', letterSpacing: '0.06em', lineHeight: 1.6,
+          color: V.text3, letterSpacing: '0.06em', lineHeight: 1.6,
         }}>
           State labels are rule-based and price/RRG-driven. They do not include earnings confirmation or investment recommendations.
           This panel is a rotation observation tool, not a trading signal system.

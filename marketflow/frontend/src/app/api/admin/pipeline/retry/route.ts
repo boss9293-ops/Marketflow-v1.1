@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import path from 'path';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const BACKEND_DIR = path.resolve(process.cwd(), '..', 'backend');
 
 export async function POST(request: Request) {

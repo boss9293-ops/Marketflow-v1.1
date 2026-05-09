@@ -954,7 +954,7 @@
   min-height: 0;
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 6px 10px 2px;
+  padding: 18px 10px 2px;
   display: flex;
   flex-direction: column;
 }
@@ -963,40 +963,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
-}
-
-.chartPriceBox {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  text-align: right;
-  padding-top: 0;
-  line-height: 1.1;
-}
-
-.chartPrice {
-  margin: 0;
-  font-size: 18px;
-  color: #FFD580;
-  font-weight: 700;
-  font-family: var(--font-terminal), 'IBM Plex Mono', monospace;
-  letter-spacing: -0.02em;
-}
-
-.chartChangeDown {
-  margin: 0;
-  font-size: 11px;
-  color: #f97316;
-  font-weight: 700;
-}
-
-.chartChangeUp {
-  margin: 0;
-  font-size: 11px;
-  color: #22c55e;
-  font-weight: 700;
+  min-height: 22px;
 }
 
 .timeframeRow {
@@ -1457,7 +1424,6 @@
 .terminalTheme .newsHeadline,
 .terminalTheme .timelineHeadline,
 .terminalTheme .headlineText,
-.terminalTheme .chartPrice,
 .terminalTheme .detailHeadline,
 .terminalTheme .askAnswerText,
 .terminalTheme .ohlcvValue {
@@ -1514,9 +1480,6 @@
 .terminalTheme .watchSymbol,
 .terminalTheme .watchMoveUp,
 .terminalTheme .watchMoveDown,
-.terminalTheme .chartPrice,
-.terminalTheme .chartChangeUp,
-.terminalTheme .chartChangeDown,
 .terminalTheme .symbolChip,
 .terminalTheme .newsTime,
 .terminalTheme .timelineTime,
@@ -1552,14 +1515,12 @@
 
 /* Signal-only colors */
 .terminalTheme .watchMoveUp,
-.terminalTheme .chartChangeUp,
 .terminalTheme .detailExportSuccess,
 .terminalTheme .evidenceExportSuccess {
   color: var(--terminal-up) !important;
 }
 
 .terminalTheme .watchMoveDown,
-.terminalTheme .chartChangeDown,
 .terminalTheme .detailExportError,
 .terminalTheme .evidenceExportError {
   color: var(--terminal-down) !important;
