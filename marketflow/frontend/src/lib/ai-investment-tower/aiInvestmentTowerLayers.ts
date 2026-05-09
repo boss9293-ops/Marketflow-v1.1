@@ -52,7 +52,7 @@ export const AI_INVESTMENT_TOWER_LAYERS: AIInvestmentLayer[] = [
     description:    'AI 학습 데이터셋과 모델 저장을 담당하는 스토리지 계층',
     primaryEtf:     'PSTG',
     benchmark:      'QQQ',
-    sourceBuckets:  [],
+    sourceBuckets:  ['STORAGE_DATA'],
     basketSymbols:  ['PSTG', 'NTAP', 'WDC', 'STX', 'MU'],
     userMeaning:    'AI 데이터 저장·관리 인프라. 데이터센터 확장과 함께 성장합니다.',
   },
@@ -99,7 +99,7 @@ export const AI_INVESTMENT_TOWER_LAYERS: AIInvestmentLayer[] = [
     description:    'AI 인프라를 직접 구축·운영하는 빅테크 클라우드 계층',
     primaryEtf:     'QQQ',
     benchmark:      'QQQ',
-    sourceBuckets:  [],
+    sourceBuckets:  ['CLOUD_HYPERSCALERS'],
     basketSymbols:  ['MSFT', 'GOOGL', 'AMZN', 'META', 'ORCL'],
     userMeaning:    'AI GPU를 가장 많이 사는 고객들. 클라우드 자본지출이 늘면 반도체 전체 사이클에 긍정적입니다.',
   },
@@ -110,7 +110,7 @@ export const AI_INVESTMENT_TOWER_LAYERS: AIInvestmentLayer[] = [
     description:    'AI 모델·플랫폼·데이터 인프라 소프트웨어 계층',
     primaryEtf:     'AIQ',
     benchmark:      'QQQ',
-    sourceBuckets:  [],
+    sourceBuckets:  ['AI_SOFTWARE'],
     basketSymbols:  ['PLTR', 'SNOW', 'CRM', 'MDB', 'DDOG', 'NOW'],
     userMeaning:    'AI를 제품으로 만드는 소프트웨어 계층. 하드웨어 사이클보다 늦게 혜택이 나타날 수 있습니다.',
   },
@@ -122,7 +122,7 @@ export const AI_INVESTMENT_TOWER_LAYERS: AIInvestmentLayer[] = [
     primaryEtf:     'BOTZ',
     secondaryEtfs:  ['ARKQ'],
     benchmark:      'SPY',
-    sourceBuckets:  [],
+    sourceBuckets:  ['ROBOTICS_PHYSICAL_AI'],
     basketSymbols:  ['TSLA', 'ISRG', 'ABB', 'ROK', 'TER'],
     userMeaning:    'AI가 현실 세계에 들어오는 계층. 아직 초기 단계로, 사이클 확산 시 큰 성장이 예상됩니다.',
   },
@@ -134,7 +134,7 @@ export const AI_INVESTMENT_TOWER_LAYERS: AIInvestmentLayer[] = [
     primaryEtf:     'CIBR',
     secondaryEtfs:  ['HACK'],
     benchmark:      'QQQ',
-    sourceBuckets:  [],
+    sourceBuckets:  ['CYBERSECURITY'],
     basketSymbols:  ['CRWD', 'PANW', 'ZS', 'FTNT', 'NET'],
     userMeaning:    'AI 확산과 함께 보안 위협도 늘어납니다. 방어적 성격이 강해 시장 하락기에도 상대적으로 견고합니다.',
   },
@@ -168,11 +168,16 @@ function maxRisk(risks: RiskLabel[]): RiskLabel {
 // ── Adapter: 10-layer map + 13-bucket data → LayerReportInput[] ──────────────
 
 export function adaptTowerLayers(
-  buckets:      AIInfraBucketMomentum[],
-  bucketStates: AIInfraBucketState[],
+  buckets:       AIInfraBucketMomentum[],
+  bucketStates:  AIInfraBucketState[],
+  towerBuckets?: AIInfraBucketMomentum[],
+  towerStates?:  AIInfraBucketState[],
 ): LayerReportInput[] {
-  const bucketMap = new Map(buckets.map(b => [b.bucket_id, b]))
-  const stateMap  = new Map(bucketStates.map(s => [s.bucket_id, s]))
+  // Merge 13-bucket + 5 tower virtual buckets into unified lookup maps
+  const allBuckets = [...buckets, ...(towerBuckets ?? [])]
+  const allStates  = [...bucketStates, ...(towerStates ?? [])]
+  const bucketMap  = new Map(allBuckets.map(b => [b.bucket_id as string, b]))
+  const stateMap   = new Map(allStates.map(s => [s.bucket_id as string, s]))
 
   return AI_INVESTMENT_TOWER_LAYERS.map((layer): LayerReportInput => {
     const sourceIds = layer.sourceBuckets ?? []
@@ -180,8 +185,8 @@ export function adaptTowerLayers(
     // Collect matched bucket reports
     const matched: LayerReportInput[] = []
     for (const sid of sourceIds) {
-      const b = bucketMap.get(sid as AIInfraBucketId)
-      const s = stateMap.get(sid as AIInfraBucketId)
+      const b = bucketMap.get(sid)
+      const s = stateMap.get(sid)
       if (b && s) matched.push(adaptToBucketReport(b, s))
     }
 

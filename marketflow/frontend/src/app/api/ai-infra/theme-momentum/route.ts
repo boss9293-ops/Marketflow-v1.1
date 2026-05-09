@@ -5,10 +5,13 @@ import { NextResponse } from 'next/server'
 import { backendApiUrl } from '@/lib/backendApi'
 import { computeBucketState } from '@/lib/ai-infra/aiInfraStateLabels'
 import { AI_INFRA_BUCKETS } from '@/lib/semiconductor/aiInfraBucketMap'
+import type { AIInfraBucketId, AIInfraStage, AIInfraDataQuality } from '@/lib/semiconductor/aiInfraBucketMap'
 import {
   computeBucketRS,
   rankBuckets,
   type AIInfraBenchmarkReturns,
+  type AIInfraBucketBreadth,
+  type BreadthLabel,
   type AIInfraMultiPeriodReturn,
 } from '@/lib/semiconductor/aiInfraBucketRS'
 import {
@@ -66,6 +69,60 @@ const LEGACY_INACTIVE: ReadonlySet<string> = new Set(['CCMP'])
 const REMOTE_CHART_CONCURRENCY = 8
 const REMOTE_CHART_TIMEOUT_MS = 7000
 
+// ── Tower virtual bucket configs (5 new layers without existing 13-bucket mapping) ──
+
+type TowerVirtualBucketConfig = {
+  bucket_id:         string
+  display_name:      string
+  stage:             AIInfraStage
+  default_benchmark: 'SOXX' | 'QQQ' | 'SPY'
+  symbols:           string[]
+  data_quality:      AIInfraDataQuality
+}
+
+const TOWER_VIRTUAL_BUCKETS: TowerVirtualBucketConfig[] = [
+  {
+    bucket_id:         'STORAGE_DATA',
+    display_name:      'Storage & Data',
+    stage:             'STAGE_4_EXTERNAL_INFRA',
+    default_benchmark: 'QQQ',
+    symbols:           ['PSTG', 'NTAP', 'WDC', 'STX', 'MU'],
+    data_quality:      'PARTIAL',
+  },
+  {
+    bucket_id:         'CLOUD_HYPERSCALERS',
+    display_name:      'Cloud / Hyperscalers',
+    stage:             'STAGE_4_EXTERNAL_INFRA',
+    default_benchmark: 'QQQ',
+    symbols:           ['MSFT', 'GOOGL', 'AMZN', 'META', 'ORCL'],
+    data_quality:      'REAL',
+  },
+  {
+    bucket_id:         'AI_SOFTWARE',
+    display_name:      'AI Software',
+    stage:             'STAGE_4_EXTERNAL_INFRA',
+    default_benchmark: 'QQQ',
+    symbols:           ['PLTR', 'CRM', 'DDOG', 'NOW', 'SNOW', 'MDB'],
+    data_quality:      'PARTIAL',
+  },
+  {
+    bucket_id:         'ROBOTICS_PHYSICAL_AI',
+    display_name:      'Robotics / Physical AI',
+    stage:             'STAGE_5_PHYSICAL_RESOURCE',
+    default_benchmark: 'SPY',
+    symbols:           ['TSLA', 'ISRG', 'ROK', 'TER', 'ABB'],
+    data_quality:      'PARTIAL',
+  },
+  {
+    bucket_id:         'CYBERSECURITY',
+    display_name:      'Cybersecurity',
+    stage:             'STAGE_4_EXTERNAL_INFRA',
+    default_benchmark: 'QQQ',
+    symbols:           ['CRWD', 'PANW', 'ZS', 'FTNT', 'NET'],
+    data_quality:      'PARTIAL',
+  },
+]
+
 function parseBenchmark(param: string | null): AIInfraBenchmarkParam {
   if (param === 'QQQ' || param === 'SPY' || param === 'SOXX') return param
   return 'SOXX'
@@ -95,6 +152,9 @@ function uniqueRequiredTickers(): string[] {
   const tickers = new Set<string>()
   for (const item of AI_INFRA_THEME_WATCHLIST) tickers.add(item.ticker.toUpperCase())
   for (const bucket of AI_INFRA_BUCKETS) {
+    for (const symbol of bucket.symbols) tickers.add(symbol.toUpperCase())
+  }
+  for (const bucket of TOWER_VIRTUAL_BUCKETS) {
     for (const symbol of bucket.symbols) tickers.add(symbol.toUpperCase())
   }
   tickers.add('SOXX')
@@ -214,16 +274,48 @@ function buildTickerReturn(ticker: string, rows: PricePoint[]): AIInfraTickerRet
 }
 
 function buildMultiPeriodReturn(ticker: string, rows: PricePoint[]): AIInfraMultiPeriodReturn {
+  const five_day    = calculateReturnPct(rows, 5)
+  const one_month   = calculateReturnPct(rows, 21)
+  const three_month = calculateReturnPct(rows, 63)
+  const six_month   = calculateReturnPct(rows, 126)
   return {
     ticker,
-    one_month: calculateReturnPct(rows, 21),
-    three_month: calculateReturnPct(rows, 63),
-    six_month: calculateReturnPct(rows, 126),
-    available:
-      calculateReturnPct(rows, 21) !== null ||
-      calculateReturnPct(rows, 63) !== null ||
-      calculateReturnPct(rows, 126) !== null,
+    five_day,
+    one_month,
+    three_month,
+    six_month,
+    available: one_month !== null || three_month !== null || six_month !== null,
   }
+}
+
+function computeSymbolMA50Above(rows: PricePoint[]): boolean | null {
+  if (rows.length < 52) return null
+  const latest = rows[0]?.price
+  if (!latest || !Number.isFinite(latest) || latest <= 0) return null
+  const ma50 = rows.slice(1, 51).reduce((s, r) => s + r.price, 0) / 50
+  return ma50 > 0 ? latest > ma50 : null
+}
+
+function computeBucketBreadth(
+  symbols: string[],
+  rowsByTicker: Map<string, PricePoint[]>,
+): AIInfraBucketBreadth {
+  const results = symbols
+    .map(sym => computeSymbolMA50Above(rowsByTicker.get(sym) ?? []))
+    .filter((r): r is boolean => r !== null)
+
+  const valid_count      = results.length
+  const above_ma50_count = results.filter(Boolean).length
+  const breadth_ma50_pct = valid_count > 0 ? above_ma50_count / valid_count : 0
+
+  let label: BreadthLabel
+  if (valid_count < 2)               label = 'UNKNOWN'
+  else if (breadth_ma50_pct >= 0.70) label = 'BROAD'
+  else if (breadth_ma50_pct >= 0.50) label = 'IMPROVING'
+  else if (breadth_ma50_pct >= 0.30) label = 'NARROW'
+  else                               label = 'WEAK'
+
+  return { valid_count, above_ma50_count, breadth_ma50_pct, label }
 }
 
 function buildBenchmarkReturns(rowsByTicker: Map<string, PricePoint[]>): AIInfraBenchmarkReturns {
@@ -329,18 +421,19 @@ function buildResponseFromRows(params: {
     ]),
   )
   const benchmarks = buildBenchmarkReturns(params.rowsByTicker)
-  const rawBuckets = AI_INFRA_BUCKETS.map((bucket) =>
-    computeBucketRS({
-      bucket_id: bucket.bucket_id,
-      display_name: bucket.display_name,
-      stage: bucket.stage,
+  const rawBuckets = AI_INFRA_BUCKETS.map((bucket) => {
+    const rs = computeBucketRS({
+      bucket_id:         bucket.bucket_id,
+      display_name:      bucket.display_name,
+      stage:             bucket.stage,
       default_benchmark: bucket.default_benchmark,
-      symbols: bucket.symbols,
-      data_quality: bucket.data_quality,
-      tickerMap: multiPeriodMap,
+      symbols:           bucket.symbols,
+      data_quality:      bucket.data_quality,
+      tickerMap:         multiPeriodMap,
       benchmarks,
-    }),
-  )
+    })
+    return { ...rs, breadth: computeBucketBreadth(bucket.symbols, params.rowsByTicker) }
+  })
   const buckets = rankBuckets(rawBuckets)
 
   const dataNotes: string[] = []
@@ -373,6 +466,25 @@ function buildResponseFromRows(params: {
     `State labels are recalculated using the ${params.benchmark} benchmark. Rule-based and price/RRG-driven. Earnings confirmation not included.`,
   )
 
+  // Tower virtual buckets — basket-based calc for layers without existing 13-bucket source
+  const rawTowerBuckets = TOWER_VIRTUAL_BUCKETS.map((cfg) => {
+    const rs = computeBucketRS({
+      bucket_id:         cfg.bucket_id as AIInfraBucketId,
+      display_name:      cfg.display_name,
+      stage:             cfg.stage,
+      default_benchmark: cfg.default_benchmark,
+      symbols:           cfg.symbols,
+      data_quality:      cfg.data_quality,
+      tickerMap:         multiPeriodMap,
+      benchmarks,
+    })
+    return { ...rs, breadth: computeBucketBreadth(cfg.symbols, params.rowsByTicker) }
+  })
+  const tower_buckets = rankBuckets(rawTowerBuckets)
+  const tower_states = tower_buckets.map((bucket) =>
+    computeBucketState(bucket, null, params.benchmark),
+  )
+
   return {
     source: params.source,
     asOf,
@@ -383,6 +495,8 @@ function buildResponseFromRows(params: {
     buckets,
     benchmarks,
     bucket_states,
+    tower_buckets,
+    tower_states,
     generated_at: new Date().toISOString(),
     data_notes: dataNotes,
     warnings: missingTickers.length > 0

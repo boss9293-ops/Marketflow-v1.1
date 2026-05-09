@@ -532,9 +532,11 @@ export default function AIInfrastructureRadar() {
       .finally(() => setLoading(false))
   }, [benchmark])
 
-  const states  = data?.bucket_states ?? []
-  const buckets = data?.buckets ?? []
-  const bms     = data?.benchmarks
+  const states        = data?.bucket_states ?? []
+  const buckets       = data?.buckets ?? []
+  const towerBuckets  = (data as Record<string, unknown>)?.tower_buckets as typeof buckets ?? []
+  const towerStates   = (data as Record<string, unknown>)?.tower_states as typeof states ?? []
+  const bms           = data?.benchmarks
 
   // Compact data notes (filter long disclaimers)
   const dataNotes = (data?.data_notes ?? [])
@@ -641,7 +643,7 @@ export default function AIInfrastructureRadar() {
             {/* ── 리포트 섹션 (10-레이어 기준, 모드에 따라 다른 뷰) ── */}
             {(() => {
               const towerInputs = (states.length > 0 && buckets.length > 0)
-                ? adaptTowerLayers(buckets, states) : []
+                ? adaptTowerLayers(buckets, states, towerBuckets, towerStates) : []
               if (reportMode === 'beginner') {
                 const beginnerReports  = generateBeginnerReport(towerInputs)
                 const overallNarrative = generateBeginnerOverall(beginnerReports)
