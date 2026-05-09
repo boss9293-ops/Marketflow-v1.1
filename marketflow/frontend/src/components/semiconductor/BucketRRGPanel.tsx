@@ -77,7 +77,7 @@ const BUCKET_STAGE: Record<string, AIInfraStage> = {
 
 // ── Compact inline RRG scatter ────────────────────────────────────────────────
 function MiniRRGChart({ series, lookbackWeeks }: { series: RrgSeries[]; lookbackWeeks: number }) {
-  const W = 380, H = 280, L = 42, R = 16, T = 20, B = 32
+  const W = 494, H = 364, L = 42, R = 16, T = 20, B = 32
   const CW = W - L - R, CH = H - T - B
 
   // Compute domain from all valid points
