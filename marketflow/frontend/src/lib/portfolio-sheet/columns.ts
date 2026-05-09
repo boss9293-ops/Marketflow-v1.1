@@ -1,0 +1,26 @@
+import type { PortfolioSheetColumn } from './types'
+
+export const PORTFOLIO_SHEET_COLUMNS: PortfolioSheetColumn[] = [
+  { key: 'order', label: '순서', align: 'right', kind: 'index' },
+  { key: 'ticker', label: '종목', align: 'left', kind: 'text', editable: true },
+  { key: 'spark50', label: '50일선', align: 'center', kind: 'spark' },
+  { key: 'prevClose', label: '어제종가', align: 'right', kind: 'number', precision: 2 },
+  { key: 'currentPrice', label: '오늘', align: 'right', kind: 'number', precision: 2 },
+  { key: 'dailyChangePct', label: '변동(%)', align: 'right', kind: 'signedPercent', precision: 2 },
+  { key: 'todayPnl', label: '오늘 수익', align: 'right', kind: 'signedNumber', precision: 0 },
+  { key: 'avgPrice', label: '평단가', align: 'right', kind: 'number', editable: true, precision: 2 },
+  { key: 'marketValue', label: '평가액', align: 'right', kind: 'number', precision: 0 },
+  { key: 'costBasis', label: '매수총액', align: 'right', kind: 'number', precision: 0 },
+  { key: 'rsi', label: 'RSI', align: 'right', kind: 'number', precision: 0 },
+  { key: 'positionPct', label: '포지션(%)', align: 'right', kind: 'percent', precision: 1 },
+  { key: 'shares', label: '주식수', align: 'right', kind: 'number', editable: true, precision: 2 },
+  { key: 'pnlPct', label: '누적수익률(%)', align: 'right', kind: 'signedPercent', precision: 1 },
+  { key: 'pnl', label: '누적수익금($)', align: 'right', kind: 'signedNumber', precision: 0 },
+  { key: 'mdd', label: 'MDD', align: 'right', kind: 'signedPercent', precision: 2 },
+  { key: 'volumeK', label: 'Volume(K)', align: 'right', kind: 'number', precision: 0 },
+  { key: 'high52', label: 'H52', align: 'right', kind: 'number', precision: 2 },
+  { key: 'low52', label: 'L52', align: 'right', kind: 'number', precision: 2 },
+  { key: 'ma5', label: 'MA(5)', align: 'right', kind: 'number', precision: 1 },
+  { key: 'ma120', label: 'MA(120)', align: 'right', kind: 'number', precision: 1 },
+  { key: 'ma200', label: 'MA(200)', align: 'right', kind: 'number', precision: 1 },
+]

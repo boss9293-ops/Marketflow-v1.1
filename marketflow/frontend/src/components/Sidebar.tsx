@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { CSSProperties, useEffect, useState, ReactNode } from 'react'
-import { ChevronDown, ScanSearch, Home } from 'lucide-react'
+import { ChevronDown, ScanSearch, Home, Table2 } from 'lucide-react'
 import BilLabel from '@/components/BilLabel'
 import { UI_TEXT } from '@/lib/uiText'
 
@@ -52,6 +52,7 @@ const vrTestItems = [
 const reItems = [
   { href: '/retirement', label: UI_TEXT.nav.retirement, dot: '#86efac' },
   { href: '/portfolio', label: UI_TEXT.nav.portfolio, dot: '#38bdf8' },
+  { href: '/portfolio-sheet', label: { ko: '계좌 장부', en: 'Portfolio Sheet' }, dot: '#22d3ee', icon: 'table' as const },
   { href: '/my-holdings', label: UI_TEXT.nav.holdings, dot: '#a3e635' },
 ]
 
@@ -96,7 +97,7 @@ function NavLinks({
   compact,
   onNavigate,
 }: {
-  items: Array<{ href: string; label: { ko: string; en: string }; subLabel?: { ko: string; en: string }; dot: string; icon?: 'scan' | 'home'; tooltip?: string; vrStyle?: boolean }>
+  items: Array<{ href: string; label: { ko: string; en: string }; subLabel?: { ko: string; en: string }; dot?: string; icon?: 'scan' | 'home' | 'table'; tooltip?: string; vrStyle?: boolean }>
   pathname: string
   vrStyle?: boolean
   compact?: boolean
@@ -179,16 +180,37 @@ function NavLinks({
                 <Home size={11} />
               </span>
             )}
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: 999,
-                background: item.dot,
-                boxShadow: `0 0 ${vrStyle ? '10px' : '7px'} ${item.dot}${vrStyle ? 'cc' : '66'}`,
-                flexShrink: 0,
-              }}
-            />
+            {'icon' in item && item.icon === 'table' && !compact && (
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 6,
+                  background: 'rgba(34,211,238,0.10)',
+                  border: '1px solid rgba(34,211,238,0.24)',
+                  color: '#67e8f9',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginLeft: -2,
+                }}
+              >
+                <Table2 size={11} />
+              </span>
+            )}
+            {item.dot ? (
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 999,
+                  background: item.dot,
+                  boxShadow: `0 0 ${vrStyle ? '10px' : '7px'} ${item.dot}${vrStyle ? 'cc' : '66'}`,
+                  flexShrink: 0,
+                }}
+              />
+            ) : null}
             <span style={{ lineHeight: 1, color: 'inherit', minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <BilLabel ko={item.label.ko} en={item.label.en} variant="micro" showEn={!compact} />
             </span>
