@@ -563,7 +563,7 @@ export default function AIInfrastructureRadar() {
             fontFamily: V.mono, fontSize: 10, color: V.teal, letterSpacing: '0.08em',
             flexShrink: 0,
           }}>
-            D-6
+            D-8
           </span>
         </div>
 
@@ -630,8 +630,8 @@ export default function AIInfrastructureRadar() {
                   </div>
             )}
 
-            {/* RRG — has built-in lookback selector */}
-            {tab === 'rrg' && <BucketRRGPanel />}
+            {/* RRG — has built-in lookback selector; benchmark-aware since D-8 */}
+            {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
           </>
         )}
 

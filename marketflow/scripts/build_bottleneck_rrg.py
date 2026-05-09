@@ -13,7 +13,9 @@ sys.path.insert(0, str(ROOT / 'marketflow/backend/scripts'))
 from rrg_candidate_d import calc_rrg_candidate_d, quadrant  # type: ignore
 
 DB_PATH  = ROOT / 'marketflow/data/marketflow.db'
-OUT_PATH = ROOT / 'marketflow/backend/output/cache/bottleneck_rrg_latest.json'
+OUT_PATH     = ROOT / 'marketflow/backend/output/cache/bottleneck_rrg_latest.json'
+OUT_PATH_QQQ = ROOT / 'marketflow/backend/output/cache/bottleneck_rrg_qqq_latest.json'
+OUT_PATH_SPY = ROOT / 'marketflow/backend/output/cache/bottleneck_rrg_spy_latest.json'
 
 LOOKBACK_WEEKS = 24
 MIN_ROWS       = 252       # same threshold as build_rrg_paths.py
@@ -152,6 +154,47 @@ def calc_bucket_series(bucket: dict, series_map: dict[str, pd.Series],
                               f'Calculation error: {e}')
 
 
+def build_payload(series_map: dict, selected_bm: str) -> dict:
+    """Build RRG payload for a single selected benchmark applied uniformly to all buckets."""
+    bm_series = series_map.get(selected_bm, pd.Series(dtype=float))
+    series_out = []
+    for bucket in BUCKETS:
+        # Override per-bucket default with the selected benchmark
+        bucket_override = dict(bucket, bm=selected_bm)
+        result = calc_bucket_series(bucket_override, series_map, bm_series)
+        series_out.append(result)
+
+    live    = [s for s in series_out if s['source'] == 'LOCAL_DB']
+    pending = [s for s in series_out if s['source'] == 'PENDING']
+    by_q: dict[str, list[str]] = {'Leading':[], 'Weakening':[], 'Lagging':[], 'Improving':[], 'Pending':[]}
+    for s in series_out:
+        by_q.setdefault(s['quadrant'], []).append(s['id'])
+
+    print(f'  [{selected_bm}] {len(live)} live, {len(pending)} pending')
+    for q, ids in by_q.items():
+        if ids: print(f'    {q}: {", ".join(ids)}')
+
+    return {
+        'generatedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'benchmark':   selected_bm,
+        'lookback':    '24W',
+        'series':      series_out,
+        'dataStatus': {
+            'hasBenchmarkPath': any(s['source'] == 'LOCAL_DB' for s in series_out),
+            'hasBucketPath':    len(live) > 0,
+            'pendingReason':    f'{len(pending)}/{len(BUCKETS)} buckets pending' if pending else None,
+        },
+        'note': f'AI Bottleneck Radar bucket-level RRG vs {selected_bm}. Candidate-D formula. Equal-weight basket index.',
+    }
+
+
+def write_payload(payload: dict, path: 'Path') -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    print(f'  → {path}')
+
+
 def main():
     if not DB_PATH.exists():
         print(f'ERROR: DB not found at {DB_PATH}')
@@ -177,42 +220,21 @@ def main():
 
     conn.close()
 
-    # Build RRG series for each bucket
-    series_out = []
-    for bucket in BUCKETS:
-        bm_series = series_map.get(bucket['bm'], pd.Series(dtype=float))
-        result = calc_bucket_series(bucket, series_map, bm_series)
-        series_out.append(result)
+    print('\nBuilding RRG payloads for SOXX / QQQ / SPY...')
 
-    # Summary stats
-    live    = [s for s in series_out if s['source'] == 'LOCAL_DB']
-    pending = [s for s in series_out if s['source'] == 'PENDING']
-    by_q: dict[str, list[str]] = {'Leading':[], 'Weakening':[], 'Lagging':[], 'Improving':[], 'Pending':[]}
-    for s in series_out:
-        by_q.setdefault(s['quadrant'], []).append(s['id'])
+    # SOXX — also write legacy path for backward compat
+    soxx_payload = build_payload(series_map, 'SOXX')
+    write_payload(soxx_payload, OUT_PATH)       # legacy: bottleneck_rrg_latest.json
 
-    print(f'\nRRG summary: {len(live)} live, {len(pending)} pending')
-    for q, ids in by_q.items():
-        if ids: print(f'  {q}: {", ".join(ids)}')
+    # QQQ
+    qqq_payload = build_payload(series_map, 'QQQ')
+    write_payload(qqq_payload, OUT_PATH_QQQ)
 
-    payload = {
-        'generatedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'),
-        'benchmark':   'SOXX',   # default display benchmark
-        'lookback':    '24W',
-        'series':      series_out,
-        'dataStatus': {
-            'hasBenchmarkPath': any(s['source'] == 'LOCAL_DB' for s in series_out),
-            'hasBucketPath':    len(live) > 0,
-            'pendingReason':    f'{len(pending)}/{len(BUCKETS)} buckets pending' if pending else None,
-        },
-        'note': 'AI Bottleneck Radar bucket-level RRG. Candidate-D formula. Equal-weight basket index.',
-    }
+    # SPY
+    spy_payload = build_payload(series_map, 'SPY')
+    write_payload(spy_payload, OUT_PATH_SPY)
 
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-
-    print(f'\nOK: bottleneck RRG written → {OUT_PATH}')
+    print('\nOK: all 3 benchmark RRG caches written.')
 
 
 if __name__ == '__main__':

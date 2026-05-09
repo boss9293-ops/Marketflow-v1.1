@@ -211,7 +211,7 @@ function groupByQuadrant(series: RrgSeries[]): Map<RrgQuadrant, RrgSeries[]> {
 }
 
 // ── Main panel ────────────────────────────────────────────────────────────────
-export function BucketRRGPanel() {
+export function BucketRRGPanel({ benchmark = 'SOXX' }: { benchmark?: 'SOXX' | 'QQQ' | 'SPY' }) {
   const [payload,  setPayload]  = useState<RrgPathPayload>(PENDING_RRG_PAYLOAD)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
@@ -219,12 +219,13 @@ export function BucketRRGPanel() {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/ai-infra/bucket-rrg', { cache: 'no-store' })
+    setLoading(true)
+    fetch(`/api/ai-infra/bucket-rrg?benchmark=${benchmark}`, { cache: 'no-store' })
       .then(r => r.json())
       .then((d: RrgPathPayload) => { if (!cancelled) { setPayload(d); setLoading(false) } })
       .catch((e: unknown) => { if (!cancelled) { setError(String(e)); setLoading(false) } })
     return () => { cancelled = true }
-  }, [])
+  }, [benchmark])
 
   const grouped   = useMemo(() => groupByQuadrant(payload.series), [payload.series])
   const liveSeries = payload.series.filter(s => s.source !== 'PENDING' && s.points.length > 0)
@@ -259,6 +260,9 @@ export function BucketRRGPanel() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', marginBottom: 10 }}>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: V.teal, fontFamily: V.ui }}>
           BOTTLENECK RRG
+        </div>
+        <div style={{ fontSize: 10, color: V.teal, fontFamily: V.mono, opacity: 0.75 }}>
+          vs {benchmark}
         </div>
         <div style={{ fontSize: 10, color: V.text3, fontFamily: V.mono }}>
           {payload.generatedAt ? `as of ${payload.generatedAt.slice(0, 10)}` : ''}
