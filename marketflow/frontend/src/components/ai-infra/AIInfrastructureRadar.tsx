@@ -371,7 +371,7 @@ function RSTable({
   benchmark: Benchmark
   grouped: boolean
 }) {
-  const sortedFlat = [...buckets].sort((a, b) => (a.rank.composite ?? 99) - (b.rank.composite ?? 99))
+  const sortedFlat = [...buckets].sort((a, b) => (rsOf(b) ?? -Infinity) - (rsOf(a) ?? -Infinity))
 
   const bmKey = benchmark.toLowerCase() as 'soxx' | 'qqq' | 'spy'
   const rsOf  = (b: AIInfraBucketMomentum) => b.relative_strength[`vs_${bmKey}`].three_month
@@ -458,7 +458,7 @@ function RSTable({
                 <>
                   <StageHeader key={`hd-${stage}`} stage={stage} />
                   {[...rows]
-                    .sort((a, b) => (a.rank.composite ?? 99) - (b.rank.composite ?? 99))
+                    .sort((a, b) => (rsOf(b) ?? -Infinity) - (rsOf(a) ?? -Infinity))
                     .map(renderRow)
                   }
                 </>
@@ -537,7 +537,7 @@ export default function AIInfrastructureRadar() {
 
   // Compact data notes (filter long disclaimers)
   const dataNotes = (data?.data_notes ?? [])
-    .filter(n => !n.startsWith('State labels are rule-based'))
+    .filter(n => !n.startsWith('State labels are recalculated'))
     .slice(0, 2)
 
   return (
