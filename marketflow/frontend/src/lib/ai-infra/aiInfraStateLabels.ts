@@ -87,6 +87,19 @@ const WEAK_RS_3M     = -5   // pp
 const STRETCHED_RETURN_3M = 35  // %
 const STRETCHED_RETURN_6M = 60  // %
 
+// ── Benchmark-aware RS selector ───────────────────────────────────────────────
+
+export type AIInfraBenchmarkKey = 'SOXX' | 'QQQ' | 'SPY'
+
+export function getRSForBenchmark(
+  bucket: AIInfraBucketMomentum,
+  benchmark: AIInfraBenchmarkKey,
+) {
+  if (benchmark === 'QQQ') return bucket.relative_strength.vs_qqq
+  if (benchmark === 'SPY') return bucket.relative_strength.vs_spy
+  return bucket.relative_strength.vs_soxx
+}
+
 // ── State Score (0–100, internal sort key only) ───────────────────────────────
 
 function calcStateScore(
@@ -143,12 +156,14 @@ function calcConfidence(
 export function computeBucketState(
   bucket:    AIInfraBucketMomentum,
   rrgSeries: RrgSeries | null | undefined,
+  benchmark: AIInfraBenchmarkKey = 'SOXX',
 ): AIInfraBucketState {
-  const { bucket_id, display_name, stage, benchmark, returns, relative_strength, coverage } = bucket
+  const { bucket_id, display_name, stage, returns, relative_strength, coverage } = bucket
   const { coverage_ratio, data_quality } = coverage
 
-  const rs3m  = relative_strength.vs_soxx.three_month
-  const rs1m  = relative_strength.vs_soxx.one_month
+  const rsData = getRSForBenchmark(bucket, benchmark)
+  const rs3m  = rsData.three_month
+  const rs1m  = rsData.one_month
   const ret3m = returns.three_month
   const ret6m = returns.six_month
   const ret1m = returns.one_month
@@ -169,7 +184,7 @@ export function computeBucketState(
   const src = {
     has_rs:         hasRS,
     has_rrg:        hasRRG,
-    benchmark:      benchmark,
+    benchmark,
     coverage_ratio,
     data_quality,
   }
@@ -221,7 +236,7 @@ export function computeBucketState(
     const drivers: string[] = []
     if (stretched3m && ret3m != null) drivers.push(`3M return +${ret3m.toFixed(1)}% ≥ ${STRETCHED_RETURN_3M}% threshold`)
     if (stretched6m && ret6m != null) drivers.push(`6M return +${ret6m.toFixed(1)}% ≥ ${STRETCHED_RETURN_6M}% threshold`)
-    if (rs3m != null && rs3m >= STRONG_RS_3M) drivers.push(`RS vs SOXX 3M +${rs3m.toFixed(1)}pp`)
+    if (rs3m != null && rs3m >= STRONG_RS_3M) drivers.push(`RS vs ${benchmark} 3M +${rs3m.toFixed(1)}pp`)
     return {
       bucket_id, display_name, stage,
       state_label:   'CROWDED',
@@ -266,9 +281,9 @@ export function computeBucketState(
       state_label:   'LEADING',
       state_score:   calcStateScore(rs3m, ret3m, rrgQ, coverage_ratio, false),
       confidence:    coverage_ratio >= 0.8 && hasRRG ? 'HIGH' : 'MEDIUM',
-      state_reason:  `${display_name} is classified as Leading because its 3M relative strength vs SOXX is positive (+${rs3m.toFixed(1)}pp) and its RRG position is in the Leading quadrant.`,
+      state_reason:  `${display_name} is classified as Leading because its 3M relative strength vs ${benchmark} is positive (+${rs3m.toFixed(1)}pp) and its RRG position is in the Leading quadrant.`,
       state_drivers: [
-        `RS vs SOXX 3M +${rs3m.toFixed(1)}pp`,
+        `RS vs ${benchmark} 3M +${rs3m.toFixed(1)}pp`,
         'RRG quadrant = Leading',
         `3M return +${ret3m.toFixed(1)}%`,
       ],
@@ -289,7 +304,7 @@ export function computeBucketState(
       state_reason:  `${display_name} is classified as Emerging because RRG position is improving and relative strength is turning positive.`,
       state_drivers: [
         'RRG quadrant = Improving',
-        rs3m != null ? `RS vs SOXX 3M ${rs3m >= 0 ? '+' : ''}${rs3m.toFixed(1)}pp` : 'RS 1M positive',
+        rs3m != null ? `RS vs ${benchmark} 3M ${rs3m >= 0 ? '+' : ''}${rs3m.toFixed(1)}pp` : 'RS 1M positive',
         positiveReturn ? 'return recovering' : '',
       ].filter(Boolean),
       risk_flags,
@@ -307,7 +322,7 @@ export function computeBucketState(
       confidence:    coverage_ratio >= 0.75 && hasRS ? 'MEDIUM' : 'LOW',
       state_reason:  `${display_name} is classified as Confirming because relative strength is positive and 3M return is positive, consistent with participation in the current rotation.`,
       state_drivers: [
-        `RS vs SOXX 3M +${rs3m.toFixed(1)}pp`,
+        `RS vs ${benchmark} 3M +${rs3m.toFixed(1)}pp`,
         `3M return +${ret3m.toFixed(1)}%`,
         rrgQ ? `RRG = ${rrgQ}` : 'RRG unavailable',
       ],
@@ -326,10 +341,10 @@ export function computeBucketState(
     state_score:   calcStateScore(rs3m, ret3m, rrgQ, coverage_ratio, false),
     confidence:    hasRS ? 'MEDIUM' : 'LOW',
     state_reason:  explicitLagging
-      ? `${display_name} is classified as Lagging because relative strength vs SOXX is weak${rrgQ === 'Lagging' ? ' and RRG position is in the Lagging quadrant' : ''}.`
+      ? `${display_name} is classified as Lagging because relative strength vs ${benchmark} is weak${rrgQ === 'Lagging' ? ' and RRG position is in the Lagging quadrant' : ''}.`
       : `${display_name} does not meet thresholds for any positive state classification.`,
     state_drivers: [
-      rs3m != null ? `RS vs SOXX 3M ${rs3m.toFixed(1)}pp` : 'RS unavailable',
+      rs3m != null ? `RS vs ${benchmark} 3M ${rs3m.toFixed(1)}pp` : 'RS unavailable',
       rrgQ === 'Lagging' ? 'RRG quadrant = Lagging' : '',
     ].filter(Boolean),
     risk_flags,

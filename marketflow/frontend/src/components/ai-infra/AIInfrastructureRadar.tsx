@@ -26,13 +26,14 @@ type ActiveTab  = 'state' | 'rs' | 'rrg'
 type Benchmark  = 'SOXX' | 'QQQ' | 'SPY'
 
 interface RadarApiResponse {
-  buckets?:       AIInfraBucketMomentum[]
-  bucket_states?: AIInfraBucketState[]
-  benchmarks?:    AIInfraBenchmarkReturns
-  asOf?:          string | null
-  generated_at?:  string
-  data_notes?:    string[]
-  status?:        string
+  buckets?:            AIInfraBucketMomentum[]
+  bucket_states?:      AIInfraBucketState[]
+  benchmarks?:         AIInfraBenchmarkReturns
+  asOf?:               string | null
+  generated_at?:       string
+  data_notes?:         string[]
+  status?:             string
+  selected_benchmark?: string  // D-7: reflects server-side benchmark used
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -107,11 +108,13 @@ function StageHeader({ stage }: { stage: AIInfraStage }) {
 function ControlBar({
   benchmark, setBenchmark,
   grouped, setGrouped,
+  serverBenchmark,
 }: {
   benchmark: Benchmark
   setBenchmark: (b: Benchmark) => void
   grouped: boolean
   setGrouped: (g: boolean) => void
+  serverBenchmark?: string
 }) {
   const btnBase: React.CSSProperties = {
     padding: '3px 10px', borderRadius: 3, border: '1px solid',
@@ -164,15 +167,15 @@ function ControlBar({
         </button>
       </div>
 
-      {/* State benchmark note */}
-      {benchmark !== 'SOXX' && (
+      {/* Show warning only if server-reported benchmark doesn't match requested */}
+      {serverBenchmark != null && serverBenchmark !== benchmark && (
         <span style={{
           marginLeft: 'auto',
           fontFamily: V.ui, fontSize: 10, color: V.gold,
           padding: '2px 7px', border: `1px solid ${V.gold}44`,
           borderRadius: 3, letterSpacing: '0.04em',
         }}>
-          State labels use SOXX benchmark only
+          State labels using {serverBenchmark} (fallback)
         </span>
       )}
     </div>
@@ -519,12 +522,14 @@ export default function AIInfrastructureRadar() {
   const [grouped, setGrouped]   = useState(false)
 
   useEffect(() => {
-    fetch('/api/ai-infra/theme-momentum')
+    setLoading(true)
+    setError(null)
+    fetch(`/api/ai-infra/theme-momentum?benchmark=${benchmark}`)
       .then(r => r.json())
       .then((d: RadarApiResponse) => setData(d))
       .catch(() => setError('Failed to load radar data'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [benchmark])
 
   const states  = data?.bucket_states ?? []
   const buckets = data?.buckets ?? []
@@ -580,6 +585,7 @@ export default function AIInfrastructureRadar() {
             <ControlBar
               benchmark={benchmark} setBenchmark={setBenchmark}
               grouped={grouped} setGrouped={setGrouped}
+              serverBenchmark={data?.selected_benchmark}
             />
 
             {/* Summary Strip */}

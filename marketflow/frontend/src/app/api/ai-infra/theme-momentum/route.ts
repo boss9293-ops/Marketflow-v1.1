@@ -211,7 +211,17 @@ function buildUnavailablePayload(warning: string) {
   }
 }
 
-export async function GET() {
+type AIInfraBenchmarkParam = 'SOXX' | 'QQQ' | 'SPY'
+
+function parseBenchmark(param: string | null): AIInfraBenchmarkParam {
+  if (param === 'QQQ' || param === 'SPY' || param === 'SOXX') return param
+  return 'SOXX'
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const benchmark = parseBenchmark(searchParams.get('benchmark'))
+
   const dbPath = findLocalDbPath()
 
   if (!dbPath) {
@@ -308,15 +318,16 @@ export async function GET() {
         (rrgCache?.series ?? []).map(s => [s.id, s])
       )
       const bucket_states = buckets.map(b =>
-        computeBucketState(b, rrgSeriesMap.get(b.bucket_id) ?? null)
+        computeBucketState(b, rrgSeriesMap.get(b.bucket_id) ?? null, benchmark)
       )
-      dataNotes.push('State labels are rule-based and price/RRG-driven. They do not include earnings confirmation or investment recommendations.')
+      dataNotes.push(`State labels are recalculated using the ${benchmark} benchmark. Rule-based and price/RRG-driven. Earnings confirmation not included.`)
       // ──────────────────────────────────────────────────────────────────────
 
       return NextResponse.json({
         source: 'local_price_db:ohlcv_daily',
         asOf,
-        benchmark: 'SOXX',
+        benchmark: 'SOXX',           // legacy field — default benchmark (unchanged for backward compat)
+        selected_benchmark: benchmark, // D-7: reflects the requested benchmark
         status: aggregateStatus(allPeriodRows),
         themes,
         // D-2 extensions (additive — backward compatible)
