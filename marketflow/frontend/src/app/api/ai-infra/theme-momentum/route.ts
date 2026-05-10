@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { backendApiUrl } from '@/lib/backendApi'
 import { computeBucketState } from '@/lib/ai-infra/aiInfraStateLabels'
+import { AI_INFRA_COMPANY_PURITY } from '@/lib/ai-infra/aiInfraCompanyPurity'
 import { AI_INFRA_BUCKETS } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketId, AIInfraStage, AIInfraDataQuality } from '@/lib/semiconductor/aiInfraBucketMap'
 import {
@@ -497,6 +498,7 @@ function buildResponseFromRows(params: {
     bucket_states,
     tower_buckets,
     tower_states,
+    company_purity: AI_INFRA_COMPANY_PURITY,
     generated_at: new Date().toISOString(),
     data_notes: dataNotes,
     warnings: missingTickers.length > 0

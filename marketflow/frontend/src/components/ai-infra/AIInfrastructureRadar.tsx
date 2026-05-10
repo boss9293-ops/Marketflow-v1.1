@@ -10,6 +10,8 @@ import type { AIInfraBucketState, AIInfraStateLabel } from '@/lib/ai-infra/aiInf
 import { STATE_DISPLAY_LABELS, STATE_COLORS } from '@/lib/ai-infra/aiInfraStateLabels'
 import { THEME_PURITY_LABEL, REVENUE_VIS_LABEL } from '@/lib/ai-infra/aiInfraThemePurity'
 import type { BucketThemePurity } from '@/lib/ai-infra/aiInfraThemePurity'
+import { buildBucketCompanyPuritySummary } from '@/lib/ai-infra/aiInfraCompanyPurity'
+import type { AIInfraCompanyPurityMetadata } from '@/lib/ai-infra/aiInfraCompanyPurity'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
 import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
 import { adaptTowerLayers, AI_INVESTMENT_TOWER_LAYERS } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
@@ -48,7 +50,8 @@ interface RadarApiResponse {
   generated_at?:       string
   data_notes?:         string[]
   status?:             string
-  selected_benchmark?: string  // D-7: reflects server-side benchmark used
+  selected_benchmark?: string
+  company_purity?:     AIInfraCompanyPurityMetadata[]
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -325,6 +328,63 @@ function SummaryStrip({
         </span>
         <span style={{ fontFamily: V.mono, fontSize: 11, color: V.teal }}>{benchmark}</span>
         {asOf && <span style={{ fontFamily: V.mono, fontSize: 11, color: V.text3 }}>{asOf}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ── Company Purity Summary Grid ───────────────────────────────────────────────
+
+function CompanyPuritySummaryGrid({ states }: { states: AIInfraBucketState[] }) {
+  if (states.length === 0) return null
+  const summaries = states.map(s => buildBucketCompanyPuritySummary(s.bucket_id as Parameters<typeof buildBucketCompanyPuritySummary>[0]))
+  return (
+    <div style={{ marginTop: 12, marginBottom: 12 }}>
+      <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.10em', marginBottom: 6 }}>
+        COMPANY PURITY SUMMARY
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {summaries.map(sum => {
+          const state = states.find(s => s.bucket_id === sum.bucket_id)
+          return (
+            <div key={sum.bucket_id} style={{
+              padding: '5px 8px', borderRadius: 4,
+              background: V.bg2, border: `1px solid ${V.border}`,
+              minWidth: 140,
+            }}>
+              <div style={{ fontFamily: V.mono, fontSize: 9, color: V.teal, letterSpacing: '0.08em', marginBottom: 3 }}>
+                {state?.display_name ?? sum.bucket_id}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {sum.average_ai_relevance_score != null && (
+                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.text2 }}>
+                    AI {sum.average_ai_relevance_score}
+                  </span>
+                )}
+                {sum.average_pure_play_score != null && (
+                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.text3 }}>
+                    Purity {sum.average_pure_play_score}
+                  </span>
+                )}
+                {sum.high_exposure_count > 0 && (
+                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.mint }}>
+                    Hi×{sum.high_exposure_count}
+                  </span>
+                )}
+                {sum.story_risk_count > 0 && (
+                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.amber }}>
+                    Story×{sum.story_risk_count}
+                  </span>
+                )}
+                {sum.indirect_exposure_count > 0 && (
+                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.text3 }}>
+                    Ind×{sum.indirect_exposure_count}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -767,7 +827,10 @@ export default function AIInfrastructureRadar() {
               <TabBar active={tab} onChange={setTab} />
               {tab === 'state' && (
                 states.length > 0
-                  ? <StateLabelsTable states={states} grouped={grouped} />
+                  ? <>
+                      <StateLabelsTable states={states} grouped={grouped} />
+                      <CompanyPuritySummaryGrid states={states} />
+                    </>
                   : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
                       State label data not available.
                     </div>
