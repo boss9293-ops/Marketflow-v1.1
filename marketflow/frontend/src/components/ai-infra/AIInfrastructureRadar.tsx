@@ -8,6 +8,8 @@ import { AI_INFRA_STAGE_LABEL, AI_INFRA_STAGE_ORDER } from '@/lib/semiconductor/
 import type { AIInfraStage } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketState, AIInfraStateLabel } from '@/lib/ai-infra/aiInfraStateLabels'
 import { STATE_DISPLAY_LABELS, STATE_COLORS } from '@/lib/ai-infra/aiInfraStateLabels'
+import { THEME_PURITY_LABEL, REVENUE_VIS_LABEL } from '@/lib/ai-infra/aiInfraThemePurity'
+import type { BucketThemePurity } from '@/lib/ai-infra/aiInfraThemePurity'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
 import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
 import { adaptTowerLayers, AI_INVESTMENT_TOWER_LAYERS } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
@@ -98,6 +100,28 @@ function StateBadge({ label }: { label: AIInfraStateLabel }) {
 function ConfidenceDot({ c }: { c: string }) {
   const col = c === 'HIGH' ? V.teal : c === 'MEDIUM' ? V.gold : V.text3
   return <span style={{ fontFamily: V.mono, fontSize: 12, color: col }}>{c}</span>
+}
+
+function PurityBadges({ purity }: { purity: BucketThemePurity }) {
+  const purityColor = purity.theme_purity === 'PURE_PLAY' ? V.teal
+    : purity.theme_purity === 'STORY_HEAVY' ? V.amber : V.text2
+  const badgeStyle = (col: string): React.CSSProperties => ({
+    fontFamily: V.mono, fontSize: 9, color: col,
+    background: `${col}18`, border: `1px solid ${col}40`,
+    borderRadius: 3, padding: '0 5px', letterSpacing: '0.04em',
+    display: 'inline-block',
+  })
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+      <span style={badgeStyle(purityColor)}>{THEME_PURITY_LABEL[purity.theme_purity]}</span>
+      {purity.revenue_visibility === 'NOT_YET_VISIBLE' && (
+        <span style={badgeStyle(V.amber)}>{REVENUE_VIS_LABEL[purity.revenue_visibility]}</span>
+      )}
+      {purity.commercialization_risk && (
+        <span style={badgeStyle(V.red)}>상용화 불확실</span>
+      )}
+    </div>
+  )
 }
 
 function StageHeader({ stage }: { stage: AIInfraStage }) {
@@ -342,6 +366,10 @@ function StateLabelsTable({
         <td style={{ padding: '7px 8px', textAlign: 'center' }}>
           <ConfidenceDot c={s.confidence} />
         </td>
+        {/* Purity badges */}
+        <td style={{ padding: '7px 8px' }}>
+          {s.theme_purity && <PurityBadges purity={s.theme_purity} />}
+        </td>
         <td style={{ padding: '7px 8px', fontFamily: V.ui, fontSize: 12, color: V.text2, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {s.state_reason}
         </td>
@@ -353,7 +381,7 @@ function StateLabelsTable({
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${V.border}` }}>
-            {['Bucket', 'State', 'Score', 'Confidence', 'Reason'].map(h => (
+            {['Bucket', 'State', 'Score', 'Confidence', 'Purity', 'Reason'].map(h => (
               <th key={h} style={colStyle}>{h.toUpperCase()}</th>
             ))}
           </tr>

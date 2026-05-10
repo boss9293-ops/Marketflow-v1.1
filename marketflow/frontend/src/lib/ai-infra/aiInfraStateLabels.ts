@@ -1,8 +1,10 @@
-// AI Bottleneck Radar 버킷 상태 레이블 규칙 엔진 — Phase D-4
+// AI Bottleneck Radar 버킷 상태 레이블 규칙 엔진 — Phase E-1 (theme purity 연동)
 
 import type { AIInfraBucketId, AIInfraStage, AIInfraDataQuality } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketMomentum } from '@/lib/semiconductor/aiInfraBucketRS'
 import type { RrgSeries } from '@/lib/semiconductor/rrgPathData'
+import { getThemePurity } from '@/lib/ai-infra/aiInfraThemePurity'
+import type { BucketThemePurity } from '@/lib/ai-infra/aiInfraThemePurity'
 
 // ── State Label Types ─────────────────────────────────────────────────────────
 
@@ -41,6 +43,8 @@ export interface AIInfraBucketState {
   state_reason:  string
   state_drivers: string[]
   risk_flags:    AIInfraRiskFlag[]
+
+  theme_purity?: BucketThemePurity
 
   source: {
     has_rs:         boolean
@@ -181,6 +185,12 @@ export function computeBucketState(
 
   const risk_flags: AIInfraRiskFlag[] = []
 
+  // ── 0. Theme Purity — inject metadata + commercialization risk flag ────────
+  const purity = getThemePurity(bucket_id)
+  if (purity?.commercialization_risk) {
+    risk_flags.push('COMMERCIALIZATION_UNCERTAINTY')
+  }
+
   const src = {
     has_rs:         hasRS,
     has_rrg:        hasRRG,
@@ -190,6 +200,26 @@ export function computeBucketState(
   }
 
   const confidence = calcConfidence(hasRS, hasRRG, coverage_ratio, data_quality)
+
+  // ── 0b. PRE_COMMERCIAL + STORY_HEAVY → force STORY_ONLY ───────────────────
+  // Buckets without commercial revenue cannot rely on RS/RRG as earnings signal
+  if (purity?.theme_purity === 'STORY_HEAVY' && purity?.commercialization_stage === 'PRE_COMMERCIAL') {
+    return {
+      bucket_id, display_name, stage,
+      state_label:   'STORY_ONLY',
+      state_score:   null,
+      confidence:    'LOW',
+      state_reason:  `${display_name}은 양산 전(Pre-Commercial) 단계로 AI 수요 서사는 존재하나 매출 연결이 확인되지 않습니다. 가격 흐름을 투자 신호로 사용하기 어렵습니다.`,
+      state_drivers: [
+        'theme_purity = STORY_HEAVY',
+        'commercialization_stage = PRE_COMMERCIAL',
+        'revenue_visibility = NOT_YET_VISIBLE',
+      ],
+      risk_flags,
+      theme_purity: purity,
+      source: src,
+    }
+  }
 
   // ── 1. DATA_INSUFFICIENT ───────────────────────────────────────────────────
   if (coverage_ratio < LOW_COVERAGE_THRESHOLD || !hasRS) {
@@ -203,6 +233,7 @@ export function computeBucketState(
       state_reason:  `${display_name} has insufficient data for state classification (coverage: ${Math.round(coverage_ratio * 100)}%).`,
       state_drivers: [`coverage_ratio ${Math.round(coverage_ratio * 100)}% < 50% threshold`],
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
@@ -224,6 +255,7 @@ export function computeBucketState(
         `RS inconclusive (${rs3m != null ? rs3m.toFixed(1) + 'pp' : 'null'})`,
       ],
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
@@ -245,6 +277,7 @@ export function computeBucketState(
       state_reason:  `${display_name} is classified as Crowded because ${stretched3m && ret3m != null ? `3M performance is stretched (+${ret3m.toFixed(1)}%)` : `6M performance is extended (+${ret6m?.toFixed(1)}%)`} while relative strength remains strong.`,
       state_drivers: drivers,
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
@@ -266,6 +299,7 @@ export function computeBucketState(
         ret3m != null && ret3m > 0 ? `3M return +${ret3m.toFixed(1)}% (prior strength)` : '',
       ].filter(Boolean),
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
@@ -288,6 +322,7 @@ export function computeBucketState(
         `3M return +${ret3m.toFixed(1)}%`,
       ],
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
@@ -308,6 +343,7 @@ export function computeBucketState(
         positiveReturn ? 'return recovering' : '',
       ].filter(Boolean),
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
@@ -327,6 +363,7 @@ export function computeBucketState(
         rrgQ ? `RRG = ${rrgQ}` : 'RRG unavailable',
       ],
       risk_flags,
+      theme_purity: purity,
       source: src,
     }
   }
