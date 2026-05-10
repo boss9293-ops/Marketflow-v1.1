@@ -10,6 +10,17 @@ export interface AIInfraPeriodReturns {
   six_month:   number | null
 }
 
+// ── Breadth types ─────────────────────────────────────────────────────────────
+
+export type BreadthLabel = 'BROAD' | 'IMPROVING' | 'NARROW' | 'WEAK' | 'UNKNOWN'
+
+export interface AIInfraBucketBreadth {
+  valid_count:       number
+  above_ma50_count:  number
+  breadth_ma50_pct:  number
+  label:             BreadthLabel
+}
+
 // ── Core output type ──────────────────────────────────────────────────────────
 
 export interface AIInfraBucketMomentum {
@@ -18,7 +29,8 @@ export interface AIInfraBucketMomentum {
   stage:        AIInfraStage
   benchmark:    'SOXX' | 'QQQ' | 'SPY'
 
-  returns: AIInfraPeriodReturns
+  returns:  AIInfraPeriodReturns
+  one_week?: number | null           // 5 trading-day basket return; computed in route
 
   relative_strength: {
     vs_soxx: AIInfraPeriodReturns
@@ -39,6 +51,8 @@ export interface AIInfraBucketMomentum {
     coverage_ratio:      number
     data_quality:        AIInfraDataQuality
   }
+
+  breadth?: AIInfraBucketBreadth     // % above MA50; computed in route
 }
 
 // ── Benchmark snapshot ────────────────────────────────────────────────────────
@@ -53,6 +67,7 @@ export interface AIInfraBenchmarkReturns {
 
 export interface AIInfraMultiPeriodReturn {
   ticker:      string
+  five_day?:   number | null         // 5 trading-day return
   one_month:   number | null
   three_month: number | null
   six_month:   number | null
@@ -100,6 +115,8 @@ export function computeBucketRS(params: {
     six_month:   avgOrNull(priced.map(s => get(s, 'six_month'))),
   }
 
+  const one_week = avgOrNull(priced.map(s => tickerMap.get(s.toUpperCase())?.five_day ?? null))
+
   const rs_vs_soxx: AIInfraPeriodReturns = {
     one_month:   diffOrNull(basketReturns.one_month,   benchmarks.SOXX.one_month),
     three_month: diffOrNull(basketReturns.three_month, benchmarks.SOXX.three_month),
@@ -131,6 +148,7 @@ export function computeBucketRS(params: {
     stage,
     benchmark: default_benchmark,
     returns: basketReturns,
+    one_week,
     relative_strength: { vs_soxx: rs_vs_soxx, vs_qqq: rs_vs_qqq, vs_spy: rs_vs_spy },
     rank: { one_month: null, three_month: null, six_month: null, composite: null },
     coverage: {

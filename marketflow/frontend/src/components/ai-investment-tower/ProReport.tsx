@@ -161,10 +161,12 @@ function ProTableRow({
   report,
   expanded,
   onToggle,
+  onSelect,
 }: {
   report:   ProLayerReport
   expanded: boolean
   onToggle: () => void
+  onSelect: () => void
 }) {
   const rrgColor   = RRG_COLORS[report.rrgState]
   const trendColor = TREND_COLORS[report.trendLabel]
@@ -186,7 +188,7 @@ function ProTableRow({
   return (
     <>
       <tr
-        onClick={onToggle}
+        onClick={() => { onToggle(); onSelect() }}
         style={{
           borderBottom: expanded ? 'none' : `1px solid ${V.border}`,
           cursor:       'pointer',
@@ -251,7 +253,13 @@ function ProTableRow({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ProReport({ reports }: { reports: ProLayerReport[] }) {
+export function ProReport({
+  reports,
+  onSelectLayer,
+}: {
+  reports: ProLayerReport[]
+  onSelectLayer?: (layerId: string) => void
+}) {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const toggle = (id: string) => setExpanded(prev => prev === id ? null : id)
@@ -288,6 +296,7 @@ export function ProReport({ reports }: { reports: ProLayerReport[] }) {
               report={r}
               expanded={expanded === r.layerId}
               onToggle={() => toggle(r.layerId)}
+              onSelect={() => onSelectLayer?.(r.layerId)}
             />
           ))}
         </tbody>

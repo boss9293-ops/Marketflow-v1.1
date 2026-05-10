@@ -10,11 +10,18 @@ import type { AIInfraBucketState, AIInfraStateLabel } from '@/lib/ai-infra/aiInf
 import { STATE_DISPLAY_LABELS, STATE_COLORS } from '@/lib/ai-infra/aiInfraStateLabels'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
 import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
-import { adaptTowerLayers } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
+import { adaptTowerLayers, AI_INVESTMENT_TOWER_LAYERS } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
 import { generateBeginnerReport, generateBeginnerOverall } from '@/lib/ai-investment-tower/beginnerReportGenerator'
 import { generateProReport } from '@/lib/ai-investment-tower/proReportGenerator'
 import { BeginnerReport } from '@/components/ai-investment-tower/BeginnerReport'
 import { ProReport } from '@/components/ai-investment-tower/ProReport'
+import { AITowerSummaryCards } from '@/components/ai-investment-tower/AITowerSummaryCards'
+import { buildTowerSummary } from '@/lib/ai-investment-tower/towerSummary'
+import { SelectedLayerDetailPanel } from '@/components/ai-investment-tower/SelectedLayerDetailPanel'
+import type { SelectedLayerDetail } from '@/components/ai-investment-tower/SelectedLayerDetailPanel'
+import { SelectedLayerTrendChart } from '@/components/ai-investment-tower/SelectedLayerTrendChart'
+import { AIInvestmentLayerRRGBoard } from '@/components/ai-investment-tower/AIInvestmentLayerRRGBoard'
+import type { LayerRRGBoardItem } from '@/components/ai-investment-tower/AIInvestmentLayerRRGBoard'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 
@@ -521,6 +528,7 @@ export default function AIInfrastructureRadar() {
   const [benchmark, setBenchmark] = useState<Benchmark>('SOXX')
   const [grouped, setGrouped]   = useState(false)
   const [reportMode, setReportMode] = useState<'beginner' | 'pro'>('beginner')
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -642,17 +650,88 @@ export default function AIInfrastructureRadar() {
 
             {/* ── 리포트 섹션 (10-레이어 기준, 모드에 따라 다른 뷰) ── */}
             {(() => {
-              const towerInputs = (states.length > 0 && buckets.length > 0)
+              const towerInputs    = (states.length > 0 && buckets.length > 0)
                 ? adaptTowerLayers(buckets, states, towerBuckets, towerStates) : []
-              if (reportMode === 'beginner') {
-                const beginnerReports  = generateBeginnerReport(towerInputs)
-                const overallNarrative = generateBeginnerOverall(beginnerReports)
-                return <BeginnerReport reports={beginnerReports} overallNarrative={overallNarrative} />
-              }
-              const proReports = generateProReport(towerInputs)
-              return proReports.length > 0
-                ? <ProReport reports={proReports} />
-                : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>No layer data available.</div>
+              const beginnerReports = generateBeginnerReport(towerInputs)
+              const proReports      = generateProReport(towerInputs)
+              const towerSummary    = buildTowerSummary(beginnerReports)
+
+              // Auto-select: first leadership → first available
+              const activeLayerId = selectedLayerId
+                ?? beginnerReports.find(r => r.group === 'working')?.layerId
+                ?? beginnerReports[0]?.layerId
+                ?? null
+
+              // Build selected layer detail
+              const selInput    = towerInputs.find(l => l.id === activeLayerId)
+              const selBeginner = beginnerReports.find(r => r.layerId === activeLayerId)
+              const selPro      = proReports.find(r => r.layerId === activeLayerId)
+              const selLayerDef = AI_INVESTMENT_TOWER_LAYERS.find(l => l.id === activeLayerId)
+
+              const detail: SelectedLayerDetail | null =
+                (selInput && selBeginner && selLayerDef) ? {
+                  layerId:        activeLayerId!,
+                  label:          selInput.label,
+                  koreanLabel:    selInput.koreanLabel,
+                  primaryEtf:     selInput.primaryEtf,
+                  basketSymbols:  selLayerDef.basketSymbols,
+                  statusLabel:    selBeginner.statusLabel,
+                  momentum1w:     selInput.momentum1w,
+                  momentum1m:     selInput.momentum1m,
+                  momentum3m:     selInput.momentum3m,
+                  trendLabel:     selInput.trendLabel,
+                  breadthLabel:   selInput.breadthLabel,
+                  riskLabel:      selInput.riskLabel,
+                  coveragePct:    selInput.coveragePct ?? null,
+                  nextCheckpoint: selPro?.nextCheckpoint,
+                  narrative:      selBeginner.explanation,
+                } : null
+
+              // Build RRG board items from pro + beginner reports
+              const boardItems: LayerRRGBoardItem[] = proReports.map(pr => {
+                const br = beginnerReports.find(b => b.layerId === pr.layerId)
+                return {
+                  layerId:     pr.layerId,
+                  koreanLabel: pr.koreanLabel,
+                  statusLabel: br?.statusLabel ?? '확인 필요',
+                  rrgState:    pr.rrgState,
+                  riskLabel:   pr.riskLabel,
+                  signal:      pr.towerSignal,
+                }
+              })
+
+              return (
+                <>
+                  <AITowerSummaryCards summary={towerSummary} />
+                  {reportMode === 'beginner' ? (
+                    <BeginnerReport
+                      reports={beginnerReports}
+                      overallNarrative={generateBeginnerOverall(beginnerReports)}
+                    />
+                  ) : (
+                    proReports.length > 0
+                      ? <ProReport
+                          reports={proReports}
+                          onSelectLayer={setSelectedLayerId}
+                        />
+                      : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>No layer data available.</div>
+                  )}
+                  <SelectedLayerDetailPanel detail={detail} />
+                  {activeLayerId && (
+                    <SelectedLayerTrendChart
+                      layerId={activeLayerId}
+                      koreanLabel={selInput?.koreanLabel ?? ''}
+                    />
+                  )}
+                  {boardItems.length > 0 && (
+                    <AIInvestmentLayerRRGBoard
+                      items={boardItems}
+                      selectedLayerId={activeLayerId}
+                      onSelectLayer={setSelectedLayerId}
+                    />
+                  )}
+                </>
+              )
             })()}
 
             {/* ── 기존 탭 (항상 표시) ── */}
