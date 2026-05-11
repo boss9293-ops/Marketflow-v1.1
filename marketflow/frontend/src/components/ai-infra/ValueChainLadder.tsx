@@ -8,7 +8,7 @@ import type { AIInfraBucketState, AIInfraStateLabel } from '@/lib/ai-infra/aiInf
 import { STATE_DISPLAY_LABELS, STATE_COLORS } from '@/lib/ai-infra/aiInfraStateLabels'
 import { THEME_PURITY_LABEL, REVENUE_VIS_LABEL } from '@/lib/ai-infra/aiInfraThemePurity'
 import { AI_INFRA_STAGE_ORDER } from '@/lib/semiconductor/aiInfraBucketMap'
-import type { AIInfraStage, AIInfraBucketId } from '@/lib/semiconductor/aiInfraBucketMap'
+import type { AIInfraStage } from '@/lib/semiconductor/aiInfraBucketMap'
 
 // ── Design tokens (shared with radar) ────────────────────────────────────────
 
@@ -87,11 +87,6 @@ const STAGE_ACCENT: Record<AIInfraStage, string> = {
 }
 
 // ── Dominant state logic ───────────────────────────────────────────────────────
-
-const STATE_PRIORITY: AIInfraStateLabel[] = [
-  'LEADING', 'EMERGING', 'CONFIRMING', 'CROWDED',
-  'DISTRIBUTION', 'LAGGING', 'STORY_ONLY', 'DATA_INSUFFICIENT',
-]
 
 function deriveStageSummary(
   stage:     AIInfraStage,
@@ -246,8 +241,8 @@ function BucketChip({ state, compact }: { state: AIInfraBucketState; compact: bo
           )}
           {hasIndirect && (
             <span style={{
-              fontFamily: V.mono, fontSize: 10, color: V.text3,
-              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)',
+              fontFamily: V.mono, fontSize: 10, color: V.text2,
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
               borderRadius: 2, padding: '0 4px', letterSpacing: '0.05em',
             }}>
               Indirect
@@ -301,7 +296,7 @@ function StageSummaryChip({ summary }: { summary: AIInfraStageSummary }) {
 
       {/* Score */}
       {summary.average_state_score != null && (
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>
+        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text2 }}>
           avg {summary.average_state_score}
         </span>
       )}
@@ -313,12 +308,12 @@ function StageSummaryChip({ summary }: { summary: AIInfraStageSummary }) {
         </span>
       )}
       {summary.story_only_count > 0 && (
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.05em' }}>
+        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text2, letterSpacing: '0.05em' }}>
           Story×{summary.story_only_count}
         </span>
       )}
       {summary.indirect_count > 0 && (
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.05em' }}>
+        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text2, letterSpacing: '0.05em' }}>
           Ind×{summary.indirect_count}
         </span>
       )}
@@ -469,11 +464,11 @@ export default function ValueChainLadder({
           display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10,
           padding: '6px 10px',
           background: V.bg2, border: `1px solid ${V.border}`, borderRadius: 4,
-          fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em',
+          fontFamily: V.mono, fontSize: 10, color: V.text2, letterSpacing: '0.08em',
           alignItems: 'center',
         }}>
           <span>VALUE CHAIN FLOW →</span>
-          <span style={{ color: V.text3 }}>
+          <span>
             {totalBuckets} buckets · {AI_INFRA_STAGE_ORDER.length} stages
           </span>
           {selectedBenchmark && (
@@ -481,7 +476,7 @@ export default function ValueChainLadder({
               {selectedBenchmark}
             </span>
           )}
-          <span style={{ color: V.text3 }}>
+          <span>
             Rule-based · Not investment advice
           </span>
         </div>

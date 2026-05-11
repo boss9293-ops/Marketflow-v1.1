@@ -211,7 +211,7 @@ export function SelectedLayerTrendChart({
 
         {!loading && !error && !noBasketData && chartData.length > 0 && (
           <ResponsiveContainer width="100%" height={200}>
-            <ComposedChart data={chartData} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 4, right: 12, left: 8, bottom: 0 }}>
               <CartesianGrid
                 strokeDasharray="2 4"
                 stroke="rgba(255,255,255,0.05)"
@@ -230,7 +230,7 @@ export function SelectedLayerTrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => v.toFixed(0)}
-                width={36}
+                width={48}
               />
               <ReferenceLine y={100} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
               <Tooltip content={<ChartTooltip />} />
