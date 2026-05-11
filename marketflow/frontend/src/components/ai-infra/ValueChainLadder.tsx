@@ -194,7 +194,7 @@ function BucketChip({ state, compact }: { state: AIInfraBucketState; compact: bo
           {state.display_name}
         </span>
         {state.state_score != null && (
-          <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, flexShrink: 0 }}>
+          <span style={{ fontFamily: V.mono, fontSize: 11, color: V.text2, flexShrink: 0 }}>
             {state.state_score}
           </span>
         )}
@@ -373,7 +373,7 @@ function StageColumn({
             {meta.korean.toUpperCase()}
           </div>
           {!compact && (
-            <div style={{ fontFamily: V.ui, fontSize: 10, color: V.text3, lineHeight: 1.4 }}>
+            <div style={{ fontFamily: V.ui, fontSize: 11, color: V.text2, lineHeight: 1.4 }}>
               {meta.meaning}
             </div>
           )}

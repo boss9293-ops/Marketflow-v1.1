@@ -278,7 +278,7 @@ export function ProReport({
 
   return (
     <div style={{ padding: '16px 0', overflowX: 'auto' }}>
-      <p style={{ fontFamily: V.ui, fontSize: 12, color: V.text3, marginBottom: 12 }}>
+      <p style={{ fontFamily: V.ui, fontSize: 12, color: V.text2, marginBottom: 12 }}>
         각 레이어를 클릭하면 상세 분석을 확인할 수 있습니다.
       </p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>

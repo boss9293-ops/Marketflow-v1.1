@@ -219,14 +219,14 @@ export function SelectedLayerTrendChart({
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 10, fill: V.text3, fontFamily: 'IBM Plex Mono' }}
+                tick={{ fontSize: 11, fill: V.text2, fontFamily: 'IBM Plex Mono' }}
                 interval="preserveStartEnd"
                 tickLine={false}
                 axisLine={{ stroke: V.border }}
               />
               <YAxis
                 domain={['auto', 'auto']}
-                tick={{ fontSize: 10, fill: V.text3, fontFamily: 'IBM Plex Mono' }}
+                tick={{ fontSize: 11, fill: V.text2, fontFamily: 'IBM Plex Mono' }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => v.toFixed(0)}
@@ -248,7 +248,7 @@ export function SelectedLayerTrendChart({
                   type="monotone"
                   dataKey="benchmark"
                   name={data.benchmark.symbol}
-                  stroke={V.text3}
+                  stroke={V.text2}
                   strokeWidth={1.5}
                   strokeDasharray="4 3"
                   dot={false}
@@ -276,12 +276,12 @@ export function SelectedLayerTrendChart({
               바스켓
             </span>
             {data.benchmark && (
-              <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ display: 'inline-block', width: 16, height: 0, borderTop: `2px dashed ${V.text3}` }} />
+              <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ display: 'inline-block', width: 16, height: 0, borderTop: `2px dashed ${V.text2}` }} />
                 {data.benchmark.symbol}
               </span>
             )}
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>
+            <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text2 }}>
               기준: 100 (시작일 정규화)
             </span>
           </div>
@@ -289,8 +289,8 @@ export function SelectedLayerTrendChart({
           {interpretation && (
             <span style={{
               fontFamily: V.ui,
-              fontSize:   11,
-              color:      V.text3,
+              fontSize:   12,
+              color:      V.text2,
               flex:       1,
               minWidth:   0,
             }}>
@@ -299,7 +299,7 @@ export function SelectedLayerTrendChart({
           )}
           {/* Coverage note */}
           {data.coveragePct < 1 && (
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>
+            <span style={{ fontFamily: V.mono, fontSize: 11, color: V.text2 }}>
               커버리지 {Math.round(data.coveragePct * 100)}%
             </span>
           )}
