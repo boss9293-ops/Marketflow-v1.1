@@ -14,6 +14,7 @@ import { buildBucketCompanyPuritySummary } from '@/lib/ai-infra/aiInfraCompanyPu
 import type { AIInfraCompanyPurityMetadata } from '@/lib/ai-infra/aiInfraCompanyPurity'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
 import ValueChainLadder from '@/components/ai-infra/ValueChainLadder'
+import BottleneckHeatmap from '@/components/ai-infra/BottleneckHeatmap'
 import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
 import { adaptTowerLayers, AI_INVESTMENT_TOWER_LAYERS } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
 import { generateBeginnerReport, generateBeginnerOverall } from '@/lib/ai-investment-tower/beginnerReportGenerator'
@@ -40,7 +41,7 @@ const V = {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type ActiveTab  = 'ladder' | 'state' | 'rs' | 'rrg'
+type ActiveTab  = 'ladder' | 'heatmap' | 'state' | 'rs' | 'rrg'
 type Benchmark  = 'SOXX' | 'QQQ' | 'SPY'
 
 interface RadarApiResponse {
@@ -588,10 +589,11 @@ function RSTable({
 
 function TabBar({ active, onChange }: { active: ActiveTab; onChange: (t: ActiveTab) => void }) {
   const tabs: { id: ActiveTab; label: string }[] = [
-    { id: 'ladder', label: 'VALUE CHAIN' },
-    { id: 'state',  label: 'STATE LABELS' },
-    { id: 'rs',     label: 'RELATIVE STRENGTH' },
-    { id: 'rrg',    label: 'RRG' },
+    { id: 'ladder',  label: 'VALUE CHAIN' },
+    { id: 'heatmap', label: 'HEATMAP' },
+    { id: 'state',   label: 'STATE LABELS' },
+    { id: 'rs',      label: 'RELATIVE STRENGTH' },
+    { id: 'rrg',     label: 'RRG' },
   ]
   return (
     <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${V.border}`, marginBottom: 12 }}>
@@ -844,6 +846,17 @@ export default function AIInfrastructureRadar() {
                     />
                   : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
                       State label data not available. Value chain will render once API responds.
+                    </div>
+              )}
+              {tab === 'heatmap' && (
+                states.length > 0
+                  ? <BottleneckHeatmap
+                      bucketStates={states}
+                      buckets={buckets}
+                      selectedBenchmark={benchmark}
+                    />
+                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                      State label data not available.
                     </div>
               )}
               {tab === 'state' && (
