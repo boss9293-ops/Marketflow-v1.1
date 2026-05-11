@@ -13,6 +13,7 @@ import type { BucketThemePurity } from '@/lib/ai-infra/aiInfraThemePurity'
 import { buildBucketCompanyPuritySummary } from '@/lib/ai-infra/aiInfraCompanyPurity'
 import type { AIInfraCompanyPurityMetadata } from '@/lib/ai-infra/aiInfraCompanyPurity'
 import { BucketRRGPanel } from '@/components/semiconductor/BucketRRGPanel'
+import ValueChainLadder from '@/components/ai-infra/ValueChainLadder'
 import { adaptAllLayers } from '@/lib/ai-investment-tower/reportTypes'
 import { adaptTowerLayers, AI_INVESTMENT_TOWER_LAYERS } from '@/lib/ai-investment-tower/aiInvestmentTowerLayers'
 import { generateBeginnerReport, generateBeginnerOverall } from '@/lib/ai-investment-tower/beginnerReportGenerator'
@@ -39,7 +40,7 @@ const V = {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type ActiveTab  = 'state' | 'rs' | 'rrg'
+type ActiveTab  = 'ladder' | 'state' | 'rs' | 'rrg'
 type Benchmark  = 'SOXX' | 'QQQ' | 'SPY'
 
 interface RadarApiResponse {
@@ -106,18 +107,25 @@ function ConfidenceDot({ c }: { c: string }) {
 }
 
 function PurityBadges({ purity }: { purity: BucketThemePurity }) {
-  const purityColor = purity.theme_purity === 'PURE_PLAY' ? V.teal
-    : purity.theme_purity === 'STORY_HEAVY' ? V.amber : V.text2
+  const purityColor = purity.theme_purity === 'PURE_PLAY' || purity.theme_purity === 'HIGH_EXPOSURE'
+    ? V.teal
+    : purity.theme_purity === 'STORY_HEAVY'
+      ? V.amber
+      : purity.theme_purity === 'INDIRECT_EXPOSURE'
+        ? V.text3
+        : purity.theme_purity === 'MIXED_EXPOSURE'
+          ? V.gold
+          : V.text2
   const badgeStyle = (col: string): React.CSSProperties => ({
-    fontFamily: V.mono, fontSize: 9, color: col,
+    fontFamily: V.mono, fontSize: 10, color: col,
     background: `${col}18`, border: `1px solid ${col}40`,
-    borderRadius: 3, padding: '0 5px', letterSpacing: '0.04em',
+    borderRadius: 3, padding: '0 5px', letterSpacing: '0.05em',
     display: 'inline-block',
   })
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
       <span style={badgeStyle(purityColor)}>{THEME_PURITY_LABEL[purity.theme_purity]}</span>
-      {purity.revenue_visibility === 'NOT_YET_VISIBLE' && (
+      {(purity.revenue_visibility === 'NOT_YET_VISIBLE' || purity.revenue_visibility === 'UNCLEAR') && (
         <span style={badgeStyle(V.amber)}>{REVENUE_VIS_LABEL[purity.revenue_visibility]}</span>
       )}
       {purity.commercialization_risk && (
@@ -352,32 +360,32 @@ function CompanyPuritySummaryGrid({ states }: { states: AIInfraBucketState[] }) 
               background: V.bg2, border: `1px solid ${V.border}`,
               minWidth: 140,
             }}>
-              <div style={{ fontFamily: V.mono, fontSize: 9, color: V.teal, letterSpacing: '0.08em', marginBottom: 3 }}>
+              <div style={{ fontFamily: V.mono, fontSize: 10, color: V.teal, letterSpacing: '0.08em', marginBottom: 3 }}>
                 {state?.display_name ?? sum.bucket_id}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {sum.average_ai_relevance_score != null && (
-                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.text2 }}>
+                  <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text2 }}>
                     AI {sum.average_ai_relevance_score}
                   </span>
                 )}
                 {sum.average_pure_play_score != null && (
-                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.text3 }}>
+                  <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>
                     Purity {sum.average_pure_play_score}
                   </span>
                 )}
                 {sum.high_exposure_count > 0 && (
-                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.mint }}>
+                  <span style={{ fontFamily: V.mono, fontSize: 10, color: V.mint }}>
                     Hi×{sum.high_exposure_count}
                   </span>
                 )}
                 {sum.story_risk_count > 0 && (
-                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.amber }}>
+                  <span style={{ fontFamily: V.mono, fontSize: 10, color: V.amber }}>
                     Story×{sum.story_risk_count}
                   </span>
                 )}
                 {sum.indirect_exposure_count > 0 && (
-                  <span style={{ fontFamily: V.mono, fontSize: 9, color: V.text3 }}>
+                  <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>
                     Ind×{sum.indirect_exposure_count}
                   </span>
                 )}
@@ -580,9 +588,10 @@ function RSTable({
 
 function TabBar({ active, onChange }: { active: ActiveTab; onChange: (t: ActiveTab) => void }) {
   const tabs: { id: ActiveTab; label: string }[] = [
-    { id: 'state', label: 'STATE LABELS' },
-    { id: 'rs',    label: 'RELATIVE STRENGTH' },
-    { id: 'rrg',   label: 'RRG' },
+    { id: 'ladder', label: 'VALUE CHAIN' },
+    { id: 'state',  label: 'STATE LABELS' },
+    { id: 'rs',     label: 'RELATIVE STRENGTH' },
+    { id: 'rrg',    label: 'RRG' },
   ]
   return (
     <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${V.border}`, marginBottom: 12 }}>
@@ -612,7 +621,7 @@ export default function AIInfrastructureRadar() {
   const [data, setData]         = useState<RadarApiResponse | null>(null)
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
-  const [tab, setTab]           = useState<ActiveTab>('state')
+  const [tab, setTab]           = useState<ActiveTab>('ladder')
   const [benchmark, setBenchmark] = useState<Benchmark>('SOXX')
   const [grouped, setGrouped]   = useState(false)
   const [reportMode, setReportMode] = useState<'beginner' | 'pro'>('beginner')
@@ -662,7 +671,7 @@ export default function AIInfrastructureRadar() {
             fontFamily: V.mono, fontSize: 10, color: V.teal, letterSpacing: '0.08em',
             flexShrink: 0,
           }}>
-            D-8
+          E-2B
           </span>
         </div>
 
@@ -825,6 +834,18 @@ export default function AIInfrastructureRadar() {
             {/* ── 기존 탭 (항상 표시) ── */}
             <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${V.border}` }}>
               <TabBar active={tab} onChange={setTab} />
+              {tab === 'ladder' && (
+                states.length > 0
+                  ? <ValueChainLadder
+                      bucketStates={states}
+                      buckets={buckets}
+                      compact={false}
+                      selectedBenchmark={benchmark}
+                    />
+                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                      State label data not available. Value chain will render once API responds.
+                    </div>
+              )}
               {tab === 'state' && (
                 states.length > 0
                   ? <>
