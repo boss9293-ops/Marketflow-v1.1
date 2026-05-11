@@ -30,11 +30,10 @@ const crashItems = [
   { href: '/risk-v1', label: UI_TEXT.nav.standardRisk, dot: '#6366f1' },
 ]
 
-// Zone SC: Semiconductor Cycle
+// Zone AI: AI 인프라 허브 (S-3 refactor — formerly Zone SC)
 const scItems = [
-  { href: '/semiconductor',      label: { ko: '반도체 사이클', en: 'Semiconductor Cycle' }, dot: '#00D9FF' },
-  { href: '/soxx-soxl',          label: { ko: 'SOXX / SOXL',   en: 'SOXX / SOXL'         }, dot: '#6366f1' },
-  { href: '/semiconductor-lens', label: { ko: '반도체렌즈',     en: 'Semiconductor Lens'  }, dot: '#f59e0b' },
+  { href: '/semiconductor-lens',                label: { ko: '반도체렌즈',     en: 'Semiconductor Lens'         }, dot: '#f59e0b' },
+  { href: '/semiconductor-lens/infrastructure', label: { ko: '인프라섹터렌즈', en: 'Infrastructure Sector Lens' }, dot: '#3FB6A8' },
 ]
 
 // ?? Zone LV: ?덈쾭由ъ? 湲몃뱾?닿린 ???????????????????????????????????????????????
@@ -479,10 +478,10 @@ export default function Sidebar({
         }}
       >
         <ZoneHeader
-          icon={<span style={{ fontSize: '0.82rem', color: '#00D9FF' }}>SC</span>}
-          label={compact ? 'SC' : '반도체 사이클'}
+          icon={<span style={{ fontSize: '0.82rem', color: '#3FB6A8' }}>AI</span>}
+          label={compact ? 'AI' : 'AI 인프라 허브'}
           badge="NEW"
-          badgeColor="#00D9FF"
+          badgeColor="#3FB6A8"
           onClick={() => setScOpen((p) => !p)}
           isOpen={scOpen}
           compact={compact}
