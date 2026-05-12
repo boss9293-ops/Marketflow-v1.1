@@ -263,11 +263,19 @@ export function aggregateBucketEarningsConfirmation(
   const penalty  = coveragePenalty(coverage_ratio)
   let adjustedScore = Math.max(0, Math.round(avgScore - penalty))
 
-  // Section 9 amendment: if all covered symbols are INDIRECT exposure, cap at WATCH
+  // E-5B amendment: minimum evidence floor — prevents aggregation dilution artifact
+  // When a strong anchor symbol (e.g. ANET=100) is diluted by a weaker addition (e.g. APH=50),
+  // the bucket score cannot fall below: maxCompanyScore - 30 (maximum possible coverage penalty)
+  // Safety caps below override this floor.
+  const maxCompanyScore = Math.max(...scored.map(r => r.score))
+  const evidenceFloor = Math.max(0, maxCompanyScore - 30)
+  adjustedScore = Math.max(adjustedScore, evidenceFloor)
+
+  // Section 9 amendment: if all covered symbols are INDIRECT exposure, cap at WATCH (overrides floor)
   const allIndirect = covered.every(e => e.ai_revenue_visibility === 'INDIRECT')
   if (allIndirect) adjustedScore = Math.min(adjustedScore, 59)
 
-  // Section 6.4 amendment: one-name bucket with INDIRECT or PARTIAL exposure → cap at WATCH
+  // Section 6.4 amendment: one-name bucket with INDIRECT or PARTIAL exposure → cap at WATCH (overrides floor)
   const isOneName = covered.length === 1
   if (isOneName) {
     const vis = covered[0].ai_revenue_visibility
