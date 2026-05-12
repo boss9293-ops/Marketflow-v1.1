@@ -37,6 +37,7 @@ import type { InfraEducationalNarrative } from '@/lib/ai-infra/infraEducationalN
 import { InfraBridgeCompactSummary } from './InfraBridgeCompactSummary'
 import { EarningsConfirmationPanel } from './EarningsConfirmationPanel'
 import type { AIInfraBucketEarningsConfirmation, AIInfraEarningsEvidence } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
+import { ThemeMapPanel } from './ThemeMapPanel'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ const V = {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type ActiveTab  = 'ladder' | 'heatmap' | 'earnings' | 'state' | 'rs' | 'rrg'
+type ActiveTab  = 'ladder' | 'theme' | 'heatmap' | 'earnings' | 'state' | 'rs' | 'rrg'
 type Benchmark  = 'SOXX' | 'QQQ' | 'SPY'
 
 interface RadarApiResponse {
@@ -615,6 +616,7 @@ function RSTable({
 function TabBar({ active, onChange }: { active: ActiveTab; onChange: (t: ActiveTab) => void }) {
   const tabs: { id: ActiveTab; label: string }[] = [
     { id: 'ladder',   label: 'VALUE CHAIN' },
+    { id: 'theme',    label: 'THEME MAP' },
     { id: 'heatmap',  label: 'HEATMAP' },
     { id: 'earnings', label: 'EARNINGS' },
     { id: 'state',    label: 'STATE LABELS' },
@@ -926,6 +928,14 @@ export default function AIInfrastructureRadar() {
                   : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
                       State label data not available. Value chain will render once API responds.
                     </div>
+              )}
+              {tab === 'theme' && (
+                <ThemeMapPanel
+                  states={states}
+                  earningsBuckets={data?.earnings_confirmation?.buckets ?? []}
+                  momentumBuckets={buckets}
+                  benchmark={benchmark}
+                />
               )}
               {tab === 'heatmap' && (
                 states.length > 0
