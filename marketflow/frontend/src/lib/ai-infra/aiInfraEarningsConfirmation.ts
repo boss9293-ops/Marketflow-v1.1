@@ -141,6 +141,9 @@ function hasRevenueClassEvidence(ev: AIInfraEarningsEvidence): boolean {
 // ── Scoring ───────────────────────────────────────────────────────────────────
 
 export function computeCompanyEarningsScore(ev: AIInfraEarningsEvidence): number {
+  // Section 9 missing data: empty evidence_types → no positive score possible
+  if (!Array.isArray(ev.evidence_types) || ev.evidence_types.length === 0) return 0
+
   const et = ev.evidence_types
   let score = 0
 
@@ -264,6 +267,15 @@ export function aggregateBucketEarningsConfirmation(
   const allIndirect = covered.every(e => e.ai_revenue_visibility === 'INDIRECT')
   if (allIndirect) adjustedScore = Math.min(adjustedScore, 59)
 
+  // Section 6.4 amendment: one-name bucket with INDIRECT or PARTIAL exposure → cap at WATCH
+  const isOneName = covered.length === 1
+  if (isOneName) {
+    const vis = covered[0].ai_revenue_visibility
+    if (vis === 'INDIRECT' || vis === 'PARTIAL') {
+      adjustedScore = Math.min(adjustedScore, 59)
+    }
+  }
+
   const level: EarningsConfirmationLevel =
     adjustedScore >= 80 ? 'CONFIRMED'
     : adjustedScore >= 60 ? 'PARTIAL'
@@ -371,7 +383,11 @@ export function validateEarningsEvidenceRecord(record: AIInfraEarningsEvidence):
 
   if (!record.symbol) errors.push('symbol is required')
   if (!record.primary_bucket) errors.push('primary_bucket is required')
-  if (!Array.isArray(record.evidence_types)) errors.push('evidence_types must be array')
+  if (!Array.isArray(record.evidence_types)) {
+    errors.push('evidence_types must be array')
+  } else if (record.evidence_types.length === 0) {
+    errors.push('evidence_types is empty — confirmation_level will be DATA_LIMITED (Section 9 missing data rule)')
+  }
   if (!Array.isArray(record.evidence_notes)) errors.push('evidence_notes must be array')
   if (!Array.isArray(record.caution_notes))  errors.push('caution_notes must be array')
   if (!record.source) errors.push('source is required')
