@@ -1,5 +1,73 @@
-// AI 인프라 수익 확인 수동 시드 데이터 — E-4 MVP (14개 심볼)
+// AI 인프라 수익 확인 수동 시드 데이터 — E-5 (21개 심볼)
 import type { AIInfraEarningsEvidence } from './aiInfraEarningsConfirmation'
+
+// ── Dataset metadata ──────────────────────────────────────────────────────────
+
+export const AI_INFRA_EARNINGS_EVIDENCE_META = {
+  dataset_version: 'E5' as const,
+  as_of:           '2026-Q1' as const,   // reference date for freshness — NOT system date
+  last_updated:    '2026-05-12' as const,
+  update_mode:     'MANUAL' as const,
+  seed_count:      21 as const,
+  notes: [
+    'Manual evidence dataset for AI Infra Earnings Confirmation.',
+    'Business evidence only — not an investment rating.',
+  ] as const,
+}
+
+// ── Change log ────────────────────────────────────────────────────────────────
+// Required entry when: symbol level changes, bucket level changes, symbol added/removed.
+// Optional for: evidence_notes wording, caution_notes wording, source.as_of date refresh.
+// Undocumented level transitions are a merge blocker (E-6 Section 7/8 rule).
+
+export const AI_INFRA_EARNINGS_CHANGELOG: {
+  date: string
+  version: string
+  symbol?: string
+  bucket?: string
+  change: string
+  level_transition?: string
+  reason: string
+}[] = [
+  {
+    date: '2026-05-12', version: 'E4',
+    change: 'Initial 14-symbol seed. EARNINGS tab added.',
+    reason: 'E-4 MVP — manual evidence layer launched.',
+  },
+  {
+    date: '2026-05-12', version: 'E5',
+    change: 'Added 7 symbols: ASML, APH, TER, ENTG, EQIX, TTMI, FCX.',
+    reason: 'E-5 coverage expansion. DATA_LIMITED reduced 6→4.',
+  },
+  {
+    date: '2026-05-12', version: 'E5',
+    bucket: 'OPTICAL_NETWORK',
+    change: 'OPTICAL_NETWORK bucket CONFIRMED → PARTIAL',
+    level_transition: 'CONFIRMED → PARTIAL',
+    reason: 'APH added to universe (4→5). Floor rule applied to prevent aggregation artifact. Accurate representation of mixed coverage.',
+  },
+  {
+    date: '2026-05-12', version: 'E5',
+    bucket: 'TEST_EQUIPMENT',
+    change: 'TEST_EQUIPMENT DATA_LIMITED → NOT_CONFIRMED',
+    level_transition: 'DATA_LIMITED → NOT_CONFIRMED',
+    reason: 'TER (1/4 coverage, WATCH-level evidence) added.',
+  },
+  {
+    date: '2026-05-12', version: 'E5',
+    bucket: 'SPECIALTY_GAS',
+    change: 'SPECIALTY_GAS DATA_LIMITED → WATCH',
+    level_transition: 'DATA_LIMITED → WATCH',
+    reason: 'ENTG (1/3 coverage, PARTIAL-level evidence, one-name PARTIAL cap → WATCH).',
+  },
+  {
+    date: '2026-05-12', version: 'E5',
+    bucket: 'DATA_CENTER_INFRA',
+    change: 'DATA_CENTER_INFRA NOT_CONFIRMED → WATCH',
+    level_transition: 'NOT_CONFIRMED → WATCH',
+    reason: 'EQIX added (2/4 coverage, avg 60, penalty 10 → adjusted 50).',
+  },
+]
 
 export const EARNINGS_EVIDENCE_SEED: AIInfraEarningsEvidence[] = [
   // ── AI_CHIP ─────────────────────────────────────────────────────────────────

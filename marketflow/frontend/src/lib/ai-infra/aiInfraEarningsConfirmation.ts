@@ -128,6 +128,48 @@ export type AIInfraBucketEarningsConfirmation = {
   }
 }
 
+// ── Freshness ─────────────────────────────────────────────────────────────────
+// E-6 amendment: reference date = dataset_meta.as_of (NOT system current date).
+// System date changes daily; dataset is only updated quarterly.
+// Freshness reflects dataset version age, not time since last page load.
+
+export type EarningsEvidenceFreshness = 'CURRENT' | 'RECENT' | 'STALE' | 'UNKNOWN'
+
+function parseQuarterStr(s: string): { year: number; quarter: number } | null {
+  const m = s.match(/^(\d{4})-Q([1-4])$/)
+  if (!m) return null
+  return { year: Number(m[1]), quarter: Number(m[2]) }
+}
+
+// Returns how many quarters asOf lags behind referenceDate (positive = older).
+function quartersBehind(referenceDate: string, asOf: string): number | null {
+  const ref = parseQuarterStr(referenceDate)
+  const rec = parseQuarterStr(asOf)
+  if (!ref || !rec) return null
+  return (ref.year - rec.year) * 4 + (ref.quarter - rec.quarter)
+}
+
+// Use dataset_meta.as_of as referenceDate — never pass new Date() here.
+export function getDatasetFreshness(
+  asOf: string,
+  referenceDate: string,
+): EarningsEvidenceFreshness {
+  if (!asOf || !referenceDate) return 'UNKNOWN'
+  const diff = quartersBehind(referenceDate, asOf)
+  if (diff === null) return 'UNKNOWN'
+  if (diff <= 1) return 'CURRENT'   // same quarter or 1 quarter behind
+  if (diff <= 3) return 'RECENT'    // 2–3 quarters behind
+  return 'STALE'
+}
+
+// Per-record freshness. Pass dataset_meta.as_of as referenceDate.
+export function getEarningsEvidenceFreshness(
+  record: AIInfraEarningsEvidence,
+  referenceDate: string,
+): EarningsEvidenceFreshness {
+  return getDatasetFreshness(record.source.as_of ?? '', referenceDate)
+}
+
 // ── Revenue-class gate ────────────────────────────────────────────────────────
 
 const REVENUE_CLASS: EarningsEvidenceType[] = [

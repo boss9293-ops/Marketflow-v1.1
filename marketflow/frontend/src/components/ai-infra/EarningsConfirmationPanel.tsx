@@ -1,8 +1,9 @@
 'use client'
-// AI 인프라 수익 확인 패널 — 버킷/종목 수준 매출 증거 요약 (E-4 MVP)
+// AI 인프라 수익 확인 패널 — 버킷/종목 수준 매출 증거 요약 (E-6)
 
-import type { AIInfraBucketEarningsConfirmation, AIInfraEarningsEvidence, EarningsConfirmationLevel } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
-import { computeCompanyEarningsScore, getEarningsConfirmationLevel } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
+import type { AIInfraBucketEarningsConfirmation, AIInfraEarningsEvidence, EarningsConfirmationLevel, EarningsEvidenceFreshness } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
+import { computeCompanyEarningsScore, getEarningsConfirmationLevel, getDatasetFreshness } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
+import { AI_INFRA_EARNINGS_EVIDENCE_META } from '@/lib/ai-infra/aiInfraEarningsEvidenceSeed'
 
 const V = {
   text:   '#E8F0F8',
@@ -41,8 +42,16 @@ const LEVEL_LABELS: Record<EarningsConfirmationLevel, string> = {
 
 // ── Section A — Summary Strip ─────────────────────────────────────────────────
 
+const FRESHNESS_COLOR: Record<EarningsEvidenceFreshness, string> = {
+  CURRENT: V.green,
+  RECENT:  V.amber,
+  STALE:   V.red,
+  UNKNOWN: V.text3,
+}
+
 function SummaryStrip({
   summary,
+  companiesCount,
 }: {
   summary: {
     confirmed_buckets:     number
@@ -53,6 +62,7 @@ function SummaryStrip({
     coverage_ratio:        number
     as_of?:                string
   }
+  companiesCount: number
 }) {
   const items = [
     { label: 'CONFIRMED',  value: String(summary.confirmed_buckets),  color: V.green  },
@@ -62,28 +72,47 @@ function SummaryStrip({
     { label: 'COVERAGE',   value: `${Math.round(summary.coverage_ratio * 100)}%`, color: V.text2 },
     { label: 'AS OF',      value: summary.as_of ?? 'Unknown',         color: V.text3 },
   ]
+  const freshness = getDatasetFreshness(
+    summary.as_of ?? '',
+    AI_INFRA_EARNINGS_EVIDENCE_META.as_of,
+  )
+  const freshnessColor = FRESHNESS_COLOR[freshness]
   return (
     <div style={{
-      display: 'flex', flexWrap: 'wrap' as const, gap: 12,
       padding: '10px 14px',
       background: V.bg2,
       border: `1px solid ${V.border}`,
       borderRadius: 6,
       marginBottom: 16,
     }}>
-      {items.map(({ label, value, color }) => (
-        <div key={label} style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
-          <span style={{
-            fontFamily: V.mono, fontSize: 10, color: V.text3,
-            letterSpacing: '0.10em', textTransform: 'uppercase' as const,
-          }}>
-            {label}
-          </span>
-          <span style={{ fontFamily: V.mono, fontSize: 14, color, fontWeight: 600 }}>
-            {value}
-          </span>
-        </div>
-      ))}
+      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 12 }}>
+        {items.map(({ label, value, color }) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+            <span style={{
+              fontFamily: V.mono, fontSize: 10, color: V.text3,
+              letterSpacing: '0.10em', textTransform: 'uppercase' as const,
+            }}>
+              {label}
+            </span>
+            <span style={{ fontFamily: V.mono, fontSize: 14, color, fontWeight: 600 }}>
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{
+        marginTop: 8, paddingTop: 8,
+        borderTop: `1px solid ${V.border}`,
+        fontFamily: V.mono, fontSize: 10, color: V.text3,
+        letterSpacing: '0.06em',
+        display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center',
+      }}>
+        <span>Manual Dataset · {AI_INFRA_EARNINGS_EVIDENCE_META.dataset_version} · {companiesCount} symbols</span>
+        <span style={{ color: V.border }}>|</span>
+        <span>Freshness: <span style={{ color: freshnessColor }}>{freshness}</span></span>
+        <span style={{ color: V.border }}>|</span>
+        <span>Business evidence only — not investment advice</span>
+      </div>
     </div>
   )
 }
@@ -324,7 +353,7 @@ export function EarningsConfirmationPanel({ earningsConfirmation }: EarningsConf
     <div style={{ paddingTop: 8 }}>
       {/* Section A */}
       <SectionHeader label="SUMMARY" />
-      <SummaryStrip summary={summary} />
+      <SummaryStrip summary={summary} companiesCount={companies.length} />
 
       {/* Section B */}
       <SectionHeader label="BUCKET CONFIRMATION" />
