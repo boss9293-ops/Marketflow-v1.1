@@ -28,6 +28,15 @@ import type { SelectedLayerDetail } from '@/components/ai-investment-tower/Selec
 import { SelectedLayerTrendChart } from '@/components/ai-investment-tower/SelectedLayerTrendChart'
 import { AIInvestmentLayerRRGBoard } from '@/components/ai-investment-tower/AIInvestmentLayerRRGBoard'
 import type { LayerRRGBoardItem } from '@/components/ai-investment-tower/AIInvestmentLayerRRGBoard'
+import type { SemiconductorOutput } from '@/lib/semiconductor/types'
+import type { InfrastructureCycleContext } from '@/lib/ai-infra/infrastructureCycleContext'
+import { normalizeCyclePhase, deriveSOXXJudgment, normalizeSOXLEnvironment, normalizeCycleConfidence, normalizeConflictMode } from '@/lib/ai-infra/infrastructureCycleContext'
+import type { InfraToSoxxTranslation } from '@/lib/ai-infra/infraToSoxxTranslation'
+import type { InfraHistoricalAnalog } from '@/lib/ai-infra/infraHistoricalAnalogs'
+import type { InfraEducationalNarrative } from '@/lib/ai-infra/infraEducationalNarrative'
+import { InfraBridgeCompactSummary } from './InfraBridgeCompactSummary'
+import { EarningsConfirmationPanel } from './EarningsConfirmationPanel'
+import type { AIInfraBucketEarningsConfirmation, AIInfraEarningsEvidence } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 
@@ -41,19 +50,35 @@ const V = {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type ActiveTab  = 'ladder' | 'heatmap' | 'state' | 'rs' | 'rrg'
+type ActiveTab  = 'ladder' | 'heatmap' | 'earnings' | 'state' | 'rs' | 'rrg'
 type Benchmark  = 'SOXX' | 'QQQ' | 'SPY'
 
 interface RadarApiResponse {
-  buckets?:            AIInfraBucketMomentum[]
-  bucket_states?:      AIInfraBucketState[]
-  benchmarks?:         AIInfraBenchmarkReturns
-  asOf?:               string | null
-  generated_at?:       string
-  data_notes?:         string[]
-  status?:             string
-  selected_benchmark?: string
-  company_purity?:     AIInfraCompanyPurityMetadata[]
+  buckets?:                     AIInfraBucketMomentum[]
+  bucket_states?:               AIInfraBucketState[]
+  benchmarks?:                  AIInfraBenchmarkReturns
+  asOf?:                        string | null
+  generated_at?:                string
+  data_notes?:                  string[]
+  status?:                      string
+  selected_benchmark?:          string
+  company_purity?:              AIInfraCompanyPurityMetadata[]
+  infra_to_soxx_translation?:   InfraToSoxxTranslation
+  infra_historical_analog?:     InfraHistoricalAnalog
+  infra_educational_narrative?: InfraEducationalNarrative
+  earnings_confirmation?: {
+    buckets:   AIInfraBucketEarningsConfirmation[]
+    companies: AIInfraEarningsEvidence[]
+    summary: {
+      confirmed_buckets:     number
+      partial_buckets:       number
+      watch_buckets:         number
+      not_confirmed_buckets: number
+      data_limited_buckets:  number
+      coverage_ratio:        number
+      as_of?:                string
+    }
+  }
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -589,11 +614,12 @@ function RSTable({
 
 function TabBar({ active, onChange }: { active: ActiveTab; onChange: (t: ActiveTab) => void }) {
   const tabs: { id: ActiveTab; label: string }[] = [
-    { id: 'ladder',  label: 'VALUE CHAIN' },
-    { id: 'heatmap', label: 'HEATMAP' },
-    { id: 'state',   label: 'STATE LABELS' },
-    { id: 'rs',      label: 'RELATIVE STRENGTH' },
-    { id: 'rrg',     label: 'RRG' },
+    { id: 'ladder',   label: 'VALUE CHAIN' },
+    { id: 'heatmap',  label: 'HEATMAP' },
+    { id: 'earnings', label: 'EARNINGS' },
+    { id: 'state',    label: 'STATE LABELS' },
+    { id: 'rs',       label: 'RELATIVE STRENGTH' },
+    { id: 'rrg',      label: 'RRG' },
   ]
   return (
     <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${V.border}`, marginBottom: 12 }}>
@@ -628,15 +654,61 @@ export default function AIInfrastructureRadar() {
   const [grouped, setGrouped]   = useState(false)
   const [reportMode, setReportMode] = useState<'beginner' | 'pro'>('beginner')
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
+  const [cycleCtx, setCycleCtx] = useState<InfrastructureCycleContext | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError(null)
-    fetch(`/api/ai-infra/theme-momentum?benchmark=${benchmark}`)
-      .then(r => r.json())
-      .then((d: RadarApiResponse) => setData(d))
-      .catch(() => setError('Failed to load radar data'))
-      .finally(() => setLoading(false))
+
+    async function load() {
+      // Step 1: Fetch semiconductor cycle context for cross-layer conflict detection (silent fail)
+      let cyclePhase: string | null = null
+      let cycleSoxx:  string | null = null
+      let cycleSoxl:  string | null = null
+      try {
+        const r = await fetch('/api/semiconductor')
+        if (r.ok) {
+          const semData = await r.json() as SemiconductorOutput
+          const phase = normalizeCyclePhase(semData.stage?.stage)
+          const soxx  = deriveSOXXJudgment(phase, semData.stage?.conflict_mode ?? false)
+          const soxl  = normalizeSOXLEnvironment(semData.translation?.soxl?.window)
+          if (phase !== 'UNKNOWN') cyclePhase = phase
+          if (soxx  !== 'UNKNOWN') cycleSoxx  = soxx
+          if (soxl  !== 'UNKNOWN') cycleSoxl  = soxl
+          const ctx: InfrastructureCycleContext = {
+            cycle_score:      semData.stage?.stage_score ?? null,
+            cycle_phase:      phase,
+            cycle_confidence: normalizeCycleConfidence(semData.stage?.confidence),
+            soxx_judgment:    soxx,
+            soxl_environment: soxl,
+            conflict_mode:    normalizeConflictMode(semData.stage?.conflict_mode ?? false),
+            source:           { from: 'SEMICONDUCTOR_LENS' },
+          }
+          if (!cancelled) setCycleCtx(ctx)
+        }
+      } catch { /* silent — cycle params remain null, conflict detection gracefully disabled */ }
+
+      if (cancelled) return
+
+      // Step 2: Fetch theme-momentum with cycle params for BR-2/BR-3/BR-4
+      try {
+        const qp = new URLSearchParams({ benchmark })
+        if (cyclePhase) qp.set('cycle_phase', cyclePhase)
+        if (cycleSoxx)  qp.set('cycle_soxx_judgment', cycleSoxx)
+        if (cycleSoxl)  qp.set('cycle_soxl_environment', cycleSoxl)
+        const r = await fetch(`/api/ai-infra/theme-momentum?${qp}`)
+        const d = await r.json() as RadarApiResponse
+        if (!cancelled) setData(d)
+      } catch {
+        if (!cancelled) setError('Failed to load radar data')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
   }, [benchmark])
 
   const states        = data?.bucket_states ?? []
@@ -653,6 +725,13 @@ export default function AIInfrastructureRadar() {
   return (
     <section style={{ minHeight: '100vh', background: V.bg, padding: '16px 20px', color: V.text }}>
       <div style={{ maxWidth: 1440, margin: '0 auto' }}>
+
+        <InfraBridgeCompactSummary
+          cycleCtx={cycleCtx}
+          translation={data?.infra_to_soxx_translation ?? null}
+          analog={data?.infra_historical_analog ?? null}
+          narrative={data?.infra_educational_narrative ?? null}
+        />
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -858,6 +937,9 @@ export default function AIInfrastructureRadar() {
                   : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
                       State label data not available.
                     </div>
+              )}
+              {tab === 'earnings' && (
+                <EarningsConfirmationPanel earningsConfirmation={data?.earnings_confirmation} />
               )}
               {tab === 'state' && (
                 states.length > 0

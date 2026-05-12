@@ -4,7 +4,12 @@ import { NextResponse } from 'next/server'
 
 import { backendApiUrl } from '@/lib/backendApi'
 import { computeBucketState } from '@/lib/ai-infra/aiInfraStateLabels'
+import { computeInfraToSoxxTranslation } from '@/lib/ai-infra/infraToSoxxTranslation'
+import { computeInfraHistoricalAnalog } from '@/lib/ai-infra/infraHistoricalAnalogs'
+import { buildInfraEducationalNarrative } from '@/lib/ai-infra/infraEducationalNarrative'
+import type { SemiconductorCyclePhase, SemiconductorSOXXJudgment, SemiconductorSOXLEnvironment } from '@/lib/ai-infra/infrastructureCycleContext'
 import { AI_INFRA_COMPANY_PURITY } from '@/lib/ai-infra/aiInfraCompanyPurity'
+import { computeAllBucketEarningsConfirmation } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 import { AI_INFRA_BUCKETS } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketId, AIInfraStage, AIInfraDataQuality } from '@/lib/semiconductor/aiInfraBucketMap'
 import {
@@ -127,6 +132,21 @@ const TOWER_VIRTUAL_BUCKETS: TowerVirtualBucketConfig[] = [
 function parseBenchmark(param: string | null): AIInfraBenchmarkParam {
   if (param === 'QQQ' || param === 'SPY' || param === 'SOXX') return param
   return 'SOXX'
+}
+
+function parseCyclePhase(param: string | null): SemiconductorCyclePhase | null {
+  const VALID: ReadonlySet<string> = new Set(['EARLY_EXPANSION', 'MID_EXPANSION', 'LATE_EXPANSION', 'DISTRIBUTION', 'DOWNTURN', 'RECOVERY'])
+  return param && VALID.has(param) ? (param as SemiconductorCyclePhase) : null
+}
+
+function parseCycleSOXXJudgment(param: string | null): SemiconductorSOXXJudgment | null {
+  const VALID: ReadonlySet<string> = new Set(['SUPPORTIVE', 'NEUTRAL', 'FRAGILE', 'RISK_ELEVATED'])
+  return param && VALID.has(param) ? (param as SemiconductorSOXXJudgment) : null
+}
+
+function parseCycleSOXLEnvironment(param: string | null): SemiconductorSOXLEnvironment | null {
+  const VALID: ReadonlySet<string> = new Set(['LEVERAGE_SENSITIVE', 'CONFIRMATION_NEEDED', 'TACTICAL_ONLY', 'HIGH_VOLATILITY'])
+  return param && VALID.has(param) ? (param as SemiconductorSOXLEnvironment) : null
 }
 
 function findLocalDbPath(): string | null {
@@ -371,10 +391,13 @@ function buildUnavailablePayload(warning: string) {
 }
 
 function buildResponseFromRows(params: {
-  rowsByTicker: Map<string, PricePoint[]>
-  benchmark: AIInfraBenchmarkParam
-  source: string
-  sourceNote?: string
+  rowsByTicker:            Map<string, PricePoint[]>
+  benchmark:               AIInfraBenchmarkParam
+  source:                  string
+  sourceNote?:             string
+  cycle_phase?:            SemiconductorCyclePhase | null
+  cycle_soxx_judgment?:    SemiconductorSOXXJudgment | null
+  cycle_soxl_environment?: SemiconductorSOXLEnvironment | null
 }) {
   const requiredTickers = uniqueRequiredTickers()
   const tickerReturns = requiredTickers.map((ticker) =>
@@ -463,6 +486,25 @@ function buildResponseFromRows(params: {
   const bucket_states = buckets.map((bucket) =>
     computeBucketState(bucket, rrgSeriesMap.get(bucket.bucket_id) ?? null, params.benchmark),
   )
+  const infra_to_soxx_translation = computeInfraToSoxxTranslation({
+    bucket_states,
+    selected_benchmark:      params.benchmark,
+    cycle_phase:             params.cycle_phase ?? undefined,
+    cycle_soxx_judgment:     params.cycle_soxx_judgment ?? undefined,
+    cycle_soxl_environment:  params.cycle_soxl_environment ?? undefined,
+  })
+  const infra_historical_analog = computeInfraHistoricalAnalog({
+    bucket_states,
+    infra_translation:  infra_to_soxx_translation,
+    cycle_phase:        params.cycle_phase ?? undefined,
+    selected_benchmark: params.benchmark,
+  })
+  const infra_educational_narrative = buildInfraEducationalNarrative({
+    infra_translation:       infra_to_soxx_translation,
+    infra_historical_analog,
+    cycle_phase:             params.cycle_phase ?? undefined,
+    selected_benchmark:      params.benchmark,
+  })
   dataNotes.push(
     `State labels are recalculated using the ${params.benchmark} benchmark. Rule-based and price/RRG-driven. Earnings confirmation not included.`,
   )
@@ -486,19 +528,25 @@ function buildResponseFromRows(params: {
     computeBucketState(bucket, null, params.benchmark),
   )
 
+  const earnings_confirmation = computeAllBucketEarningsConfirmation()
+
   return {
     source: params.source,
     asOf,
-    benchmark: 'SOXX',
+    benchmark: params.benchmark,
     selected_benchmark: params.benchmark,
     status: aggregateStatus(allPeriodRows),
     themes,
     buckets,
     benchmarks,
     bucket_states,
+    infra_to_soxx_translation,
+    infra_historical_analog,
+    infra_educational_narrative,
     tower_buckets,
     tower_states,
     company_purity: AI_INFRA_COMPANY_PURITY,
+    earnings_confirmation,
     generated_at: new Date().toISOString(),
     data_notes: dataNotes,
     warnings: missingTickers.length > 0
@@ -509,7 +557,10 @@ function buildResponseFromRows(params: {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const benchmark = parseBenchmark(searchParams.get('benchmark'))
+  const benchmark              = parseBenchmark(searchParams.get('benchmark'))
+  const cycle_phase            = parseCyclePhase(searchParams.get('cycle_phase'))
+  const cycle_soxx_judgment    = parseCycleSOXXJudgment(searchParams.get('cycle_soxx_judgment'))
+  const cycle_soxl_environment = parseCycleSOXLEnvironment(searchParams.get('cycle_soxl_environment'))
 
   const dbPath = findLocalDbPath()
   if (dbPath) {
@@ -527,6 +578,9 @@ export async function GET(request: Request) {
             rowsByTicker,
             benchmark,
             source: 'local_price_db:ohlcv_daily',
+            cycle_phase,
+            cycle_soxx_judgment,
+            cycle_soxl_environment,
           }),
         )
       } finally {
@@ -563,6 +617,9 @@ export async function GET(request: Request) {
         source: 'backend_api:/api/chart/<symbol>',
         sourceNote:
           'Remote chart API fallback was used because local DB/cache is unavailable in this runtime.',
+        cycle_phase,
+        cycle_soxx_judgment,
+        cycle_soxl_environment,
       }),
     )
   } catch {

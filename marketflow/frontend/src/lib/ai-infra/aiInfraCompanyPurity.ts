@@ -162,6 +162,17 @@ export const AI_INFRA_COMPANY_PURITY: AIInfraCompanyPurityMetadata[] = [
     notes: ['프로세스 제어 및 검사 장비 — 첨단 패키징·테스트 양쪽 수혜.'],
   },
   {
+    symbol: 'LRCX', company_name: 'Lam Research',
+    primary_bucket: 'PACKAGING',
+    company_theme_purity: 'MIXED_EXPOSURE',
+    ai_infra_exposure_level: 'HIGH',
+    commercial_stage: 'COMMERCIAL',
+    revenue_visibility: 'PARTIAL',
+    pure_play_score: 58, ai_infra_relevance_score: 78,
+    commercialization_risk: false, indirect_exposure: false, story_risk: false,
+    notes: ['식각·증착 장비 — 어드밴스드 패키징·HBM 제조 확대 수혜. 비AI WFE 노출 혼재.'],
+  },
+  {
     symbol: 'ACMR', company_name: 'ACM Research',
     primary_bucket: 'PACKAGING',
     secondary_buckets: ['CLEANROOM_WATER'],
@@ -538,6 +549,18 @@ export const AI_INFRA_COMPANY_PURITY: AIInfraCompanyPurityMetadata[] = [
     pure_play_score: 50, ai_infra_relevance_score: 70,
     commercialization_risk: false, indirect_exposure: false, story_risk: false,
     notes: ['기록 관리·데이터센터 REIT — AI 인프라 서사 부합. 기존 문서 보관 사업 혼재.'],
+  },
+
+  {
+    symbol: 'SMCI', company_name: 'Super Micro Computer',
+    primary_bucket: 'DATA_CENTER_INFRA',
+    company_theme_purity: 'HIGH_EXPOSURE',
+    ai_infra_exposure_level: 'HIGH',
+    commercial_stage: 'COMMERCIAL',
+    revenue_visibility: 'VISIBLE',
+    pure_play_score: 75, ai_infra_relevance_score: 85,
+    commercialization_risk: false, indirect_exposure: false, story_risk: false,
+    notes: ['AI 서버 통합 선도. NVIDIA GPU 수요 직결. 감사 이슈 해소 후 재상장.'],
   },
 
   // ── RAW_MATERIAL ───────────────────────────────────────────────────────────
