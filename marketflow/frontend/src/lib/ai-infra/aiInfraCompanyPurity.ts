@@ -195,6 +195,17 @@ export const AI_INFRA_COMPANY_PURITY: AIInfraCompanyPurityMetadata[] = [
     commercialization_risk: false, indirect_exposure: false, story_risk: false,
     notes: ['CoWoS/SoIC 고급 패키징 주도. AI 가속기 제조의 핵심 파운드리. ADR 형태로 US 거래.'],
   },
+  {
+    symbol: 'ASML', company_name: 'ASML Holding NV (ADR)',
+    primary_bucket: 'PACKAGING',
+    company_theme_purity: 'MIXED_EXPOSURE',
+    ai_infra_exposure_level: 'HIGH',
+    commercial_stage: 'COMMERCIAL',
+    revenue_visibility: 'PARTIAL',
+    pure_play_score: 65, ai_infra_relevance_score: 82,
+    commercialization_risk: false, indirect_exposure: false, story_risk: false,
+    notes: ['EUV 리소그래피 장비 독점 공급. AI 칩 첨단 노드 생산에 필수. 수익은 반도체 설비투자 의존 — 직접 AI 매출 아님.'],
+  },
 
   // ── COOLING ────────────────────────────────────────────────────────────────
   {
@@ -409,6 +420,17 @@ export const AI_INFRA_COMPANY_PURITY: AIInfraCompanyPurityMetadata[] = [
     pure_play_score: 65, ai_infra_relevance_score: 78,
     commercialization_risk: false, indirect_exposure: false, story_risk: false,
     notes: ['광부품·트랜시버 — AI 데이터센터 고속 연결 수혜. II-VI 합병 후 복잡도 증가.'],
+  },
+  {
+    symbol: 'APH', company_name: 'Amphenol Corp',
+    primary_bucket: 'OPTICAL_NETWORK',
+    company_theme_purity: 'MIXED_EXPOSURE',
+    ai_infra_exposure_level: 'MEDIUM',
+    commercial_stage: 'COMMERCIAL',
+    revenue_visibility: 'PARTIAL',
+    pure_play_score: 50, ai_infra_relevance_score: 70,
+    commercialization_risk: false, indirect_exposure: false, story_risk: false,
+    notes: ['고속 커넥터·케이블 어셈블리 — AI 서버·데이터센터 인터커넥트 수혜. 산업·자동차·군용 노출 혼재.'],
   },
 
   // ── POWER_INFRA ────────────────────────────────────────────────────────────

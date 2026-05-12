@@ -232,6 +232,23 @@ export const EARNINGS_EVIDENCE_SEED: AIInfraEarningsEvidence[] = [
 
   // ── DATA_CENTER_INFRA ───────────────────────────────────────────────────────
   {
+    symbol: 'EQIX', company_name: 'Equinix Inc',
+    primary_bucket: 'DATA_CENTER_INFRA',
+    evidence_types: ['AI_REVENUE', 'BACKLOG', 'GUIDANCE', 'SEGMENT_GROWTH', 'MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'PARTIAL', revenue_trend: 'GROWING',
+    guidance_tone: 'RAISED', backlog_or_orders: 'IMPROVING', margin_quality: 'STABLE',
+    commercialization_status: 'REVENUE_VISIBLE',
+    evidence_notes: [
+      'Data center colocation demand from hyperscaler AI infrastructure expansion is primary growth driver.',
+      'xScale hyperscale leasing backlog growing with AI cluster customers cited in earnings.',
+    ],
+    caution_notes: [
+      'Colocation revenue — not direct AI compute revenue. Rate-sensitive REIT structure.',
+      'Data center supply expansion creates competitive leasing pressure.',
+    ],
+    source: { quarter: 'Q3 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+  {
     symbol: 'SMCI', company_name: 'Super Micro Computer',
     primary_bucket: 'DATA_CENTER_INFRA',
     evidence_types: ['AI_REVENUE', 'SEGMENT_GROWTH', 'MANAGEMENT_COMMENTARY'],
@@ -248,5 +265,119 @@ export const EARNINGS_EVIDENCE_SEED: AIInfraEarningsEvidence[] = [
       'Accounting restatement history adds verification risk.',
     ],
     source: { quarter: 'Q1 FY2025', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+
+  // ── PACKAGING (E-5 추가) ────────────────────────────────────────────────────
+  {
+    symbol: 'ASML', company_name: 'ASML Holding NV (ADR)',
+    primary_bucket: 'PACKAGING',
+    evidence_types: ['AI_REVENUE', 'BACKLOG', 'GUIDANCE', 'SEGMENT_GROWTH', 'MARGIN', 'MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'PARTIAL', revenue_trend: 'GROWING',
+    guidance_tone: 'RAISED', backlog_or_orders: 'STRONG', margin_quality: 'STABLE',
+    commercialization_status: 'REVENUE_VISIBLE',
+    evidence_notes: [
+      'EUV/DUV lithography demand driven by advanced node AI chip capacity expansion.',
+      'Multi-year backlog with hyperscaler fab investments as stated driver in earnings.',
+    ],
+    caution_notes: [
+      'Revenue is semiconductor capex driven — not direct AI inference or training revenue.',
+      'Export restriction risk (China) creates demand uncertainty.',
+    ],
+    source: { quarter: 'Q3 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+
+  // ── OPTICAL_NETWORK (E-5 추가) ─────────────────────────────────────────────
+  {
+    symbol: 'APH', company_name: 'Amphenol Corp',
+    primary_bucket: 'OPTICAL_NETWORK',
+    evidence_types: ['SEGMENT_GROWTH', 'ORDER_GROWTH', 'GUIDANCE', 'MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'PARTIAL', revenue_trend: 'GROWING',
+    guidance_tone: 'POSITIVE', backlog_or_orders: 'IMPROVING', margin_quality: 'STABLE',
+    commercialization_status: 'EARLY_REVENUE',
+    evidence_notes: [
+      'High-speed connector and cable assembly demand from AI server and data center infrastructure.',
+      'IT datacom segment growing sequentially with AI cluster build-out cited in commentary.',
+    ],
+    caution_notes: [
+      'AI data center connector revenue not separately disclosed — mixed with industrial, automotive.',
+      'Commercialization scope limited to connectivity components, not AI compute infrastructure.',
+    ],
+    source: { quarter: 'Q3 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+
+  // ── TEST_EQUIPMENT (E-5 추가) ──────────────────────────────────────────────
+  {
+    symbol: 'TER', company_name: 'Teradyne Inc',
+    primary_bucket: 'TEST_EQUIPMENT',
+    evidence_types: ['SEGMENT_GROWTH', 'GUIDANCE', 'MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'PARTIAL', revenue_trend: 'GROWING',
+    guidance_tone: 'POSITIVE', backlog_or_orders: 'IMPROVING', margin_quality: 'STABLE',
+    commercialization_status: 'REVENUE_VISIBLE',
+    evidence_notes: [
+      'AI chip and HBM test demand driving semiconductor test system orders.',
+      'Systems test segment benefiting from complex AI processor validation requirements.',
+    ],
+    caution_notes: [
+      'Test revenue is cyclical and lags chip production ramp.',
+      'Industrial automation segment dilutes AI-specific signal.',
+    ],
+    source: { quarter: 'Q4 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+
+  // ── SPECIALTY_GAS (E-5 추가) ───────────────────────────────────────────────
+  {
+    symbol: 'ENTG', company_name: 'Entegris Inc',
+    primary_bucket: 'SPECIALTY_GAS',
+    evidence_types: ['AI_REVENUE', 'SEGMENT_GROWTH', 'GUIDANCE', 'MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'PARTIAL', revenue_trend: 'GROWING',
+    guidance_tone: 'POSITIVE', backlog_or_orders: 'IMPROVING', margin_quality: 'STABLE',
+    commercialization_status: 'REVENUE_VISIBLE',
+    evidence_notes: [
+      'Advanced semiconductor process materials and specialty gases for AI chip node production.',
+      'Revenue tied to leading-edge fab capacity expansion with AI demand cited as growth driver.',
+    ],
+    caution_notes: [
+      'Revenue driven by semiconductor capex — not direct AI inference revenue.',
+      'China export restriction exposure from semiconductor process materials.',
+    ],
+    source: { quarter: 'Q3 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+
+  // ── PCB_SUBSTRATE (E-5 추가) ───────────────────────────────────────────────
+  {
+    symbol: 'TTMI', company_name: 'TTM Technologies',
+    primary_bucket: 'PCB_SUBSTRATE',
+    evidence_types: ['SEGMENT_GROWTH', 'MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'PARTIAL', revenue_trend: 'GROWING',
+    guidance_tone: 'NEUTRAL', backlog_or_orders: 'STABLE', margin_quality: 'STABLE',
+    commercialization_status: 'REVENUE_VISIBLE',
+    evidence_notes: [
+      'High-density interconnect PCB demand growing from AI server and networking hardware.',
+      'Data center PCB orders cited as growth area in management commentary.',
+    ],
+    caution_notes: [
+      'AI-specific PCB revenue not separately disclosed — mixed with aerospace, automotive, telecom.',
+      'Evidence is general datacenter PCB demand, not AI-specific. Low pure-play signal.',
+    ],
+    source: { quarter: 'Q3 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
+  },
+
+  // ── RAW_MATERIAL (E-5 추가) ────────────────────────────────────────────────
+  {
+    symbol: 'FCX', company_name: 'Freeport-McMoRan',
+    primary_bucket: 'RAW_MATERIAL',
+    evidence_types: ['MANAGEMENT_COMMENTARY'],
+    ai_revenue_visibility: 'INDIRECT', revenue_trend: 'STABLE',
+    guidance_tone: 'NEUTRAL', backlog_or_orders: 'STABLE', margin_quality: 'STABLE',
+    commercialization_status: 'REVENUE_VISIBLE',
+    evidence_notes: [
+      'Copper demand supported by AI infrastructure build-out narrative per management commentary.',
+    ],
+    caution_notes: [
+      'AI revenue is indirect — copper price is driven by global industrial demand cycle.',
+      'No direct AI revenue visibility. Evidence limited to commentary on copper demand narrative.',
+      'Commodity price cycle dominates earnings, not AI deployment activity.',
+    ],
+    source: { quarter: 'Q3 2024', source_type: 'MANUAL', as_of: '2025-Q4' },
   },
 ]
