@@ -119,14 +119,18 @@ interface TileData {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function safeNum(obj: AIInfraBucketMomentum | null, ...keys: string[]): number | null {
-  if (obj == null) return null
-  const m = obj as unknown as Record<string, unknown>
-  for (const k of keys) {
-    const v = m[k]
-    if (typeof v === 'number' && isFinite(v)) return v
+function getBenchmarkRS(
+  m: AIInfraBucketMomentum | null,
+  benchmark: string,
+): { rs_1m: number | null; rs_3m: number | null; rs_6m: number | null } {
+  if (m == null) return { rs_1m: null, rs_3m: null, rs_6m: null }
+  const bKey = benchmark === 'QQQ' ? 'vs_qqq' : benchmark === 'SPY' ? 'vs_spy' : 'vs_soxx'
+  const rs = m.relative_strength[bKey as keyof typeof m.relative_strength]
+  return {
+    rs_1m: rs?.one_month    ?? null,
+    rs_3m: rs?.three_month  ?? null,
+    rs_6m: rs?.six_month    ?? null,
   }
-  return null
 }
 
 function fmt(v: number | null): string {
@@ -153,6 +157,7 @@ function buildTileData(
   states:          AIInfraBucketState[],
   earningsBuckets: AIInfraBucketEarningsConfirmation[],
   momentumBuckets: AIInfraBucketMomentum[],
+  benchmark:       string,
 ): { tiles: TileData[]; duplicateCount: number } {
   // Deduplication: keep first occurrence, log count (amendment)
   const seen = new Set<string>()
@@ -194,9 +199,7 @@ function buildTileData(
       story_heavy:      purity?.theme_purity === 'STORY_HEAVY' || s?.state_label === 'STORY_ONLY',
       indirect_exp:     purity?.theme_purity === 'INDIRECT_EXPOSURE',
       comm_risk:        purity?.commercialization_risk ?? false,
-      rs_1m:            safeNum(m, 'rel_1m', 'rs_1m', 'return_1m'),
-      rs_3m:            safeNum(m, 'rel_3m', 'rs_3m', 'return_3m'),
-      rs_6m:            safeNum(m, 'rel_6m', 'rs_6m', 'return_6m'),
+      ...getBenchmarkRS(m, benchmark),
       earnings_level:   e?.confirmation_level ?? null,
       evidence_summary: e?.evidence_summary   ?? '',
       caution_summary:  e?.caution_summary    ?? '',
@@ -646,8 +649,8 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
   }, [])
 
   const { tiles, duplicateCount } = useMemo(
-    () => buildTileData(states, earningsBuckets, momentumBuckets),
-    [states, earningsBuckets, momentumBuckets],
+    () => buildTileData(states, earningsBuckets, momentumBuckets, benchmark),
+    [states, earningsBuckets, momentumBuckets, benchmark],
   )
 
   const filteredTiles = useMemo(() => tiles.filter(t => applyFilter(t, filter)), [tiles, filter])
@@ -680,7 +683,9 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
       )}
 
       {/* Filter chips — default All, reset on benchmark change */}
-      <FilterChips active={filter} onChange={setFilter} />
+      <div onClick={e => e.stopPropagation()}>
+        <FilterChips active={filter} onChange={(k) => { setFilter(k); setSelectedId(null) }} />
+      </div>
 
       {/* Tile grid */}
       <div
@@ -707,8 +712,10 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
         <DetailCard tile={selectedTile} onClose={handleDismiss} />
       )}
 
-      {/* Heatmap — respects filter */}
-      <ThemeHeatmap tiles={filteredTiles} selectedId={selectedId} onSelect={handleSelect} />
+      {/* Heatmap — stopPropagation prevents outer handleDismiss from firing on row click */}
+      <div onClick={e => e.stopPropagation()}>
+        <ThemeHeatmap tiles={filteredTiles} selectedId={selectedId} onSelect={handleSelect} />
+      </div>
 
       <div style={{
         marginTop: 12, paddingTop: 8,
