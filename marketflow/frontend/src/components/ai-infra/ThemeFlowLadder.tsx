@@ -43,10 +43,10 @@ interface FlowGroupDef {
 const FLOW_GROUPS: FlowGroupDef[] = [
   { id: 'core',        label: 'AI Core',           buckets: ['AI_CHIP'] },
   { id: 'memory',      label: 'Memory / Supply',   buckets: ['HBM_MEMORY'] },
-  { id: 'mfg',         label: 'Mfg / Packaging',   buckets: ['PACKAGING', 'TEST_EQUIPMENT', 'PCB_SUBSTRATE'] },
-  { id: 'net_thermal', label: 'Network / Thermal', buckets: ['OPTICAL_NETWORK', 'COOLING'] },
-  { id: 'power_dc',    label: 'Power / Data Ctr',  buckets: ['POWER_INFRA', 'DATA_CENTER_INFRA'] },
-  { id: 'facility',    label: 'Facility / Matls',  buckets: ['CLEANROOM_WATER', 'SPECIALTY_GAS', 'RAW_MATERIAL', 'GLASS_SUBSTRATE'] },
+  { id: 'mfg',         label: 'Manufacturing / Pkg', buckets: ['PACKAGING', 'TEST_EQUIPMENT', 'PCB_SUBSTRATE'] },
+  { id: 'net_thermal', label: 'Network / Thermal',  buckets: ['OPTICAL_NETWORK', 'COOLING'] },
+  { id: 'power_dc',    label: 'Power / Data Ctr',   buckets: ['POWER_INFRA', 'DATA_CENTER_INFRA'] },
+  { id: 'facility',    label: 'Facility / Materials', buckets: ['CLEANROOM_WATER', 'SPECIALTY_GAS', 'RAW_MATERIAL', 'GLASS_SUBSTRATE'] },
 ]
 
 // Dev-time bucket count guard
