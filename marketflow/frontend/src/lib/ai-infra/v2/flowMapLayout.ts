@@ -37,7 +37,7 @@ export interface FlowMapLayout {
 const NODE_H    = 90
 const NODE_W    = 175
 const NODE_GAP  = 12
-const HEADER_H  = 22
+const HEADER_H  = 26
 const PAD_X     = 8
 const PAD_Y     = 8
 const STAGE_GAP = 20

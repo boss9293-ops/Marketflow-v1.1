@@ -202,7 +202,7 @@ function LiveFlowMapCore({
               y={stage.y + 14}
               textAnchor="middle"
               fontFamily="'IBM Plex Mono', monospace"
-              fontSize={9}
+              fontSize={11}
               fontWeight={700}
               fill="#3FB6A8"
               letterSpacing="0.10em"
