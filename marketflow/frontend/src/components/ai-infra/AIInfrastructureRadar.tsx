@@ -71,6 +71,7 @@ interface RadarApiResponse {
       as_of?:                string
     }
   }
+  symbol_returns?: Record<string, { five_day: number | null; one_month: number | null }>
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -770,6 +771,9 @@ export default function AIInfrastructureRadar() {
                 states={states}
                 selectedId={selectedFlowId}
                 onSelect={setSelectedFlowId}
+                symbolReturns={data?.symbol_returns ?? {}}
+                earningsCompanies={data?.earnings_confirmation?.companies ?? []}
+                companyPurity={data?.company_purity ?? []}
               />
             </div>
 

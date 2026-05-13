@@ -34,7 +34,7 @@ export interface FlowMapLayout {
   viewBoxHeight: number
 }
 
-const NODE_H    = 42
+const NODE_H    = 58
 const NODE_GAP  = 6
 const HEADER_H  = 22
 const PAD_X     = 8

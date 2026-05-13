@@ -547,6 +547,15 @@ function buildResponseFromRows(params: {
     tower_states,
     company_purity: AI_INFRA_COMPANY_PURITY,
     earnings_confirmation,
+    symbol_returns: Object.fromEntries(
+      AI_INFRA_COMPANY_PURITY.map(c => [
+        c.symbol,
+        {
+          five_day:  multiPeriodMap.get(c.symbol)?.five_day  ?? null,
+          one_month: multiPeriodMap.get(c.symbol)?.one_month ?? null,
+        },
+      ]),
+    ) as Record<string, { five_day: number | null; one_month: number | null }>,
     generated_at: new Date().toISOString(),
     data_notes: dataNotes,
     warnings: missingTickers.length > 0
