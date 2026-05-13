@@ -13,10 +13,12 @@ import type { SymbolReturnsMap } from '@/lib/ai-infra/v2/symbolPriceFetcher'
 import { FlowMapNode } from './FlowMapNode'
 import type { SymbolNodeOverlay } from './FlowMapNode'
 import { FlowMapConnector, FlowMapArrowDefs } from './FlowMapConnector'
+import { FlowMapStageVertical } from './FlowMapStageVertical'
 import { SymbolMiniCard } from './SymbolMiniCard'
 import type { SymbolMiniCardData } from './SymbolMiniCard'
 import { SectorPulseCard } from './SectorPulseCard'
 import type { AIInfraBucketEarningsConfirmation } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
+import { useFlowMapLayout } from '@/lib/ai-infra/v2/useFlowMapLayout'
 
 const STAGE_SHORT: Record<string, string> = {
   STAGE_1_AI_CHIP:                    'S1 · AI CORE',
@@ -61,8 +63,9 @@ export function LiveFlowMap({
     return () => ro.disconnect()
   }, [])
 
-  const layout   = buildFlowMapLayout(states, width)
-  const leadMap  = buildLeadSymbolMap(companyPurity, earningsCompanies)
+  const orientation = useFlowMapLayout()
+  const layout      = buildFlowMapLayout(states, width)
+  const leadMap     = buildLeadSymbolMap(companyPurity, earningsCompanies)
 
   function getOverlay(bucketId: string): SymbolNodeOverlay {
     const lead = leadMap.get(bucketId)
@@ -101,6 +104,49 @@ export function LiveFlowMap({
       is_indirect:        lead?.is_indirect    ?? false,
       is_story_heavy:     lead?.is_story_heavy ?? false,
     })
+  }
+
+  const modals = (
+    <>
+      {activeMiniCard && (
+        <SymbolMiniCard
+          data={activeMiniCard}
+          onClose={() => setActiveMiniCard(null)}
+        />
+      )}
+      {selectedId && !activeMiniCard && (() => {
+        const selState = states.find(s => s.bucket_id === selectedId)
+        if (!selState) return null
+        const selEarn  = earningsBuckets.find(b => b.bucket_id === selectedId)
+        return (
+          <SectorPulseCard
+            state={selState}
+            earnings={selEarn}
+            companyPurity={companyPurity}
+            earningsCompanies={earningsCompanies}
+            symbolReturns={symbolReturns}
+            symbolPriceSeries={symbolPriceSeries}
+            asOf={asOf}
+            onClose={() => onSelect(null)}
+          />
+        )
+      })()}
+    </>
+  )
+
+  if (orientation === 'vertical') {
+    return (
+      <div>
+        <FlowMapStageVertical
+          stages={layout.stages}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          getOverlay={getOverlay}
+          onSymbolClick={handleSymbolClick}
+        />
+        {modals}
+      </div>
+    )
   }
 
   return (
@@ -177,32 +223,7 @@ export function LiveFlowMap({
           </svg>
       </div>
 
-      {/* Symbol Mini Card modal (V2-3 — direct ticker click) */}
-      {activeMiniCard && (
-        <SymbolMiniCard
-          data={activeMiniCard}
-          onClose={() => setActiveMiniCard(null)}
-        />
-      )}
-
-      {/* Sector Pulse Card modal (V2-4 — node body click) */}
-      {selectedId && !activeMiniCard && (() => {
-        const selState   = states.find(s => s.bucket_id === selectedId)
-        if (!selState) return null
-        const selEarn    = earningsBuckets.find(b => b.bucket_id === selectedId)
-        return (
-          <SectorPulseCard
-            state={selState}
-            earnings={selEarn}
-            companyPurity={companyPurity}
-            earningsCompanies={earningsCompanies}
-            symbolReturns={symbolReturns}
-            symbolPriceSeries={symbolPriceSeries}
-            asOf={asOf}
-            onClose={() => onSelect(null)}
-          />
-        )
-      })()}
+      {modals}
     </div>
   )
 }
