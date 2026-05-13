@@ -26,6 +26,9 @@ import { InfraBridgeCompactSummary } from './InfraBridgeCompactSummary'
 import { EarningsConfirmationPanel } from './EarningsConfirmationPanel'
 import type { AIInfraBucketEarningsConfirmation, AIInfraEarningsEvidence } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 import { ThemeMapPanel } from './ThemeMapPanel'
+import { OneLineConclusion } from './v2/OneLineConclusion'
+import { LiveFlowMap } from './v2/LiveFlowMap'
+import { ExpertModeToggle } from './v2/ExpertModeToggle'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 
@@ -636,13 +639,15 @@ function TabBar({ active, onChange }: { active: ActiveTab; onChange: (t: ActiveT
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function AIInfrastructureRadar() {
-  const [data, setData]         = useState<RadarApiResponse | null>(null)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState<string | null>(null)
-  const [tab, setTab]           = useState<ActiveTab>('ladder')
+  const [data, setData]           = useState<RadarApiResponse | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState<string | null>(null)
+  const [tab, setTab]             = useState<ActiveTab>('ladder')
   const [benchmark, setBenchmark] = useState<Benchmark>('SOXX')
-  const [grouped, setGrouped]   = useState(false)
-  const [cycleCtx, setCycleCtx] = useState<InfrastructureCycleContext | null>(null)
+  const [grouped, setGrouped]     = useState(false)
+  const [cycleCtx, setCycleCtx]   = useState<InfrastructureCycleContext | null>(null)
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null)
+  const [isExpertOpen, setIsExpertOpen]     = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -756,90 +761,115 @@ export default function AIInfrastructureRadar() {
 
         {!loading && !error && (
           <>
-            {/* Controls */}
-            <ControlBar
-              benchmark={benchmark} setBenchmark={setBenchmark}
-              grouped={grouped} setGrouped={setGrouped}
-              serverBenchmark={data?.selected_benchmark}
+            {/* V2 — OneLineConclusion */}
+            <OneLineConclusion states={states} />
+
+            {/* V2 — LiveFlowMap */}
+            <div style={{ marginBottom: 4 }}>
+              <LiveFlowMap
+                states={states}
+                selectedId={selectedFlowId}
+                onSelect={setSelectedFlowId}
+              />
+            </div>
+
+            {/* V2 — ExpertModeToggle */}
+            <ExpertModeToggle
+              open={isExpertOpen}
+              onToggle={() => setIsExpertOpen(p => !p)}
             />
 
-            {/* Summary Strip */}
-            {states.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <SummaryStrip states={states} asOf={data?.asOf ?? null} benchmark={benchmark} />
-              </div>
-            )}
+            {/* ── 전문가 탭 (토글) ── */}
+            {isExpertOpen && (
+              <>
+                {/* Controls */}
+                <div style={{ marginTop: 16 }}>
+                  <ControlBar
+                    benchmark={benchmark} setBenchmark={setBenchmark}
+                    grouped={grouped} setGrouped={setGrouped}
+                    serverBenchmark={data?.selected_benchmark}
+                  />
+                </div>
 
-            {/* Data Quality Badges */}
-            <DataQualityBadges states={states} buckets={buckets} benchmark={benchmark} />
+                {/* Summary Strip */}
+                {states.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <SummaryStrip states={states} asOf={data?.asOf ?? null} benchmark={benchmark} />
+                  </div>
+                )}
 
-            {/* Inline data notes */}
-            {dataNotes.length > 0 && (
-              <div style={{
-                marginBottom: 12, padding: '6px 12px',
-                background: V.bg2, border: `1px solid ${V.border}`, borderRadius: 4,
-                fontFamily: V.ui, fontSize: 12, color: V.text2, lineHeight: 1.5,
-              }}>
-                {dataNotes.map((n, i) => <div key={i}>{n}</div>)}
-              </div>
-            )}
+                {/* Data Quality Badges */}
+                <DataQualityBadges states={states} buckets={buckets} benchmark={benchmark} />
 
-            {/* ── 기존 탭 ── */}
-            <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${V.border}` }}>
-              <TabBar active={tab} onChange={setTab} />
-              {tab === 'ladder' && (
-                states.length > 0
-                  ? <ValueChainLadder
-                      bucketStates={states}
-                      buckets={buckets}
-                      compact={false}
-                      selectedBenchmark={benchmark}
+                {/* Inline data notes */}
+                {dataNotes.length > 0 && (
+                  <div style={{
+                    marginBottom: 12, padding: '6px 12px',
+                    background: V.bg2, border: `1px solid ${V.border}`, borderRadius: 4,
+                    fontFamily: V.ui, fontSize: 12, color: V.text2, lineHeight: 1.5,
+                  }}>
+                    {dataNotes.map((n, i) => <div key={i}>{n}</div>)}
+                  </div>
+                )}
+
+                {/* ── 기존 탭 ── */}
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${V.border}` }}>
+                  <TabBar active={tab} onChange={setTab} />
+                  {tab === 'ladder' && (
+                    states.length > 0
+                      ? <ValueChainLadder
+                          bucketStates={states}
+                          buckets={buckets}
+                          compact={false}
+                          selectedBenchmark={benchmark}
+                        />
+                      : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                          State label data not available. Value chain will render once API responds.
+                        </div>
+                  )}
+                  {tab === 'theme' && (
+                    <ThemeMapPanel
+                      states={states}
+                      earningsBuckets={data?.earnings_confirmation?.buckets ?? []}
+                      momentumBuckets={buckets}
+                      benchmark={benchmark}
                     />
-                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                      State label data not available. Value chain will render once API responds.
-                    </div>
-              )}
-              {tab === 'theme' && (
-                <ThemeMapPanel
-                  states={states}
-                  earningsBuckets={data?.earnings_confirmation?.buckets ?? []}
-                  momentumBuckets={buckets}
-                  benchmark={benchmark}
-                />
-              )}
-              {tab === 'heatmap' && (
-                states.length > 0
-                  ? <BottleneckHeatmap
-                      bucketStates={states}
-                      buckets={buckets}
-                      selectedBenchmark={benchmark}
-                    />
-                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                      State label data not available.
-                    </div>
-              )}
-              {tab === 'earnings' && (
-                <EarningsConfirmationPanel earningsConfirmation={data?.earnings_confirmation} />
-              )}
-              {tab === 'state' && (
-                states.length > 0
-                  ? <>
-                      <StateLabelsTable states={states} grouped={grouped} />
-                      <CompanyPuritySummaryGrid states={states} />
-                    </>
-                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                      State label data not available.
-                    </div>
-              )}
-              {tab === 'rs' && (
-                buckets.length > 0 && bms
-                  ? <RSTable buckets={buckets} benchmarks={bms} benchmark={benchmark} grouped={grouped} />
-                  : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
-                      Relative strength data not available.
-                    </div>
-              )}
-              {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
-            </div>
+                  )}
+                  {tab === 'heatmap' && (
+                    states.length > 0
+                      ? <BottleneckHeatmap
+                          bucketStates={states}
+                          buckets={buckets}
+                          selectedBenchmark={benchmark}
+                        />
+                      : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                          State label data not available.
+                        </div>
+                  )}
+                  {tab === 'earnings' && (
+                    <EarningsConfirmationPanel earningsConfirmation={data?.earnings_confirmation} />
+                  )}
+                  {tab === 'state' && (
+                    states.length > 0
+                      ? <>
+                          <StateLabelsTable states={states} grouped={grouped} />
+                          <CompanyPuritySummaryGrid states={states} />
+                        </>
+                      : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                          State label data not available.
+                        </div>
+                  )}
+                  {tab === 'rs' && (
+                    buckets.length > 0 && bms
+                      ? <RSTable buckets={buckets} benchmarks={bms} benchmark={benchmark} grouped={grouped} />
+                      : <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text3, padding: '16px 0' }}>
+                          Relative strength data not available.
+                        </div>
+                  )}
+                  {tab === 'rrg' && <BucketRRGPanel benchmark={benchmark} />}
+                </div>
+              </>
+            )}
           </>
         )}
 
