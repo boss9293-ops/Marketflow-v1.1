@@ -532,29 +532,38 @@ function ThemeDetailDrawer({
       </div>
 
       {/* ── 2. State Explanation ── */}
-      {(tile.state_reason || tile.state_drivers.length > 0) && (
-        <div>
-          <SectionLabel text="WHY THIS STATE" />
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
-            {tile.state_reason && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
-                <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
-                  {tile.state_reason.length > 140 ? tile.state_reason.slice(0, 140) + '…' : tile.state_reason}
-                </span>
-              </div>
-            )}
-            {tile.state_drivers.slice(0, tile.state_reason ? 2 : 3).map((d, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8 }}>
-                <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
-                <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
-                  {d.length > 140 ? d.slice(0, 140) + '…' : d}
-                </span>
-              </div>
-            ))}
-          </div>
+      <div>
+        <SectionLabel text="WHY THIS STATE" />
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+          {tile.state_reason || tile.state_drivers.length > 0 ? (
+            <>
+              {tile.state_reason && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
+                  <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
+                    {tile.state_reason.length > 140 ? tile.state_reason.slice(0, 140) + '…' : tile.state_reason}
+                  </span>
+                </div>
+              )}
+              {tile.state_drivers.slice(0, tile.state_reason ? 2 : 3).map((d, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8 }}>
+                  <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
+                  <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
+                    {d.length > 140 ? d.slice(0, 140) + '…' : d}
+                  </span>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{ color: V.text3, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
+              <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
+                State classification based on RS and RRG signals.
+              </span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* ── 3. Earnings Confirmation ── */}
       <div>
@@ -816,10 +825,9 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
   const [selectedId,  setSelectedId]  = useState<AIInfraBucketId | null>(null)
   const [windowWidth, setWindowWidth] = useState(1200)
 
-  // Reset filter + selection on benchmark change (amendment: do not persist across benchmarks)
+  // Reset filter on benchmark change; selectedId preserved — drawer auto-updates via tiles useMemo
   useEffect(() => {
     setFilter('all')
-    setSelectedId(null)
   }, [benchmark])
 
   useEffect(() => {
