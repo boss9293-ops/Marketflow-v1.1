@@ -10,6 +10,7 @@ import { AI_INFRA_BUCKETS } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketId } from '@/lib/semiconductor/aiInfraBucketMap'
 import { AI_INFRA_COMPANY_PURITY, COMPANY_PURITY_LABEL } from '@/lib/ai-infra/aiInfraCompanyPurity'
 import { getCompanyEarningsEvidence } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
+import { ThemeFlowLadder } from './ThemeFlowLadder'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -845,6 +846,11 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
 
   const filteredTiles = useMemo(() => tiles.filter(t => applyFilter(t, filter)), [tiles, filter])
 
+  const filteredIds = useMemo(
+    () => new Set(filteredTiles.map(t => t.bucket_id)),
+    [filteredTiles],
+  )
+
   const selectedTile = useMemo(
     () => tiles.find(t => t.bucket_id === selectedId) ?? null,
     [tiles, selectedId],
@@ -871,6 +877,18 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
           {duplicateCount} duplicate bucket_id(s) in bucket_states — rendering first occurrence only.
         </div>
       )}
+
+      {/* Theme Flow Ladder — always visible; filter mutes non-matching groups */}
+      <div onClick={e => e.stopPropagation()}>
+        <ThemeFlowLadder
+          tiles={tiles}
+          filteredIds={filteredIds}
+          isFiltered={filter !== 'all'}
+          selectedId={selectedId}
+          windowWidth={windowWidth}
+          onSelect={handleSelect}
+        />
+      </div>
 
       {/* Filter chips — default All, reset on benchmark change */}
       <div onClick={e => e.stopPropagation()}>
