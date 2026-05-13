@@ -15,6 +15,8 @@ import type { SymbolNodeOverlay } from './FlowMapNode'
 import { FlowMapConnector, FlowMapArrowDefs } from './FlowMapConnector'
 import { SymbolMiniCard } from './SymbolMiniCard'
 import type { SymbolMiniCardData } from './SymbolMiniCard'
+import { SectorPulseCard } from './SectorPulseCard'
+import type { AIInfraBucketEarningsConfirmation } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 
 const STAGE_SHORT: Record<string, string> = {
   STAGE_1_AI_CHIP:                    'S1 · AI CORE',
@@ -25,17 +27,22 @@ const STAGE_SHORT: Record<string, string> = {
 }
 
 interface Props {
-  states:            AIInfraBucketState[]
-  selectedId:        string | null
-  onSelect:          (id: string | null) => void
-  symbolReturns:     SymbolReturnsMap
-  earningsCompanies: AIInfraEarningsEvidence[]
-  companyPurity:     AIInfraCompanyPurityMetadata[]
+  states:             AIInfraBucketState[]
+  selectedId:         string | null
+  onSelect:           (id: string | null) => void
+  symbolReturns:      SymbolReturnsMap
+  symbolPriceSeries:  Record<string, number[]>
+  earningsCompanies:  AIInfraEarningsEvidence[]
+  earningsBuckets:    AIInfraBucketEarningsConfirmation[]
+  companyPurity:      AIInfraCompanyPurityMetadata[]
+  asOf?:              string | null
 }
 
 export function LiveFlowMap({
   states, selectedId, onSelect,
-  symbolReturns, earningsCompanies, companyPurity,
+  symbolReturns, symbolPriceSeries,
+  earningsCompanies, earningsBuckets, companyPurity,
+  asOf,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(900)
@@ -169,24 +176,32 @@ export function LiveFlowMap({
         </div>
       </div>
 
-      {/* Selected bucket hint */}
-      {selectedId && !activeMiniCard && (
-        <div style={{
-          marginTop: 4, paddingLeft: 8,
-          fontFamily: "'IBM Plex Mono', monospace",
-          fontSize: 10, color: '#3FB6A8', letterSpacing: '0.06em',
-        }}>
-          ▸ {states.find(s => s.bucket_id === selectedId)?.display_name ?? selectedId} — 아래 전문가 탭에서 상세 확인
-        </div>
-      )}
-
-      {/* Symbol Mini Card modal */}
+      {/* Symbol Mini Card modal (V2-3 — direct ticker click) */}
       {activeMiniCard && (
         <SymbolMiniCard
           data={activeMiniCard}
           onClose={() => setActiveMiniCard(null)}
         />
       )}
+
+      {/* Sector Pulse Card modal (V2-4 — node body click) */}
+      {selectedId && !activeMiniCard && (() => {
+        const selState   = states.find(s => s.bucket_id === selectedId)
+        if (!selState) return null
+        const selEarn    = earningsBuckets.find(b => b.bucket_id === selectedId)
+        return (
+          <SectorPulseCard
+            state={selState}
+            earnings={selEarn}
+            companyPurity={companyPurity}
+            earningsCompanies={earningsCompanies}
+            symbolReturns={symbolReturns}
+            symbolPriceSeries={symbolPriceSeries}
+            asOf={asOf}
+            onClose={() => onSelect(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

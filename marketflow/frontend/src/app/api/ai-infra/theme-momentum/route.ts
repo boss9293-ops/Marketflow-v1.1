@@ -551,11 +551,19 @@ function buildResponseFromRows(params: {
       AI_INFRA_COMPANY_PURITY.map(c => [
         c.symbol,
         {
-          five_day:  multiPeriodMap.get(c.symbol)?.five_day  ?? null,
-          one_month: multiPeriodMap.get(c.symbol)?.one_month ?? null,
+          five_day:    multiPeriodMap.get(c.symbol)?.five_day    ?? null,
+          one_month:   multiPeriodMap.get(c.symbol)?.one_month   ?? null,
+          three_month: multiPeriodMap.get(c.symbol)?.three_month ?? null,
         },
       ]),
-    ) as Record<string, { five_day: number | null; one_month: number | null }>,
+    ) as Record<string, { five_day: number | null; one_month: number | null; three_month: number | null }>,
+    symbol_price_series: Object.fromEntries(
+      AI_INFRA_COMPANY_PURITY.map(c => {
+        const rows = params.rowsByTicker.get(c.symbol) ?? []
+        const prices = rows.slice(0, 90).reverse().map(r => Number(r.price.toFixed(2)))
+        return [c.symbol, prices]
+      }),
+    ) as Record<string, number[]>,
     generated_at: new Date().toISOString(),
     data_notes: dataNotes,
     warnings: missingTickers.length > 0

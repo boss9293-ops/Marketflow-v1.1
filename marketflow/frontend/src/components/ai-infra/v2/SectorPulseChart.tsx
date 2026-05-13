@@ -1,0 +1,144 @@
+// AI 인프라 V2 — Sector Pulse Card Section B: 90일 가격 추이 SVG 라인 차트
+
+const V = {
+  text: '#E8F0F8', text2: '#B8C8DC', text3: '#8b9098',
+  positive: '#22c55e', negative: '#ef4444', neutral: '#B8C8DC',
+  border: 'rgba(255,255,255,0.10)',
+  ui: "'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
+} as const
+
+interface Props {
+  symbol:     string | null
+  prices:     number[]
+  asOf?:      string | null
+}
+
+function buildLinePath(prices: number[], width: number, height: number, pad: number): string {
+  if (prices.length < 2) return ''
+  const min  = Math.min(...prices)
+  const max  = Math.max(...prices)
+  const range = max - min || 1
+  const innerW = width - pad * 2
+  const innerH = height - pad * 2
+  return prices.map((p, i) => {
+    const x = pad + (i / (prices.length - 1)) * innerW
+    const y = pad + innerH - ((p - min) / range) * innerH
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+}
+
+function buildAreaPath(prices: number[], width: number, height: number, pad: number): string {
+  const line = buildLinePath(prices, width, height, pad)
+  if (!line) return ''
+  return `${line} L ${(width - pad).toFixed(2)} ${(height - pad).toFixed(2)} L ${pad.toFixed(2)} ${(height - pad).toFixed(2)} Z`
+}
+
+export function SectorPulseChart({ symbol, prices, asOf }: Props) {
+  const W   = 360
+  const H   = 130
+  const PAD = 8
+
+  // Empty / insufficient state
+  if (!symbol || prices.length < 2) {
+    return (
+      <div style={{
+        padding: 14, border: `1px solid ${V.border}`, borderRadius: 4,
+        background: 'rgba(255,255,255,0.02)', minHeight: H,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+      }}>
+        <div style={{
+          fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.10em',
+          marginBottom: 6,
+        }}>
+          90D PRICE
+        </div>
+        <div style={{ fontFamily: V.ui, fontSize: 12, color: V.text3 }}>
+          차트 데이터 준비 중
+        </div>
+      </div>
+    )
+  }
+
+  const first    = prices[0]
+  const last     = prices[prices.length - 1]
+  const changePct = ((last - first) / first) * 100
+  const isUp      = changePct >= 0
+  const lineCol   = isUp ? V.positive : V.negative
+  const gradId    = `pulse-gradient-${symbol}`
+
+  return (
+    <div style={{
+      padding: 12, border: `1px solid ${V.border}`, borderRadius: 4,
+      background: 'rgba(255,255,255,0.02)',
+    }}>
+      {/* Header row */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        marginBottom: 6,
+      }}>
+        <div>
+          <div style={{
+            fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.10em',
+          }}>
+            90D PRICE
+          </div>
+          <div style={{ fontFamily: V.mono, fontSize: 13, color: V.text2, marginTop: 2 }}>
+            ETF · <span style={{ color: V.text, fontWeight: 700 }}>{symbol}</span>
+          </div>
+        </div>
+        <div style={{
+          fontFamily: V.mono, fontSize: 14, fontWeight: 700, color: lineCol,
+        }}>
+          {(changePct >= 0 ? '+' : '') + changePct.toFixed(1)}%
+        </div>
+      </div>
+
+      {/* Chart */}
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        preserveAspectRatio="none"
+        style={{ display: 'block' }}
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={lineCol} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={lineCol} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        {/* Baseline */}
+        <line
+          x1={PAD} y1={H - PAD}
+          x2={W - PAD} y2={H - PAD}
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth={1}
+        />
+        {/* Area fill */}
+        <path
+          d={buildAreaPath(prices, W, H, PAD)}
+          fill={`url(#${gradId})`}
+        />
+        {/* Line */}
+        <path
+          d={buildLinePath(prices, W, H, PAD)}
+          fill="none"
+          stroke={lineCol}
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Footer */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', marginTop: 4,
+        fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.06em',
+      }}>
+        <span>{prices.length}D</span>
+        <span>가격 추이 (투자 신호 아님)</span>
+        {asOf && <span>{asOf}</span>}
+      </div>
+    </div>
+  )
+}

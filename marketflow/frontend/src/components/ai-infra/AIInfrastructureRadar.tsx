@@ -71,7 +71,8 @@ interface RadarApiResponse {
       as_of?:                string
     }
   }
-  symbol_returns?: Record<string, { five_day: number | null; one_month: number | null }>
+  symbol_returns?: Record<string, { five_day: number | null; one_month: number | null; three_month?: number | null }>
+  symbol_price_series?: Record<string, number[]>
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -772,8 +773,11 @@ export default function AIInfrastructureRadar() {
                 selectedId={selectedFlowId}
                 onSelect={setSelectedFlowId}
                 symbolReturns={data?.symbol_returns ?? {}}
+                symbolPriceSeries={data?.symbol_price_series ?? {}}
                 earningsCompanies={data?.earnings_confirmation?.companies ?? []}
+                earningsBuckets={data?.earnings_confirmation?.buckets ?? []}
                 companyPurity={data?.company_purity ?? []}
+                asOf={data?.asOf ?? null}
               />
             </div>
 
