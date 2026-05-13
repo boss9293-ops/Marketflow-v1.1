@@ -234,9 +234,15 @@ function applyFilter(tile: TileData, filter: FilterKey): boolean {
     case 'story_heavy':  return tile.story_heavy
     case 'indirect':     return tile.indirect_exp
     case 'evidence_gap': return (
-                           (tile.rs_3m != null && tile.rs_3m > 5) ||
-                           (tile.rs_6m != null && tile.rs_6m > 5)
-                         ) && tile.earnings_level !== 'CONFIRMED' && tile.earnings_level !== 'PARTIAL'
+                           tile.state_label === 'LEADING' ||
+                           tile.state_label === 'EMERGING' ||
+                           tile.state_label === 'CONFIRMING'
+                         ) && (
+                           tile.earnings_level === 'WATCH' ||
+                           tile.earnings_level === 'NOT_CONFIRMED' ||
+                           tile.earnings_level === 'DATA_LIMITED' ||
+                           tile.earnings_level == null
+                         )
     default:             return true
   }
 }
@@ -308,7 +314,7 @@ function EarningsBadge({ level }: { level: EarningsConfirmationLevel | null }) {
 
 // ── Theme Tile ────────────────────────────────────────────────────────────────
 
-function ThemeTile({ tile, selected, onClick }: { tile: TileData; selected: boolean; onClick: () => void }) {
+function ThemeTile({ tile, selected, onClick, isMobile }: { tile: TileData; selected: boolean; onClick: () => void; isMobile: boolean }) {
   const [hovered, setHovered] = useState(false)
   const stateCol = STATE_COLORS[tile.state_label]
   const risks: string[] = []
@@ -341,7 +347,7 @@ function ThemeTile({ tile, selected, onClick }: { tile: TileData; selected: bool
         <StateBadge label={tile.state_label} />
       </div>
 
-      {hovered && (tile.state_score != null || tile.rs_3m != null) && (
+      {hovered && !isMobile && (tile.state_score != null || tile.rs_3m != null) && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {tile.state_score != null && (
             <span style={{ fontFamily: V.mono, fontSize: 12, color: stateCol, fontWeight: 600 }}>
@@ -906,6 +912,7 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
             tile={tile}
             selected={selectedId === tile.bucket_id}
             onClick={() => handleSelect(tile.bucket_id)}
+            isMobile={windowWidth < 768}
           />
         ))}
         {filteredTiles.length === 0 && (
