@@ -81,18 +81,19 @@ const EARN_ABBR: Record<EarningsConfirmationLevel, string> = {
 type FilterKey =
   | 'all' | 'leading' | 'improving' | 'watch'
   | 'crowded' | 'confirmed' | 'data_limited'
-  | 'story_heavy' | 'indirect'
+  | 'story_heavy' | 'indirect' | 'evidence_gap'
 
 const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
   { key: 'all',          label: 'All' },
   { key: 'leading',      label: 'Leading' },
   { key: 'improving',    label: 'Improving' },
+  { key: 'evidence_gap', label: 'Evidence Gap' },
+  { key: 'data_limited', label: 'Data Limited' },
   { key: 'watch',        label: 'Watch' },
   { key: 'crowded',      label: 'Crowded' },
-  { key: 'confirmed',    label: 'Confirmed Evidence' },
-  { key: 'data_limited', label: 'Data Limited' },
   { key: 'story_heavy',  label: 'Story Heavy' },
   { key: 'indirect',     label: 'Indirect' },
+  { key: 'confirmed',    label: 'Confirmed Evidence' },
 ]
 
 // ── Tile data ─────────────────────────────────────────────────────────────────
@@ -232,6 +233,10 @@ function applyFilter(tile: TileData, filter: FilterKey): boolean {
     case 'data_limited': return tile.earnings_level === 'DATA_LIMITED' || tile.earnings_level == null
     case 'story_heavy':  return tile.story_heavy
     case 'indirect':     return tile.indirect_exp
+    case 'evidence_gap': return (
+                           (tile.rs_3m != null && tile.rs_3m > 5) ||
+                           (tile.rs_6m != null && tile.rs_6m > 5)
+                         ) && tile.earnings_level !== 'CONFIRMED' && tile.earnings_level !== 'PARTIAL'
     default:             return true
   }
 }
@@ -304,6 +309,7 @@ function EarningsBadge({ level }: { level: EarningsConfirmationLevel | null }) {
 // ── Theme Tile ────────────────────────────────────────────────────────────────
 
 function ThemeTile({ tile, selected, onClick }: { tile: TileData; selected: boolean; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
   const stateCol = STATE_COLORS[tile.state_label]
   const risks: string[] = []
   if (tile.comm_risk)    risks.push('Comm. Risk')
@@ -318,6 +324,8 @@ function ThemeTile({ tile, selected, onClick }: { tile: TileData; selected: bool
       tabIndex={0}
       onClick={e => { e.stopPropagation(); onClick() }}
       onKeyDown={e => e.key === 'Enter' && onClick()}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         padding: '10px 12px',
         background: selected ? `${V.teal}12` : V.bg2,
@@ -333,43 +341,34 @@ function ThemeTile({ tile, selected, onClick }: { tile: TileData; selected: bool
         <StateBadge label={tile.state_label} />
       </div>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        {tile.state_score != null && (
-          <span style={{ fontFamily: V.mono, fontSize: 12, color: stateCol, fontWeight: 600 }}>
-            {tile.state_score}
-          </span>
-        )}
-        <span style={{ fontFamily: V.mono, fontSize: 12, color: rsColFn(tile.rs_3m) }}>
-          RS 3M: {fmt(tile.rs_3m)}
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em' }}>EARNINGS</span>
-        <EarningsBadge level={tile.earnings_level} />
-      </div>
-
-      {risks.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
-          {risks.slice(0, 3).map(r => (
-            <span key={r} style={{
-              fontFamily: V.mono, fontSize: 10,
-              color: V.amber, background: `${V.amber}14`,
-              border: `1px solid ${V.amber}30`,
-              borderRadius: 3, padding: '0 5px', letterSpacing: '0.04em',
-            }}>
-              {r}
+      {hovered && (tile.state_score != null || tile.rs_3m != null) && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {tile.state_score != null && (
+            <span style={{ fontFamily: V.mono, fontSize: 12, color: stateCol, fontWeight: 600 }}>
+              {tile.state_score}
             </span>
-          ))}
+          )}
+          {tile.rs_3m != null && (
+            <span style={{ fontFamily: V.mono, fontSize: 12, color: rsColFn(tile.rs_3m) }}>
+              RS 3M: {fmt(tile.rs_3m)}
+            </span>
+          )}
         </div>
       )}
 
-      <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.06em' }}>
-        Cov: {covLabel(tile.coverage_ratio)}
-        {tile.data_quality !== 'REAL' && tile.data_quality !== 'MANUAL' && (
-          <span style={{ marginLeft: 6, color: V.amber }}>{tile.data_quality}</span>
-        )}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' as const, gap: 6 }}>
+        <EarningsBadge level={tile.earnings_level} />
+        {risks.slice(0, 2).map(r => (
+          <span key={r} style={{
+            fontFamily: V.mono, fontSize: 10,
+            color: V.amber, background: `${V.amber}14`,
+            border: `1px solid ${V.amber}30`,
+            borderRadius: 3, padding: '0 5px', letterSpacing: '0.04em',
+          }}>
+            {r}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -822,9 +821,10 @@ export interface ThemeMapPanelProps {
 }
 
 export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchmark }: ThemeMapPanelProps) {
-  const [filter,      setFilter]      = useState<FilterKey>('all')
-  const [selectedId,  setSelectedId]  = useState<AIInfraBucketId | null>(null)
-  const [windowWidth, setWindowWidth] = useState(1200)
+  const [filter,             setFilter]             = useState<FilterKey>('all')
+  const [selectedId,         setSelectedId]         = useState<AIInfraBucketId | null>(null)
+  const [windowWidth,        setWindowWidth]        = useState(1200)
+  const [isHeatmapExpanded,  setIsHeatmapExpanded]  = useState(false)
 
   // Reset filter on benchmark change; selectedId preserved — drawer auto-updates via tiles useMemo
   useEffect(() => {
@@ -920,9 +920,26 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
         <ThemeDetailDrawer tile={selectedTile} benchmark={benchmark} onClose={handleDismiss} />
       )}
 
-      {/* Heatmap — stopPropagation prevents outer handleDismiss from firing on row click */}
+      {/* Heatmap — collapsed by default; toggle persists across benchmark switch */}
       <div onClick={e => e.stopPropagation()}>
-        <ThemeHeatmap tiles={filteredTiles} selectedId={selectedId} onSelect={handleSelect} />
+        <button
+          onClick={() => setIsHeatmapExpanded(p => !p)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: '8px 0', marginTop: 20,
+            fontFamily: V.mono, fontSize: 11, fontWeight: 700,
+            color: V.text2, letterSpacing: '0.10em',
+          }}
+        >
+          <span style={{ color: V.text3, fontSize: 12, lineHeight: 1 }}>
+            {isHeatmapExpanded ? '▾' : '▸'}
+          </span>
+          ADVANCED MATRIX
+        </button>
+        {isHeatmapExpanded && (
+          <ThemeHeatmap tiles={filteredTiles} selectedId={selectedId} onSelect={handleSelect} />
+        )}
       </div>
 
       <div style={{
