@@ -8,6 +8,8 @@ import type { AIInfraBucketMomentum } from '@/lib/semiconductor/aiInfraBucketRS'
 import type { AIInfraBucketEarningsConfirmation, EarningsConfirmationLevel } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 import { AI_INFRA_BUCKETS } from '@/lib/semiconductor/aiInfraBucketMap'
 import type { AIInfraBucketId } from '@/lib/semiconductor/aiInfraBucketMap'
+import { AI_INFRA_COMPANY_PURITY, COMPANY_PURITY_LABEL } from '@/lib/ai-infra/aiInfraCompanyPurity'
+import { getCompanyEarningsEvidence } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -111,10 +113,12 @@ interface TileData {
   rs_1m:            number | null
   rs_3m:            number | null
   rs_6m:            number | null
-  earnings_level:   EarningsConfirmationLevel | null
-  evidence_summary: string
-  caution_summary:  string
-  top_symbols:      string[]
+  earnings_level:    EarningsConfirmationLevel | null
+  earnings_score:    number | null
+  earnings_coverage: number
+  evidence_summary:  string
+  caution_summary:   string
+  top_symbols:       string[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -200,9 +204,11 @@ function buildTileData(
       indirect_exp:     purity?.theme_purity === 'INDIRECT_EXPOSURE',
       comm_risk:        purity?.commercialization_risk ?? false,
       ...getBenchmarkRS(m, benchmark),
-      earnings_level:   e?.confirmation_level ?? null,
-      evidence_summary: e?.evidence_summary   ?? '',
-      caution_summary:  e?.caution_summary    ?? '',
+      earnings_level:    e?.confirmation_level    ?? null,
+      earnings_score:    e?.confirmation_score    ?? null,
+      earnings_coverage: e?.source.coverage_ratio ?? 0,
+      evidence_summary:  e?.evidence_summary      ?? '',
+      caution_summary:   e?.caution_summary       ?? '',
       top_symbols:      def.symbols.slice(0, 5),
     }
   })
@@ -367,10 +373,100 @@ function ThemeTile({ tile, selected, onClick }: { tile: TileData; selected: bool
   )
 }
 
-// ── Detail Card ───────────────────────────────────────────────────────────────
+// ── Risk Badge ────────────────────────────────────────────────────────────────
 
-function DetailCard({ tile, onClose }: { tile: TileData; onClose: () => void }) {
+function RiskBadge({ label }: { label: string }) {
+  return (
+    <span style={{
+      fontFamily: V.mono, fontSize: 11,
+      color: V.amber, background: `${V.amber}14`,
+      border: `1px solid ${V.amber}30`,
+      borderRadius: 3, padding: '2px 6px', letterSpacing: '0.04em',
+      whiteSpace: 'nowrap' as const,
+    }}>
+      {label}
+    </span>
+  )
+}
+
+// ── Section Label ─────────────────────────────────────────────────────────────
+
+function SectionLabel({ text }: { text: string }) {
+  return (
+    <div style={{
+      fontFamily: V.mono, fontSize: 11, fontWeight: 700,
+      color: V.text2, letterSpacing: '0.10em',
+      marginBottom: 6, paddingBottom: 4,
+      borderBottom: `1px solid ${V.border}`,
+    }}>
+      {text}
+    </div>
+  )
+}
+
+// ── Evidence level rank for related symbol sorting ────────────────────────────
+
+const EARN_RANK: Record<EarningsConfirmationLevel, number> = {
+  CONFIRMED: 0, PARTIAL: 1, WATCH: 2, NOT_CONFIRMED: 3, DATA_LIMITED: 4, UNKNOWN: 5,
+}
+
+// ── Watch Next rules (priority-ordered, max 3, no trading language) ───────────
+
+function buildWatchNextItems(tile: TileData): string[] {
+  const items: string[] = []
+  const rsStrong = (tile.rs_3m != null && tile.rs_3m > 5) || (tile.rs_6m != null && tile.rs_6m > 5)
+  const earningsWeak = tile.earnings_level !== 'CONFIRMED' && tile.earnings_level !== 'PARTIAL'
+
+  if (rsStrong && earningsWeak) {
+    items.push('Evidence gap: RS outpacing earnings confirmation. Watch for revenue visibility improvement.')
+  }
+  if ((tile.story_heavy || tile.comm_risk) && items.length < 3) {
+    items.push('Commercialization risk: Monitor whether design activity converts to confirmed revenue.')
+  }
+  if ((tile.earnings_level === 'DATA_LIMITED' || tile.earnings_level == null || tile.earnings_coverage < 0.5) && items.length < 3) {
+    items.push('Data limited: More company-level evidence needed before confirmation level improves.')
+  }
+  if (tile.indirect_exp && items.length < 3) {
+    items.push('Indirect exposure: Sector benefit depends on downstream AI infrastructure adoption.')
+  }
+  if (items.length === 0) {
+    items.push('Confirmation quality: Watch for broadening evidence across covered companies next quarter.')
+  }
+
+  return items.slice(0, 3)
+}
+
+// ── Theme Detail Drawer ───────────────────────────────────────────────────────
+
+function ThemeDetailDrawer({
+  tile,
+  benchmark,
+  onClose,
+}: {
+  tile: TileData
+  benchmark: string
+  onClose: () => void
+}) {
   const stateCol = STATE_COLORS[tile.state_label]
+
+  const relatedSymbols = useMemo(() => {
+    return AI_INFRA_COMPANY_PURITY
+      .filter(p => p.primary_bucket === tile.bucket_id)
+      .map(p => {
+        const ev = getCompanyEarningsEvidence(p.symbol)
+        const ev_level = ev?.confirmation_level ?? null
+        const ev_rank  = ev_level != null ? EARN_RANK[ev_level] : 6
+        return { ...p, ev_level, ev_rank }
+      })
+      .sort((a, b) =>
+        a.ev_rank !== b.ev_rank
+          ? a.ev_rank - b.ev_rank
+          : b.ai_infra_relevance_score - a.ai_infra_relevance_score,
+      )
+      .slice(0, 6)
+  }, [tile.bucket_id])
+
+  const watchItems = buildWatchNextItems(tile)
 
   return (
     <div
@@ -379,121 +475,207 @@ function DetailCard({ tile, onClose }: { tile: TileData; onClose: () => void }) 
         marginTop: 12, marginBottom: 4,
         background: V.bg2,
         border: `1px solid ${V.teal}44`,
-        borderRadius: 6, padding: '12px 14px', width: '100%',
+        borderRadius: 6, padding: '14px 16px', width: '100%',
+        display: 'flex', flexDirection: 'column' as const, gap: 16,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
-          <span style={{ fontFamily: V.ui, fontSize: 15, fontWeight: 800, color: V.text }}>
-            {tile.display_name}
-          </span>
-          <StateBadge label={tile.state_label} />
-        </div>
-        <button
-          onClick={onClose}
-          aria-label="Close detail"
-          style={{
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: V.text3, fontFamily: V.mono, fontSize: 14, padding: '2px 6px',
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* KPI row */}
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' as const, marginBottom: 10 }}>
-        {tile.state_score != null && (
+      {/* ── 1. Theme Header ── */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
-            <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', marginBottom: 3 }}>SCORE</div>
-            <div style={{ fontFamily: V.mono, fontSize: 14, color: stateCol, fontWeight: 700 }}>{tile.state_score}</div>
-          </div>
-        )}
-        <div>
-          <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', marginBottom: 3 }}>RS 1M / 3M / 6M</div>
-          <div style={{ fontFamily: V.mono, fontSize: 13 }}>
-            <span style={{ color: rsColFn(tile.rs_1m) }}>{fmt(tile.rs_1m)}</span>
-            <span style={{ color: V.text3 }}> / </span>
-            <span style={{ color: rsColFn(tile.rs_3m) }}>{fmt(tile.rs_3m)}</span>
-            <span style={{ color: V.text3 }}> / </span>
-            <span style={{ color: rsColFn(tile.rs_6m) }}>{fmt(tile.rs_6m)}</span>
-          </div>
-        </div>
-        <div>
-          <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', marginBottom: 3 }}>EARNINGS</div>
-          <EarningsBadge level={tile.earnings_level} />
-        </div>
-        <div>
-          <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', marginBottom: 3 }}>COVERAGE</div>
-          <div style={{ fontFamily: V.mono, fontSize: 12, color: V.text2 }}>{covLabel(tile.coverage_ratio)}</div>
-        </div>
-        <div>
-          <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', marginBottom: 3 }}>CONFIDENCE</div>
-          <div style={{ fontFamily: V.mono, fontSize: 12, color: tile.confidence === 'HIGH' ? V.teal : tile.confidence === 'MEDIUM' ? V.amber : V.text3 }}>
-            {tile.confidence}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ borderTop: `1px solid ${V.border}`, paddingTop: 8 }}>
-        {tile.state_reason && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 90, flexShrink: 0 }}>STATE</span>
-            <span style={{ fontFamily: V.ui, fontSize: 12, color: V.text2 }}>{tile.state_reason}</span>
-          </div>
-        )}
-        {tile.evidence_summary && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 90, flexShrink: 0 }}>EVIDENCE</span>
-            <span style={{ fontFamily: V.ui, fontSize: 12, color: V.text2 }}>{tile.evidence_summary}</span>
-          </div>
-        )}
-        {tile.caution_summary && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 90, flexShrink: 0 }}>CAUTION</span>
-            <span style={{ fontFamily: V.ui, fontSize: 12, color: V.amber }}>{tile.caution_summary}</span>
-          </div>
-        )}
-        {tile.top_symbols.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 90, flexShrink: 0 }}>SYMBOLS</span>
-            <span style={{ fontFamily: V.mono, fontSize: 12, color: V.teal }}>{tile.top_symbols.join(' · ')}</span>
-          </div>
-        )}
-        {tile.risk_flags.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 90, flexShrink: 0 }}>RISK FLAGS</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
-              {tile.risk_flags.map(f => (
-                <span key={f} style={{
-                  fontFamily: V.mono, fontSize: 11,
-                  color: V.amber, background: `${V.amber}14`,
-                  border: `1px solid ${V.amber}30`,
-                  borderRadius: 3, padding: '0 5px',
-                }}>
-                  {f.replace(/_/g, ' ')}
+            <div style={{ fontFamily: V.ui, fontSize: 16, fontWeight: 800, color: V.text, marginBottom: 6, lineHeight: 1.2 }}>
+              {tile.display_name}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+              <StateBadge label={tile.state_label} />
+              {tile.state_score != null && (
+                <span style={{ fontFamily: V.mono, fontSize: 13, color: stateCol, fontWeight: 700 }}>
+                  {tile.state_score}
                 </span>
-              ))}
+              )}
             </div>
           </div>
-        )}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 90, flexShrink: 0 }}>DATA</span>
-          <span style={{
-            fontFamily: V.mono, fontSize: 12,
-            color: tile.data_quality === 'REAL' ? V.green : tile.data_quality === 'MANUAL' ? V.teal : V.amber,
-          }}>
-            {tile.data_quality}
+          <button
+            onClick={onClose}
+            aria-label="Close detail"
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: V.text3, fontFamily: V.mono, fontSize: 14, padding: '2px 6px', flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 12, marginBottom: 8 }}>
+          <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.06em' }}>
+            {tile.bucket_id}
           </span>
+          <span style={{ fontFamily: V.mono, fontSize: 11, color: V.text3 }}>Benchmark: {benchmark}</span>
+          <span style={{ fontFamily: V.mono, fontSize: 11, color: tile.confidence === 'HIGH' ? V.teal : tile.confidence === 'MEDIUM' ? V.amber : V.text3 }}>
+            Conf: {tile.confidence}
+          </span>
+          <span style={{ fontFamily: V.mono, fontSize: 11, color: tile.coverage_ratio >= 0.75 ? V.teal : tile.coverage_ratio >= 0.5 ? V.text2 : V.amber }}>
+            Cov: {covLabel(tile.coverage_ratio)}
+          </span>
+          <span style={{ fontFamily: V.mono, fontSize: 11, color: tile.data_quality === 'REAL' ? V.green : tile.data_quality === 'MANUAL' ? V.teal : V.amber }}>
+            Data: {tile.data_quality}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
+          {([ ['RS 1M', tile.rs_1m], ['RS 3M', tile.rs_3m], ['RS 6M', tile.rs_6m] ] as [string, number | null][]).map(([lbl, val]) => (
+            <div key={lbl}>
+              <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', marginBottom: 2 }}>{lbl}</div>
+              <div style={{ fontFamily: V.mono, fontSize: 13, color: rsColFn(val), fontWeight: 600 }}>{fmt(val)}</div>
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* ── 2. State Explanation ── */}
+      {(tile.state_reason || tile.state_drivers.length > 0) && (
+        <div>
+          <SectionLabel text="WHY THIS STATE" />
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+            {tile.state_reason && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
+                <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
+                  {tile.state_reason.length > 140 ? tile.state_reason.slice(0, 140) + '…' : tile.state_reason}
+                </span>
+              </div>
+            )}
+            {tile.state_drivers.slice(0, tile.state_reason ? 2 : 3).map((d, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8 }}>
+                <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>•</span>
+                <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.45 }}>
+                  {d.length > 140 ? d.slice(0, 140) + '…' : d}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. Earnings Confirmation ── */}
+      <div>
+        <SectionLabel text="EARNINGS CONFIRMATION" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' as const }}>
+          <EarningsBadge level={tile.earnings_level} />
+          {tile.earnings_score != null && (
+            <span style={{ fontFamily: V.mono, fontSize: 13, fontWeight: 600, color: tile.earnings_level ? EARN_COLORS[tile.earnings_level] : V.text3 }}>
+              Score: {tile.earnings_score}
+            </span>
+          )}
+          {tile.earnings_coverage > 0 && (
+            <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text3 }}>
+              Coverage: {Math.round(tile.earnings_coverage * 100)}%
+            </span>
+          )}
+        </div>
+        {tile.evidence_summary && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 74, flexShrink: 0 }}>EVIDENCE</span>
+            <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.4 }}>{tile.evidence_summary}</span>
+          </div>
+        )}
+        {tile.caution_summary && tile.earnings_level != null && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+            <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.08em', minWidth: 74, flexShrink: 0 }}>CAUTION</span>
+            <span style={{ fontFamily: V.ui, fontSize: 13, color: V.amber, lineHeight: 1.4 }}>{tile.caution_summary}</span>
+          </div>
+        )}
+        {(tile.earnings_level === 'CONFIRMED' || tile.earnings_level === 'PARTIAL') && (
+          <div style={{ fontFamily: V.ui, fontSize: 11, color: V.text3, marginTop: 4 }}>
+            Business evidence only. Not a trading signal.
+          </div>
+        )}
+        {(tile.earnings_level === 'DATA_LIMITED' || tile.earnings_level == null) && (
+          <div style={{
+            fontFamily: V.mono, fontSize: 11, color: V.text3, letterSpacing: '0.04em',
+            background: 'rgba(139,144,152,0.08)', border: '1px solid rgba(139,144,152,0.20)',
+            borderRadius: 3, padding: '4px 8px', marginTop: 4,
+          }}>
+            Insufficient company-level evidence to confirm earnings theme
+          </div>
+        )}
+      </div>
+
+      {/* ── 4. Risk & Data Quality ── */}
+      <div>
+        <SectionLabel text="RISK & DATA QUALITY" />
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+          {tile.story_heavy   && <RiskBadge label="Story Heavy" />}
+          {tile.comm_risk     && <RiskBadge label="Comm. Risk" />}
+          {tile.indirect_exp  && <RiskBadge label="Indirect" />}
+          {tile.coverage_ratio < 0.5 && tile.coverage_ratio > 0 && <RiskBadge label="Low Coverage" />}
+          {tile.state_label === 'DATA_INSUFFICIENT' && <RiskBadge label="Data Insufficient" />}
+          {tile.risk_flags.includes('OVERHEAT_RISK')    && <RiskBadge label="Overheat" />}
+          {tile.risk_flags.includes('MOMENTUM_STRETCH') && <RiskBadge label="Momentum Stretch" />}
+          {!tile.story_heavy && !tile.comm_risk && !tile.indirect_exp
+            && tile.coverage_ratio >= 0.5
+            && tile.state_label !== 'DATA_INSUFFICIENT'
+            && tile.risk_flags.length === 0 && (
+            <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text3 }}>No active risk flags</span>
+          )}
+        </div>
+      </div>
+
+      {/* ── 5. Related Symbols ── */}
+      <div>
+        <SectionLabel text={`RELATED SYMBOLS (${relatedSymbols.length})`} />
+        {relatedSymbols.length === 0 ? (
+          <span style={{ fontFamily: V.mono, fontSize: 12, color: V.text3 }}>No mapped symbols available</span>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+            {relatedSymbols.map(sym => (
+              <div key={sym.symbol} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                <span style={{ fontFamily: V.mono, fontSize: 13, color: V.teal, fontWeight: 700, minWidth: 48 }}>
+                  {sym.symbol}
+                </span>
+                {sym.company_name && (
+                  <span style={{ fontFamily: V.ui, fontSize: 12, color: V.text2, flex: '1 1 80px' }}>
+                    {sym.company_name}
+                  </span>
+                )}
+                <span style={{ fontFamily: V.mono, fontSize: 10, color: V.text3 }}>
+                  {COMPANY_PURITY_LABEL[sym.company_theme_purity]}
+                </span>
+                {sym.ev_level != null && (
+                  <span style={{
+                    fontFamily: V.mono, fontSize: 10,
+                    color: EARN_COLORS[sym.ev_level],
+                    background: `${EARN_COLORS[sym.ev_level]}18`,
+                    border: `1px solid ${EARN_COLORS[sym.ev_level]}40`,
+                    borderRadius: 3, padding: '0 4px',
+                  }}>
+                    {EARN_ABBR[sym.ev_level]}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── 6. Watch Next ── */}
+      <div>
+        <SectionLabel text="WATCH NEXT" />
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+          {watchItems.map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8 }}>
+              <span style={{ color: V.teal, flexShrink: 0, fontFamily: V.mono, fontSize: 12 }}>—</span>
+              <span style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, lineHeight: 1.4 }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
       <div style={{
-        marginTop: 8, paddingTop: 8,
-        borderTop: `1px solid ${V.border}`,
-        fontFamily: V.ui, fontSize: 11, color: V.text3,
+        paddingTop: 8, borderTop: `1px solid ${V.border}`,
+        fontFamily: V.ui, fontSize: 11, color: V.text3, lineHeight: 1.5,
       }}>
-        Business evidence layer only. Not investment advice.
+        Business evidence layer only. State labels are rule-based. Not investment advice.
       </div>
     </div>
   )
@@ -709,7 +891,7 @@ export function ThemeMapPanel({ states, earningsBuckets, momentumBuckets, benchm
 
       {/* Detail card — full-width below tile grid (mobile: bottom sheet style) */}
       {selectedTile && (
-        <DetailCard tile={selectedTile} onClose={handleDismiss} />
+        <ThemeDetailDrawer tile={selectedTile} benchmark={benchmark} onClose={handleDismiss} />
       )}
 
       {/* Heatmap — stopPropagation prevents outer handleDismiss from firing on row click */}
