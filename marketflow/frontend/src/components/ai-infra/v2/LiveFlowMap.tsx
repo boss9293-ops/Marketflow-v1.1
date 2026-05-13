@@ -93,6 +93,7 @@ export function LiveFlowMap({
       return_1m:          ret.one_month,
       return_3m:          ret.three_month,
       prices:             symbolPriceSeries[symbol] ?? [],
+      asOf,
       marker_type:        mark.marker_type,
       confirmation_level: earnings?.confirmation_level,
       evidence_note:      earnings?.evidence_notes?.[0],

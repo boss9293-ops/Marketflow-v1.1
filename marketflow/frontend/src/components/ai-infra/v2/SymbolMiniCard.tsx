@@ -17,6 +17,7 @@ export interface SymbolMiniCardData {
   return_1m?:          number | null
   return_3m?:          number | null
   prices?:             number[]
+  asOf?:               string | null
   marker_type:         MarkerType
   confirmation_level?: string
   evidence_note?:      string
@@ -137,7 +138,7 @@ export function SymbolMiniCard({ data, onClose }: Props) {
         </div>
 
         {/* Section: 90D Chart */}
-        <SymbolMiniChart symbol={data.symbol} prices={data.prices ?? []} />
+        <SymbolMiniChart symbol={data.symbol} prices={data.prices ?? []} asOf={data.asOf} />
 
         {/* Section: Returns Strip */}
         <SymbolReturnsStrip
