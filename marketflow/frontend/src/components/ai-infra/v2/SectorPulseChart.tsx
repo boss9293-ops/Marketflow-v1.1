@@ -8,10 +8,11 @@ import { ChartTooltip } from './ChartTooltip'
 import type { TooltipData } from './ChartTooltip'
 
 const V = {
-  text: '#E8F0F8', text2: '#B8C8DC', text3: '#8b9098',
+  text: '#f1f5f9', text2: '#cbd5e1', text3: '#94a3b8',
   positive: '#22c55e', negative: '#ef4444',
-  border: 'rgba(255,255,255,0.10)',
-  ui: "'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
+  border: 'rgba(148,163,184,0.24)',
+  ui: "Inter, Pretendard, 'Noto Sans KR', sans-serif",
+  mono: "'JetBrains Mono', 'IBM Plex Mono', monospace",
 } as const
 
 interface Props {
@@ -58,7 +59,7 @@ export function SectorPulseChart({ symbol, prices, asOf }: Props) {
           fontFamily: V.mono, fontSize: 10, color: V.text3,
           letterSpacing: '0.10em', marginBottom: 6,
         }}>
-          90D PRICE
+          90일 가격 흐름
         </div>
         <div style={{ fontFamily: V.ui, fontSize: 12, color: V.text3 }}>
           차트 데이터 준비 중
@@ -90,14 +91,19 @@ export function SectorPulseChart({ symbol, prices, asOf }: Props) {
           <div style={{
             fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.10em',
           }}>
-            90D PRICE
+            90일 가격 흐름
           </div>
-          <div style={{ fontFamily: V.mono, fontSize: 13, color: V.text2, marginTop: 2 }}>
-            ETF · <span style={{ color: V.text, fontWeight: 700 }}>{symbol}</span>
+          <div style={{ fontFamily: V.ui, fontSize: 13, color: V.text2, marginTop: 2 }}>
+            대표 추적 종목: <span style={{ color: V.text, fontWeight: 700 }}>{symbol}</span>
           </div>
         </div>
-        <div style={{ fontFamily: V.mono, fontSize: 14, fontWeight: 700, color: lineCol }}>
-          {(changePct >= 0 ? '+' : '') + changePct.toFixed(1)}%
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: V.mono, fontSize: 14, fontWeight: 700, color: lineCol }}>
+            {(changePct >= 0 ? '+' : '') + changePct.toFixed(1)}%
+          </div>
+          <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.06em', marginTop: 1 }}>
+            / 90D
+          </div>
         </div>
       </div>
 

@@ -6,9 +6,10 @@ import { getSymbolReturn, fmtReturn, returnColor } from '@/lib/ai-infra/v2/symbo
 import { buildMoversMarker } from '@/lib/ai-infra/v2/buildMoversMarker'
 
 const V = {
-  text: '#E8F0F8', text2: '#B8C8DC', text3: '#8b9098',
-  border: 'rgba(255,255,255,0.10)',
-  ui: "'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
+  text: '#f1f5f9', text2: '#cbd5e1', text3: '#94a3b8',
+  border: 'rgba(148,163,184,0.24)',
+  ui: "Inter, Pretendard, 'Noto Sans KR', sans-serif",
+  mono: "'JetBrains Mono', 'IBM Plex Mono', monospace",
 } as const
 
 // Earnings 확인도 마커 (텍스트 기호로 통일, 이모지 다양성 회피)
@@ -18,7 +19,7 @@ const CONF_MARK: Record<string, { mark: string; color: string; label: string }> 
   WATCH:         { mark: '◯', color: '#fbbf24', label: '관찰' },
   NOT_CONFIRMED: { mark: '✕', color: '#f97316', label: '미확인' },
   DATA_LIMITED:  { mark: '—', color: '#8b9098', label: '제한' },
-  UNKNOWN:       { mark: '—', color: '#8b9098', label: '정보 없음' },
+  UNKNOWN:       { mark: '—', color: '#8b9098', label: '' },
 }
 
 interface Props {
@@ -127,9 +128,9 @@ export function SectorPulseLeadSymbols({ data, symbolReturns, onSymbolClick }: P
         <div style={{
           marginTop: 8, paddingTop: 8,
           borderTop: `1px solid ${V.border}`,
-          fontFamily: V.ui, fontSize: 11, color: V.text3, fontStyle: 'italic',
+          fontFamily: V.ui, fontSize: 11, color: V.text3,
         }}>
-          ({data.not_listed_note})
+          참고: {data.not_listed_note}
         </div>
       )}
     </div>

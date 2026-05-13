@@ -3,10 +3,11 @@
 import type { WatchPoint } from '@/lib/ai-infra/v2/buildWatchPoints'
 
 const V = {
-  text: '#E8F0F8', text2: '#B8C8DC', text3: '#8b9098',
-  border: 'rgba(255,255,255,0.10)',
+  text: '#f1f5f9', text2: '#cbd5e1', text3: '#94a3b8',
+  border: 'rgba(148,163,184,0.24)',
   warning: '#fbbf24',
-  ui: "'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
+  ui: "Inter, Pretendard, 'Noto Sans KR', sans-serif",
+  mono: "'JetBrains Mono', 'IBM Plex Mono', monospace",
 } as const
 
 const PRIORITY_COL: Record<WatchPoint['priority'], string> = {
@@ -31,7 +32,7 @@ export function SectorPulseWatchPoints({ points }: Props) {
         <span style={{
           fontFamily: V.mono, fontSize: 10, color: V.warning, letterSpacing: '0.10em',
         }}>
-          ⚠ 지금 봐야 할 것
+          지금 확인할 것
         </span>
       </div>
 

@@ -98,9 +98,9 @@ export function SectorPulseCard({
           style={{
             width: '100%', maxWidth: 800, maxHeight: '90vh',
             overflowY: 'auto',
-            background: '#14181f',
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: 6,
+            background: '#171d25',
+            border: '1px solid rgba(148,163,184,0.24)',
+            borderRadius: 8,
           }}
         >
           {/* Section A */}
@@ -145,8 +145,8 @@ export function SectorPulseCard({
           {/* Footer */}
           <div style={{
             padding: '10px 16px 14px',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            fontFamily: "'IBM Plex Sans', sans-serif",
+            borderTop: '1px solid rgba(148,163,184,0.18)',
+            fontFamily: "Inter, Pretendard, 'Noto Sans KR', sans-serif",
             fontSize: 10, color: '#8b9098', lineHeight: 1.5,
             letterSpacing: '0.04em',
           }}>
