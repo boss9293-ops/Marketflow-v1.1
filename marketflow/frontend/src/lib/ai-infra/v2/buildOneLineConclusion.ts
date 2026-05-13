@@ -52,7 +52,7 @@ export function buildOneLineConclusion(states: AIInfraBucketState[]): OneLineCon
   if (leading >= 1 && emerging >= 2) {
     return {
       sentence: `${topLeading ?? 'AI Chip'} 주도, ${topEmerging ?? '인접 버킷'} 추종 흐름이 확인됩니다.`,
-      sub: `${leading + emerging}개 버킷 모멘텀 진입. Confirming ${confirming}개 동반.`,
+      sub: `${leading + emerging}개 버킷 모멘텀 확산. Confirming ${confirming}개 동반.`,
       highlight: '#22c55e',
     }
   }
@@ -67,7 +67,7 @@ export function buildOneLineConclusion(states: AIInfraBucketState[]): OneLineCon
 
   if (crowded >= 2) {
     return {
-      sentence: '과열 구간 진입 버킷 증가 — 신규 모멘텀 진입보다 로테이션 탐색이 유효합니다.',
+      sentence: '과열 구간 버킷 증가 — 신규 모멘텀보다 로테이션 탐색이 유효합니다.',
       sub: `Crowded ${crowded}개${topCrowded ? ' (' + topCrowded + ' 포함)' : ''}. Leading ${leading}개.`,
       highlight: '#fbbf24',
     }
@@ -92,7 +92,7 @@ export function buildOneLineConclusion(states: AIInfraBucketState[]): OneLineCon
   if (confirming >= 4 && leading === 0) {
     return {
       sentence: '뚜렷한 주도 버킷 없이 전반적인 Confirming 흐름 — 로테이션 초기 징후 탐색 중.',
-      sub: `Confirming ${confirming}개. 명확한 Leading 진입 대기.`,
+      sub: `Confirming ${confirming}개. 명확한 Leading 형성 대기.`,
       highlight: '#3FB6A8',
     }
   }

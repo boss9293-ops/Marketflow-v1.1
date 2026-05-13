@@ -78,14 +78,14 @@ export function SectorPulseLeadSymbols({ data, symbolReturns, onSymbolClick }: P
                     {sym.symbol}
                     {sym.is_story_heavy && (
                       <span style={{
-                        fontFamily: V.mono, fontSize: 9, color: '#fbbf24',
+                        fontFamily: V.mono, fontSize: 10, color: '#fbbf24',
                         border: '1px solid rgba(251,191,36,0.35)', borderRadius: 2,
                         padding: '0 4px', letterSpacing: '0.04em',
                       }}>STORY</span>
                     )}
                     {sym.is_indirect && (
                       <span style={{
-                        fontFamily: V.mono, fontSize: 9, color: V.text3,
+                        fontFamily: V.mono, fontSize: 10, color: V.text3,
                         border: '1px solid rgba(139,144,152,0.35)', borderRadius: 2,
                         padding: '0 4px', letterSpacing: '0.04em',
                       }}>INDIRECT</span>

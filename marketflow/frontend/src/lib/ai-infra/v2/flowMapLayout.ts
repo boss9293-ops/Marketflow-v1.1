@@ -45,7 +45,7 @@ export function buildFlowMapLayout(
   states: AIInfraBucketState[],
   containerWidth: number,
 ): FlowMapLayout {
-  const w = Math.max(containerWidth, 600)
+  const w = Math.max(containerWidth, 320)
 
   const byStage = new Map<AIInfraStage, AIInfraBucketState[]>()
   for (const stage of AI_INFRA_STAGE_ORDER) byStage.set(stage, [])

@@ -104,13 +104,11 @@ export function LiveFlowMap({
 
   return (
     <div>
-      <div ref={containerRef} style={{ width: '100%', overflowX: 'auto' }}>
-        <div style={{ minWidth: 600 }}>
+      <div ref={containerRef} style={{ width: '100%' }}>
           <svg
             viewBox={`0 0 ${layout.viewBoxWidth} ${layout.viewBoxHeight}`}
-            width={layout.viewBoxWidth}
-            height={layout.viewBoxHeight}
-            style={{ display: 'block', maxWidth: '100%' }}
+            width="100%"
+            style={{ display: 'block' }}
           >
             <FlowMapArrowDefs />
 
@@ -176,7 +174,6 @@ export function LiveFlowMap({
               </text>
             )}
           </svg>
-        </div>
       </div>
 
       {/* Symbol Mini Card modal (V2-3 — direct ticker click) */}
