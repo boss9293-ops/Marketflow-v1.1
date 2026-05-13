@@ -45,9 +45,9 @@ export function FlowMapNodeSymbol({
       {/* Ticker */}
       <text
         x={nodeX + 8}
-        y={y + 12}
+        y={y + 14}
         fontFamily="'IBM Plex Mono', monospace"
-        fontSize={11}
+        fontSize={12}
         fontWeight={700}
         fill={labelColor}
         style={{ textDecoration: 'underline', textDecorationColor: 'rgba(184,200,220,0.3)' }}
@@ -56,10 +56,10 @@ export function FlowMapNodeSymbol({
       </text>
       {/* Return */}
       <text
-        x={nodeX + nodeWidth - (hasFire ? 22 : 8)}
-        y={y + 12}
+        x={nodeX + nodeWidth - (hasFire ? 24 : 8)}
+        y={y + 14}
         fontFamily="'IBM Plex Mono', monospace"
-        fontSize={10}
+        fontSize={12}
         fill={retCol}
         textAnchor="end"
       >
@@ -69,8 +69,8 @@ export function FlowMapNodeSymbol({
       {hasFire && (
         <MoversMarker
           marker_type={marker_type}
-          x={nodeX + nodeWidth - 18}
-          y={y + 12}
+          x={nodeX + nodeWidth - 20}
+          y={y + 14}
         />
       )}
     </g>

@@ -53,7 +53,7 @@ function NodeCard({
     <div
       onClick={() => onSelect(node.bucket_id)}
       style={{
-        padding: '8px 10px',
+        padding: '10px 12px',
         background: selected ? `${col}14` : 'rgba(255,255,255,0.03)',
         border: `1px ${isInsuf ? 'dashed' : 'solid'} ${selected ? col : isInsuf ? V.border : `${col}55`}`,
         borderRadius: 4,
@@ -62,22 +62,25 @@ function NodeCard({
       }}
     >
       {/* Bucket name */}
-      <div style={{
-        fontFamily: V.ui, fontSize: 11, fontWeight: 600, color: V.text,
-        marginBottom: 4,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
+      <div
+        title={node.display_name}
+        style={{
+          fontFamily: V.ui, fontSize: 14, fontWeight: 600, color: V.text,
+          marginBottom: 6, lineHeight: 1.3,
+          wordBreak: 'break-word',
+        }}
+      >
         {node.display_name}
       </div>
 
       {/* State row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{
-          width: 6, height: 6, borderRadius: '50%',
+          width: 8, height: 8, borderRadius: '50%',
           background: col, flexShrink: 0, display: 'inline-block',
         }} />
         <span style={{
-          fontFamily: V.mono, fontSize: 10, color: col, letterSpacing: '0.04em',
+          fontFamily: V.mono, fontSize: 12, color: col, letterSpacing: '0.04em',
         }}>
           {STATE_DISPLAY_LABELS[node.state.state_label]}
         </span>
@@ -95,14 +98,14 @@ function NodeCard({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'nowrap' }}>
             <span style={{
-              fontFamily: V.mono, fontSize: 11, fontWeight: 700,
+              fontFamily: V.mono, fontSize: 12, fontWeight: 700,
               color: V.text2, letterSpacing: '0.04em',
             }}>
               {symbol}
             </span>
             {return_1w !== null && (
               <span style={{
-                fontFamily: V.mono, fontSize: 11, color: retColor(return_1w),
+                fontFamily: V.mono, fontSize: 12, color: retColor(return_1w),
               }}>
                 {(return_1w >= 0 ? '+' : '') + return_1w.toFixed(1)}%
               </span>
@@ -157,7 +160,7 @@ export function FlowMapStageVertical({
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 8,
+            gap: 12,
           }}>
             {stage.nodes.map(node => (
               <NodeCard

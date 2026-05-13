@@ -34,8 +34,9 @@ export interface FlowMapLayout {
   viewBoxHeight: number
 }
 
-const NODE_H    = 58
-const NODE_GAP  = 6
+const NODE_H    = 90
+const NODE_W    = 175
+const NODE_GAP  = 12
 const HEADER_H  = 22
 const PAD_X     = 8
 const PAD_Y     = 8
@@ -58,7 +59,7 @@ export function buildFlowMapLayout(
   const stageCount = AI_INFRA_STAGE_ORDER.length
   const totalInner = w - PAD_X * 2
   const stageWidth = Math.floor((totalInner - (stageCount - 1) * STAGE_GAP) / stageCount)
-  const nodeW      = Math.min(148, stageWidth - 4)
+  const nodeW      = Math.min(NODE_W, stageWidth - 4)
 
   let maxNodes = 0
   for (const nodes of byStage.values()) if (nodes.length > maxNodes) maxNodes = nodes.length
