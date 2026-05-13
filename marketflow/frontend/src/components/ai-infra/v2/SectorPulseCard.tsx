@@ -10,7 +10,6 @@ import type {
 } from '@/lib/ai-infra/aiInfraEarningsConfirmation'
 import type { SymbolReturnsMap } from '@/lib/ai-infra/v2/symbolPriceFetcher'
 import { getSymbolReturn } from '@/lib/ai-infra/v2/symbolPriceFetcher'
-import { buildMoversMarker } from '@/lib/ai-infra/v2/buildMoversMarker'
 import { buildLeadSymbolMap } from '@/lib/ai-infra/v2/leadSymbolResolver'
 import { resolveLeadSymbolsForBucket } from '@/lib/ai-infra/v2/resolveLeadSymbolsForBucket'
 import { buildSectorPulseSummary } from '@/lib/ai-infra/v2/buildSectorPulseSummary'
@@ -21,8 +20,6 @@ import { SectorPulseChart } from './SectorPulseChart'
 import { SectorPulseSummary } from './SectorPulseSummary'
 import { SectorPulseLeadSymbols } from './SectorPulseLeadSymbols'
 import { SectorPulseWatchPoints } from './SectorPulseWatchPoints'
-import { SymbolMiniCard } from './SymbolMiniCard'
-import type { SymbolMiniCardData } from './SymbolMiniCard'
 
 interface Props {
   state:              AIInfraBucketState
@@ -33,31 +30,23 @@ interface Props {
   symbolPriceSeries:  Record<string, number[]>
   asOf?:              string | null
   onClose:            () => void
+  onSymbolClick?:     (symbol: string) => void
 }
 
 export function SectorPulseCard({
   state, earnings,
   companyPurity, earningsCompanies,
   symbolReturns, symbolPriceSeries,
-  asOf, onClose,
+  asOf, onClose, onSymbolClick,
 }: Props) {
-  const [miniCard, setMiniCard] = useState<SymbolMiniCardData | null>(null)
-  const [isWide, setIsWide]     = useState(true)
+  const [isWide, setIsWide] = useState(true)
 
-  // ESC: close mini-card first, then card
+  // ESC: close card
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (miniCard) {
-        setMiniCard(null)
-        e.stopPropagation()
-      } else {
-        onClose()
-      }
-    }
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [onClose, miniCard])
+  }, [onClose])
 
   // Width-based layout
   useEffect(() => {
@@ -88,26 +77,7 @@ export function SectorPulseCard({
   const watchPoints = buildWatchPoints({ state, earnings })
 
   function handleSymbolClick(symbol: string) {
-    const ret      = getSymbolReturn(symbol, symbolReturns)
-    const mark     = buildMoversMarker(ret.five_day)
-    const eEntry   = earningsCompanies.find(e => e.symbol === symbol)
-    const pEntry   = companyPurity.find(c => c.symbol === symbol)
-    setMiniCard({
-      symbol,
-      company_name:       pEntry?.company_name ?? symbol,
-      bucket_label:       state.display_name,
-      return_1w:          ret.five_day,
-      return_1m:          ret.one_month,
-      return_3m:          ret.three_month,
-      prices:             symbolPriceSeries[symbol] ?? [],
-      asOf,
-      marker_type:        mark.marker_type,
-      confirmation_level: eEntry?.confirmation_level,
-      evidence_note:      eEntry?.evidence_notes?.[0],
-      caution_note:       eEntry?.caution_notes?.[0] ?? pEntry?.notes?.[0],
-      is_indirect:        pEntry?.indirect_exposure || pEntry?.company_theme_purity === 'INDIRECT_EXPOSURE' || false,
-      is_story_heavy:     pEntry?.story_risk || pEntry?.company_theme_purity === 'STORY_HEAVY' || false,
-    })
+    onSymbolClick?.(symbol)
   }
 
   return (
@@ -185,15 +155,6 @@ export function SectorPulseCard({
         </div>
       </div>
 
-      {/* Mini Card overlay (zIndex 1001 — above Pulse Card) */}
-      {miniCard && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1001 }}>
-          <SymbolMiniCard
-            data={miniCard}
-            onClose={() => setMiniCard(null)}
-          />
-        </div>
-      )}
     </>
   )
 }
