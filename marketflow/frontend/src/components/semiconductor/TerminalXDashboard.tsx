@@ -8,6 +8,7 @@ import { Cpu, TrendingUp, Activity, Bell, History, Maximize2, X, RotateCcw, Data
 import SoxxSoxlTranslationTab    from './SoxxSoxlTranslationTab'
 import SemiconductorPlaybackTab  from './SemiconductorPlaybackTab'
 import AnalysisEngineCoreTab     from './AnalysisEngineCoreTab'
+import SemiconductorPulseTab     from './v2/SemiconductorPulseTab'
 import { useSemiconductorFundamentals } from '@/lib/semiconductor/useSemiconductorFundamentals'
 import { SoxxContributionTrendMiniChart } from './SoxxContributionTrendMiniChart'
 import {
@@ -147,12 +148,12 @@ const Panel = ({ title, icon: Icon, children, className = '', headerExtra }: Pan
   <div className={`border border-slate-800 bg-[#0d0d0d] rounded-sm flex flex-col ${className}`}>
     <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-slate-800 bg-white/[0.02] shrink-0">
       <div className="flex items-center gap-[6px].5">
-        {Icon && <Icon size={11} className="text-slate-300 tracking-[0.02em]" />}
-        <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>{title}</span>
+        {Icon && <Icon size={11} className="text-slate-200 tracking-[0.02em]" />}
+        <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>{title}</span>
       </div>
       <div className="flex items-center gap-[10px]">
         {headerExtra}
-        <Maximize2 size={10} className="text-slate-300 tracking-[0.02em] cursor-pointer hover:text-slate-300 tracking-[0.02em]" />
+        <Maximize2 size={10} className="text-slate-200 tracking-[0.02em] cursor-pointer hover:text-slate-200 tracking-[0.02em]" />
       </div>
     </div>
     <div className="p-3 flex-1 flex flex-col">{children}</div>
@@ -240,13 +241,13 @@ function formatPct(value: number): string {
 }
 
 function retColor(v: number | null): string {
-  if (v === null) return 'text-slate-300'
-  return v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-slate-300 tracking-[0.02em]'
+  if (v === null) return 'text-slate-200'
+  return v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-slate-200 tracking-[0.02em]'
 }
 
 function pctPointColor(value: number): string {
-  if (!Number.isFinite(value)) return 'text-slate-300'
-  return value > 0 ? 'text-emerald-300' : value < 0 ? 'text-red-300' : 'text-slate-300 tracking-[0.02em]'
+  if (!Number.isFinite(value)) return 'text-slate-200'
+  return value > 0 ? 'text-emerald-300' : value < 0 ? 'text-red-300' : 'text-slate-200 tracking-[0.02em]'
 }
 
 function formatPctPointOrUnavailable(value: number | null | undefined): string {
@@ -257,19 +258,19 @@ function formatPctPointOrUnavailable(value: number | null | undefined): string {
 function participationStateClass(state: SoxxParticipationState): string {
   if (state === 'broad_participation') return 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
   if (state === 'selected_led') return 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10'
-  if (state === 'residual_led') return 'text-slate-300 border-slate-600 bg-[#222222]'
+  if (state === 'residual_led') return 'text-slate-200 border-slate-600 bg-[#222222]'
   if (state === 'mixed_diverging') return 'text-orange-300 border-orange-500/30 bg-orange-500/10'
-  return 'text-slate-300 border-slate-700 bg-[#1a1a1a]'
+  return 'text-slate-200 border-slate-700 bg-[#1a1a1a]'
 }
 
 function contributionState(value: number | null | undefined): { label: string; cls: string } {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return { label: 'Unavailable', cls: 'text-slate-300 border-slate-700 bg-[#1a1a1a]' }
+    return { label: 'Unavailable', cls: 'text-slate-200 border-slate-700 bg-[#1a1a1a]' }
   }
   if (value > 0.25) return { label: 'Leading', cls: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' }
   if (value >= 0.05) return { label: 'Supporting', cls: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' }
   if (value < -0.05) return { label: 'Lagging', cls: 'text-orange-300 border-orange-500/30 bg-orange-500/10' }
-  return { label: 'Mixed', cls: 'text-slate-300 border-slate-700 bg-[#1a1a1a]' }
+  return { label: 'Mixed', cls: 'text-slate-200 border-slate-700 bg-[#1a1a1a]' }
 }
 
 function isLensDebugMode(): boolean {
@@ -361,7 +362,7 @@ const PENDING_LOG = [
 ]
 
 export default function TerminalXDashboard() {
-  const [mainTab,  setMainTab]  = useState<'ENGINE' | 'DATA_LAB' | 'STRATEGY' | 'PLAYBACK'>('ENGINE')
+  const [mainTab,  setMainTab]  = useState<'PULSE' | 'ENGINE' | 'DATA_LAB' | 'STRATEGY' | 'PLAYBACK'>('PULSE')
   const [centerTab,setCenterTab]= useState('PERFORMANCE')
   const [zoom,     setZoom]     = useState('6M')
   const [histTab,  setHistTab]  = useState('HISTORY TABLE')
@@ -816,7 +817,7 @@ export default function TerminalXDashboard() {
     soxxStructure === 'Diverging'  ? 'text-orange-400' :
     soxxStructure === 'Fragile' ||
     soxxStructure === 'Weak'       ? 'text-red-400' :
-                                     'text-slate-300'
+                                     'text-slate-200'
   const residualContribution = soxxContributionSummary?.residualContributionPctPoint ?? null
   const selectedContribution = soxxContributionSummary?.selectedContributionPctPoint ?? null
   const residualParticipationLabel =
@@ -827,8 +828,8 @@ export default function TerminalXDashboard() {
   const residualParticipationClass =
     residualParticipationLabel === 'Participating' ? 'text-emerald-400' :
     residualParticipationLabel === 'Lagging'       ? 'text-orange-400' :
-    residualParticipationLabel === 'Flat'          ? 'text-slate-300' :
-                                                     'text-slate-300'
+    residualParticipationLabel === 'Flat'          ? 'text-slate-200' :
+                                                     'text-slate-200'
   const contributionBiasLabel =
     selectedContribution === null || residualContribution === null ? 'Unavailable' :
     selectedContribution > residualContribution + 0.05             ? 'Selected-led' :
@@ -836,9 +837,9 @@ export default function TerminalXDashboard() {
                                                                      'Balanced'
   const contributionBiasClass =
     contributionBiasLabel === 'Selected-led' ? 'text-cyan-400' :
-    contributionBiasLabel === 'Residual-led' ? 'text-slate-300' :
+    contributionBiasLabel === 'Residual-led' ? 'text-slate-200' :
     contributionBiasLabel === 'Balanced'     ? 'text-emerald-400' :
-                                               'text-slate-300'
+                                               'text-slate-200'
   const contributionBiasDetail =
     selectedContribution === null || residualContribution === null
       ? 'Contribution unavailable'
@@ -888,7 +889,7 @@ export default function TerminalXDashboard() {
   const soxlSensitivityClass =
     soxlSensitivity.level === 'High'       ? 'text-red-400' :
     soxlSensitivity.level === 'Low-Medium' ? 'text-emerald-400' :
-    soxlSensitivity.level === 'Unavailable' ? 'text-slate-300' :
+    soxlSensitivity.level === 'Unavailable' ? 'text-slate-200' :
                                              'text-yellow-400'
 
   const bucketPerf = (live?.buckets ?? []).map(b => ({ name: b.name, color: b.color, price: b.price, m6: b.m6, up: b.up }))
@@ -915,7 +916,7 @@ export default function TerminalXDashboard() {
   }, [history])
   const lensDataConnected = !!live
   const lensDataStatusLabel = lensDataConnected ? 'DATA CONNECTED' : 'DATA PENDING'
-  const lensDataStatusClass = lensDataConnected ? 'text-emerald-400' : 'text-slate-300'
+  const lensDataStatusClass = lensDataConnected ? 'text-emerald-400' : 'text-slate-200'
   const lensDataDotClass = lensDataConnected ? 'bg-emerald-400' : 'bg-slate-600'
   const lensSourceStatusLabel =
     returnStatus === 'available'
@@ -946,7 +947,7 @@ export default function TerminalXDashboard() {
 
   return (
     <div
-      className="flex flex-col bg-black text-slate-300 tracking-[0.02em] min-h-screen selection:bg-blue-500/30"
+      className="flex flex-col bg-black text-slate-200 tracking-[0.02em] min-h-screen selection:bg-blue-500/30"
       style={{ fontSize: 14, fontFamily: UI_FONT, letterSpacing: '0.02em' }}
     >
 
@@ -956,19 +957,19 @@ export default function TerminalXDashboard() {
           <div className="flex items-center gap-[10px]">
             <Cpu size={14} className="text-blue-500" />
             <span className="text-[16px] font-black text-white tracking-tighter">TERMINAL X</span>
-            <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] hidden lg:block ml-1" style={{ fontFamily: UI_FONT }}>SEMICONDUCTOR ANALYSIS ENGINE</span>
+            <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] hidden lg:block ml-1" style={{ fontFamily: UI_FONT }}>SEMICONDUCTOR ANALYSIS ENGINE</span>
           </div>
           <nav className="flex gap-[6px]">
-            {(['ENGINE', 'DATA_LAB', 'STRATEGY', 'PLAYBACK'] as const).map(t => (
+            {(['PULSE', 'ENGINE', 'DATA_LAB', 'STRATEGY', 'PLAYBACK'] as const).map(t => (
               <button key={t} onClick={() => setMainTab(t)}
                 className={`px-4 h-[40px] text-[14px] font-medium leading-[1.6] font-bold tracking-widest border-b-2 transition-all ${
-                  mainTab === t ? 'border-blue-500 text-white bg-blue-500/5' : 'border-transparent text-slate-300 tracking-[0.02em] hover:text-slate-300 tracking-[0.02em]'
+                  mainTab === t ? 'border-blue-500 text-white bg-blue-500/5' : 'border-transparent text-slate-200 tracking-[0.02em] hover:text-slate-200 tracking-[0.02em]'
                 }`}>{t === 'DATA_LAB' ? 'DATA LAB' : t}</button>
             ))}
           </nav>
         </div>
         <div className="flex items-center gap-[18px]">
-          <span className="font-mono text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em]" style={{ fontFamily: DATA_FONT }}>
+          <span className="font-mono text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em]" style={{ fontFamily: DATA_FONT }}>
             {lensDataConnected ? `${asOf}  15:30:00` : 'Data pending'}
           </span>
           <div className={`flex items-center gap-[6px] text-[11px] font-bold ${lensDataStatusClass}`}>
@@ -978,48 +979,51 @@ export default function TerminalXDashboard() {
       </header>
 
       {/* KPI STRIP: SOXX/SOXL structure indicators only — hidden on ENGINE tab */}
-      <div className={`h-[80px] w-full shrink-0 border-b border-slate-800 bg-[#0a0a0a] sticky top-[40px] z-40 ${mainTab === 'ENGINE' ? 'hidden' : ''}`}>
+      <div className={`h-[80px] w-full shrink-0 border-b border-slate-800 bg-[#0a0a0a] sticky top-[40px] z-40 ${mainTab === 'ENGINE' || mainTab === 'PULSE' ? 'hidden' : ''}`}>
         <div className="h-full px-4 md:px-6 xl:px-10 2xl:px-14 grid grid-cols-5 divide-x divide-slate-800">
 
         <div className="min-w-0 flex flex-col justify-center px-4">
-          <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>SOXX Structure</span>
+          <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>SOXX Structure</span>
           <span className={`text-[22px] font-black leading-none mt-1 truncate ${soxxStructureClass}`}>{soxxStructure}</span>
-          <span className="text-[11px] text-slate-300 mt-1 truncate">{displayConflict(conflictType)}</span>
+          <span className="text-[11px] text-slate-200 mt-1 truncate">{displayConflict(conflictType)}</span>
         </div>
 
         <div className="min-w-0 flex flex-col justify-center px-4">
-          <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Selected Coverage</span>
+          <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Selected Coverage</span>
           <span className="text-[28px] font-bold font-mono text-cyan-400 leading-none mt-0.5" style={{ fontFamily: DATA_FONT }}>
             {formatPct(soxxCoverageSummary.selectedCoveragePct)}
           </span>
-          <span className="text-[11px] text-slate-300 mt-1 truncate">Mapped SOXX holdings weight</span>
+          <span className="text-[11px] text-slate-200 mt-1 truncate">Mapped SOXX holdings weight</span>
         </div>
 
         <div className="min-w-0 flex flex-col justify-center px-4">
-          <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Residual Participation</span>
+          <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Residual Participation</span>
           <div className="flex items-end gap-[8px] mt-0.5">
-            <span className="text-[28px] font-bold font-mono text-slate-300 leading-none" style={{ fontFamily: DATA_FONT }}>
+            <span className="text-[28px] font-bold font-mono text-slate-200 leading-none" style={{ fontFamily: DATA_FONT }}>
               {formatPct(soxxCoverageSummary.residualPct)}
             </span>
             <span className={`text-[11px] font-bold pb-0.5 ${residualParticipationClass}`}>{residualParticipationLabel}</span>
           </div>
-          <span className="text-[11px] text-slate-300 mt-1 truncate">{residualParticipationHelper}</span>
+          <span className="text-[11px] text-slate-200 mt-1 truncate">{residualParticipationHelper}</span>
         </div>
 
         <div className="min-w-0 flex flex-col justify-center px-4">
-          <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Contribution Bias</span>
+          <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Contribution Bias</span>
           <span className={`text-[22px] font-black leading-none mt-1 truncate ${contributionBiasClass}`}>{contributionBiasLabel}</span>
-          <span className="text-[11px] text-slate-300 mt-1 truncate" title={contributionBiasDetail}>{contributionBiasHelper}</span>
+          <span className="text-[11px] text-slate-200 mt-1 truncate" title={contributionBiasDetail}>{contributionBiasHelper}</span>
         </div>
 
         <div className="min-w-0 flex flex-col justify-center px-4">
-          <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>SOXL Daily Sensitivity</span>
+          <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>SOXL Daily Sensitivity</span>
           <span className={`text-[22px] font-black leading-none mt-1 truncate ${soxlSensitivityClass}`}>{soxlSensitivity.level}</span>
-          <span className="text-[11px] text-slate-300 mt-1 truncate">Not multi-day forecast</span>
+          <span className="text-[11px] text-slate-200 mt-1 truncate">Not multi-day forecast</span>
         </div>
 
         </div>
       </div>
+
+      {/* ???? TAB: PULSE ???? */}
+      {mainTab === 'PULSE' && <SemiconductorPulseTab />}
 
       {/* ???? TAB: ENGINE ???? */}
       {mainTab === 'ENGINE' && (
@@ -1030,10 +1034,10 @@ export default function TerminalXDashboard() {
       {mainTab === 'DATA_LAB' && (
         <div className="px-4 md:px-6 xl:px-10 2xl:px-14 py-2.5 border-b border-slate-800/60 bg-[#0d0d0d] shrink-0 flex items-baseline gap-[14px]">
           <span className="text-[14px] font-black text-white tracking-[0.04em]" style={{ fontFamily: UI_FONT }}>DATA LAB</span>
-          <span className="text-[11px] text-slate-300 tracking-[0.02em]" style={{ fontFamily: UI_FONT }}>
+          <span className="text-[11px] text-slate-200 tracking-[0.02em]" style={{ fontFamily: UI_FONT }}>
             Advanced data audit · contribution · residual · correlation
           </span>
-          <span className="text-[10px] text-slate-300 ml-auto italic" style={{ fontFamily: UI_FONT }}>
+          <span className="text-[11px] text-slate-200 ml-auto italic" style={{ fontFamily: UI_FONT }}>
             ENGINE 판단의 근거가 되는 원자료 및 데이터 신뢰도 검증 화면
           </span>
         </div>
@@ -1051,10 +1055,10 @@ export default function TerminalXDashboard() {
           {(() => {
             const bucketStatus = (vsStr: string) => {
               const v = parseFloat(vsStr)
-              if (!Number.isFinite(v)) return { label: 'Unavailable', cls: 'text-slate-300', icon: '?' }
+              if (!Number.isFinite(v)) return { label: 'Unavailable', cls: 'text-slate-200', icon: '?' }
               if (v >= 3)    return { label: 'Leading',        cls: 'text-emerald-400', icon: '?' }
               if (v >= 0.5)  return { label: 'Improving',      cls: 'text-cyan-400',   icon: '?' }
-              if (v >= -0.5) return { label: 'Neutral',         cls: 'text-slate-300 tracking-[0.02em]',  icon: '?' }
+              if (v >= -0.5) return { label: 'Neutral',         cls: 'text-slate-200 tracking-[0.02em]',  icon: '?' }
               if (v >= -3)   return { label: 'Lagging',         cls: 'text-orange-400', icon: '?' }
               return           { label: 'Underperforming', cls: 'text-red-400',    icon: '?' }
             }
@@ -1070,10 +1074,10 @@ export default function TerminalXDashboard() {
             return (
               <Panel title="Bucket Power Ranking" icon={TrendingUp}>
                 {ranked.length === 0 ? (
-                  <p className="text-[11px] text-slate-300 tracking-[0.02em]">Bucket ranking unavailable.</p>
+                  <p className="text-[11px] text-slate-200 tracking-[0.02em]">Bucket ranking unavailable.</p>
                 ) : (
                   <div className="space-y-0">
-                    <div className="grid text-[11px] text-slate-300 tracking-[0.02em] uppercase pb-1 mb-0.5 border-b border-slate-800 gap-x-1"
+                    <div className="grid text-[11px] text-slate-200 tracking-[0.02em] uppercase pb-1 mb-0.5 border-b border-slate-800 gap-x-1"
                       style={{ gridTemplateColumns: '8px 1fr 36px 64px 16px' }}>
                       <span /><span>Bucket</span>
                       <span className="text-right">vs SOXX</span>
@@ -1087,7 +1091,7 @@ export default function TerminalXDashboard() {
                         <div key={i} className="grid items-center py-0.5 border-b border-slate-800/30 gap-x-1"
                           style={{ gridTemplateColumns: '8px 1fr 36px 64px 16px' }}>
                           <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: color }} />
-                          <span className="text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em] truncate">{r.name}</span>
+                          <span className="text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em] truncate">{r.name}</span>
                           <span className={`text-right text-[14px] font-bold font-mono tabular-nums ${st.cls}`}>{r.vs}</span>
                           <span className={`text-right text-[11px] ${st.cls}`}>{st.label}</span>
                           <span className={`text-right text-[11px] ${st.cls}`}>{st.icon}</span>
@@ -1133,29 +1137,29 @@ export default function TerminalXDashboard() {
             return (
               <Panel title="Trend Context" icon={Activity}>
                 {!powerBucket ? (
-                  <p className="text-[11px] text-slate-300 tracking-[0.02em]">Trend context unavailable.</p>
+                  <p className="text-[11px] text-slate-200 tracking-[0.02em]">Trend context unavailable.</p>
                 ) : (
                   <div className="flex flex-col gap-[10px].5">
                     <div>
-                      <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }}>Power Bucket</div>
+                      <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }}>Power Bucket</div>
                       <div className="text-[13px] font-bold text-emerald-400">{powerBucket}</div>
                     </div>
                     <div>
-                      <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }}>Analog Bucket</div>
-                      <div className="text-[13px] font-medium text-slate-300 tracking-[0.02em]">{analogBucket ?? 'Not available'}</div>
+                      <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }}>Analog Bucket</div>
+                      <div className="text-[13px] font-medium text-slate-200 tracking-[0.02em]">{analogBucket ?? 'Not available'}</div>
                     </div>
                     {ranked.length > 0 && (
                       <div>
-                        <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-1" style={{ fontFamily: UI_FONT }}>Bucket Status</div>
+                        <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-1" style={{ fontFamily: UI_FONT }}>Bucket Status</div>
                         <div className="space-y-0.5">
                           {ranked.slice(0, 4).map(r => (
                             <div key={r.name} className="flex items-center justify-between text-[11px]">
-                              <span className="text-slate-300 tracking-[0.02em] truncate max-w-[96px]">{r.name}</span>
+                              <span className="text-slate-200 tracking-[0.02em] truncate max-w-[96px]">{r.name}</span>
                               <span className={`font-medium ${
                                 bucketStatus(r.vs) === 'Leading' || bucketStatus(r.vs) === 'Improving'
                                   ? 'text-emerald-400'
                                 : bucketStatus(r.vs) === 'Neutral'
-                                  ? 'text-slate-300 tracking-[0.02em]'
+                                  ? 'text-slate-200 tracking-[0.02em]'
                                 : bucketStatus(r.vs) === 'Lagging'
                                   ? 'text-orange-400'
                                   : 'text-red-400'
@@ -1166,8 +1170,8 @@ export default function TerminalXDashboard() {
                       </div>
                     )}
                     <div className="border-t border-slate-800/60 pt-1.5">
-                      <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }}>Trend Context</div>
-                      <p className="text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em] leading-[1.6]">{trendContext}</p>
+                      <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }}>Trend Context</div>
+                      <p className="text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em] leading-[1.6]">{trendContext}</p>
                     </div>
                   </div>
                 )}
@@ -1188,11 +1192,11 @@ export default function TerminalXDashboard() {
               STATIC:      'bg-amber-500/10 border-amber-500/40 text-amber-400',
               MANUAL:      'bg-amber-500/10 border-amber-500/40 text-amber-400',
               QUARTERLY:   'bg-amber-500/10 border-amber-500/40 text-amber-400',
-              PENDING:     'bg-[#1a1a1a] border-slate-700 text-slate-300',
-              UNAVAILABLE: 'bg-[#111111] border-slate-800 text-slate-300',
+              PENDING:     'bg-[#1a1a1a] border-slate-700 text-slate-200',
+              UNAVAILABLE: 'bg-[#111111] border-slate-800 text-slate-200',
             }
             const StatusBadge = ({ s }: { s: string }) => (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 border rounded-sm font-mono tracking-[0.06em] shrink-0 ${STATUS_CLS[s] ?? STATUS_CLS.PENDING}`}>{s}</span>
+              <span className={`text-[11px] font-bold px-1.5 py-0.5 border rounded-sm font-mono tracking-[0.06em] shrink-0 ${STATUS_CLS[s] ?? STATUS_CLS.PENDING}`}>{s}</span>
             )
             // Merge fundamentals payload status into display rows
             const fund = fundamentals.data
@@ -1217,12 +1221,12 @@ export default function TerminalXDashboard() {
               : `Cache · Updated ${fundamentals.lastUpdated?.slice(0, 10) ?? '—'}`
             return (
               <Panel title="DATA STATUS" icon={Database} headerExtra={
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.10em] font-mono">Data Audit Layer</span>
+                <span className="text-[11px] font-bold text-slate-200 uppercase tracking-[0.10em] font-mono">Data Audit Layer</span>
               }>
                 {/* Status table */}
                 <table className="w-full text-[11px] mb-3" style={{ fontFamily: DATA_FONT }}>
                   <thead>
-                    <tr className="text-[10px] text-slate-300 uppercase tracking-[0.10em] border-b border-slate-800">
+                    <tr className="text-[11px] text-slate-200 uppercase tracking-[0.10em] border-b border-slate-800">
                       <th className="text-left py-1 font-bold pr-3" style={{ fontFamily: UI_FONT }}>DATA GROUP</th>
                       <th className="text-left py-1 font-bold pr-3">STATUS</th>
                       <th className="text-left py-1 font-bold pr-3">SOURCE</th>
@@ -1233,21 +1237,21 @@ export default function TerminalXDashboard() {
                   <tbody>
                     {displayRows.map(r => (
                       <tr key={r.group} className="border-b border-slate-800/30 hover:bg-white/[0.02]">
-                        <td className="py-1 pr-3 text-slate-300 font-medium whitespace-nowrap" style={{ fontFamily: UI_FONT }}>{r.group}</td>
+                        <td className="py-1 pr-3 text-slate-200 font-medium whitespace-nowrap" style={{ fontFamily: UI_FONT }}>{r.group}</td>
                         <td className="py-1 pr-3"><StatusBadge s={r.status} /></td>
-                        <td className="py-1 pr-3 text-slate-300 whitespace-nowrap">{r.source}</td>
-                        <td className="py-1 pr-3 text-slate-300 whitespace-nowrap">{r.updated}</td>
-                        <td className="py-1 text-slate-300 text-[10px]" style={{ fontFamily: UI_FONT }}>{r.note}</td>
+                        <td className="py-1 pr-3 text-slate-200 whitespace-nowrap">{r.source}</td>
+                        <td className="py-1 pr-3 text-slate-200 whitespace-nowrap">{r.updated}</td>
+                        <td className="py-1 text-slate-200 text-[11px]" style={{ fontFamily: UI_FONT }}>{r.note}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {/* Missing Data Log */}
                 <div className="border-t border-slate-800 pt-2">
-                  <div className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.10em] mb-1.5" style={{ fontFamily: UI_FONT }}>Missing Data Log — PENDING</div>
+                  <div className="text-[11px] font-bold text-slate-200 uppercase tracking-[0.10em] mb-1.5" style={{ fontFamily: UI_FONT }}>Missing Data Log — PENDING</div>
                   <div className="flex flex-col gap-0.5">
                     {PENDING_LOG.map(item => (
-                      <div key={item} className="flex items-center gap-[6px] text-[10px] text-slate-300" style={{ fontFamily: UI_FONT }}>
+                      <div key={item} className="flex items-center gap-[6px] text-[11px] text-slate-200" style={{ fontFamily: UI_FONT }}>
                         <span className="w-1 h-1 rounded-full bg-slate-600 shrink-0" />
                         {item}
                       </div>
@@ -1257,7 +1261,7 @@ export default function TerminalXDashboard() {
                 {/* API Status Indicator */}
                 <div className="border-t border-slate-800 pt-2 flex items-center gap-2">
                   <StatusBadge s={apiStatus} />
-                  <span className="text-[10px] text-slate-300" style={{ fontFamily: UI_FONT }}>/api/semiconductor-fundamentals · {apiNote}</span>
+                  <span className="text-[11px] text-slate-200" style={{ fontFamily: UI_FONT }}>/api/semiconductor-fundamentals · {apiNote}</span>
                 </div>
               </Panel>
             )
@@ -1269,7 +1273,7 @@ export default function TerminalXDashboard() {
               {['PERFORMANCE', 'CORRELATION'].map(t => (
                 <button key={t} onClick={() => setCenterTab(t)} title={TAB_TIPS[t]}
                   className={`px-4 py-1.5 text-[11px] font-bold tracking-widest border-b-2 transition-all ${
-                    centerTab === t ? 'border-blue-500 text-white' : 'border-transparent text-slate-300 tracking-[0.02em] hover:text-slate-300 tracking-[0.02em]'
+                    centerTab === t ? 'border-blue-500 text-white' : 'border-transparent text-slate-200 tracking-[0.02em] hover:text-slate-200 tracking-[0.02em]'
                   }`}>{t}</button>
               ))}
             </div>
@@ -1280,13 +1284,13 @@ export default function TerminalXDashboard() {
 
                 {/* 1. Bucket Performance Matrix */}
                 <div>
-                  <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-2" style={{ fontFamily: UI_FONT }}>Bucket Performance Matrix</div>
+                  <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-2" style={{ fontFamily: UI_FONT }}>Bucket Performance Matrix</div>
                   {!periodReturns ? (
-                    <div className="text-[14px] font-medium leading-[1.6] text-slate-300 py-3 text-center">Loading…</div>
+                    <div className="text-[14px] font-medium leading-[1.6] text-slate-200 py-3 text-center">Loading…</div>
                   ) : (
                     <table className="w-full text-[14px] font-medium leading-[1.6] font-mono" style={{ fontFamily: DATA_FONT }}>
                       <thead>
-                        <tr className="text-[11px] text-slate-300 border-b border-slate-800">
+                        <tr className="text-[11px] text-slate-200 border-b border-slate-800">
                           <th className="text-left py-1 font-bold">BUCKET</th>
                           {(['1D','5D','1M','3M','6M'] as const).map(p => (
                             <th key={p} className="text-right py-1 font-bold pl-2">{p}</th>
@@ -1306,7 +1310,7 @@ export default function TerminalXDashboard() {
                             <tr key={b.name} className="hover:bg-white/5">
                               <td className="py-1 flex items-center gap-[6px].5">
                                 <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: b.color }} />
-                                <span className="text-slate-300 tracking-[0.02em] truncate">{b.name}</span>
+                                <span className="text-slate-200 tracking-[0.02em] truncate">{b.name}</span>
                               </td>
                               {(['1D','5D','1M','3M','6M'] as const).map(p => (
                                 <td key={p} className={`py-1 text-right pl-2 tabular-nums font-bold ${retColor(r[p])}`}>
@@ -1323,12 +1327,12 @@ export default function TerminalXDashboard() {
 
                 {/* 2. Relative Performance vs SOXX (1M) */}
                 <div className="border-t border-slate-800 pt-2">
-                  <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>Relative Performance vs SOXX 夷?1M</div>
+                  <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>Relative Performance vs SOXX 夷?1M</div>
                   {!periodReturns ? (
-                    <div className="text-[14px] font-medium leading-[1.6] text-slate-300">Loading…</div>
+                    <div className="text-[14px] font-medium leading-[1.6] text-slate-200">Loading…</div>
                   ) : (
                     <div className="space-y-0.5">
-                      <div className="grid text-[11px] text-slate-300 uppercase pb-1 border-b border-slate-800/50"
+                      <div className="grid text-[11px] text-slate-200 uppercase pb-1 border-b border-slate-800/50"
                         style={{ gridTemplateColumns: '1fr 56px 56px 64px' }}>
                         <span>Bucket</span>
                         <span className="text-right">Return</span>
@@ -1345,13 +1349,13 @@ export default function TerminalXDashboard() {
                         const soxxR = periodReturns['soxx']['1M']
                         const rel   = ret !== null && soxxR !== null ? Math.round((ret - soxxR) * 10) / 10 : null
                         const sig   = rel === null ? '?' : rel > 5 ? 'Leading' : rel < -5 ? 'Lagging' : 'In Line'
-                        const sigCls = sig === 'Leading' ? 'text-emerald-400' : sig === 'Lagging' ? 'text-red-400' : 'text-slate-300 tracking-[0.02em]'
+                        const sigCls = sig === 'Leading' ? 'text-emerald-400' : sig === 'Lagging' ? 'text-red-400' : 'text-slate-200 tracking-[0.02em]'
                         return (
                           <div key={b.name} className="grid items-center py-1 border-b border-slate-800/30 text-[14px] font-medium leading-[1.6] font-mono"
                             style={{ gridTemplateColumns: '1fr 56px 56px 64px' }}>
                             <span className="flex items-center gap-[6px].5 truncate">
                               <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: b.color }} />
-                              <span className="text-slate-300 tracking-[0.02em] truncate">{b.name}</span>
+                              <span className="text-slate-200 tracking-[0.02em] truncate">{b.name}</span>
                             </span>
                             <span className={`text-right tabular-nums font-bold ${retColor(ret)}`}>{fmtRet(ret)}</span>
                             <span className={`text-right tabular-nums font-bold ${retColor(rel)}`}>{rel !== null ? fmtRet(rel) : '?'}</span>
@@ -1377,7 +1381,7 @@ export default function TerminalXDashboard() {
                     ['LEADING','CONFIRMED','CONFIRMING','BROAD'].includes(state) ? 'text-emerald-400' :
                     ['IN_LINE','PARTIAL','NEUTRAL'].includes(state)              ? 'text-yellow-400'  :
                     ['LAGGING','LAGGING_AI_DELAY','LAGGING_CYCLE','NOT_CONFIRMED','WEAK','NARROW','NARROWING','ROTATING'].includes(state) ? 'text-orange-400' :
-                    'text-slate-300'
+                    'text-slate-200'
                   const COMP_LABEL = (state: string) =>
                     state === 'LAGGING_AI_DELAY' ? 'LAG AI DLY' :
                     state === 'LAGGING_CYCLE'    ? 'LAG CYCLE'  :
@@ -1394,24 +1398,24 @@ export default function TerminalXDashboard() {
                   return (
                     <div className="border-t border-slate-800 pt-2">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>AI Regime Lens</div>
+                        <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>AI Regime Lens</div>
                         {ar && (
                           <span className={`text-[11px] font-bold uppercase tracking-widest border px-1 py-0.5 ${
                             ar.data_mode === 'live'    ? 'text-emerald-400 border-emerald-700/40' :
                             ar.data_mode === 'partial' ? 'text-yellow-400 border-yellow-700/40'  :
-                                                         'text-slate-300 border-slate-700/40'
+                                                         'text-slate-200 border-slate-700/40'
                           }`}>{ar.data_mode}</span>
                         )}
                       </div>
                       {/* Regime label + confidence row */}
                       <div className="flex items-center gap-[10px] mb-2">
-                        <span className={`text-[13px] font-black font-mono leading-none ${ar ? REGIME_COLOR[ar.regime_label] ?? 'text-slate-300 tracking-[0.02em]' : 'text-slate-300 tracking-[0.02em]'}`}>
+                        <span className={`text-[13px] font-black font-mono leading-none ${ar ? REGIME_COLOR[ar.regime_label] ?? 'text-slate-200 tracking-[0.02em]' : 'text-slate-200 tracking-[0.02em]'}`}>
                           {ar ? (REGIME_DISPLAY[ar.regime_label] ?? ar.regime_label.replace(/_/g, ' ')) : 'Awaiting data…'}
                         </span>
                         {ar && (
                           <span className={`text-[11px] uppercase tracking-widest ${
                             ar.regime_confidence === 'high'   ? 'text-emerald-500' :
-                            ar.regime_confidence === 'medium' ? 'text-yellow-500'  : 'text-slate-300'
+                            ar.regime_confidence === 'medium' ? 'text-yellow-500'  : 'text-slate-200'
                           }`}>{ar.regime_confidence} conf.</span>
                         )}
                       </div>
@@ -1424,7 +1428,7 @@ export default function TerminalXDashboard() {
                           const ppStr = comp ? `${comp.spread >= 0 ? '+' : ''}${comp.spread.toFixed(1)}pp` : '?'
                           return (
                             <div key={key} className="flex items-center gap-[6px].5">
-                              <div className="text-[11px] text-slate-300 w-[52px] shrink-0">{label}</div>
+                              <div className="text-[11px] text-slate-200 w-[52px] shrink-0">{label}</div>
                               <div className="flex-1 h-1.5 bg-[#1f1f1f] rounded-sm overflow-hidden">
                                 <div className={`h-full rounded-sm ${
                                   comp && ['LEADING','CONFIRMED','CONFIRMING','BROAD'].includes(comp.state) ? 'bg-emerald-500' :
@@ -1432,17 +1436,17 @@ export default function TerminalXDashboard() {
                                   'bg-orange-500'
                                 }`} style={{ width: pct }} />
                               </div>
-                              <div className={`text-[11px] font-mono w-[58px] shrink-0 text-right ${comp ? COMP_COLOR(comp.state) : 'text-slate-300 tracking-[0.02em]'}`}>
+                              <div className={`text-[11px] font-mono w-[58px] shrink-0 text-right ${comp ? COMP_COLOR(comp.state) : 'text-slate-200 tracking-[0.02em]'}`}>
                                 {comp ? COMP_LABEL(comp.state) : 'N/A'}
                               </div>
-                              <div className="text-[11px] font-mono text-slate-300 tracking-[0.02em] w-[38px] shrink-0 text-right" style={{ fontFamily: DATA_FONT }}>{ppStr}</div>
+                              <div className="text-[11px] font-mono text-slate-200 tracking-[0.02em] w-[38px] shrink-0 text-right" style={{ fontFamily: DATA_FONT }}>{ppStr}</div>
                             </div>
                           )
                         })}
                       </div>
                       {/* Regime context */}
                       {ar && interpData?.regime_context && (
-                        <div className="text-[11px] text-slate-300 tracking-[0.02em] leading-[1.6] border-t border-slate-800/60 pt-1.5 italic">
+                        <div className="text-[11px] text-slate-200 tracking-[0.02em] leading-[1.6] border-t border-slate-800/60 pt-1.5 italic">
                           {interpData.regime_context}
                         </div>
                       )}
@@ -1477,7 +1481,7 @@ export default function TerminalXDashboard() {
                 concRisk === 'High'     ? 'text-red-400'    :
                 concRisk === 'Elevated' ? 'text-orange-400' :
                 concRisk === 'Moderate' ? 'text-yellow-400' :
-                concRisk === 'Low'      ? 'text-emerald-400': 'text-slate-300'
+                concRisk === 'Low'      ? 'text-emerald-400': 'text-slate-200'
 
               // EW vs CW interpretation
               const ewInterpretation =
@@ -1511,7 +1515,7 @@ export default function TerminalXDashboard() {
                   dep === 'Leading' ? 'text-emerald-400' :
                   dep === 'Neutral' ? 'text-yellow-400'  :
                   dep === 'Lagging' ? 'text-orange-400'  :
-                  dep === 'Weak'    ? 'text-red-400'      : 'text-slate-300'
+                  dep === 'Weak'    ? 'text-red-400'      : 'text-slate-200'
                 const comment =
                   b.key === 'ai'      && dep === 'High'    ? 'Strongest vs SOXX proxy'       :
                   b.key === 'ai'      && dep === 'Leading' ? 'Outperforming SOXX proxy'      :
@@ -1547,28 +1551,28 @@ export default function TerminalXDashboard() {
                   {/* 1. SOXX Relative Summary */}
                   <div className="grid grid-cols-2 gap-[10px]">
                     <div className="bg-[#111111] border border-slate-800 p-3">
-                      <div className="text-[11px] text-slate-300 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Primary Linked Bucket</div>
+                      <div className="text-[11px] text-slate-200 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Primary Linked Bucket</div>
                       <div className="text-[14px] font-medium leading-[1.6] font-black leading-none mt-1 text-slate-200">
                         {live ? primaryBucket : '?'}
                       </div>
                       {aiInfraSig !== null && (
-                        <div className="text-[11px] text-slate-300 tracking-[0.02em] mt-0.5">AI Infra signal: {aiInfraSig >= 0 ? '+' : ''}{aiInfraSig.toFixed(0)}</div>
+                        <div className="text-[11px] text-slate-200 tracking-[0.02em] mt-0.5">AI Infra signal: {aiInfraSig >= 0 ? '+' : ''}{aiInfraSig.toFixed(0)}</div>
                       )}
                     </div>
                     <div className="bg-[#111111] border border-slate-800 p-3">
-                      <div className="text-[11px] text-slate-300 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Concentration Risk</div>
+                      <div className="text-[11px] text-slate-200 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Concentration Risk</div>
                       <div className={`text-[14px] font-black leading-none mt-1 ${concRiskCls}`}>
                         {concRisk ?? 'Data pending'}
                       </div>
                     </div>
                     <div className="bg-[#111111] border border-slate-800 p-3">
-                      <div className="text-[11px] text-slate-300 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Leadership Signal</div>
-                      <div className={`text-[18px] font-black font-mono leading-none ${leaderSig !== null ? (leaderSig > 20 ? 'text-emerald-400' : leaderSig < -20 ? 'text-red-400' : 'text-yellow-400') : 'text-slate-300'}`}>
+                      <div className="text-[11px] text-slate-200 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Leadership Signal</div>
+                      <div className={`text-[18px] font-black font-mono leading-none ${leaderSig !== null ? (leaderSig > 20 ? 'text-emerald-400' : leaderSig < -20 ? 'text-red-400' : 'text-yellow-400') : 'text-slate-200'}`}>
                         {leaderSig !== null ? (leaderSig >= 0 ? `+${leaderSig.toFixed(0)}` : leaderSig.toFixed(0)) : '?'}
                       </div>
                     </div>
                     <div className="bg-[#111111] border border-slate-800 p-3">
-                      <div className="text-[11px] text-slate-300 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Confidence</div>
+                      <div className="text-[11px] text-slate-200 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Confidence</div>
                       <div className={`text-[14px] font-medium leading-[1.6] font-black leading-none mt-1 ${
                         confidenceLabel === 'High' ? 'text-emerald-400' : confidenceLabel === 'Low' ? 'text-red-400' : 'text-yellow-400'
                       }`}>
@@ -1580,14 +1584,14 @@ export default function TerminalXDashboard() {
                   {/* 2. Bucket Relative-Strength Matrix */}
                   <div className="border-t border-slate-800 pt-2">
                     <div className="flex items-center gap-[10px] mb-1.5">
-                      <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Bucket Relative-Strength Matrix</span>
-                      <span className="text-[11px] text-slate-300 tracking-[0.02em] bg-[#1a1a1a] px-1 rounded-sm">relative proxy - not attribution</span>
+                      <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Bucket Relative-Strength Matrix</span>
+                      <span className="text-[11px] text-slate-200 tracking-[0.02em] bg-[#1a1a1a] px-1 rounded-sm">relative proxy - not attribution</span>
                     </div>
                     {!periodReturns ? (
-                      <div className="text-[14px] font-medium leading-[1.6] text-slate-300 py-3 text-center">Data pending</div>
+                      <div className="text-[14px] font-medium leading-[1.6] text-slate-200 py-3 text-center">Data pending</div>
                     ) : (
                       <div>
-                        <div className="grid text-[11px] text-slate-300 uppercase pb-1 border-b border-slate-800/50"
+                        <div className="grid text-[11px] text-slate-200 uppercase pb-1 border-b border-slate-800/50"
                           style={{ gridTemplateColumns: '1fr 52px 52px 1fr' }}>
                           <span>Bucket</span>
                           <span className="text-right">1M</span>
@@ -1599,7 +1603,7 @@ export default function TerminalXDashboard() {
                             style={{ gridTemplateColumns: '1fr 52px 52px 1fr' }}>
                             <span className="flex items-center gap-[6px].5 truncate">
                               <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: b.color }} />
-                              <span className="text-slate-300 tracking-[0.02em] truncate">{b.name}</span>
+                              <span className="text-slate-200 tracking-[0.02em] truncate">{b.name}</span>
                             </span>
                             <span className={`text-right tabular-nums font-bold ${retColor(b.ret1m)}`}>{fmtRet(b.ret1m)}</span>
                             <span className={`text-right tabular-nums font-bold ${retColor(b.rel)}`}>{b.rel !== null ? fmtRet(b.rel) : '?'}</span>
@@ -1612,45 +1616,45 @@ export default function TerminalXDashboard() {
 
                   {/* 3. Cap-weight vs Equal-weight Spread */}
                   <div className="border-t border-slate-800 pt-2">
-                    <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-2" style={{ fontFamily: UI_FONT }}>Cap-Weight vs Equal-Weight</div>
+                    <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-2" style={{ fontFamily: UI_FONT }}>Cap-Weight vs Equal-Weight</div>
                     <div className="grid grid-cols-2 gap-[10px] mb-2">
                       <div className="bg-[#111111] border border-slate-800 p-3">
-                        <div className="text-[11px] text-slate-300 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>EW vs CW Spread</div>
+                        <div className="text-[11px] text-slate-200 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>EW vs CW Spread</div>
                         <div className={`text-[18px] font-black font-mono leading-none ${
-                          ewVsCw === null ? 'text-slate-300' :
+                          ewVsCw === null ? 'text-slate-200' :
                           ewVsCw < -20   ? 'text-red-400'    :
-                          ewVsCw < -10   ? 'text-orange-400' : 'text-slate-300 tracking-[0.02em]'
+                          ewVsCw < -10   ? 'text-orange-400' : 'text-slate-200 tracking-[0.02em]'
                         }`}>
                           {ewVsCw !== null ? `${ewVsCw >= 0 ? '+' : ''}${ewVsCw.toFixed(1)}` : 'Data pending'}
                         </div>
-                        {ewInterpretation && <div className="text-[11px] text-slate-300 tracking-[0.02em] mt-0.5">{ewInterpretation}</div>}
+                        {ewInterpretation && <div className="text-[11px] text-slate-200 tracking-[0.02em] mt-0.5">{ewInterpretation}</div>}
                       </div>
                       <div className="bg-[#111111] border border-slate-800 p-3">
-                        <div className="text-[11px] text-slate-300 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Top 5 Concentration</div>
+                        <div className="text-[11px] text-slate-200 uppercase tracking-[0.12em] font-semibold text-[11px] mb-1" style={{ fontFamily: UI_FONT }}>Top 5 Concentration</div>
                         <div className={`text-[18px] font-black font-mono leading-none ${
-                          concentration === null ? 'text-slate-300' :
+                          concentration === null ? 'text-slate-200' :
                           concentration >= 85    ? 'text-red-400'    :
-                          concentration >= 65    ? 'text-orange-400' : 'text-slate-300 tracking-[0.02em]'
+                          concentration >= 65    ? 'text-orange-400' : 'text-slate-200 tracking-[0.02em]'
                         }`}>
                           {concentration !== null ? `${Math.round(concentration)}%` : 'Data pending'}
                         </div>
-                        {concTop5Label && <div className="text-[11px] text-slate-300 tracking-[0.02em] mt-0.5">{concTop5Label}</div>}
+                        {concTop5Label && <div className="text-[11px] text-slate-200 tracking-[0.02em] mt-0.5">{concTop5Label}</div>}
                       </div>
                     </div>
                   </div>
 
                   {/* 4. Correlation Interpretation */}
                   <div className="border-t border-slate-800 pt-2">
-                    <div className="text-[20px] font-semibold font-sans text-slate-300 tracking-[0.02em] mb-1.5">Correlation Interpretation</div>
+                    <div className="text-[20px] font-semibold font-sans text-slate-200 tracking-[0.02em] mb-1.5">Correlation Interpretation</div>
                     <div className={`p-3 rounded-sm border text-[11px] ${
                       isCorrelConflict ? 'border-orange-500/20 bg-orange-500/5' : 'border-slate-800'
                     }`}>
                       <div className="flex items-center gap-[6px].5 mb-0.5">
                         <span className={`font-bold text-[11px] uppercase px-1 rounded-sm ${
-                          isCorrelConflict ? 'bg-orange-500/20 text-orange-400' : 'bg-[#1f1f1f] text-slate-300 tracking-[0.02em]'
+                          isCorrelConflict ? 'bg-orange-500/20 text-orange-400' : 'bg-[#1f1f1f] text-slate-200 tracking-[0.02em]'
                         }`}>{displayConflict(conflictType)}</span>
                       </div>
-                      <span className="text-slate-300 tracking-[0.02em] leading-[1.8]">{correlInterpretation}</span>
+                      <span className="text-slate-200 tracking-[0.02em] leading-[1.8]">{correlInterpretation}</span>
                     </div>
                   </div>
 
@@ -1662,11 +1666,11 @@ export default function TerminalXDashboard() {
                     const recent  = valid.slice(-5).map(r => r.ew_vs_cw_spread!)
                     const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length
                     const label = avgRecent > 0.5 ? 'Breadth broadening (EW leading CW)' : avgRecent < -0.5 ? 'Concentration narrowing (CW leading EW)' : 'EW / CW aligned'
-                    const cls   = avgRecent > 0.5 ? 'text-emerald-400' : avgRecent < -0.5 ? 'text-orange-400' : 'text-slate-300 tracking-[0.02em]'
+                    const cls   = avgRecent > 0.5 ? 'text-emerald-400' : avgRecent < -0.5 ? 'text-orange-400' : 'text-slate-200 tracking-[0.02em]'
                     return (
                       <div className="border-t border-slate-800 pt-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-slate-300 uppercase tracking-widest" style={{ fontFamily: UI_FONT }}>Divergence Context (5d avg)</span>
+                          <span className="text-[11px] text-slate-200 uppercase tracking-widest" style={{ fontFamily: UI_FONT }}>Divergence Context (5d avg)</span>
                           <span className={`text-[11px] font-bold font-mono ${cls}`}>
                             EW {avgRecent >= 0 ? '+' : ''}{avgRecent.toFixed(2)}% vs CW
                           </span>
@@ -1682,13 +1686,13 @@ export default function TerminalXDashboard() {
                     return (
                       <div className="border-t border-slate-800 pt-2">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Correlation Matrix</span>
-                          {cm && <span className="text-[11px] text-slate-300">Pearson 夷?{cm.window_days}d window</span>}
+                          <span className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>Correlation Matrix</span>
+                          {cm && <span className="text-[11px] text-slate-200">Pearson 夷?{cm.window_days}d window</span>}
                         </div>
                         {cm ? (() => {
                           const n = cm.labels.length
                           const cellCls = (v: number, i: number, j: number): string => {
-                            if (i === j) return 'bg-slate-700/60 text-slate-300 tracking-[0.02em]'
+                            if (i === j) return 'bg-slate-700/60 text-slate-200 tracking-[0.02em]'
                             if (v >= 0.85) return 'bg-emerald-500/30 text-emerald-300'
                             if (v >= 0.70) return 'bg-emerald-500/15 text-emerald-400'
                             if (v >= 0.50) return 'bg-yellow-500/15 text-yellow-400'
@@ -1702,16 +1706,16 @@ export default function TerminalXDashboard() {
                               <table className="w-full text-[11px] font-mono border-collapse" style={{ fontFamily: DATA_FONT }}>
                                 <thead>
                                   <tr>
-                                    <th className="text-left text-slate-300 pb-1 pr-1 font-normal w-16"></th>
+                                    <th className="text-left text-slate-200 pb-1 pr-1 font-normal w-16"></th>
                                     {cm.labels.map(l => (
-                                      <th key={l} className="text-center text-slate-300 pb-1 font-normal px-0.5">{short(l)}</th>
+                                      <th key={l} className="text-center text-slate-200 pb-1 font-normal px-0.5">{short(l)}</th>
                                     ))}
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {cm.values.map((row, i) => (
                                     <tr key={cm.labels[i]}>
-                                      <td className="text-slate-300 tracking-[0.02em] pr-1 py-0.5 text-[11px] truncate max-w-[60px]">{short(cm.labels[i])}</td>
+                                      <td className="text-slate-200 tracking-[0.02em] pr-1 py-0.5 text-[11px] truncate max-w-[60px]">{short(cm.labels[i])}</td>
                                       {row.map((v, j) => (
                                         <td key={j} className={`text-center py-0.5 px-0.5 rounded-sm ${cellCls(v, i, j)}`}>
                                           {i === j ? '?' : v.toFixed(2)}
@@ -1721,7 +1725,7 @@ export default function TerminalXDashboard() {
                                   ))}
                                 </tbody>
                               </table>
-                              <div className="flex gap-[10px] mt-1.5 text-[11px] text-slate-300 tracking-[0.02em]">
+                              <div className="flex gap-[10px] mt-1.5 text-[11px] text-slate-200 tracking-[0.02em]">
                                 <span className="text-emerald-400">■</span><span>≥0.85 High</span>
                                 <span className="text-yellow-400">■</span><span>0.50?0.70 Mod</span>
                                 <span className="text-red-400">■</span><span>&lt;0.30 Low</span>
@@ -1729,7 +1733,7 @@ export default function TerminalXDashboard() {
                             </div>
                           )
                         })() : (
-                          <div className="text-[14px] font-medium leading-[1.6] text-slate-300 py-3 text-center">Data pending</div>
+                          <div className="text-[14px] font-medium leading-[1.6] text-slate-200 py-3 text-center">Data pending</div>
                         )}
                       </div>
                     )
@@ -1748,19 +1752,19 @@ export default function TerminalXDashboard() {
               {['HISTORY TABLE', 'EVENT LOG'].map(t => (
                 <button key={t} onClick={() => setHistTab(t)}
                   className={`px-4 py-1.5 text-[11px] font-bold tracking-widest border-b-2 transition-colors ${
-                    histTab === t ? 'border-blue-500 text-white' : 'border-transparent text-slate-300 tracking-[0.02em] hover:text-slate-300 tracking-[0.02em]'
+                    histTab === t ? 'border-blue-500 text-white' : 'border-transparent text-slate-200 tracking-[0.02em] hover:text-slate-200 tracking-[0.02em]'
                   }`}>{t}</button>
               ))}
             </div>
 
             {histTab === 'HISTORY TABLE' && (
               historyRows.length === 0 ? (
-                <div className="py-6 text-center text-[14px] font-medium leading-[1.6] text-slate-300">Loading history…</div>
+                <div className="py-6 text-center text-[14px] font-medium leading-[1.6] text-slate-200">Loading history…</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-[14px] font-medium leading-[1.6] font-mono" style={{ fontFamily: DATA_FONT }}>
                     <thead>
-                      <tr className="text-[11px] text-slate-300 tracking-[0.02em] border-b border-slate-800">
+                      <tr className="text-[11px] text-slate-200 tracking-[0.02em] border-b border-slate-800">
                         <th className="text-left py-1 font-bold pr-3">DATE</th>
                         <th className="text-left py-1 font-bold pr-3">STAGE</th>
                         <th className="text-right py-1 font-bold pr-3">ENGINE</th>
@@ -1775,15 +1779,15 @@ export default function TerminalXDashboard() {
                     <tbody className="divide-y divide-slate-800/40">
                       {historyRows.map((r, i) => (
                         <tr key={i} className={`hover:bg-white/5 ${i === 0 ? 'bg-blue-500/5' : ''}`}>
-                          <td className="py-1.5 text-slate-300 tracking-[0.02em] pr-3 tabular-nums" style={{ fontFamily: DATA_FONT }}>{r.date}</td>
+                          <td className="py-1.5 text-slate-200 tracking-[0.02em] pr-3 tabular-nums" style={{ fontFamily: DATA_FONT }}>{r.date}</td>
                           <td className="py-1.5 text-emerald-400 pr-3">{r.stage}</td>
                           <td className={`py-1.5 text-right font-bold pr-3 tabular-nums ${r.eng >= 70 ? 'text-emerald-400' : 'text-yellow-400'}`}>{r.eng}</td>
                           <td className={`py-1.5 text-right font-bold pr-3 tabular-nums ${r.str >= 65 ? 'text-emerald-400' : 'text-yellow-400'}`}>{r.str}</td>
-                          <td className="py-1.5 pr-3 text-slate-300 tracking-[0.02em]">{r.conflict}</td>
-                          <td className="py-1.5 text-right text-slate-300 tracking-[0.02em] pr-3 tabular-nums" style={{ fontFamily: DATA_FONT }}>{r.breadth}</td>
-                          <td className={`py-1.5 pr-3 ${r.mom === 'Strengthening' ? 'text-emerald-400' : r.mom === 'Fading' ? 'text-red-400' : 'text-slate-300 tracking-[0.02em]'}`}>{r.mom}</td>
-                          <td className={`py-1.5 font-bold pr-3 ${r.regime === 'RISK ON' ? 'text-emerald-400' : 'text-slate-300 tracking-[0.02em]'}`}>{r.regime}</td>
-                          <td className="py-1.5 text-slate-300 tracking-[0.02em] whitespace-nowrap">{r.note}</td>
+                          <td className="py-1.5 pr-3 text-slate-200 tracking-[0.02em]">{r.conflict}</td>
+                          <td className="py-1.5 text-right text-slate-200 tracking-[0.02em] pr-3 tabular-nums" style={{ fontFamily: DATA_FONT }}>{r.breadth}</td>
+                          <td className={`py-1.5 pr-3 ${r.mom === 'Strengthening' ? 'text-emerald-400' : r.mom === 'Fading' ? 'text-red-400' : 'text-slate-200 tracking-[0.02em]'}`}>{r.mom}</td>
+                          <td className={`py-1.5 font-bold pr-3 ${r.regime === 'RISK ON' ? 'text-emerald-400' : 'text-slate-200 tracking-[0.02em]'}`}>{r.regime}</td>
+                          <td className="py-1.5 text-slate-200 tracking-[0.02em] whitespace-nowrap">{r.note}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1800,8 +1804,8 @@ export default function TerminalXDashboard() {
                   { date: '2025-05-15', hot: false, text: 'Liquidity Watch: Fed liquidity indicators entering contraction zone' },
                 ].map((e, i) => (
                   <div key={i} className={`flex gap-[10px] p-3 border text-[14px] font-medium leading-[1.6] ${e.hot ? 'border-orange-500/20 bg-orange-500/5' : 'border-slate-800/50'}`}>
-                    <span className={`whitespace-nowrap ${e.hot ? 'text-orange-400' : 'text-slate-300 tracking-[0.02em]'}`}>{e.date}</span>
-                    <span className="text-slate-300 tracking-[0.02em]">{e.text}</span>
+                    <span className={`whitespace-nowrap ${e.hot ? 'text-orange-400' : 'text-slate-200 tracking-[0.02em]'}`}>{e.date}</span>
+                    <span className="text-slate-200 tracking-[0.02em]">{e.text}</span>
                   </div>
                 ))}
               </div>
@@ -1883,10 +1887,10 @@ export default function TerminalXDashboard() {
               return (
                 <div className="flex flex-col gap-[10px].5">
                   <div className="pb-2.5 border-b border-slate-800/60">
-                    <div className="text-[11px] font-semibold font-sans text-slate-300 uppercase tracking-[0.12em] mb-1" style={{ fontFamily: UI_FONT }}>
+                    <div className="text-[11px] font-semibold font-sans text-slate-200 uppercase tracking-[0.12em] mb-1" style={{ fontFamily: UI_FONT }}>
                       Data Trust Note
                     </div>
-                    <p className="text-[11px] leading-[1.6] text-slate-300">
+                    <p className="text-[11px] leading-[1.6] text-slate-200">
                       {lensTrustNote}
                     </p>
                     {returnsFreshness.status === 'delayed' && (
@@ -1903,43 +1907,43 @@ export default function TerminalXDashboard() {
 
                   {/* What it means */}
                   <div className="pb-2.5 border-b border-slate-800/60">
-                    <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-1" style={{ fontFamily: UI_FONT }}>What It Means</div>
+                    <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-1" style={{ fontFamily: UI_FONT }}>What It Means</div>
                     <p className="text-[14px] font-medium leading-[1.6] text-slate-200 leading-[1.6] font-medium">
                       {lensInterpretation}
                     </p>
-                    <p className="text-[11px] text-slate-300 leading-[1.6] mt-1">{RIGHT_PANEL_COPY.externalNote}</p>
+                    <p className="text-[11px] text-slate-200 leading-[1.6] mt-1">{RIGHT_PANEL_COPY.externalNote}</p>
                   </div>
 
                   {/* Selected vs Residual */}
                   <div className="pb-2.5 border-b border-slate-800/60">
                     <div className="flex items-center justify-between gap-[12px] mb-1.5">
-                      <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>
+                      <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }}>
                         Selected vs Residual
                       </div>
-                      <span className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] ${participationStateClass(participationInterpretation.state)}`}>
+                      <span className={`rounded-sm border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em] ${participationStateClass(participationInterpretation.state)}`}>
                         {participationInterpretation.label}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[10px] leading-4">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] leading-4">
                       <div className="rounded-sm border border-slate-800 bg-[#0d0d0d] px-2 py-1.5">
-                        <div className="uppercase tracking-[0.12em] text-slate-300">Selected contribution</div>
-                        <div className={`mt-0.5 font-semibold ${selectedContribution === null ? 'text-slate-300' : pctPointColor(selectedContribution)}`}>
+                        <div className="uppercase tracking-[0.12em] text-slate-200">Selected contribution</div>
+                        <div className={`mt-0.5 font-semibold ${selectedContribution === null ? 'text-slate-200' : pctPointColor(selectedContribution)}`}>
                           {formatPctPointOrUnavailable(selectedContribution)}
                         </div>
                       </div>
                       <div className="rounded-sm border border-slate-800 bg-[#0d0d0d] px-2 py-1.5">
-                        <div className="uppercase tracking-[0.12em] text-slate-300">Residual contribution</div>
-                        <div className={`mt-0.5 font-semibold ${residualContribution === null ? 'text-slate-300' : pctPointColor(residualContribution)}`}>
+                        <div className="uppercase tracking-[0.12em] text-slate-200">Residual contribution</div>
+                        <div className={`mt-0.5 font-semibold ${residualContribution === null ? 'text-slate-200' : pctPointColor(residualContribution)}`}>
                           {formatPctPointOrUnavailable(residualContribution)}
                         </div>
                       </div>
                     </div>
 
-                    <p className="mt-2 text-[12px] leading-[1.55] text-slate-300">
+                    <p className="mt-2 text-[12px] leading-[1.55] text-slate-200">
                       {participationInterpretation.interpretation}
                     </p>
-                    <p className="mt-1 text-[11px] leading-[1.55] text-slate-300">
+                    <p className="mt-1 text-[11px] leading-[1.55] text-slate-200">
                       {participationInterpretation.soxlContext}
                     </p>
                     {participationInterpretation.state === 'unavailable' ? (
@@ -1951,39 +1955,39 @@ export default function TerminalXDashboard() {
                         Partial contribution data. Interpretation may change as missing holdings or returns are connected.
                       </p>
                     ) : null}
-                    <p className="mt-1 text-[11px] leading-[1.55] text-slate-300">
+                    <p className="mt-1 text-[11px] leading-[1.55] text-slate-200">
                       Historical participation context only. Not a forecast or trading signal.
                     </p>
                   </div>
 
                   {/* Structure Snapshot */}
                   <div className="pb-2.5 border-b border-slate-800/60">
-                    <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>Structure Snapshot</div>
+                    <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>Structure Snapshot</div>
                     <div className="space-y-1">
                       {[
                         { label: 'Structure', value: soxxStructure, cls: soxxStructureClass, title: undefined },
                         {
                           label: 'Coverage',
                           value: `Selected ${formatPct(soxxCoverageSummary.selectedCoveragePct)} / Residual ${formatPct(soxxCoverageSummary.residualPct)}`,
-                          cls: 'text-slate-300',
+                          cls: 'text-slate-200',
                           title: CONTRIBUTION_HELP.coverage?.detail,
                         },
                         {
                           label: 'Holdings',
                           value: `SOXX as of ${SOXX_HOLDINGS_SNAPSHOT_AS_OF}`,
-                          cls: 'text-slate-300',
+                          cls: 'text-slate-200',
                           title: SOXX_HOLDINGS_SNAPSHOT_SOURCE,
                         },
                         { label: 'Bias', value: contributionBiasLabel, cls: contributionBiasClass, title: CONTRIBUTION_HELP.contribution?.detail },
                         { label: 'SOXL', value: soxlSensitivity.level, cls: soxlSensitivityClass, title: CONTRIBUTION_HELP.soxl?.detail },
                       ].map(row => (
                         <div key={row.label} className="flex justify-between gap-[14px] leading-[1.6]">
-                          <span className="text-[11px] text-slate-300 uppercase shrink-0" title={row.title}>{row.label}</span>
+                          <span className="text-[11px] text-slate-200 uppercase shrink-0" title={row.title}>{row.label}</span>
                           <span className={`text-[11px] font-medium tracking-[0.02em] text-right ${row.cls}`}>{row.value}</span>
                         </div>
                       ))}
                     </div>
-                    <p className="mt-2 text-[11px] text-slate-300 leading-[1.6]">
+                    <p className="mt-2 text-[11px] text-slate-200 leading-[1.6]">
                       {RIGHT_PANEL_COPY.selectedDriverGuardrail} {RIGHT_PANEL_COPY.guardrail}
                     </p>
                   </div>
@@ -1992,8 +1996,8 @@ export default function TerminalXDashboard() {
                   <div className="pb-2.5 border-b border-slate-800/60">
                     <div className="flex items-center justify-between gap-[14px]">
                       <div>
-                        <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }} title={CONTRIBUTION_HELP.contribution?.detail}>SOXX Contribution Snapshot</div>
-                        <p className="mt-0.5 text-[11px] text-slate-300 leading-[1.4]">
+                        <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em]" style={{ fontFamily: UI_FONT }} title={CONTRIBUTION_HELP.contribution?.detail}>SOXX Contribution Snapshot</div>
+                        <p className="mt-0.5 text-[11px] text-slate-200 leading-[1.4]">
                           Holding-weighted contribution by selected SOXX driver buckets.
                         </p>
                       </div>
@@ -2012,7 +2016,7 @@ export default function TerminalXDashboard() {
                                 'rounded px-1.5 py-0.5 text-[11px] transition',
                                 isActive
                                   ? 'bg-slate-200 text-slate-950'
-                                  : 'bg-[#222222] text-slate-300 tracking-[0.02em] hover:bg-[#2a2a2a]',
+                                  : 'bg-[#222222] text-slate-200 tracking-[0.02em] hover:bg-[#2a2a2a]',
                                 !isAvailable ? 'cursor-not-allowed opacity-40 hover:bg-[#222222]' : '',
                               ].join(' ')}
                             >
@@ -2026,25 +2030,25 @@ export default function TerminalXDashboard() {
                     {soxxContributionSummary ? (
                       <>
                         <div className="mt-2 rounded-sm border border-slate-800 bg-[#0d0d0d] p-2">
-                          <div className="grid grid-cols-3 gap-2 text-[10px] leading-4">
+                          <div className="grid grid-cols-3 gap-3 text-[11px] leading-5">
                             <div>
-                              <div className="uppercase tracking-[0.12em] text-slate-300">Selected</div>
+                              <div className="uppercase tracking-[0.12em] text-slate-200">Selected</div>
                               <div className={`mt-0.5 font-semibold ${pctPointColor(soxxContributionSummary.selectedContributionPctPoint)}`}>
                                 {formatPctPoint(soxxContributionSummary.selectedContributionPctPoint)}
                               </div>
                             </div>
                             <div>
-                              <div className="uppercase tracking-[0.12em] text-slate-300">Residual</div>
+                              <div className="uppercase tracking-[0.12em] text-slate-200">Residual</div>
                               <div className={`mt-0.5 font-semibold ${pctPointColor(soxxContributionSummary.residualContributionPctPoint)}`}>
                                 {formatPctPoint(soxxContributionSummary.residualContributionPctPoint)}
                               </div>
                             </div>
                             <div>
-                              <div className="uppercase tracking-[0.12em] text-slate-300">Bias</div>
-                              <div className="mt-0.5 font-semibold text-slate-300">{participationInterpretation.label}</div>
+                              <div className="uppercase tracking-[0.12em] text-slate-200">Bias</div>
+                              <div className="mt-0.5 font-semibold text-slate-200">{participationInterpretation.label}</div>
                             </div>
                           </div>
-                          <p className="mt-1.5 text-[10px] leading-4 text-slate-300">
+                          <p className="mt-1.5 text-[11px] leading-4 text-slate-200">
                             {residualSnapshotNote}
                           </p>
                         </div>
@@ -2061,10 +2065,10 @@ export default function TerminalXDashboard() {
                               >
                                 <div className="flex items-start justify-between gap-[12px]">
                                   <div className="min-w-0">
-                                    <div className="truncate text-[11px] font-semibold text-slate-300">
+                                    <div className="truncate text-[11px] font-semibold text-slate-200">
                                       {bucket.label}
                                     </div>
-                                    <span className={`mt-1 inline-flex rounded-sm border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] ${state.cls}`}>
+                                    <span className={`mt-1 inline-flex rounded-sm border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em] ${state.cls}`}>
                                       {state.label}
                                     </span>
                                   </div>
@@ -2072,12 +2076,12 @@ export default function TerminalXDashboard() {
                                     {formatPctPoint(bucket.contributionPctPoint)}
                                   </div>
                                 </div>
-                                <div className="mt-1.5 grid grid-cols-2 gap-2 text-[10px] leading-4 text-slate-300">
+                                <div className="mt-1.5 grid grid-cols-2 gap-2 text-[11px] leading-4 text-slate-200">
                                   <div>
-                                    Return <span className="font-semibold text-slate-300">{formatReturnPct(bucket.weightedReturnPct)}</span>
+                                    Return <span className="font-semibold text-slate-200">{formatReturnPct(bucket.weightedReturnPct)}</span>
                                   </div>
                                   <div>
-                                    Weight <span className="font-semibold text-slate-300">{formatPct(bucket.totalWeightPct)}</span>
+                                    Weight <span className="font-semibold text-slate-200">{formatPct(bucket.totalWeightPct)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -2085,7 +2089,7 @@ export default function TerminalXDashboard() {
                           })}
                         </div>
 
-                        <p className="mt-2 text-[11px] text-slate-300 leading-[1.6]">
+                        <p className="mt-2 text-[11px] text-slate-200 leading-[1.6]">
                           Contribution = holding weight x return, shown as %p. Historical context only.
                         </p>
                         {soxxContributionSummary.missingReturnTickers.length > 0 && (
@@ -2095,7 +2099,7 @@ export default function TerminalXDashboard() {
                         )}
                       </>
                     ) : (
-                      <p className="mt-2 text-[11px] text-slate-300 leading-[1.6]">
+                      <p className="mt-2 text-[11px] text-slate-200 leading-[1.6]">
                         Contribution unavailable. Price history or return data is not connected yet.
                       </p>
                     )}
@@ -2117,11 +2121,11 @@ export default function TerminalXDashboard() {
                     const { level, reason } = soxlSensitivity
                     return (
                       <div className="pb-2.5 border-b border-slate-800/60">
-                        <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }} title={CONTRIBUTION_HELP.soxl?.detail}>{SOXL_COPY.title}</div>
-                        <p className="text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em] mb-1.5">{RIGHT_PANEL_COPY.soxlNote}</p>
+                        <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-0.5" style={{ fontFamily: UI_FONT }} title={CONTRIBUTION_HELP.soxl?.detail}>{SOXL_COPY.title}</div>
+                        <p className="text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em] mb-1.5">{RIGHT_PANEL_COPY.soxlNote}</p>
                         <div className="flex items-baseline gap-[10px]">
                           <span className={`text-[14px] font-medium leading-[1.6] font-bold uppercase ${soxlSensitivityClass}`}>{level}</span>
-                          <span className="text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em] leading-[1.6]">{reason}</span>
+                          <span className="text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em] leading-[1.6]">{reason}</span>
                         </div>
                       </div>
                     )
@@ -2129,10 +2133,10 @@ export default function TerminalXDashboard() {
 
                   {/* How to Read This */}
                   <div className="pb-2.5 border-b border-slate-800/60">
-                    <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>How to Read This</div>
+                    <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>How to Read This</div>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
                       {HOW_TO_READ_COPY.map((item) => (
-                        <p key={item.text} className="text-[11px] text-slate-300 leading-[1.6]" title={item.title}>
+                        <p key={item.text} className="text-[11px] text-slate-200 leading-[1.6]" title={item.title}>
                           {item.text}
                         </p>
                       ))}
@@ -2142,7 +2146,7 @@ export default function TerminalXDashboard() {
                   {/* Watch ??secondary */}
                   {watchSorted.length > 0 && (
                     <div>
-                      <div className="text-[11px] font-semibold font-sans text-slate-300 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>Watch</div>
+                      <div className="text-[11px] font-semibold font-sans text-slate-200 tracking-[0.02em] uppercase tracking-[0.12em] mb-1.5" style={{ fontFamily: UI_FONT }}>Watch</div>
                       <div className="space-y-1">
                         {watchSorted.map((w, i) => (
                           <div key={i} className={`pl-2 border-l-[2px] py-0.5 ${
@@ -2151,7 +2155,7 @@ export default function TerminalXDashboard() {
                           }`}>
                             <div className={`text-[14px] font-medium leading-[1.6] leading-[1.6] ${
                               w.sev === 'red'   ? 'text-red-400'   :
-                              w.sev === 'amber' ? 'text-amber-400' : 'text-slate-300 tracking-[0.02em]'
+                              w.sev === 'amber' ? 'text-amber-400' : 'text-slate-200 tracking-[0.02em]'
                             }`}>{w.text}</div>
                           </div>
                         ))}
@@ -2167,13 +2171,13 @@ export default function TerminalXDashboard() {
           <Panel title="Drilldown" icon={TrendingUp}
             headerExtra={
               <div className="flex items-center gap-[6px]">
-                <select className="bg-[#111111] border border-slate-700 text-[11px] text-slate-300 tracking-[0.02em] px-1 py-0.5 cursor-pointer outline-none">
+                <select className="bg-[#111111] border border-slate-700 text-[11px] text-slate-200 tracking-[0.02em] px-1 py-0.5 cursor-pointer outline-none">
                   <option>SOXX Index</option>
                   <option>AI Compute</option>
                   <option>Memory</option>
                   <option>Foundry</option>
                 </select>
-                <X size={11} className="text-slate-300 tracking-[0.02em] cursor-pointer hover:text-slate-300 tracking-[0.02em]" />
+                <X size={11} className="text-slate-200 tracking-[0.02em] cursor-pointer hover:text-slate-200 tracking-[0.02em]" />
               </div>
             }>
 
@@ -2181,7 +2185,7 @@ export default function TerminalXDashboard() {
               {['SUMMARY','CONSTITUENTS','RISK','FUNDAMENTALS'].map(t => (
                 <button key={t} onClick={() => setDrillTab(t)}
                   className={`px-2 py-1.5 text-[14px] font-medium leading-[1.6] font-bold tracking-widest border-b-2 transition-colors whitespace-nowrap ${
-                    drillTab === t ? 'border-blue-500 text-white' : 'border-transparent text-slate-300 tracking-[0.02em] hover:text-slate-300 tracking-[0.02em]'
+                    drillTab === t ? 'border-blue-500 text-white' : 'border-transparent text-slate-200 tracking-[0.02em] hover:text-slate-200 tracking-[0.02em]'
                   }`}>{t}</button>
               ))}
             </div>
@@ -2195,13 +2199,13 @@ export default function TerminalXDashboard() {
               const priceStr   = soxxPrice != null ? soxxPrice.toFixed(2) : '—'
               const chgSign    = ret1dPct != null ? (ret1dPct >= 0 ? '+' : '') : ''
               const chgStr     = ret1dPct != null ? `${chgSign}${ret1dPct.toFixed(2)}%` : '—'
-              const chgColor   = ret1dPct == null ? 'text-slate-300 tracking-[0.02em]' : ret1dPct >= 0 ? 'text-emerald-400' : 'text-red-400'
+              const chgColor   = ret1dPct == null ? 'text-slate-200 tracking-[0.02em]' : ret1dPct >= 0 ? 'text-emerald-400' : 'text-red-400'
               const chartData  = rebasedData.map(r => ({ d: r.date, v: r.soxx }))
               return (
                 <div className="flex flex-col">
                   <div className="flex items-baseline gap-[6px].5 mb-0.5">
                     <span className="text-[24px] font-black text-white font-mono leading-none tracking-tighter" style={{ fontFamily: DATA_FONT }}>{priceStr}</span>
-                    <span className="text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em]">USD</span>
+                    <span className="text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em]">USD</span>
                   </div>
                   <div className={`font-bold text-[14px] font-mono mb-2 ${chgColor}`}>
                     1D Change: {chgStr}
@@ -2215,8 +2219,8 @@ export default function TerminalXDashboard() {
                       { label: '6M',  val: periodReturns?.soxx?.['6M']  },
                     ] as { label: string; val: number | null | undefined }[]).map(({ label, val }) => (
                       <div key={label} className="flex justify-between py-0.5 border-b border-slate-800/50">
-                        <span className="text-slate-300 tracking-[0.02em]">{label}</span>
-                        <span className={val == null ? 'text-slate-300' : val >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        <span className="text-slate-200 tracking-[0.02em]">{label}</span>
+                        <span className={val == null ? 'text-slate-200' : val >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                           {val == null ? '—' : `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`}
                         </span>
                       </div>
@@ -2227,7 +2231,7 @@ export default function TerminalXDashboard() {
                     {(['1M','3M','6M','1Y','3Y','5Y','MAX'] as const).map(z => (
                       <button key={z} onClick={() => setZoom(z)}
                         className={`flex-1 py-0.5 text-[11px] border rounded-sm ${
-                          zoom === z ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'border-slate-800 text-slate-300 tracking-[0.02em] hover:text-slate-300 tracking-[0.02em]'
+                          zoom === z ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'border-slate-800 text-slate-200 tracking-[0.02em] hover:text-slate-200 tracking-[0.02em]'
                         }`}>{z}</button>
                     ))}
                   </div>
@@ -2260,7 +2264,7 @@ export default function TerminalXDashboard() {
             })()}
 
             {drillTab !== 'SUMMARY' && (
-              <div className="h-32 flex items-center justify-center text-[14px] font-medium leading-[1.6] text-slate-300 tracking-[0.02em]">
+              <div className="h-32 flex items-center justify-center text-[14px] font-medium leading-[1.6] text-slate-200 tracking-[0.02em]">
                 {drillTab} — coming soon
               </div>
             )}
@@ -2289,7 +2293,7 @@ export default function TerminalXDashboard() {
       )}
 
       {/* ???? FOOTER 28px ???? */}
-      <footer className="border-t border-slate-800 bg-[#0a0a0a] px-4 md:px-6 xl:px-10 2xl:px-14 py-1.5 flex items-center justify-between text-[11px] text-slate-300 tracking-[0.02em] sticky bottom-0 z-50 mt-auto">
+      <footer className="border-t border-slate-800 bg-[#0a0a0a] px-4 md:px-6 xl:px-10 2xl:px-14 py-1.5 flex items-center justify-between text-[11px] text-slate-200 tracking-[0.02em] sticky bottom-0 z-50 mt-auto">
         <div className="flex gap-5 font-mono overflow-hidden" style={{ fontFamily: DATA_FONT }}>
           {[
             { label: 'SOXX',               val: '568.23',    chg: '+2.22%', up: true  },
@@ -2300,7 +2304,7 @@ export default function TerminalXDashboard() {
           ].map(m => (
             <span key={m.label} className="flex items-center gap-[6px].5">
               <span className="font-bold text-white">{m.label}</span>
-              <span className="text-slate-300 tracking-[0.02em]">{m.val}</span>
+              <span className="text-slate-200 tracking-[0.02em]">{m.val}</span>
               <span className={m.up ? 'text-emerald-400' : 'text-red-400'}>{m.chg}</span>
             </span>
           ))}
@@ -2318,9 +2322,9 @@ export default function TerminalXDashboard() {
               </span>
             )
           })() : (
-            <span className="text-slate-300 font-bold uppercase">DATA UNAVAILABLE</span>
+            <span className="text-slate-200 font-bold uppercase">DATA UNAVAILABLE</span>
           )}
-          <span className="text-slate-300 tracking-[0.02em] font-mono normal-case uppercase font-bold" style={{ fontFamily: DATA_FONT }}>Last updated <span className="text-white">{asOf !== '?' ? asOf : '?'}</span></span>
+          <span className="text-slate-200 tracking-[0.02em] font-mono normal-case uppercase font-bold" style={{ fontFamily: DATA_FONT }}>Last updated <span className="text-white">{asOf !== '?' ? asOf : '?'}</span></span>
         </div>
       </footer>
 

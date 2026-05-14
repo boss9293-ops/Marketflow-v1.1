@@ -5,10 +5,14 @@ import path from 'path'
 import fs   from 'fs'
 import { NextResponse } from 'next/server'
 import type { MarketDataInput, SemiconductorOutput, SignalInputs, StageOutput, SoxlOutput } from '@/lib/semiconductor/types'
-import { computeSignals }  from '@/lib/semiconductor/signals'
-import { determineStage }  from '@/lib/semiconductor/stageEngine'
-import { translate }       from '@/lib/semiconductor/translationEngine'
-import { getTursoClient }  from '@/lib/tursoClient'
+import { computeSignals }       from '@/lib/semiconductor/signals'
+import { determineStage }       from '@/lib/semiconductor/stageEngine'
+import { translate }            from '@/lib/semiconductor/translationEngine'
+import { getTursoClient }       from '@/lib/tursoClient'
+import { buildDecayTimeSeries } from '@/lib/semiconductor/buildDecayTimeSeries'
+import { buildLayerTimeSeries }       from '@/lib/semiconductor/buildLayerTimeSeries'
+import { buildCycleScoreTimeSeries, saveTodayCycleScore } from '@/lib/semiconductor/buildCycleScoreTimeSeries'
+import { buildSectorRSTimeSeries } from '@/lib/semiconductor/buildSectorRSTimeSeries'
 
 const CACHE_PATH = path.join(process.cwd(), '..', 'backend', 'output', 'cache', 'semiconductor_market_data.json')
 
@@ -90,7 +94,27 @@ export async function GET() {
     // fire-and-forget — does not block response
     void persistTodaySnapshot(signals, stage, translation.soxl)
 
-    const output: SemiconductorOutput = { market_data: marketData, signals, stage, translation, as_of }
+    const [decay_time_series, cycle_score_time_series, sector_rs_time_series] = await Promise.all([
+      buildDecayTimeSeries(90),
+      buildCycleScoreTimeSeries(90),
+      buildSectorRSTimeSeries(90),
+    ])
+    const layer_time_series = buildLayerTimeSeries(90)
+
+    // 오늘 Cycle Score 로컬 DB 저장 (fire-and-forget)
+    void saveTodayCycleScore(stage.stage_score, stage.stage)
+
+    const output: SemiconductorOutput = {
+      market_data: marketData,
+      signals,
+      stage,
+      translation,
+      as_of,
+      decay_time_series,
+      layer_time_series,
+      cycle_score_time_series,
+      sector_rs_time_series,
+    }
     return NextResponse.json(output)
   } catch (err) {
     console.error('[semiconductor/route]', err)

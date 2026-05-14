@@ -5,11 +5,11 @@ import type { AIInfraBucketId } from '@/lib/semiconductor/aiInfraBucketMap'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ThemePurity             = 'PURE_PLAY' | 'PARTIAL' | 'STORY_HEAVY'
+export type ThemePurity             = 'PURE_PLAY' | 'HIGH_EXPOSURE' | 'PARTIAL' | 'MIXED_EXPOSURE' | 'INDIRECT_EXPOSURE' | 'STORY_HEAVY'
 export type CommercializationStage  = 'COMMERCIAL' | 'SCALING' | 'EARLY' | 'PRE_COMMERCIAL'
 export type AIExposureLevel         = 'DIRECT' | 'INDIRECT' | 'EMERGING'
 export type StoryConfidence         = 'HIGH' | 'MEDIUM' | 'LOW'
-export type RevenueVisibility       = 'VISIBLE' | 'PARTIAL' | 'NOT_YET_VISIBLE'
+export type RevenueVisibility       = 'VISIBLE' | 'PARTIAL' | 'NOT_YET_VISIBLE' | 'UNCLEAR'
 
 export type BucketThemePurity = {
   theme_purity:            ThemePurity
@@ -39,10 +39,10 @@ export const BUCKET_THEME_PURITY: Record<AIInfraBucketId, BucketThemePurity> = {
     theme_purity:            'PURE_PLAY',
     commercialization_stage: 'COMMERCIAL',
     ai_exposure_level:       'DIRECT',
-    story_confidence:        'HIGH',
-    revenue_visibility:      'VISIBLE',
+    story_confidence:        'MEDIUM', // MU is US-listed proxy only; Samsung/SK Hynix excluded — limits full HBM coverage
+    revenue_visibility:      'PARTIAL', // MU HBM revenue growing but DRAM/NAND still majority
     commercialization_risk:  false,
-    rationale:               'HBM 수요가 AI 가속기에 직결. MU/SKH AI 관련 매출 비중 급증.',
+    rationale:               'HBM 수요가 AI 가속기에 직결. MU가 US 상장 대표 프록시이나 삼성·SK하이닉스 제외로 시장 전체 대표성 제한적.',
   },
 
   PACKAGING: {
@@ -76,13 +76,13 @@ export const BUCKET_THEME_PURITY: Record<AIInfraBucketId, BucketThemePurity> = {
   },
 
   POWER_INFRA: {
-    theme_purity:            'PARTIAL',
-    commercialization_stage: 'SCALING',
+    theme_purity:            'MIXED_EXPOSURE', // AI data center demand is real but co-exists with broad industrial exposure
+    commercialization_stage: 'COMMERCIAL',
     ai_exposure_level:       'INDIRECT',
     story_confidence:        'MEDIUM',
-    revenue_visibility:      'PARTIAL',
+    revenue_visibility:      'VISIBLE', // ETN/VRT/PWR/GEV all reporting confirmed AI-driven revenue growth
     commercialization_risk:  false,
-    rationale:               'AI 데이터센터 전력 수요 급증. 산업용 전력 수요와 병행.',
+    rationale:               'AI 데이터센터 전력 수요 급증으로 매출 확인. 단, 대부분 기업이 산업 전반 전력 수요와 혼재 — Mixed Exposure.',
   },
 
   COOLING: {
@@ -106,13 +106,13 @@ export const BUCKET_THEME_PURITY: Record<AIInfraBucketId, BucketThemePurity> = {
   },
 
   RAW_MATERIAL: {
-    theme_purity:            'STORY_HEAVY',
-    commercialization_stage: 'EARLY',
-    ai_exposure_level:       'EMERGING',
+    theme_purity:            'INDIRECT_EXPOSURE', // Commodity miners — demand narrative exists but AI revenue is not measurable or attributable
+    commercialization_stage: 'COMMERCIAL', // These are active commodity producers, not pre-commercial stories
+    ai_exposure_level:       'INDIRECT',
     story_confidence:        'LOW',
-    revenue_visibility:      'NOT_YET_VISIBLE',
-    commercialization_risk:  true,
-    rationale:               '구리/우라늄 AI 수요 서사는 존재하나 현재 AI 비중 매출 연결이 불명확. 가격은 글로벌 산업 사이클에 더 의존.',
+    revenue_visibility:      'UNCLEAR', // Commodity price cycle dominates; AI contribution to revenue is unmeasurable
+    commercialization_risk:  false, // Risk here is indirect exposure / price cycle, not commercialization timing
+    rationale:               '구리 광업은 AI 인프라 전력망·냉각 수요 서사와 연결되나 AI 전용 매출 연결 불가. 가격은 글로벌 산업 사이클이 주도 — Indirect Exposure.',
   },
 
   SPECIALTY_GAS: {
@@ -126,13 +126,13 @@ export const BUCKET_THEME_PURITY: Record<AIInfraBucketId, BucketThemePurity> = {
   },
 
   CLEANROOM_WATER: {
-    theme_purity:            'PARTIAL',
+    theme_purity:            'INDIRECT_EXPOSURE', // Fab infrastructure enabler — AI revenue is not directly attributable
     commercialization_stage: 'COMMERCIAL',
     ai_exposure_level:       'INDIRECT',
     story_confidence:        'MEDIUM',
-    revenue_visibility:      'VISIBLE',
+    revenue_visibility:      'PARTIAL', // XYL/ECL/WTS cannot attribute revenue to AI specifically; ACMR has higher semiconductor purity
     commercialization_risk:  false,
-    rationale:               '팹 클린룸 초순수 공급. 반도체 생산 직결 수혜. AI 전용 구분 불가.',
+    rationale:               '팹 클린룸 초순수·케미컬 공급. 반도체 생산 활성화 간접 수혜. AI 전용 매출 구분 불가 — Indirect Exposure (Infrastructure Enabler).',
   },
 
   GLASS_SUBSTRATE: {
@@ -165,9 +165,12 @@ export function getThemePurity(bucketId: string): BucketThemePurity | undefined 
 // ── Display helpers ───────────────────────────────────────────────────────────
 
 export const THEME_PURITY_LABEL: Record<ThemePurity, string> = {
-  PURE_PLAY:   'Pure Play',
-  PARTIAL:     'Partial',
-  STORY_HEAVY: 'Story Heavy',
+  PURE_PLAY:         'Pure Play',
+  HIGH_EXPOSURE:     'High Exposure',
+  PARTIAL:           'Partial',
+  MIXED_EXPOSURE:    'Mixed',
+  INDIRECT_EXPOSURE: 'Indirect',
+  STORY_HEAVY:       'Story Heavy',
 }
 
 export const COMM_STAGE_LABEL: Record<CommercializationStage, string> = {
@@ -181,4 +184,5 @@ export const REVENUE_VIS_LABEL: Record<RevenueVisibility, string> = {
   VISIBLE:         '매출 확인',
   PARTIAL:         '부분 확인',
   NOT_YET_VISIBLE: '미확인',
+  UNCLEAR:         '불명확',
 }

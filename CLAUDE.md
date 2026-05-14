@@ -249,6 +249,8 @@ Execution:
 
 UI/Code:
 - font-size 9px or below
+- font-size 10px for column headers, section labels, or sub-section drawer labels (use 11px+)
+- #8b9098 color for column headers, section labels, or body text (decorative badges only)
 - rgba transparency for text color (use fixed hex tokens)
 - text darker than --text-muted (#737880) for body text
 - TypeScript any type
@@ -331,10 +333,21 @@ Minimum font sizes:
 28px  headline numbers (Engine Score)
 18px  sub-headline (Breadth 100%)
 14px  data values, stage names
-12px  secondary values, dates
-11px  subtext, ticker bar
-10px  ALL CAPS section labels  ← hard floor, letter-spacing 0.10em required
+13px  body text inside expanded drawers / detail cards
+12px  secondary values, dates, table row text
+11px  ALL CAPS column headers, sub-section labels, ticker bar  ← navigational minimum
+10px  DECORATIVE-ONLY meta labels (badges, footnotes, version tags, timestamps)
 BANNED: 9px and below
+```
+
+Label type distinctions (CRITICAL):
+```
+Navigational   table headers, section titles, sub-section labels, drawer labels
+               → minimum 11px, color #B8C8DC or brighter
+               → #8b9098 FORBIDDEN here
+
+Decorative     version badges ("E-2B"), footnote coverage strings, timestamps
+               → 10px acceptable, #8b9098 acceptable
 ```
 
 ALL CAPS labels must always include letter-spacing: 0.10em.
@@ -347,8 +360,8 @@ Background #0f1117 — confirmed tokens:
 ```
 --text-primary:   #ffffff   /* 16.1:1 */
 --text-secondary: #c9cdd4   /* 10.2:1 */
---text-tertiary:  #8b9098   /*  4.6:1  ALL CAPS labels only */
---text-muted:     #737880   /*  3.1:1  subtext minimum */
+--text-tertiary:  #8b9098   /*  4.6:1  DECORATIVE ALL CAPS only — NOT for headers/labels */
+--text-muted:     #737880   /*  3.1:1  subtext absolute minimum */
 --text-disabled:  #555a62   /*  2.2:1  inactive decoration only */
 
 --color-positive: #22c55e
@@ -356,6 +369,19 @@ Background #0f1117 — confirmed tokens:
 --color-accent:   #22d3ee
 --color-warning:  #fbbf24
 --color-neutral:  #c9cdd4
+```
+
+Color assignment rules (CRITICAL):
+```
+Column headers, sub-section labels, drawer section titles
+  → #B8C8DC (#text2) minimum
+  → #8b9098 (#text3) FORBIDDEN for these elements
+
+Body text, descriptions, explanations
+  → #B8C8DC (#text2) minimum
+
+Decorative: badges, footnotes, coverage strings, version tags
+  → #8b9098 acceptable
 ```
 
 Core rule:

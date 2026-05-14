@@ -369,8 +369,8 @@ export function computeBucketState(
   }
 
   // ── 8. LAGGING (default) ──────────────────────────────────────────────────
-  const explicitLagging = (rs3m != null && rs3m <= WEAK_RS_3M) || rrgQ === 'Lagging'
-  if (rs3m != null && rs3m <= WEAK_RS_3M) risk_flags.push('RS_UNDERPERFORMANCE')
+  const explicitLagging = (rs3m !== null && rs3m <= WEAK_RS_3M) || rrgQ === 'Lagging'
+  if (rs3m !== null && rs3m <= WEAK_RS_3M) risk_flags.push('RS_UNDERPERFORMANCE')
   if (rrgQ === 'Lagging') risk_flags.push('RRG_WEAKENING')
   return {
     bucket_id, display_name, stage,
@@ -381,10 +381,11 @@ export function computeBucketState(
       ? `${display_name} is classified as Lagging because relative strength vs ${benchmark} is weak${rrgQ === 'Lagging' ? ' and RRG position is in the Lagging quadrant' : ''}.`
       : `${display_name} does not meet thresholds for any positive state classification.`,
     state_drivers: [
-      rs3m != null ? `RS vs ${benchmark} 3M ${rs3m.toFixed(1)}pp` : 'RS unavailable',
+      rs3m !== null ? `RS vs ${benchmark} 3M ${rs3m.toFixed(1)}pp` : 'RS unavailable',
       rrgQ === 'Lagging' ? 'RRG quadrant = Lagging' : '',
     ].filter(Boolean),
     risk_flags,
+    theme_purity: purity,
     source: src,
   }
 }

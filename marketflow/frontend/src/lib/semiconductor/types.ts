@@ -160,13 +160,102 @@ export interface TranslationOutput {
   action_summary: string
 }
 
+// ── Cycle score time series ───────────────────────────────────────────────
+export interface CycleScoreTimeSeriesPoint {
+  date: string
+  score: number
+  phase: string
+}
+
+export interface PhaseTransition {
+  date: string
+  from_phase: string
+  to_phase: string
+}
+
+export interface CycleScoreTimeSeries {
+  series: CycleScoreTimeSeriesPoint[]
+  phase_transitions: PhaseTransition[]
+  base_date: string
+  current_phase_start: string
+  current_phase_duration_days: number
+}
+
+// ── Layer time series ──────────────────────────────────────────────────────
+export interface LayerTimeSeriesPoint {
+  date: string
+  ai_compute: number
+  legacy: number
+  spread: number
+}
+
+export interface LayerTimeSeries {
+  series: LayerTimeSeriesPoint[]
+  base_date: string
+  current: {
+    ai_compute: number
+    legacy: number
+    spread: number
+  }
+  ai_buckets: string[]
+  legacy_buckets: string[]
+}
+
+// ── Decay time series ──────────────────────────────────────────────────────
+export interface DecayTimeSeriesPoint {
+  date: string
+  theoretical_soxl: number
+  actual_soxl: number
+  excess_return: number
+}
+
+export interface DecayTimeSeries {
+  series: DecayTimeSeriesPoint[]
+  base_date: string
+  current: {
+    theoretical_soxl: number
+    actual_soxl: number
+    excess_return: number
+  }
+  trend: 'outperforming' | 'underperforming' | 'neutral'
+}
+
+// ── Sector RS time series ──────────────────────────────────────────────────
+export type SectorTrend = 'acceleration' | 'emerging' | 'neutral' | 'fading' | 'weakening'
+
+export interface BucketRSPoint {
+  date:       string
+  rs_vs_soxx: number
+}
+
+export interface BucketRSSeries {
+  bucket_id:    string
+  bucket_label: string
+  symbol:       string
+  series:       BucketRSPoint[]
+  rs_90d:       number
+  rs_30d:       number
+  trend:        SectorTrend
+  color:        string
+}
+
+export interface SectorRSTimeSeries {
+  buckets:         BucketRSSeries[]
+  base_date:       string
+  missing_buckets: string[]
+}
+
 // ── Full engine output ──────────────────────────────────────────────────────
 export interface SemiconductorOutput {
-  market_data: MarketDataInput
-  signals:     SignalInputs
-  stage:       StageOutput
-  translation: TranslationOutput
-  as_of:       string
+  market_data:              MarketDataInput
+  signals:                  SignalInputs
+  stage:                    StageOutput
+  translation:              TranslationOutput
+  as_of:                    string
+  decay_time_series?:       DecayTimeSeries | null
+  layer_time_series?:       LayerTimeSeries | null
+  cycle_score_time_series?: CycleScoreTimeSeries | null
+  sector_rs_time_series?:   SectorRSTimeSeries | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

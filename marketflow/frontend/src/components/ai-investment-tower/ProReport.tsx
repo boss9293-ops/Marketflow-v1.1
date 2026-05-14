@@ -122,10 +122,10 @@ function DetailDrawer({ report }: { report: ProLayerReport }) {
             { label: '리스크',      text: report.riskComment },
           ].map(({ label, text }) => (
             <div key={label}>
-              <div style={{ fontFamily: V.mono, fontSize: 10, color: V.text3, letterSpacing: '0.10em', marginBottom: 4 }}>
+              <div style={{ fontFamily: V.mono, fontSize: 11, color: V.text2, letterSpacing: '0.10em', marginBottom: 4 }}>
                 {label.toUpperCase()}
               </div>
-              <p style={{ fontFamily: V.ui, fontSize: 12, color: V.text2, lineHeight: 1.7, margin: 0 }}>{text}</p>
+              <p style={{ fontFamily: V.ui, fontSize: 13, color: V.text, lineHeight: 1.7, margin: 0 }}>{text}</p>
             </div>
           ))}
         </div>
@@ -267,9 +267,9 @@ export function ProReport({
   const thStyle = (label: string): React.CSSProperties => ({
     padding:       '6px 10px',
     fontFamily:    V.mono,
-    fontSize:      10,
+    fontSize:      11,
     fontWeight:    700,
-    color:         V.text3,
+    color:         V.text2,
     letterSpacing: '0.10em',
     textAlign:     label === 'Layer' ? 'left' : 'right',
     whiteSpace:    'nowrap',

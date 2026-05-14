@@ -124,6 +124,12 @@ from api.analyze_integrated import integrated_bp
 from api.analyze_stock import stock_analysis_bp
 
 
+from api.options_api import options_bp
+
+
+from api.stock_ai_context_api import stock_ai_context_bp
+
+
 from api.analyze_financials import financials_bp
 
 
@@ -172,6 +178,7 @@ from api.pipeline_runbook import pipeline_runbook_bp
 
 
 from api.pipeline_digest  import pipeline_digest_bp
+from mcp.marketflow_mcp_server import marketflow_mcp_bp
 
 
 # -- In-memory TTL cache (10s) ------------------------------------------
@@ -295,6 +302,12 @@ app.register_blueprint(integrated_bp)
 app.register_blueprint(stock_analysis_bp)
 
 
+app.register_blueprint(options_bp)
+
+
+app.register_blueprint(stock_ai_context_bp)
+
+
 app.register_blueprint(financials_bp)
 
 
@@ -341,6 +354,7 @@ app.register_blueprint(pipeline_predictive_bp)
 
 app.register_blueprint(pipeline_runbook_bp)
 app.register_blueprint(pipeline_digest_bp)
+app.register_blueprint(marketflow_mcp_bp)
 
 @app.route('/api/data/<path:filename>')
 def serve_data_json(filename):

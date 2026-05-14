@@ -6,6 +6,8 @@ import ChartPanel from '@/components/analysis/ChartPanel'
 import ValuationPanel from '@/components/analysis/ValuationPanel'
 import StatisticsPanel from '@/components/analysis/StatisticsPanel'
 import FinancialsPanel from '@/components/analysis/FinancialsPanel'
+import OptionsPanel from '@/components/analysis/OptionsPanel'
+import AiResearchContextPanel from '@/components/analysis/AiResearchContextPanel'
 import { stockProfiles } from '@/lib/mock/stockProfile'
 
 type DepthType = 'beginner' | 'intermediate' | 'quant'
@@ -97,6 +99,8 @@ export default function StockAnalysisPage() {
   const [valKey, setValKey] = useState(0)
   const [statsKey, setStatsKey] = useState(0)
   const [finKey, setFinKey] = useState(0)
+  const [optionsKey, setOptionsKey] = useState(0)
+  const [aiResearchKey, setAiResearchKey] = useState(0)
 
   const handleAnalyze = useCallback(() => {
     const next = symbol.trim().toUpperCase()
@@ -107,6 +111,8 @@ export default function StockAnalysisPage() {
     setValKey((k) => k + 1)
     setStatsKey((k) => k + 1)
     setFinKey((k) => k + 1)
+    setOptionsKey((k) => k + 1)
+    setAiResearchKey((k) => k + 1)
     analyzeDebounceRef.current = setTimeout(() => setAnalyzing(false), 2000)
   }, [symbol, committedSymbol, analyzing])
 
@@ -114,6 +120,8 @@ export default function StockAnalysisPage() {
     setValKey((k) => k + 1)
     setStatsKey((k) => k + 1)
     setFinKey((k) => k + 1)
+    setOptionsKey((k) => k + 1)
+    setAiResearchKey((k) => k + 1)
   }, [])
 
   const tvSymbol = useMemo(() => {
@@ -285,6 +293,12 @@ export default function StockAnalysisPage() {
         </div>
         <div style={{ display: activeTab === 'financials' ? undefined : 'none' }}>
           <FinancialsPanel symbol={committedSymbol} fetchKey={finKey} />
+        </div>
+        <div style={{ display: activeTab === 'options' ? undefined : 'none' }}>
+          <OptionsPanel symbol={committedSymbol} fetchKey={optionsKey} />
+        </div>
+        <div style={{ display: activeTab === 'ai_research' ? undefined : 'none' }}>
+          <AiResearchContextPanel symbol={committedSymbol} fetchKey={aiResearchKey} />
         </div>
       </div>
     </div>

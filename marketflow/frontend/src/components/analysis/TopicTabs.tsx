@@ -1,6 +1,6 @@
 'use client'
 
-export type TabType = 'chart' | 'valuation' | 'statistics' | 'financials'
+export type TabType = 'chart' | 'valuation' | 'statistics' | 'financials' | 'options' | 'ai_research'
 
 type Props = {
   activeTab: TabType
@@ -14,6 +14,8 @@ const tabs: { key: TabType; label: string }[] = [
   { key: 'valuation',  label: 'valuation'       },
   { key: 'statistics', label: 'statistics'      },
   { key: 'financials', label: 'financials'      },
+  { key: 'options',    label: 'Options Wall'    },
+  { key: 'ai_research', label: 'AI Research'    },
 ]
 
 export default function TopicTabs({ activeTab, onChange }: Props) {

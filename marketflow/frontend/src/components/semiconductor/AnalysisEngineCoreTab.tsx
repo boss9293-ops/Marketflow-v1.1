@@ -19,7 +19,7 @@ import type { SemiconductorSignalQuality } from '@/lib/semiconductor/signalQuali
 const V = {
   bg:'#000000', bg2:'#0d0d0d', bg3:'#111111', border:'#222222', brd2:'#1a1a1a',
   teal:'#3FB6A8', amber:'#F2A93B', mint:'#5DCFB0', red:'#E55A5A', gold:'#D4B36A',
-  blue:'#4A9EE0', text:'#E8F0F8', text2:'#B8C8DC', text3:'#8b9098',
+  blue:'#4A9EE0', text:'#E8F0F8', text2:'#ccd8e8', text3:'#a8b8c8',
   ui:"'IBM Plex Sans', sans-serif", mono:"'IBM Plex Mono', monospace",
 }
 
@@ -107,7 +107,7 @@ function Card({ children, style }: { children:React.ReactNode; style?:React.CSSP
 }
 
 function SecTitle({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{fontSize:10,fontWeight:600,letterSpacing:'0.16em',color:V.text3,marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between',fontFamily:V.ui,...style}}>{children}</div>
+  return <div style={{fontSize:11,fontWeight:600,letterSpacing:'0.14em',color:V.text2,marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between',fontFamily:V.ui,...style}}>{children}</div>
 }
 
 function RegimeBars({ aiRegime }: { aiRegime?: InterpAIRegime }) {
@@ -130,7 +130,7 @@ function RegimeBars({ aiRegime }: { aiRegime?: InterpAIRegime }) {
         <div key={r.name} style={{display:'grid',gridTemplateColumns:'70px 1fr 140px',alignItems:'center',gap:8}}>
           <div style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>{r.name}</div>
           <div style={{height:5,background:V.bg3,borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:r.w,background:r.color,borderRadius:3}}/></div>
-          <div style={{fontSize:10,color:r.color,textAlign:'right',fontFamily:V.mono}}>{r.sig}</div>
+          <div style={{fontSize:11,color:r.color,textAlign:'right',fontFamily:V.mono}}>{r.sig}</div>
         </div>
       ))}
     </div>
@@ -171,7 +171,7 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
       <SecTitle>BUCKET MAP
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>equal-size</span>
-          <span style={{fontSize:10,background:'rgba(242,169,59,0.15)',color:V.amber,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.ui}}>SOXX BENCHMARK · +3.6% 1M · Score 71</span>
+          <span style={{fontSize:11,background:'rgba(242,169,59,0.15)',color:V.amber,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.ui}}>SOXX BENCHMARK · +3.6% 1M · Score 71</span>
         </div>
       </SecTitle>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
@@ -183,10 +183,10 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
             </div>
             <div style={{fontSize:11,color:V.text3,marginBottom:8,fontFamily:V.ui}}>{b.drivers}</div>
             <div style={{display:'flex',gap:16,marginBottom:8}}>
-              <div><div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>1M</div><div style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.mono}}>{b.m1}</div></div>
-              <div><div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>vs SOXX</div><div style={{fontSize:13,fontWeight:500,color:b.vsC,fontFamily:V.mono}}>{b.vs}</div></div>
+              <div><div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>1M</div><div style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.mono}}>{b.m1}</div></div>
+              <div><div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>vs SOXX</div><div style={{fontSize:13,fontWeight:500,color:b.vsC,fontFamily:V.mono}}>{b.vs}</div></div>
             </div>
-            <span style={{fontSize:10,background:'rgba(184,200,220,0.12)',color:V.text2,padding:'2px 7px',borderRadius:10,fontFamily:V.ui}}>Neutral</span>
+            <span style={{fontSize:11,background:'rgba(184,200,220,0.12)',color:V.text2,padding:'2px 7px',borderRadius:10,fontFamily:V.ui}}>Neutral</span>
           </div>
         ))}
       </div>
@@ -197,7 +197,7 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
             <div key={f.label} style={{display:'flex',alignItems:'center',gap:4}}>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>{f.label}</div>
-                <div style={{fontSize:10,fontWeight:600,background:`rgba(${f.bc===V.teal?'63,182,168':f.bc===V.amber?'242,169,59':'229,90,90'},0.15)`,color:f.bc,padding:'2px 6px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono,margin:'3px 0'}}>{f.badge}</div>
+                <div style={{fontSize:11,fontWeight:600,background:`rgba(${f.bc===V.teal?'63,182,168':f.bc===V.amber?'242,169,59':'229,90,90'},0.15)`,color:f.bc,padding:'2px 6px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono,margin:'3px 0'}}>{f.badge}</div>
                 <div style={{fontSize:11,color:f.pc,fontFamily:V.mono}}>{f.pp}</div>
               </div>
               {i<flow.length-1&&<div style={{color:V.text3,fontSize:14,margin:'0 2px'}}>→</div>}
@@ -211,7 +211,7 @@ function TabMap({ rsTable, aiRegime }: { rsTable?: RsRow[]; aiRegime?: InterpAIR
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.ui}}>{ar ? regimeDisplay(ar.regime_label) : 'Broad Recovery'}</span>
             <span style={{fontSize:11,color:V.teal,border:'1px solid rgba(63,182,168,0.3)',padding:'2px 6px',borderRadius:2,fontFamily:V.mono}}>{ar?.regime_confidence?.toUpperCase() ?? 'HIGH CONF'}</span>
-            <span style={{fontSize:10,background:ar?'rgba(63,182,168,0.15)':'rgba(107,123,149,0.15)',color:ar?V.teal:V.text3,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>{ar?'LIVE':'STATIC'}</span>
+            <span style={{fontSize:11,background:ar?'rgba(63,182,168,0.15)':'rgba(107,123,149,0.15)',color:ar?V.teal:V.text3,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>{ar?'LIVE':'STATIC'}</span>
           </div>
         </div>
         <RegimeBars aiRegime={aiRegime}/>
@@ -238,7 +238,7 @@ function statusBadgeStyle(status: DataStatus): React.CSSProperties {
     MANUAL: '#fbbf24', PENDING: '#737880', UNAVAILABLE: '#ef4444',
   }
   const col = c[status] ?? '#fbbf24'
-  return { fontSize:10, padding:'1px 5px', border:`1px solid ${col}33`, color:col, borderRadius:2, fontFamily:'monospace', letterSpacing:'0.05em' }
+  return { fontSize:11, padding:'1px 5px', border:`1px solid ${col}33`, color:col, borderRadius:2, fontFamily:'monospace', letterSpacing:'0.05em' }
 }
 
 function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: number; stage?: string; confidenceLabel?: string; fundamentals?: SemiconductorFundamentalsPayload | null }) {
@@ -283,13 +283,13 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
               {label:'L3 · Market (SOXX)', color:V.text3,w:'74%',val:'11.1/15',grad:'linear-gradient(90deg,#6B7B95,#9DA8BD)'},
             ].map(r=>(
               <div key={r.label} style={{display:'grid',gridTemplateColumns:'140px 1fr 60px',alignItems:'center',gap:8}}>
-                <div style={{fontSize:10,color:r.color,fontFamily:V.ui}}>{r.label}</div>
+                <div style={{fontSize:11,color:r.color,fontFamily:V.ui}}>{r.label}</div>
                 <div style={{height:6,background:V.bg3,borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:r.w,background:r.grad,borderRadius:3}}/></div>
-                <div style={{fontSize:10,color:r.color,textAlign:'right',fontFamily:V.mono}}>{r.val}</div>
+                <div style={{fontSize:11,color:r.color,textAlign:'right',fontFamily:V.mono}}>{r.val}</div>
               </div>
             ))}
           </div>
-          <div style={{marginTop:10,fontSize:10,color:V.text2,fontStyle:'italic',fontFamily:V.ui}}>실물 사이클이 시장을 이끄는 구간 · SOXX는 실물보다 약간 선행 중</div>
+          <div style={{marginTop:10,fontSize:11,color:V.text2,fontStyle:'italic',fontFamily:V.ui}}>실물 사이클이 시장을 이끄는 구간 · SOXX는 실물보다 약간 선행 중</div>
         </div>
       </div>
       {/* L1 */}
@@ -318,14 +318,14 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="tsmc-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3FB6A8" stopOpacity="0.35"/><stop offset="100%" stopColor="#3FB6A8" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
-              <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">+50%</text><text x="16" y="38" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">+25%</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">0%</text>
+              <text x="16" y="13" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">+50%</text><text x="16" y="38" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">+25%</text><text x="16" y="63" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">0%</text>
               <path d="M20,55 C45,52 65,48 85,42 C105,36 125,28 150,22 C170,17 200,13 225,11 C245,10 262,10 275,9 L275,60 L20,60Z" fill="url(#tsmc-g)"/>
               <path d="M20,55 C45,52 65,48 85,42 C105,36 125,28 150,22 C170,17 200,13 225,11 C245,10 262,10 275,9" stroke="#3FB6A8" strokeWidth="1.8" fill="none"/>
               <circle cx="275" cy="9" r="3" fill="#3FB6A8"/>
-              <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#3FB6A8" fontSize="10" textAnchor="end" fontFamily="monospace">2026.04</text>
+              <text x="20" y="68" fill="#B8C8DC" fontSize="11" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#3FB6A8" fontSize="11" textAnchor="end" fontFamily="monospace">2026.04</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>파운드리 전체 온도계 · SOXX 2~3주 선행</div>
-            {f1?.tsmcRevenueYoY.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.tsmcRevenueYoY.source} · As of {f1.tsmcRevenueYoY.asOf}</div>}
+            {f1?.tsmcRevenueYoY.asOf && <div style={{fontSize:11,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.tsmcRevenueYoY.source} · As of {f1.tsmcRevenueYoY.asOf}</div>}
           </div>
           {/* B2B */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -343,16 +343,16 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="btb-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F2A93B" stopOpacity="0.3"/><stop offset="100%" stopColor="#F2A93B" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="42" x2="275" y2="42" stroke="#3FB6A8" strokeWidth="0.8" strokeDasharray="3,3" opacity="0.7"/>
-              <text x="16" y="45" fill="#3FB6A8" fontSize="10" textAnchor="end" fontFamily="monospace">1.0</text>
+              <text x="16" y="45" fill="#3FB6A8" fontSize="11" textAnchor="end" fontFamily="monospace">1.0</text>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
-              <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">1.3</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">0.8</text>
+              <text x="16" y="13" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">1.3</text><text x="16" y="63" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">0.8</text>
               <path d="M20,50 C45,47 65,44 85,40 C105,36 125,32 150,28 C170,24 200,20 225,17 C245,15 262,14 275,13 L275,42 C262,42 245,42 225,42 C200,42 170,42 150,42 C125,42 105,42 85,42 C65,42 45,42 20,42Z" fill="url(#btb-g)"/>
               <path d="M20,50 C45,47 65,44 85,40 C105,36 125,32 150,28 C170,24 200,20 225,17 C245,15 262,14 275,13" stroke="#F2A93B" strokeWidth="1.8" fill="none"/>
               <circle cx="275" cy="13" r="3" fill="#F2A93B"/>
-              <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#F2A93B" fontSize="10" textAnchor="end" fontFamily="monospace">1.18</text>
+              <text x="20" y="68" fill="#B8C8DC" fontSize="11" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#F2A93B" fontSize="11" textAnchor="end" fontFamily="monospace">1.18</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>장비 수주/출하 · 제조 투자 3~6개월 선행</div>
-            {f1?.bookToBill.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.bookToBill.source} · As of {f1.bookToBill.asOf}</div>}
+            {f1?.bookToBill.asOf && <div style={{fontSize:11,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.bookToBill.source} · As of {f1.bookToBill.asOf}</div>}
           </div>
           {/* SIA */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -370,14 +370,14 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <svg viewBox="0 0 280 70" style={{width:'100%',height:'55px',display:'block'}}>
               <defs><linearGradient id="sia-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5DCFB0" stopOpacity="0.3"/><stop offset="100%" stopColor="#5DCFB0" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="35" x2="275" y2="35" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="60" x2="275" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
-              <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$60B</text><text x="16" y="63" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$35B</text>
+              <text x="16" y="13" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">$60B</text><text x="16" y="63" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">$35B</text>
               <path d="M20,52 C45,50 65,46 85,42 C105,38 125,30 150,24 C170,19 200,14 225,12 C245,11 262,11 275,10 L275,60 L20,60Z" fill="url(#sia-g)"/>
               <path d="M20,52 C45,50 65,46 85,42 C105,38 125,30 150,24 C170,19 200,14 225,12 C245,11 262,11 275,10" stroke="#5DCFB0" strokeWidth="1.8" fill="none"/>
               <circle cx="275" cy="10" r="3" fill="#5DCFB0"/>
-              <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#5DCFB0" fontSize="10" textAnchor="end" fontFamily="monospace">$56.1B</text>
+              <text x="20" y="68" fill="#B8C8DC" fontSize="11" fontFamily="monospace">2025.05</text><text x="275" y="68" fill="#5DCFB0" fontSize="11" textAnchor="end" fontFamily="monospace">$56.1B</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>전체 반도체 시장 크기 공식 데이터</div>
-            {f1?.siaSemiSales.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.siaSemiSales.source} · As of {f1.siaSemiSales.asOf}</div>}
+            {f1?.siaSemiSales.asOf && <div style={{fontSize:11,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.siaSemiSales.source} · As of {f1.siaSemiSales.asOf}</div>}
           </div>
           {/* NVDA */}
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -403,12 +403,12 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
               <rect x="216" y="14" width="22" height="46" fill="#D4B36A" rx="1"/>
               <rect x="248" y="10" width="22" height="50" fill="#D4B36A" rx="1" opacity="0.85"/>
               <rect x="248" y="10" width="22" height="50" fill="none" stroke="#D4B36A" strokeWidth="1" rx="1" strokeDasharray="2,2"/>
-              <text x="248" y="8" fill="#D4B36A" fontSize="10" textAnchor="middle" fontFamily="monospace">Guide</text>
-              <text x="20" y="68" fill="#B8C8DC" fontSize="10" fontFamily="monospace">Q1&apos;24</text>
-              <text x="275" y="68" fill="#D4B36A" fontSize="10" textAnchor="end" fontFamily="monospace">Q1&apos;26</text>
+              <text x="248" y="8" fill="#D4B36A" fontSize="11" textAnchor="middle" fontFamily="monospace">Guide</text>
+              <text x="20" y="68" fill="#B8C8DC" fontSize="11" fontFamily="monospace">Q1&apos;24</text>
+              <text x="275" y="68" fill="#D4B36A" fontSize="11" textAnchor="end" fontFamily="monospace">Q1&apos;26</text>
             </svg>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>AI 가속기 수요 직접 신호 · 가이던스 방향 핵심</div>
-            {f1?.nvdaDataCenterRevenue.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.nvdaDataCenterRevenue.source} · As of {f1.nvdaDataCenterRevenue.asOf}</div>}
+            {f1?.nvdaDataCenterRevenue.asOf && <div style={{fontSize:11,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f1.nvdaDataCenterRevenue.source} · As of {f1.nvdaDataCenterRevenue.asOf}</div>}
           </div>
         </div>
       </div>
@@ -441,7 +441,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
               ))}
             </div>
             <div style={{fontSize:11,color:V.text3,marginTop:6,fontFamily:V.ui}}>AI 서버/GPU 수요의 직접 연료</div>
-            {f2?.hyperscalerCapex.asOf && <div style={{fontSize:10,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f2.hyperscalerCapex.source ?? 'MSFT·AMZN·GOOG·META'} · As of {f2.hyperscalerCapex.asOf}</div>}
+            {f2?.hyperscalerCapex.asOf && <div style={{fontSize:11,color:V.text3,opacity:0.6,marginTop:2,fontFamily:V.mono}}>{f2.hyperscalerCapex.source ?? 'MSFT·AMZN·GOOG·META'} · As of {f2.hyperscalerCapex.asOf}</div>}
           </div>
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
             <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:500,marginBottom:10,fontFamily:V.ui}}>AI 인프라 공급 신호</div>
@@ -452,7 +452,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
                 {label:'DC 전력 수요',val:'~50GW 2026',vc:V.amber,sub:'IEA 전망 · YoY +30%'},
               ].map(s=>(
                 <div key={s.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 8px',background:V.bg3,borderRadius:4}}>
-                  <div><div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>{s.label}</div><div style={{fontSize:10,color:s.vc,fontWeight:500,fontFamily:V.mono}}>{s.val}</div></div>
+                  <div><div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>{s.label}</div><div style={{fontSize:11,color:s.vc,fontWeight:500,fontFamily:V.mono}}>{s.val}</div></div>
                   <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>{s.sub}</div>
                 </div>
               ))}
@@ -487,13 +487,13 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
             <svg viewBox="0 0 280 80" style={{width:'100%',height:'auto',display:'block'}}>
               <defs><linearGradient id="soxx-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4A9EE0" stopOpacity="0.25"/><stop offset="100%" stopColor="#4A9EE0" stopOpacity="0.02"/></linearGradient></defs>
               <line x1="20" y1="10" x2="275" y2="10" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="40" x2="275" y2="40" stroke="#2a2a2a" strokeWidth="0.5"/><line x1="20" y1="70" x2="275" y2="70" stroke="#2a2a2a" strokeWidth="0.5"/>
-              <text x="16" y="13" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$620</text><text x="16" y="43" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$480</text><text x="16" y="73" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">$340</text>
+              <text x="16" y="13" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">$620</text><text x="16" y="43" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">$480</text><text x="16" y="73" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">$340</text>
               <path d="M20,60 C60,56 100,50 140,44 C180,38 220,34 275,30" stroke="#A0B0C8" strokeWidth="1" fill="none" strokeDasharray="3,2"/>
               <path d="M20,58 C60,52 100,44 140,36 C180,28 220,22 275,18" stroke="#F2A93B" strokeWidth="1.2" fill="none" strokeDasharray="4,2"/>
               <path d="M20,62 C40,55 60,48 80,52 C100,56 120,42 140,32 C160,22 180,16 210,13 C230,11 255,12 275,11 L275,70 L20,70Z" fill="url(#soxx-g)"/>
               <path d="M20,62 C40,55 60,48 80,52 C100,56 120,42 140,32 C160,22 180,16 210,13 C230,11 255,12 275,11" stroke="#4A9EE0" strokeWidth="1.8" fill="none"/>
               <circle cx="275" cy="11" r="3" fill="#4A9EE0"/>
-              <text x="20" y="78" fill="#B8C8DC" fontSize="10" fontFamily="monospace">2025.05</text><text x="275" y="78" fill="#4A9EE0" fontSize="10" textAnchor="end" fontFamily="monospace">$568</text>
+              <text x="20" y="78" fill="#B8C8DC" fontSize="11" fontFamily="monospace">2025.05</text><text x="275" y="78" fill="#4A9EE0" fontSize="11" textAnchor="end" fontFamily="monospace">$568</text>
             </svg>
           </div>
           <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:5,padding:10}}>
@@ -505,7 +505,7 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
                   <div style={{height:'100%',width:'100%',background:'linear-gradient(90deg,#3FB6A8,#F2A93B,#E55A5A)',borderRadius:3,opacity:0.3}}/>
                   <div style={{position:'absolute',top:-3,left:'71%',width:12,height:12,background:V.gold,borderRadius:'50%',transform:'translateX(-50%)',border:`2px solid ${V.bg2}`}}/>
                 </div>
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:V.text3,marginTop:4,fontFamily:V.ui}}>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>
                   <span>저평가<br/>0.5↓</span><span style={{textAlign:'center',color:V.gold}}>현재 {soxxRefDisp}<br/>약간 선행</span><span style={{textAlign:'right'}}>과열<br/>1.5↑</span>
                 </div>
               </div>
@@ -518,15 +518,15 @@ function TabCycle({ score, stage, confidenceLabel, fundamentals }: { score?: num
               <div style={{padding:8,background:'rgba(242,169,59,0.06)',border:'1px solid rgba(242,169,59,0.2)',borderRadius:4}}>
                 <div style={{fontSize:11,color:V.amber,fontWeight:500,marginBottom:4,fontFamily:V.ui}}>★ AI vs Legacy Layer</div>
                 <div style={{display:'flex',justifyContent:'space-between'}}>
-                  <span style={{fontSize:10,color:V.amber,fontFamily:V.mono}}>AI Compute +18.4%</span>
-                  <span style={{fontSize:10,color:V.red,fontFamily:V.mono}}>Legacy −3.8%</span>
+                  <span style={{fontSize:11,color:V.amber,fontFamily:V.mono}}>AI Compute +18.4%</span>
+                  <span style={{fontSize:11,color:V.red,fontFamily:V.mono}}>Legacy −3.8%</span>
                 </div>
                 <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>Spread 22pp · AI 단독 랠리</div>
               </div>
             </div>
           </div>
         </div>
-        <div style={{marginTop:8,fontSize:10,color:V.text2,padding:'8px 10px',background:V.bg2,borderRadius:4,borderLeft:`2px solid ${V.text3}`,fontFamily:V.ui}}>
+        <div style={{marginTop:8,fontSize:11,color:V.text2,padding:'8px 10px',background:V.bg2,borderRadius:4,borderLeft:`2px solid ${V.text3}`,fontFamily:V.ui}}>
           <span style={{color:V.gold,fontWeight:500}}>반영도 해석:</span> Reflection Score 0.92 — 실물 사이클이 강한데 시장(SOXX)이 아직 실물만큼 충분히 반영하지 않았거나, 약간 먼저 달리고 있음. 실물 Layer 1~2가 지속 강세면 SOXX 추가 상승 근거 유효.
         </div>
       </div>
@@ -728,14 +728,14 @@ function SemiconductorRRGCard() {
           <div style={{fontSize:11,letterSpacing:'0.16em',color:V.teal,fontWeight:500,fontFamily:V.ui,marginBottom:2}}>RELATIVE ROTATION MAP</div>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>vs {bench}</span>
-            <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,opacity:0.7}}>· {BENCH_CONTEXT[bench]}</span>
+            <span style={{fontSize:11,color:V.text3,fontFamily:V.ui,opacity:0.7}}>· {BENCH_CONTEXT[bench]}</span>
           </div>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
           <div style={{display:'flex',gap:3}}>
             {(['SOXX','QQQ','SPY'] as RRGBench[]).map(b=>(
               <button key={b} onClick={()=>setBench(b)} style={{
-                fontSize:10,padding:'2px 8px',borderRadius:2,cursor:'pointer',
+                fontSize:11,padding:'2px 8px',borderRadius:2,cursor:'pointer',
                 border:`1px solid ${bench===b?'rgba(63,182,168,0.4)':V.border}`,
                 background:bench===b?'rgba(63,182,168,0.12)':V.bg3,
                 color:bench===b?V.teal:V.text3,fontFamily:'monospace',letterSpacing:'0.05em',
@@ -745,7 +745,7 @@ function SemiconductorRRGCard() {
           <div style={{display:'flex',gap:3}}>
             {([4,8,12,24] as RRGLookback[]).map(n=>(
               <button key={n} onClick={()=>setLookback(n)} style={{
-                fontSize:10,padding:'1px 6px',borderRadius:2,cursor:'pointer',
+                fontSize:11,padding:'1px 6px',borderRadius:2,cursor:'pointer',
                 border:`1px solid ${lookback===n?'rgba(107,123,149,0.5)':V.border}`,
                 background:lookback===n?'rgba(107,123,149,0.12)':V.bg3,
                 color:lookback===n?V.text2:V.text3,fontFamily:'monospace',letterSpacing:'0.05em',
@@ -755,14 +755,14 @@ function SemiconductorRRGCard() {
         </div>
       </div>
       {/* ── Korean helper ── */}
-      <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginBottom:10,padding:'4px 8px',background:V.bg3,borderRadius:3}}>
+      <div style={{fontSize:11,color:V.text3,fontFamily:V.ui,marginBottom:10,padding:'4px 8px',background:V.bg3,borderRadius:3}}>
         RS Ratio (가로) · RS Momentum (세로) 이동 경로로 섹터 순환 단계를 읽는 회전 지도입니다.
       </div>
 
       {rrgError ? (
         <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:6,background:V.bg3,borderRadius:4}}>
           <div style={{fontSize:11,color:V.red,fontFamily:V.ui}}>DATA ERROR</div>
-          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>API fetch failed — showing fallback fixture</div>
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>API fetch failed — showing fallback fixture</div>
         </div>
       ) : rrgLoading ? (
         <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',background:V.bg3,borderRadius:4}}>
@@ -771,8 +771,8 @@ function SemiconductorRRGCard() {
       ) : isPending ? (
         <div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:6,background:V.bg3,borderRadius:4}}>
           <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>PENDING</div>
-          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>Bucket path pending for {bench} benchmark</div>
-          {bench !== 'SOXX' && <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,opacity:0.6}}>SOXX vs {bench} context available but bucket series not yet generated</div>}
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>Bucket path pending for {bench} benchmark</div>
+          {bench !== 'SOXX' && <div style={{fontSize:11,color:V.text3,fontFamily:V.ui,opacity:0.6}}>SOXX vs {bench} context available but bucket series not yet generated</div>}
         </div>
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',display:'block'}}>
@@ -845,7 +845,7 @@ function SemiconductorRRGCard() {
         {renderBuckets.map(b=>(
           <div key={b.id} style={{display:'flex',alignItems:'center',gap:4}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:b.color,flexShrink:0,opacity:b.isBm?0.3:1}}/>
-            <span style={{fontSize:10,color:b.isBm?V.text3:V.text2,fontFamily:V.ui}}>{b.name}{b.isBm?' (BM)':''}</span>
+            <span style={{fontSize:11,color:b.isBm?V.text3:V.text2,fontFamily:V.ui}}>{b.name}{b.isBm?' (BM)':''}</span>
           </div>
         ))}
       </div>
@@ -854,7 +854,7 @@ function SemiconductorRRGCard() {
       {!isPending && (
         <div style={{marginTop:10,borderTop:`1px solid ${V.border}`,paddingTop:8}}>
           {/* Compact phase chips */}
-          <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>ROTATION INTERPRETATION</div>
+          <div style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>ROTATION INTERPRETATION</div>
           {bucketInterps.length > 0 ? (
             <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
               {bucketInterps.map(b=>(
@@ -862,49 +862,49 @@ function SemiconductorRRGCard() {
                   background:sevBg(b.severity),borderRadius:3,
                   border:`1px solid ${sevColor(b.severity)}33`}}>
                   <div style={{width:6,height:6,borderRadius:'50%',background:sevColor(b.severity),flexShrink:0}}/>
-                  <span style={{fontSize:10,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.label}</span>
-                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>·</span>
-                  <span style={{fontSize:10,color:sevColor(b.severity),fontFamily:V.mono}}>{b.phase}</span>
+                  <span style={{fontSize:11,color:V.text2,fontFamily:V.ui,fontWeight:500}}>{b.label}</span>
+                  <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>·</span>
+                  <span style={{fontSize:11,color:sevColor(b.severity),fontFamily:V.mono}}>{b.phase}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginBottom:10}}>Live path data not yet available — chips pending</div>
+            <div style={{fontSize:11,color:V.text3,fontFamily:V.ui,marginBottom:10}}>Live path data not yet available — chips pending</div>
           )}
 
           {/* Rotation Read panel */}
           {bucketInterps.length > 0 && (
             <div style={{background:V.bg3,borderRadius:4,padding:'8px 10px',marginBottom:8,
               borderLeft:`2px solid ${modeColor(rotationSummary.leadershipMode)}`}}>
-              <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>회전 해석</div>
+              <div style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:6}}>회전 해석</div>
               <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'4px 10px',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>리더십 모드</span>
-                <span style={{fontSize:10,color:modeColor(rotationSummary.leadershipMode),fontFamily:V.mono,fontWeight:600}}>{rotationSummary.leadershipMode}</span>
+                <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>리더십 모드</span>
+                <span style={{fontSize:11,color:modeColor(rotationSummary.leadershipMode),fontFamily:V.mono,fontWeight:600}}>{rotationSummary.leadershipMode}</span>
                 {rotationSummary.leadBuckets.length > 0 && <>
-                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>주도 버킷</span>
-                  <span style={{fontSize:10,color:V.teal,fontFamily:V.ui}}>{rotationSummary.leadBuckets.join(', ')}</span>
+                  <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>주도 버킷</span>
+                  <span style={{fontSize:11,color:V.teal,fontFamily:V.ui}}>{rotationSummary.leadBuckets.join(', ')}</span>
                 </>}
                 {rotationSummary.recoveringBuckets.length > 0 && <>
-                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>회복 버킷</span>
-                  <span style={{fontSize:10,color:V.blue,fontFamily:V.ui}}>{rotationSummary.recoveringBuckets.join(', ')}</span>
+                  <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>회복 버킷</span>
+                  <span style={{fontSize:11,color:V.blue,fontFamily:V.ui}}>{rotationSummary.recoveringBuckets.join(', ')}</span>
                 </>}
                 {rotationSummary.weakeningBuckets.length > 0 && <>
-                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>둔화 버킷</span>
-                  <span style={{fontSize:10,color:V.amber,fontFamily:V.ui}}>{rotationSummary.weakeningBuckets.join(', ')}</span>
+                  <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>둔화 버킷</span>
+                  <span style={{fontSize:11,color:V.amber,fontFamily:V.ui}}>{rotationSummary.weakeningBuckets.join(', ')}</span>
                 </>}
                 {rotationSummary.laggingBuckets.length > 0 && <>
-                  <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>약세 버킷</span>
-                  <span style={{fontSize:10,color:V.red,fontFamily:V.ui}}>{rotationSummary.laggingBuckets.join(', ')}</span>
+                  <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>약세 버킷</span>
+                  <span style={{fontSize:11,color:V.red,fontFamily:V.ui}}>{rotationSummary.laggingBuckets.join(', ')}</span>
                 </>}
               </div>
-              <div style={{marginTop:6,fontSize:10,color:V.text2,fontFamily:V.ui,lineHeight:1.5}}>
+              <div style={{marginTop:6,fontSize:11,color:V.text2,fontFamily:V.ui,lineHeight:1.5}}>
                 {rotationSummary.koreanSummary}
               </div>
             </div>
           )}
 
           {/* Data source note */}
-          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${hasLive?V.teal:V.border}`}}>
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui,padding:'3px 8px',background:V.bg3,borderRadius:3,borderLeft:`2px solid ${hasLive?V.teal:V.border}`}}>
             {hasLive
               ? `RRG path: ${rrgPayload.lookback} real data · benchmark ${rrgPayload.benchmark} · generated ${rrgPayload.generatedAt ? new Date(rrgPayload.generatedAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '—'}`
               : pathStatus.hasBucketPath
@@ -964,7 +964,7 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
     <div style={{padding:'12px 20px',overflowY:'auto',flex:1}}>
       {/* Benchmark Context Card */}
       <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'10px 14px',marginBottom:12}}>
-        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:8}}>BENCHMARK CONTEXT</div>
+        <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:8}}>BENCHMARK CONTEXT</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 20px'}}>
           {(['SOXX_vs_QQQ','SOXX_vs_SPY'] as const).map(key => {
             const label = key === 'SOXX_vs_QQQ' ? 'SOXX vs QQQ' : 'SOXX vs SPY'
@@ -975,14 +975,14 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
               <div key={key} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <span style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>{label}</span>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <span style={{fontSize:10,color:V.text3,fontFamily:V.mono}}>{formatRelative(rel1d)} 1D</span>
-                  <span style={{fontSize:10,padding:'1px 6px',border:`1px solid ${STATUS_COLOR[status]}33`,color:STATUS_COLOR[status],borderRadius:2,fontFamily:V.mono,letterSpacing:'0.05em'}}>{status}</span>
+                  <span style={{fontSize:11,color:V.text3,fontFamily:V.mono}}>{formatRelative(rel1d)} 1D</span>
+                  <span style={{fontSize:11,padding:'1px 6px',border:`1px solid ${STATUS_COLOR[status]}33`,color:STATUS_COLOR[status],borderRadius:2,fontFamily:V.mono,letterSpacing:'0.05em'}}>{status}</span>
                 </div>
               </div>
             )
           })}
         </div>
-        <div style={{marginTop:6,fontSize:10,color:V.text3,fontFamily:V.ui}}>
+        <div style={{marginTop:6,fontSize:11,color:V.text3,fontFamily:V.ui}}>
           SOXX proxy: SMH · 1M relative pending (snapshot history &lt;30d)
         </div>
       </div>
@@ -993,10 +993,10 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
         <SecTitle style={{marginBottom:0}}>BUCKET PERFORMANCE MATRIX</SecTitle>
         <div style={{display:'flex',gap:3,alignItems:'center'}}>
-          <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginRight:4}}>vs</span>
+          <span style={{fontSize:11,color:V.text3,fontFamily:V.ui,marginRight:4}}>vs</span>
           {(['SOXX','QQQ','SPY'] as BenchmarkId[]).map(b=>(
             <button key={b} onClick={()=>setSelBench(b)} style={{
-              fontSize:10,padding:'2px 7px',borderRadius:2,cursor:'pointer',
+              fontSize:11,padding:'2px 7px',borderRadius:2,cursor:'pointer',
               border:`1px solid ${selBench===b?'rgba(63,182,168,0.4)':V.border}`,
               background:selBench===b?'rgba(63,182,168,0.12)':V.bg3,
               color:selBench===b?V.teal:V.text3,fontFamily:V.mono,letterSpacing:'0.05em',
@@ -1010,7 +1010,7 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
             <thead>
               <tr style={{borderBottom:`1px solid ${V.border}`}}>
                 {['BUCKET','1D','5D','1M','3M','6M',`VS ${selBench} 1M`,'DIRECTION'].map(h=>(
-                  <th key={h} style={{padding:'6px 8px',fontSize:10,letterSpacing:'0.10em',color:V.text3,textAlign:h==='BUCKET'?'left':'right',fontWeight:600}}>{h}</th>
+                  <th key={h} style={{padding:'6px 8px',fontSize:11,letterSpacing:'0.10em',color:V.text3,textAlign:h==='BUCKET'?'left':'right',fontWeight:600}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1046,7 +1046,7 @@ function TabPerformance({ buckets, aiRegime }: { buckets?: LiveBucket[]; aiRegim
             <span style={{fontSize:13,fontWeight:500,color:V.teal,fontFamily:V.ui}}>{aiRegime ? regimeDisplay(aiRegime.regime_label) : 'Broad Recovery'}</span>
             <span style={{fontSize:11,color:V.teal,border:'1px solid rgba(63,182,168,0.3)',padding:'2px 6px',borderRadius:2,marginLeft:8,fontFamily:V.mono}}>{aiRegime?.regime_confidence?.toUpperCase() ?? 'HIGH CONF'}</span>
           </div>
-          <span style={{fontSize:10,background:aiRegime?'rgba(63,182,168,0.15)':'rgba(107,123,149,0.15)',color:aiRegime?V.teal:V.text3,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>{aiRegime?'LIVE':'STATIC'}</span>
+          <span style={{fontSize:11,background:aiRegime?'rgba(63,182,168,0.15)':'rgba(107,123,149,0.15)',color:aiRegime?V.teal:V.text3,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>{aiRegime?'LIVE':'STATIC'}</span>
         </div>
         <RegimeBars aiRegime={aiRegime}/>
         <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:8,padding:'6px 8px',background:V.bg3,borderRadius:4,fontFamily:V.ui}}>{'Participation is broad across all semiconductor segments with no dominant concentration, consistent with an early recovery structure.'}</div>
@@ -1099,10 +1099,10 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
           {label:'LEADERSHIP SIGNAL',val:'+14',  state:'Broad Partic.', sub:'Conf 91 · High',   c:V.mint, bc:'rgba(93,207,176,0.3)'},
         ].map(h=>(
           <div key={h.label} style={{background:V.bg2,border:`1px solid ${h.bc}`,borderRadius:6,padding:'10px 12px',textAlign:'center'}}>
-            <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:6,fontFamily:V.ui}}>{h.label}</div>
+            <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,marginBottom:6,fontFamily:V.ui}}>{h.label}</div>
             <div style={{fontSize:28,fontWeight:500,color:h.c,fontFamily:V.mono,lineHeight:1}}>{h.val}</div>
             <div style={{fontSize:11,color:h.c,fontWeight:500,marginTop:4,fontFamily:V.ui}}>{h.state}</div>
-            <div style={{fontSize:10,color:V.text3,marginTop:4,fontFamily:V.ui}}>{h.sub}</div>
+            <div style={{fontSize:11,color:V.text3,marginTop:4,fontFamily:V.ui}}>{h.sub}</div>
           </div>
         ))}
       </div>
@@ -1116,8 +1116,8 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
             <span style={{color:V.teal}}>Adv {advPct}%</span><span style={{color:V.text3}}>Net +{advPct - decPct}</span><span style={{color:V.red}}>Dec {decPct}%</span>
           </div>
         </div>
-        <div style={{fontSize:10,color:V.text2,fontFamily:V.ui}}>% above 20MA: <span style={{color:ma20pct!=null&&ma20pct>=60?V.teal:V.amber,fontWeight:500}}>{ma20pct!=null?`${Math.round(ma20pct)}%`:'—'}</span> · <span style={{color:ma20pct!=null&&ma20pct>=60?V.teal:V.amber}}>{ma20pct!=null&&ma20pct>=60?'BULLISH':'MIXED'}</span></div>
-        <div style={{marginTop:6,fontSize:10,fontWeight:600,letterSpacing:'0.10em',color:conflictC,padding:'4px 8px',background:`rgba(${conflictC===V.teal?'63,182,168':'229,90,90'},0.08)`,border:`1px solid rgba(${conflictC===V.teal?'63,182,168':'229,90,90'},0.2)`,borderRadius:4,display:'inline-block',fontFamily:V.mono}}>{conflictLabel}</div>
+        <div style={{fontSize:11,color:V.text2,fontFamily:V.ui}}>% above 20MA: <span style={{color:ma20pct!=null&&ma20pct>=60?V.teal:V.amber,fontWeight:500}}>{ma20pct!=null?`${Math.round(ma20pct)}%`:'—'}</span> · <span style={{color:ma20pct!=null&&ma20pct>=60?V.teal:V.amber}}>{ma20pct!=null&&ma20pct>=60?'BULLISH':'MIXED'}</span></div>
+        <div style={{marginTop:6,fontSize:11,fontWeight:600,letterSpacing:'0.10em',color:conflictC,padding:'4px 8px',background:`rgba(${conflictC===V.teal?'63,182,168':'229,90,90'},0.08)`,border:`1px solid rgba(${conflictC===V.teal?'63,182,168':'229,90,90'},0.2)`,borderRadius:4,display:'inline-block',fontFamily:V.mono}}>{conflictLabel}</div>
         <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:6,fontFamily:V.ui}}>Participation is consistent with the current trend. Broad advance confirms expansion regime.</div>
       </Card>
       <SecTitle style={{marginTop:10}}>BUCKET MOMENTUM RANKING <span style={{color:V.text3,fontSize:11,fontWeight:400,letterSpacing:0}}>1M return proxy</span></SecTitle>
@@ -1127,7 +1127,7 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
             <thead>
               <tr style={{borderBottom:`1px solid ${V.border}`}}>
                 {['BUCKET','1M RET','VS SOXX','DIRECTION','CONCENTRATION RISK'].map(h=>(
-                  <th key={h} style={{padding:'6px 8px',fontSize:10,letterSpacing:'0.10em',color:V.text3,textAlign:h==='BUCKET'?'left':'right',fontWeight:600}}>{h}</th>
+                  <th key={h} style={{padding:'6px 8px',fontSize:11,letterSpacing:'0.10em',color:V.text3,textAlign:h==='BUCKET'?'left':'right',fontWeight:600}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1143,13 +1143,13 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
                   <td style={{padding:'7px 8px',fontSize:11,color:r.ret.startsWith('+')?V.teal:V.red,fontFamily:V.mono,textAlign:'right'}}>{r.ret}</td>
                   <td style={{padding:'7px 8px',fontSize:11,color:r.vs==='—'?V.text3:r.vs.startsWith('+')?V.teal:V.red,fontFamily:V.mono,textAlign:'right'}}>{r.vs}</td>
                   <td style={{padding:'7px 8px',fontSize:11,color:r.dirC,fontFamily:V.mono,textAlign:'right'}}>{r.dir}</td>
-                  <td style={{padding:'7px 8px',fontSize:10,color:r.concC,fontFamily:V.ui,textAlign:'right'}}>{r.conc}</td>
+                  <td style={{padding:'7px 8px',fontSize:11,color:r.concC,fontFamily:V.ui,textAlign:'right'}}>{r.conc}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div style={{marginTop:6,fontSize:10,fontWeight:600,letterSpacing:'0.10em',color:V.teal,padding:'4px 8px',background:'rgba(63,182,168,0.08)',border:'1px solid rgba(63,182,168,0.2)',borderRadius:4,display:'inline-block',fontFamily:V.mono}}>NO CONFLICT</div>
+        <div style={{marginTop:6,fontSize:11,fontWeight:600,letterSpacing:'0.10em',color:V.teal,padding:'4px 8px',background:'rgba(63,182,168,0.08)',border:'1px solid rgba(63,182,168,0.2)',borderRadius:4,display:'inline-block',fontFamily:V.mono}}>NO CONFLICT</div>
         <div style={{fontSize:11,color:V.text2,fontStyle:'italic',marginTop:6,fontFamily:V.ui}}>Momentum is consistent with the current trend. No divergence detected across buckets.</div>
       </Card>
 
@@ -1159,10 +1159,10 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
         {flowProxy.buckets.length > 0 ? (
           <>
             <div style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'4px 16px',alignItems:'center',marginBottom:8}}>
-              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>BUCKET</span>
-              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>VOL 5D/20D</span>
-              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>RET 20D</span>
-              <span style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>STATUS</span>
+              <span style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>BUCKET</span>
+              <span style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>VOL 5D/20D</span>
+              <span style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>RET 20D</span>
+              <span style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,textAlign:'right'}}>STATUS</span>
               {flowProxy.buckets.map(b => {
                 const sc = FLOW_STATUS_COLOR[b.status as keyof typeof FLOW_STATUS_COLOR] ?? V.text3
                 const dot = FLOW_STATUS_DOT[b.status as keyof typeof FLOW_STATUS_DOT] ?? '—'
@@ -1180,11 +1180,11 @@ function TabHealth({ rsTable, kpis, breadthDetail, concentrationTop5 }:
                 )
               })}
             </div>
-            <div style={{marginTop:6,fontSize:10,color:V.text2,fontFamily:V.ui,padding:'6px 8px',background:V.bg3,borderRadius:3,
+            <div style={{marginTop:6,fontSize:11,color:V.text2,fontFamily:V.ui,padding:'6px 8px',background:V.bg3,borderRadius:3,
               borderLeft:`2px solid ${FLOW_STATUS_COLOR[flowProxy.summary.overallStatus as keyof typeof FLOW_STATUS_COLOR]??V.border}`}}>
               {flowProxy.summary.koreanSummary}
             </div>
-            <div style={{marginTop:4,fontSize:10,color:V.text3,fontFamily:V.ui}}>
+            <div style={{marginTop:4,fontSize:11,color:V.text3,fontFamily:V.ui}}>
               generated {flowProxy.generatedAt ? new Date(flowProxy.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'} · benchmark {flowProxy.benchmark} · vol 5D/20D ratio (local OHLCV, not fund flow data)
             </div>
           </>
@@ -1218,20 +1218,20 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
       <EduBox title="SOXL ENV">SOXL 레버리지 효율과 변동성 감쇠 — 환경 인식 지표이며 투자 권고가 아닙니다.</EduBox>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
         <SecTitle style={{margin:0}}>★ SOXL ENVIRONMENT — 무한매수 환경 진단</SecTitle>
-        <span style={{fontSize:10,background:'rgba(229,90,90,0.15)',color:V.red,border:'1px solid rgba(229,90,90,0.25)',padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>NOT INVESTMENT ADVICE · CONTEXT ONLY</span>
+        <span style={{fontSize:11,background:'rgba(229,90,90,0.15)',color:V.red,border:'1px solid rgba(229,90,90,0.25)',padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>NOT INVESTMENT ADVICE · CONTEXT ONLY</span>
       </div>
       {/* Hero */}
       <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:16,marginBottom:10}}>
         {/* Gauge */}
         <div style={{background:V.bg2,border:`1px solid ${V.border}`,borderRadius:6,padding:'12px 16px',display:'flex',flexDirection:'column',alignItems:'center',minWidth:150}}>
-          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:8,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
+          <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,marginBottom:8,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
           <svg width="120" height="80" viewBox="0 0 120 80">
             <path d="M 10 72 A 50 50 0 0 1 110 72" stroke="#2a2a2a" strokeWidth="10" fill="none" strokeLinecap="round"/>
             <path d="M 10 72 A 50 50 0 0 1 60 22" stroke="#D4B36A" strokeWidth="10" fill="none" strokeLinecap="round"/>
             <line x1="60" y1="72" x2="60" y2="28" stroke="#D4B36A" strokeWidth="2.5" strokeLinecap="round"/>
             <circle cx="60" cy="72" r="4" fill="#D4B36A"/>
-            <text x="14" y="76" fill="#5DCFB0" fontSize="10" fontFamily="monospace">GO</text>
-            <text x="90" y="76" fill="#E55A5A" fontSize="10" fontFamily="monospace">RISK</text>
+            <text x="14" y="76" fill="#5DCFB0" fontSize="11" fontFamily="monospace">GO</text>
+            <text x="90" y="76" fill="#E55A5A" fontSize="11" fontFamily="monospace">RISK</text>
           </svg>
           <div style={{fontSize:12,fontWeight:600,color:V.gold,marginTop:4,fontFamily:V.ui}}>⬤ CAUTION</div>
           <div style={{fontSize:11,color:V.text3,textAlign:'center',marginTop:4,lineHeight:1.4,fontFamily:V.ui}}>Elevated vol · AI-only rally<br/>Proceed with reduced size</div>
@@ -1269,7 +1269,7 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
       <Card style={{border:'1px solid rgba(229,90,90,0.3)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
           <SecTitle style={{margin:0}}>★ BRIDGE 5 — SOXL 변동성 감쇠 추적기</SecTitle>
-          <span style={{fontSize:10,background:`${statusColor}1A`,color:statusColor,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>
+          <span style={{fontSize:11,background:`${statusColor}1A`,color:statusColor,padding:'2px 7px',borderRadius:3,letterSpacing:'0.06em',fontFamily:V.mono}}>
             {decayWindow} · {DECAY_STATUS_LABEL[curStatus]}
           </span>
         </div>
@@ -1277,14 +1277,14 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
         <div style={{display:'flex',gap:4,marginBottom:10}}>
           {(['5D','1M','3M','6M','1Y'] as SoxlDecayWindow[]).map(w=>(
             <button key={w} onClick={()=>setDecayWindow(w)} style={{
-              fontSize:10,padding:'2px 8px',borderRadius:2,cursor:'pointer',
+              fontSize:11,padding:'2px 8px',borderRadius:2,cursor:'pointer',
               border:`1px solid ${decayWindow===w?`${statusColor}66`:V.border}`,
               background:decayWindow===w?`${statusColor}1A`:V.bg3,
               color:decayWindow===w?statusColor:V.text3,fontFamily:V.mono,letterSpacing:'0.05em',
             }}>{w}</button>
           ))}
           {decay.benchmark !== 'PENDING' && (
-            <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,alignSelf:'center',marginLeft:4}}>
+            <span style={{fontSize:11,color:V.text3,fontFamily:V.ui,alignSelf:'center',marginLeft:4}}>
               vs ideal 3x {bm}
             </span>
           )}
@@ -1294,19 +1294,19 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
           {curMetric && curMetric.status !== 'PENDING' ? (
             <>
               <div style={{background:V.bg3,border:`1px solid ${V.border}`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
-                <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>이론 SOXL ({bm}×3)</div>
+                <div style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>이론 SOXL ({bm}×3)</div>
                 <div style={{fontSize:22,fontWeight:500,color:V.teal,fontFamily:V.mono}}>{fmtReturn(curMetric.ideal3xReturnPct)}</div>
                 <div style={{fontSize:11,color:V.text3,marginTop:2,fontFamily:V.ui}}>{decayWindow} 기준 (단순계산)</div>
               </div>
               <div style={{background:V.bg3,border:`1px solid ${statusColor}44`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
-                <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>실제 SOXL</div>
+                <div style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>실제 SOXL</div>
                 <div style={{fontSize:22,fontWeight:500,color:statusColor,fontFamily:V.mono}}>{fmtReturn(curMetric.actualSoxlReturnPct)}</div>
                 <div style={{fontSize:11,color:statusColor,marginTop:2,fontFamily:V.ui}}>
                   {curStatus === 'FAVORABLE' ? '이론치 초과' : curStatus === 'NEUTRAL' ? '이론치 근접' : '감쇠 발생'}
                 </div>
               </div>
               <div style={{background:`${statusColor}0D`,border:`1px solid ${statusColor}33`,borderRadius:5,padding:'8px 10px',textAlign:'center'}}>
-                <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>누적 감쇠</div>
+                <div style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,marginBottom:4,fontFamily:V.ui}}>누적 감쇠</div>
                 <div style={{fontSize:22,fontWeight:500,color:statusColor,fontFamily:V.mono}}>{fmtDecay(curMetric.decayPct)}</div>
                 <div style={{fontSize:11,color:statusColor,marginTop:2,fontFamily:V.ui}}>변동성 비용 프록시</div>
               </div>
@@ -1328,24 +1328,24 @@ function TabSoxlEnv({ onTab }: { onTab:(t:CenterTab)=>void }) {
           <line x1="40" y1="60" x2="630" y2="60" stroke="#2a2a2a" strokeWidth="0.5"/>
           <line x1="40" y1="30" x2="630" y2="30" stroke="#2a2a2a" strokeWidth="0.5"/>
           <line x1="40" y1="90" x2="630" y2="90" stroke="#2a2a2a" strokeWidth="0.5"/>
-          <text x="36" y="33" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">+60%</text>
-          <text x="36" y="63" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">+30%</text>
-          <text x="36" y="93" fill="#A8BAD0" fontSize="10" textAnchor="end" fontFamily="monospace">0%</text>
+          <text x="36" y="33" fill="#A8BAD0" fontSize="11" textAnchor="end" fontFamily="monospace">+60%</text>
+          <text x="36" y="63" fill="#A8BAD0" fontSize="11" textAnchor="end" fontFamily="monospace">+30%</text>
+          <text x="36" y="93" fill="#A8BAD0" fontSize="11" textAnchor="end" fontFamily="monospace">0%</text>
           <path d="M40,90 C120,82 200,70 280,58 C360,46 440,36 530,26 C570,22 605,18 630,15" stroke="#3FB6A8" strokeWidth="1.8" fill="none" strokeDasharray="5,3"/>
           <path d="M40,90 C120,83 200,72 280,62 C360,52 440,44 530,35 C570,32 605,29 630,27" stroke={statusColor} strokeWidth="2.2" fill="none"/>
           <path d="M40,90 C120,82 200,70 280,58 C360,46 440,36 530,26 C570,22 605,18 630,15 L630,27 C605,29 570,32 530,35 C440,44 360,52 280,62 C200,72 120,83 40,90Z" fill={`${statusColor}14`}/>
-          <text x="634" y="17" fill="#3FB6A8" fontSize="10" fontFamily="monospace">이론</text>
-          <text x="634" y="29" fill={statusColor} fontSize="10" fontWeight="500" fontFamily="monospace">실제</text>
-          <text x="42" y="112" fill="#B8C8DC" fontSize="10" fontFamily="monospace">D-{decayWindow}</text>
-          <text x="630" y="112" fill="#B8C8DC" fontSize="10" textAnchor="end" fontFamily="monospace">Today</text>
+          <text x="634" y="17" fill="#3FB6A8" fontSize="11" fontFamily="monospace">이론</text>
+          <text x="634" y="29" fill={statusColor} fontSize="11" fontWeight="500" fontFamily="monospace">실제</text>
+          <text x="42" y="112" fill="#B8C8DC" fontSize="11" fontFamily="monospace">D-{decayWindow}</text>
+          <text x="630" y="112" fill="#B8C8DC" fontSize="11" textAnchor="end" fontFamily="monospace">Today</text>
         </svg>
-        <div style={{marginTop:8,fontSize:10,color:V.text3,lineHeight:1.6,background:V.bg3,padding:'8px 10px',borderRadius:4,fontFamily:V.ui,borderLeft:`2px solid ${statusColor}`}}>
+        <div style={{marginTop:8,fontSize:11,color:V.text3,lineHeight:1.6,background:V.bg3,padding:'8px 10px',borderRadius:4,fontFamily:V.ui,borderLeft:`2px solid ${statusColor}`}}>
           <span style={{color:statusColor,fontWeight:500}}>해석 ({DECAY_STATUS_LABEL[curStatus]}):</span>{' '}
           {decay.summary.koreanSummary}
           {bm === 'SMH' && <span style={{color:V.text3}}> · SOXX 데이터 없어 SMH 기준 적용</span>}
         </div>
         {curMetric && curMetric.startDate && (
-          <div style={{marginTop:4,fontSize:10,color:V.text3,fontFamily:V.ui}}>
+          <div style={{marginTop:4,fontSize:11,color:V.text3,fontFamily:V.ui}}>
             {curMetric.startDate} → {curMetric.endDate} · {curMetric.observations}거래일 · source: {curMetric.source}
           </div>
         )}
@@ -1377,7 +1377,7 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
     <div style={{background:V.bg2,borderRight:`1px solid ${V.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {/* Cycle Position */}
       <div style={{padding:'12px 16px',borderBottom:`1px solid ${V.border}`}}>
-        <div style={{fontSize:10,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>CYCLE POSITION</div>
+        <div style={{fontSize:11,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>CYCLE POSITION</div>
         {(()=>{
           const pct = progress ?? 71
           const stg = stage ?? 'MID EXPANSION'
@@ -1398,7 +1398,7 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
         })()}
         <div style={{height:8,background:V.bg3,borderRadius:4,overflow:'hidden',marginTop:8}}>
           <div style={{height:'100%',width:`${progress ?? 71}%`,background:`linear-gradient(90deg,${V.teal},${V.mint})`,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:4}}>
-            <span style={{fontSize:10,color:V.bg,fontWeight:600,fontFamily:V.mono}}>{stage?.replace('MID ','').replace('EARLY ','') ?? 'Expansion'} 100%</span>
+            <span style={{fontSize:11,color:V.bg,fontWeight:600,fontFamily:V.mono}}>{stage?.replace('MID ','').replace('EARLY ','') ?? 'Expansion'} 100%</span>
           </div>
         </div>
         <div style={{display:'flex',justifyContent:'space-between',marginTop:5,fontSize:11,color:V.text3,fontFamily:V.ui}}>
@@ -1407,42 +1407,42 @@ function LeftPanel({ stage, progress }: { stage?: string; progress?: number }) {
       </div>
       {/* 5Y Cycle Band */}
       <div style={{padding:'12px 16px',flex:1,overflowY:'auto'}}>
-        <div style={{fontSize:10,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>5Y CYCLE HISTORY</div>
+        <div style={{fontSize:11,letterSpacing:'0.14em',color:V.text3,fontWeight:600,marginBottom:10,fontFamily:V.ui}}>5Y CYCLE HISTORY</div>
         <svg viewBox="0 0 220 310" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'auto',display:'block',marginBottom:8}}>
           <line x1="30" y1="8" x2="30" y2="298" stroke="#2a2a2a" strokeWidth="1"/>
-          <text x="26" y="14" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2022</text>
-          <text x="26" y="90" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2023</text>
-          <text x="26" y="168" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2024</text>
-          <text x="26" y="235" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">2025</text>
-          <text x="26" y="300" fill="#8b9098" fontSize="10" textAnchor="end" fontFamily="monospace">Now</text>
+          <text x="26" y="14" fill="#8b9098" fontSize="11" textAnchor="end" fontFamily="monospace">2022</text>
+          <text x="26" y="90" fill="#8b9098" fontSize="11" textAnchor="end" fontFamily="monospace">2023</text>
+          <text x="26" y="168" fill="#8b9098" fontSize="11" textAnchor="end" fontFamily="monospace">2024</text>
+          <text x="26" y="235" fill="#8b9098" fontSize="11" textAnchor="end" fontFamily="monospace">2025</text>
+          <text x="26" y="300" fill="#8b9098" fontSize="11" textAnchor="end" fontFamily="monospace">Now</text>
           <line x1="28" y1="10" x2="33" y2="10" stroke="#2a2a2a" strokeWidth="1"/>
           <line x1="28" y1="88" x2="33" y2="88" stroke="#2a2a2a" strokeWidth="1"/>
           <line x1="28" y1="166" x2="33" y2="166" stroke="#2a2a2a" strokeWidth="1"/>
           <line x1="28" y1="233" x2="33" y2="233" stroke="#2a2a2a" strokeWidth="1"/>
           <rect x="35" y="10" width="178" height="28" fill="rgba(242,169,59,0.18)" stroke="rgba(242,169,59,0.4)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="22" fill="#F2A93B" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Contraction</text>
-          <text x="42" y="34" fill="#8b9098" fontSize="10" fontFamily="monospace">2022.07 ~ 2022.12</text>
+          <text x="42" y="22" fill="#F2A93B" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Contraction</text>
+          <text x="42" y="34" fill="#8b9098" fontSize="11" fontFamily="monospace">2022.07 ~ 2022.12</text>
           <rect x="35" y="42" width="178" height="28" fill="rgba(93,207,176,0.12)" stroke="rgba(93,207,176,0.3)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="54" fill="#5DCFB0" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Cycle</text>
-          <text x="42" y="66" fill="#8b9098" fontSize="10" fontFamily="monospace">2022.12 ~ 2023.05</text>
+          <text x="42" y="54" fill="#5DCFB0" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Cycle</text>
+          <text x="42" y="66" fill="#8b9098" fontSize="11" fontFamily="monospace">2022.12 ~ 2023.05</text>
           <rect x="35" y="74" width="178" height="28" fill="rgba(229,90,90,0.15)" stroke="rgba(229,90,90,0.35)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="86" fill="#E55A5A" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Peak</text>
-          <text x="100" y="86" fill="#8b9098" fontSize="10" fontFamily="monospace">2023.01 ~ 05</text>
+          <text x="42" y="86" fill="#E55A5A" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Peak</text>
+          <text x="100" y="86" fill="#8b9098" fontSize="11" fontFamily="monospace">2023.01 ~ 05</text>
           <rect x="35" y="106" width="178" height="28" fill="rgba(63,182,168,0.15)" stroke="rgba(63,182,168,0.35)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="118" fill="#3FB6A8" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Expansion</text>
-          <text x="130" y="118" fill="#8b9098" fontSize="10" fontFamily="monospace">2023.06~10</text>
+          <text x="42" y="118" fill="#3FB6A8" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Expansion</text>
+          <text x="130" y="118" fill="#8b9098" fontSize="11" fontFamily="monospace">2023.06~10</text>
           <rect x="35" y="138" width="178" height="28" fill="rgba(93,207,176,0.12)" stroke="rgba(93,207,176,0.3)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="150" fill="#5DCFB0" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Cycle</text>
-          <text x="42" y="162" fill="#8b9098" fontSize="10" fontFamily="monospace">2023.11 ~ 2024.04</text>
+          <text x="42" y="150" fill="#5DCFB0" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Cycle</text>
+          <text x="42" y="162" fill="#8b9098" fontSize="11" fontFamily="monospace">2023.11 ~ 2024.04</text>
           <rect x="35" y="170" width="178" height="26" fill="rgba(242,169,59,0.18)" stroke="rgba(242,169,59,0.4)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="182" fill="#F2A93B" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Contraction</text>
-          <text x="140" y="182" fill="#8b9098" fontSize="10" fontFamily="monospace">2024.04~07</text>
+          <text x="42" y="182" fill="#F2A93B" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Contraction</text>
+          <text x="140" y="182" fill="#8b9098" fontSize="11" fontFamily="monospace">2024.04~07</text>
           <rect x="35" y="200" width="178" height="26" fill="rgba(63,182,168,0.12)" stroke="rgba(63,182,168,0.28)" strokeWidth="0.8" rx="3"/>
-          <text x="42" y="212" fill="#3FB6A8" fontSize="10" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Expansion</text>
-          <text x="42" y="222" fill="#8b9098" fontSize="10" fontFamily="monospace">2024.08 ~ 10</text>
+          <text x="42" y="212" fill="#3FB6A8" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Early Expansion</text>
+          <text x="42" y="222" fill="#8b9098" fontSize="11" fontFamily="monospace">2024.08 ~ 10</text>
           <rect x="35" y="230" width="178" height="60" fill="rgba(63,182,168,0.22)" stroke="#3FB6A8" strokeWidth="1.5" rx="4"/>
           <text x="42" y="247" fill="#3FB6A8" fontSize="11" fontWeight="600" fontFamily="'IBM Plex Sans',sans-serif">Expansion</text>
-          <text x="42" y="262" fill="#8b9098" fontSize="10" fontFamily="monospace">2024.11 ~ Now</text>
+          <text x="42" y="262" fill="#8b9098" fontSize="11" fontFamily="monospace">2024.11 ~ Now</text>
           <rect x="128" y="240" width="76" height="22" fill="rgba(63,182,168,0.35)" rx="3"/>
           <text x="166" y="255" fill="#3FB6A8" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="'IBM Plex Sans',sans-serif">▶ NOW  68%</text>
           <line x1="30" y1="290" x2="213" y2="290" stroke="#3FB6A8" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
@@ -1485,7 +1485,7 @@ function EngineReadStrip({ stage, breadthPct, decayStatus, leadershipMode, leadB
   if (parts.length === 0) return null
   return (
     <div style={{padding:'5px 18px',borderBottom:`1px solid ${V.border}`,background:'rgba(63,182,168,0.03)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-      <div style={{fontSize:10,letterSpacing:'0.12em',color:V.teal,fontWeight:600,fontFamily:V.ui,flexShrink:0}}>ENGINE READ</div>
+      <div style={{fontSize:11,letterSpacing:'0.12em',color:V.teal,fontWeight:600,fontFamily:V.ui,flexShrink:0}}>ENGINE READ</div>
       <div style={{fontSize:11,color:V.text2,fontFamily:V.ui,lineHeight:1.4,flex:1}}>{parts.join(' · ')}</div>
     </div>
   )
@@ -1547,36 +1547,36 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
       {/* ① Signal Quality */}
       <div style={{padding:'10px 16px',background:SQ_BG[sq.label],borderBottom:`1px solid ${V.border}`}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:5}}>
-          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>SIGNAL QUALITY</div>
+          <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui}}>SIGNAL QUALITY</div>
           <div style={{display:'flex',alignItems:'baseline',gap:4}}>
             <span style={{fontSize:18,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.mono}}>{sq.score}</span>
-            <span style={{fontSize:10,color:V.text3,fontFamily:V.mono}}>/ {sq.maxScore}</span>
+            <span style={{fontSize:11,color:V.text3,fontFamily:V.mono}}>/ {sq.maxScore}</span>
             <span style={{fontSize:11,fontWeight:600,color:SQ_COLOR[sq.label],fontFamily:V.ui,marginLeft:4}}>{sq.label}</span>
           </div>
         </div>
         {sq.confirmingFactors.slice(0,2).map((f,i)=>(
-          <div key={i} style={{fontSize:10,color:V.teal,fontFamily:V.ui,marginBottom:1}}>● {f}</div>
+          <div key={i} style={{fontSize:11,color:V.teal,fontFamily:V.ui,marginBottom:1}}>● {f}</div>
         ))}
         {sq.cautionFactors.slice(0,2).map((f,i)=>(
-          <div key={i} style={{fontSize:10,color:V.amber,fontFamily:V.ui,marginBottom:1}}>▲ {f}</div>
+          <div key={i} style={{fontSize:11,color:V.amber,fontFamily:V.ui,marginBottom:1}}>▲ {f}</div>
         ))}
         {sq.pendingFactors.length > 0 && (
-          <div style={{fontSize:10,color:V.text3,fontFamily:V.ui,marginTop:2}}>
+          <div style={{fontSize:11,color:V.text3,fontFamily:V.ui,marginTop:2}}>
             {sq.pendingFactors.length}개 항목 대기
           </div>
         )}
       </div>
       {/* ② Rotation Read */}
       <div style={{padding:'8px 16px',borderBottom:`1px solid ${V.border}`}}>
-        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:4}}>ROTATION</div>
+        <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:4}}>ROTATION</div>
         {(()=>{
           const mc=rpRotation.leadershipMode==='Broad Leadership'||rpRotation.leadershipMode==='Rotation Broadening'?V.teal:rpRotation.leadershipMode==='Narrow Leadership'?V.blue:rpRotation.leadershipMode==='Rotation Weakening'?V.red:rpRotation.leadershipMode==='High Dispersion'?V.amber:V.text3
-          return(<><div style={{fontSize:11,fontWeight:600,color:mc,fontFamily:V.mono,marginBottom:3}}>{rpRotation.leadershipMode}</div><div style={{display:'flex',flexDirection:'column',gap:2}}>{rpRotation.leadBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>주도 <span style={{color:V.teal}}>{rpRotation.leadBuckets.join(' · ')}</span></div>}{rpRotation.recoveringBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>회복 <span style={{color:V.blue}}>{rpRotation.recoveringBuckets.join(' · ')}</span></div>}{rpRotation.weakeningBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>둔화 <span style={{color:V.amber}}>{rpRotation.weakeningBuckets.join(' · ')}</span></div>}{rpRotation.laggingBuckets.length>0&&<div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>약세 <span style={{color:V.red}}>{rpRotation.laggingBuckets.join(' · ')}</span></div>}</div></>)
+          return(<><div style={{fontSize:11,fontWeight:600,color:mc,fontFamily:V.mono,marginBottom:3}}>{rpRotation.leadershipMode}</div><div style={{display:'flex',flexDirection:'column',gap:2}}>{rpRotation.leadBuckets.length>0&&<div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>주도 <span style={{color:V.teal}}>{rpRotation.leadBuckets.join(' · ')}</span></div>}{rpRotation.recoveringBuckets.length>0&&<div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>회복 <span style={{color:V.blue}}>{rpRotation.recoveringBuckets.join(' · ')}</span></div>}{rpRotation.weakeningBuckets.length>0&&<div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>둔화 <span style={{color:V.amber}}>{rpRotation.weakeningBuckets.join(' · ')}</span></div>}{rpRotation.laggingBuckets.length>0&&<div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>약세 <span style={{color:V.red}}>{rpRotation.laggingBuckets.join(' · ')}</span></div>}</div></>)
         })()}
       </div>
       {/* ③ AI vs Legacy — compact */}
       <div style={{padding:'8px 16px',borderBottom:`1px solid ${V.border}`}}>
-        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:5}}>AI vs LEGACY</div>
+        <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:5}}>AI vs LEGACY</div>
         <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
           <span style={{fontSize:13,fontWeight:600,color:V.amber,fontFamily:V.mono}}>{aiBucketReturn ?? '+18.4%'}</span>
           <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>AI Compute</span>
@@ -1586,19 +1586,19 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
           <span style={{fontSize:13,fontWeight:600,color:V.amber,fontFamily:V.mono,marginLeft:'auto'}}>
             {aiRegime ? `${Math.round(Math.abs(aiRegime.ai_infra.spread))}pp` : '22pp'}
           </span>
-          <span style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>spread</span>
+          <span style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>spread</span>
         </div>
       </div>
       {/* ④ SOXL Environment — compact */}
       <div style={{padding:'10px 16px',borderTop:'1px solid rgba(229,90,90,0.15)',borderBottom:`1px solid ${V.border}`}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-          <div style={{fontSize:10,letterSpacing:'0.12em',color:V.red,fontWeight:600,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
-          <button onClick={()=>onTab('soxl')} style={{background:'transparent',border:'1px solid rgba(229,90,90,0.3)',color:V.red,fontSize:10,padding:'2px 6px',borderRadius:3,cursor:'pointer',letterSpacing:'0.06em',fontFamily:V.mono}}>상세 →</button>
+          <div style={{fontSize:11,letterSpacing:'0.12em',color:V.red,fontWeight:600,fontFamily:V.ui}}>SOXL ENVIRONMENT</div>
+          <button onClick={()=>onTab('soxl')} style={{background:'transparent',border:'1px solid rgba(229,90,90,0.3)',color:V.red,fontSize:11,padding:'2px 6px',borderRadius:3,cursor:'pointer',letterSpacing:'0.06em',fontFamily:V.mono}}>상세 →</button>
         </div>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
             <div style={{fontSize:13,fontWeight:600,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.ui}}>{DECAY_STATUS_LABEL[rpDecay.status]}</div>
-            <div style={{fontSize:10,color:V.text3,fontFamily:V.ui}}>90D 누적 감쇠 · {rpDecay.bm} 기준</div>
+            <div style={{fontSize:11,color:V.text3,fontFamily:V.ui}}>90D 누적 감쇠 · {rpDecay.bm} 기준</div>
           </div>
           <span style={{fontSize:20,fontWeight:500,color:DECAY_STATUS_COLOR[rpDecay.status],fontFamily:V.mono}}>
             {rpDecay.decayPct !== null ? fmtDecay(rpDecay.decayPct) : '—'}
@@ -1608,7 +1608,7 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
 
       {/* ⑤ Quick Nav */}
       <div style={{padding:'12px 16px',flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
-        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>빠른 이동</div>
+        <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>빠른 이동</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}}>
           {[
             {label:'MAP',   t:'map'  as CenterTab,bg:'rgba(63,182,168,0.1)', bc:'rgba(63,182,168,0.25)',c:V.teal},
@@ -1625,7 +1625,7 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
       </div>
       {/* DATA LAB summary card */}
       <div style={{padding:'12px 16px',borderTop:`1px solid ${V.border}`,marginTop:'auto'}}>
-        <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>DATA LAB 연결 상태</div>
+        <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,fontWeight:600,marginBottom:8,fontFamily:V.ui}}>DATA LAB 연결 상태</div>
         <div style={{display:'flex',flexDirection:'column',gap:5}}>
           {[
             { label: 'SOXX Structure', val: 'Broad',       vc: V.teal  },
@@ -1645,17 +1645,17 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
               [`${dataStatusCounts?.static  ?? 3} STATIC`,  '#fbbf24'],
               [`${dataStatusCounts?.pending ?? 3} PENDING`, '#737880'],
             ] as [string, string][]).map(([l,c])=>(
-              <span key={l} style={{fontSize:10,padding:'1px 5px',border:`1px solid ${c}33`,color:c,borderRadius:2,fontFamily:'monospace'}}>{l}</span>
+              <span key={l} style={{fontSize:11,padding:'1px 5px',border:`1px solid ${c}33`,color:c,borderRadius:2,fontFamily:'monospace'}}>{l}</span>
             ))}
           </div>
           {/* Signal Quality component breakdown */}
           <div style={{marginTop:8,borderTop:`1px solid ${V.border}`,paddingTop:6}}>
-            <div style={{fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:5}}>SIGNAL QUALITY BREAKDOWN</div>
+            <div style={{fontSize:11,letterSpacing:'0.10em',color:V.text3,fontWeight:600,fontFamily:V.ui,marginBottom:5}}>SIGNAL QUALITY BREAKDOWN</div>
             {sq.components.map(comp=>(
               <div key={comp.component} style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:'2px 8px',alignItems:'baseline',marginBottom:3}}>
-                <span style={{fontSize:10,color:V.text3,fontFamily:V.ui,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{comp.component}</span>
-                <span style={{fontSize:10,color:COMP_LABEL_COLOR[comp.label],fontFamily:V.mono,textAlign:'right'}}>{comp.label !== 'Pending' ? `${comp.score}/${comp.maxScore}` : '—'}</span>
-                <span style={{fontSize:10,color:COMP_LABEL_COLOR[comp.label],fontFamily:V.ui,whiteSpace:'nowrap'}}>{comp.label}</span>
+                <span style={{fontSize:11,color:V.text3,fontFamily:V.ui,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{comp.component}</span>
+                <span style={{fontSize:11,color:COMP_LABEL_COLOR[comp.label],fontFamily:V.mono,textAlign:'right'}}>{comp.label !== 'Pending' ? `${comp.score}/${comp.maxScore}` : '—'}</span>
+                <span style={{fontSize:11,color:COMP_LABEL_COLOR[comp.label],fontFamily:V.ui,whiteSpace:'nowrap'}}>{comp.label}</span>
               </div>
             ))}
           </div>
@@ -1673,7 +1673,7 @@ function RightPanel({ onTab, aiRegime, concentrationTop5, ewSpread, aiBucketRetu
 
 // ── HISTORY CARD ─────────────────────────────────────────────────────────────
 function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:HistTab)=>void }) {
-  const thS:React.CSSProperties = {padding:'6px 8px',fontSize:10,letterSpacing:'0.10em',color:V.text3,fontWeight:600,textAlign:'left',background:V.bg2,fontFamily:V.ui,borderBottom:`1px solid ${V.border}`}
+  const thS:React.CSSProperties = {padding:'6px 8px',fontSize:11,letterSpacing:'0.10em',color:V.text2,fontWeight:600,textAlign:'left',background:V.bg2,fontFamily:V.ui,borderBottom:`1px solid ${V.border}`}
   const tdS:React.CSSProperties = {padding:'6px 8px',fontSize:11,color:V.text,borderBottom:`1px solid ${V.brd2}`,fontFamily:V.ui}
   const events = [
     {date:'2026-05-06',type:'📊 FUNDAMENTAL',tc:V.teal,event:'TSMC 4월 매출 NT$260B 발표 — YoY +39% 확인',basis:'TSMC IR · 10일 발표',impact:'사이클 강세 유지',ic:V.teal},
@@ -1714,11 +1714,11 @@ function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:H
             <tbody>
               {events.map(e=>(
                 <tr key={e.date}>
-                  <td style={{...tdS,color:V.text3,fontSize:10,fontFamily:V.mono}}>{e.date}</td>
+                  <td style={{...tdS,color:V.text3,fontSize:11,fontFamily:V.mono}}>{e.date}</td>
                   <td style={tdS}><span style={{background:`rgba(${e.tc===V.teal?'63,182,168':e.tc===V.red?'229,90,90':e.tc===V.amber?'242,169,59':'93,207,176'},0.15)`,color:e.tc,fontSize:11,padding:'2px 7px',borderRadius:2,fontWeight:500,fontFamily:V.ui}}>{e.type}</span></td>
                   <td style={tdS}>{e.event}</td>
-                  <td style={{...tdS,color:V.text3,fontSize:10,fontFamily:V.ui}}>{e.basis}</td>
-                  <td style={{...tdS,color:e.ic,fontWeight:500,fontSize:10,fontFamily:V.ui}}>{e.impact}</td>
+                  <td style={{...tdS,color:V.text3,fontSize:11,fontFamily:V.ui}}>{e.basis}</td>
+                  <td style={{...tdS,color:e.ic,fontWeight:500,fontSize:11,fontFamily:V.ui}}>{e.impact}</td>
                 </tr>
               ))}
             </tbody>
@@ -1743,7 +1743,7 @@ function HistoryCard({ histTab, setHistTab }: { histTab:HistTab; setHistTab:(t:H
                   <td style={{...tdS,color:s.current?V.teal:V.text2,fontFamily:V.mono,textAlign:'right'}}>{s.tsmc}</td>
                   <td style={{...tdS,color:s.capC,fontFamily:V.ui}}>{s.capex}</td>
                   <td style={{...tdS,color:s.current?V.amber:V.text2,fontFamily:V.mono,textAlign:'right'}}>{s.spread}</td>
-                  <td style={{...tdS,color:s.note.startsWith('⚡')?V.teal:V.text3,fontSize:10,fontFamily:V.ui}}>{s.note}</td>
+                  <td style={{...tdS,color:s.note.startsWith('⚡')?V.teal:V.text3,fontSize:11,fontFamily:V.ui}}>{s.note}</td>
                 </tr>
               ))}
             </tbody>
@@ -1807,7 +1807,7 @@ export default function AnalysisEngineCoreTab({ live, interpData, history, onVie
           {label:'SOXL ENVIRONMENT',  val:ar ? regimeDisplay(ar.regime_label).split(' ')[0] : DECAY_STATUS_LABEL[kpiDecay.status], sub:ar?`${ar.ai_infra.spread.toFixed(1)}pp spread`:`${kpiDecay.decayPct !== null ? fmtDecay(kpiDecay.decayPct) : '—'} 3M decay · ${kpiDecay.bm} 기준`, vc:DECAY_STATUS_COLOR[kpiDecay.status]},
         ].map(k=>(
           <div key={k.label} style={{flex:1,padding:'10px 18px',borderRight:`1px solid ${V.border}`}}>
-            <div style={{fontSize:10,letterSpacing:'0.12em',color:V.text3,marginBottom:4,fontWeight:600,fontFamily:V.ui}}>{k.label}</div>
+            <div style={{fontSize:11,letterSpacing:'0.12em',color:V.text3,marginBottom:4,fontWeight:600,fontFamily:V.ui}}>{k.label}</div>
             <div style={{fontSize:28,fontWeight:500,color:k.vc,fontFamily:V.mono,lineHeight:1}}>{k.val}</div>
             <div style={{fontSize:12,color:V.text3,marginTop:4,fontFamily:V.ui}}>{k.sub}</div>
           </div>
